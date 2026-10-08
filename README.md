@@ -29,8 +29,9 @@ cmake --install build --prefix ~/.local
 ```
 
 Requires GCC or Clang in C++23 mode and a standard library supplying C++23
-formatting, printing, and range formatting. Use `fmt::fmt` or
-`fmt::fmt-header-only` from CMake.
+formatting, printing, and range formatting. The fork is header-only; no compiled
+fmt library is built or required. Use `fmt::fmt` or `fmt::fmt-header-only`
+from CMake; both propagate include paths and the C++23 requirement.
 
 Upstream history and [MIT license](LICENSE) are preserved. Original {fmt} code
 is copyright Victor Zverovich and the {fmt} contributors.

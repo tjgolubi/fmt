@@ -34,7 +34,7 @@ a legal `std::formatter` specialization.
 | Upstream parser, format contexts, argument type erasure, number conversion | Supplied by the standard library |
 | Unicode and platform-specific print machinery | Supplied by `std::print` and `std::vprint_unicode` |
 | Module, C binding, fmt OS implementation sources | Removed; these interfaces have not been ported |
-| Shared/static and header-only consumption | CMake targets retained; functions are standard-backed/header defined |
+| Library consumption | Header-only INTERFACE targets `fmt::fmt` and `fmt::fmt-header-only`; no compiled fmt library |
 | Header guards and `FMT_VERSION` | Retained as metadata/build necessities |
 | `FMT_STRING` | Literal identity annotation; no separate compiled-format engine |
 
@@ -66,9 +66,8 @@ Use standard formatter specializations and `fmt::ptr` for object pointers.
 specializations declared in `fmt` must be migrated to `std::formatter<T>`.
 There is no bridge that secretly falls back to the upstream formatter engine.
 The standard engine also determines formatting grammar, diagnostics, rounding,
-locale behavior, and which built-in types are formattable. The compiled library
-has no upstream ABI: rebuild consumers and do not substitute it for upstream
-shared-library binaries.
+locale behavior, and which built-in types are formattable. This fork supplies no compiled fmt library or upstream ABI. Rebuild consumers
+against the headers.
 
 Nested-style behavior remains upstream's escape/reset behavior: an inner reset
 does not restore an outer style. No relative/absolute-style redesign is included.
@@ -99,7 +98,7 @@ and `-DCMAKE_CXX_FLAGS=-stdlib=libc++`. Consumers use `fmt::fmt` or
 ## Validation and remaining release work
 
 The diagnostic GitHub workflow uses Clang 19/libc++ 19 in Debug/Release and
-static/shared configurations. It replaces the obsolete upstream workflows
+header-only configurations. It replaces the obsolete upstream workflows
 for old language modes, MSVC, docs, fuzzing, and release packaging on this branch.
 It does not certify the latest-stable target matrix.
 
@@ -107,7 +106,7 @@ It does not certify the latest-stable target matrix.
 Local validation uses available GCC 14.2/libstdc++ and Clang 19.1.1/libc++ 19.
 These are diagnostic checks, not proof of the latest-stable release matrix.
 Clang/libc++ runs the adapted upstream color assertions and the new standard-
-engine regression suite in compiled and header-only configurations. GCC 14
+engine regression suite through both public CMake targets. GCC 14
 checks the core and styling, but its libstdc++ lacks standard range formatting,
 so package configuration correctly rejects that combination.
 
@@ -131,3 +130,16 @@ Recorded checks for this implementation:
 - ASan is blocked by this environment's libc++/libc++abi allocation mismatch; a
   standalone program that only throws `std::runtime_error` reproduces it.
 - Exact latest-stable matrix and remote CI have not yet been validated.
+
+## Header-only package update
+
+The `src` directory and placeholder compiled target have been removed.
+`fmt::fmt` is an INTERFACE target; `fmt::fmt-header-only` forwards to it.
+Installation exports both names and installs the headers and package metadata.
+The pkg-config file supplies include flags with an empty `Libs` field, so it
+no longer asks consumers to link `-lfmt`. Existing installations may still have
+old archives/shared libraries; use a clean install prefix for verification.
+
+Validation: Clang 19/libc++ 19 Release regression tests pass through both
+targets; clean installed-package consumers build and run without a fmt library.
+Earlier compiled/static/shared checks above record the pre-update implementation.

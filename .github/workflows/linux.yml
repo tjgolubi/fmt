@@ -15,7 +15,6 @@ jobs:
     strategy:
       matrix:
         build_type: [Debug, Release]
-        shared: ['ON', 'OFF']
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Install diagnostic toolchain
@@ -28,7 +27,6 @@ jobs:
           -DCMAKE_CXX_COMPILER=clang++-19
           -DCMAKE_CXX_FLAGS="-stdlib=libc++ -Wall -Wextra -Wpedantic -Werror"
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -DBUILD_SHARED_LIBS=${{ matrix.shared }}
       - name: Build and test
         run: |
           cmake --build build -j2

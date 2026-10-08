@@ -33,24 +33,16 @@ endif()
 
 option(FMT_TEST "Build standard-engine regression tests" ${PROJECT_IS_TOP_LEVEL})
 option(FMT_INSTALL "Install fmt" ${PROJECT_IS_TOP_LEVEL})
-# A compiled target preserves the conventional CMake/package interface, while
-# the formatting implementation is supplied by the standard library.
-add_library(fmt src/format.cc)
+# Both public targets describe the same header-only implementation.
+add_library(fmt INTERFACE)
 add_library(fmt::fmt ALIAS fmt)
 add_library(fmt-header-only INTERFACE)
 add_library(fmt::fmt-header-only ALIAS fmt-header-only)
-foreach(target fmt fmt-header-only)
-  if(target STREQUAL "fmt")
-    set(scope PUBLIC)
-  else()
-    set(scope INTERFACE)
-  endif()
-  target_compile_features(${target} ${scope} cxx_std_23)
-  target_include_directories(${target} ${scope}
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-endforeach()
-set_target_properties(fmt PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION 12)
+target_compile_features(fmt INTERFACE cxx_std_23)
+target_include_directories(fmt INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+target_link_libraries(fmt-header-only INTERFACE fmt)
 if(FMT_TEST)
   enable_testing()
   find_package(Python3 COMPONENTS Interpreter QUIET)
@@ -73,14 +65,9 @@ endif()
 if(FMT_INSTALL)
   include(GNUInstallDirs)
   include(CMakePackageConfigHelpers)
-  install(TARGETS fmt fmt-header-only EXPORT fmt-targets
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+  install(TARGETS fmt fmt-header-only EXPORT fmt-targets)
   install(DIRECTORY include/fmt DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
   set(FMT_VERSION ${PROJECT_VERSION})
-  set(FMT_LIB_NAME fmt)
-  set(libdir_for_pc_file "\${prefix}/${CMAKE_INSTALL_LIBDIR}")
   set(includedir_for_pc_file "\${prefix}/${CMAKE_INSTALL_INCLUDEDIR}")
   configure_file(support/cmake/fmt.pc.in ${CMAKE_CURRENT_BINARY_DIR}/fmt.pc @ONLY)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/fmt.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
