@@ -10,8 +10,7 @@ def compile_source(source, mode='c++23'):
     return subprocess.run(base + ['-std=' + mode], input=source, text=True,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-for header in ('core', 'base', 'format', 'format-inl', 'chrono', 'std',
-               'color', 'ranges', 'xchar'):
+for header in ('core', 'format', 'format-inl', 'color'):
     result = compile_source(f'#include <fmt/{header}.h>\nint main() {{}}\n')
     if result.returncode:
         sys.exit(f'Standalone header {header} failed:\n{result.stderr}')

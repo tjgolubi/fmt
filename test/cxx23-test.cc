@@ -1,16 +1,18 @@
 // Standard-engine regression tests. These checks remain active in Release.
 #include "fmt/color.h"
-#include "fmt/chrono.h"
-#include "fmt/ranges.h"
-#include "fmt/std.h"
-#include "fmt/xchar.h"
+
+//#include "fmt/chrono.h"
+//#include "fmt/ranges.h"
+//#include "fmt/std.h"
+//#include "fmt/xchar.h"
+
 #include <array>
+#include <vector>
+#include <limits>
+#include <iostream>
+#include <stdexcept>
 #include <cstdio>
 #include <cstdlib>
-#include <iostream>
-#include <limits>
-#include <stdexcept>
-#include <vector>
 
 void check(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);

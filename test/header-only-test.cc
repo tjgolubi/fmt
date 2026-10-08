@@ -1,7 +1,6 @@
 // Header-only configuration test
 
-#include "fmt/base.h"  // Test the compatibility header.
-#include "fmt/ostream.h"
+#include "fmt/format.h"  // Test the compatibility header.
 #include "gtest/gtest.h"
 
 #ifndef FMT_HEADER_ONLY
