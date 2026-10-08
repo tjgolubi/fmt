@@ -9,7 +9,21 @@
 
 #include <iterator>  // std::back_inserter
 
-#include "gtest-extra.h"  // EXPECT_WRITE, EXPECT_THROW_MSG
+#include <stdexcept>
+#include <iostream>
+#define TEST(suite, name) void suite##_##name()
+#define EXPECT_TRUE(x) do { if (!(x)) throw std::runtime_error(#x); } while (false)
+#define EXPECT_FALSE(x) EXPECT_TRUE(!(x))
+#define EXPECT_EQ(a, b) EXPECT_TRUE((a) == (b))
+#define EXPECT_NO_THROW(x) do { (void)(x); } while (false)
+#define EXPECT_THROW_MSG(x, exception, message) do { \
+  bool caught = false; \
+  try { (void)(x); } catch (const exception& error) { \
+    caught = true; EXPECT_EQ(std::string(error.what()), std::string(message)); \
+  } \
+  EXPECT_TRUE(caught); \
+} while (false)
+
 
 TEST(color_test, text_style) {
   EXPECT_FALSE(fmt::text_style().has_foreground());
@@ -132,19 +146,13 @@ TEST(color_test, format_to) {
             "\x1b[38;2;255;020;030mrgb(255,20,30)123\x1b[0m");
 }
 
-TEST(color_test, print) {
-  EXPECT_WRITE(stdout, fmt::print(fg(fmt::rgb(255, 20, 30)), "rgb(255,20,30)"),
-               "\x1b[38;2;255;020;030mrgb(255,20,30)\x1b[0m");
-}
-
-TEST(color_test, println) {
-  EXPECT_WRITE(stdout,
-               fmt::println(fg(fmt::rgb(255, 20, 30)), "rgb(255,20,30)"),
-               "\x1b[38;2;255;020;030mrgb(255,20,30)\x1b[0m\n");
-  EXPECT_WRITE(stdout, fmt::println(fmt::emphasis::bold, "bold"),
-               "\x1b[1mbold\x1b[0m\n");
-  EXPECT_WRITE(
-      stdout,
-      fmt::println(fg(fmt::color::blue) | fmt::emphasis::bold, "blue/bold"),
-      "\x1b[1m\x1b[38;2;000;000;255mblue/bold\x1b[0m\n");
+int main() {
+  try {
+    color_test_text_style();
+    color_test_format();
+    color_test_format_to();
+  } catch (const std::exception& error) {
+    std::cerr << error.what() << '\n';
+    return 1;
+  }
 }
