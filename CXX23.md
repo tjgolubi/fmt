@@ -11,9 +11,9 @@ the foundation; common call adapters are retained for that interface.
 
 Baseline: fork commit `6b186b6aa13062ece0dfc05487479a32a8021a5f`; upstream parent
 `10cda465`, reporting {fmt} version 12.2.1. Upstream history, LICENSE, and
-attribution remain in this repository. Existing unrelated upstream tests are
-retained as upstream historical material; they are not silently
-counted as passing tests of this implementation.
+attribution remain in this repository. Unused upstream tests and their support files have been removed. Historical
+versions remain available in git history. The active test directory contains
+only `color-test.cc`, `cxx23-test.cc`, and `compile-checks.py`.
 
 ## Architecture and compatibility-code audit
 
@@ -112,9 +112,8 @@ so package configuration correctly rejects that combination.
 
 Before release: run the exact latest-stable three-way toolchain matrix and
 validate standard formatting and color/style calls with real consumers.
-Do not add adapters for unrelated fmt-only extensions. Existing upstream tests
-that exercise removed implementation details cannot be used unchanged to certify
-this fork. Compatibility claims must be limited to the declared standard
+Do not add adapters for unrelated fmt-only extensions. The removed upstream
+tests exercised APIs and implementation details outside this fork’s scope. Compatibility claims must be limited to the declared standard
 formatting and color/style surface.
 
 Recorded checks for this implementation:
