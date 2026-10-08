@@ -51,13 +51,13 @@ a legal `std::formatter` specialization.
 | `color.h` | Named colors, RGB, all 16 terminal colors, foreground/background, emphasis, style format/print/println/format_to and `styled` |
 | `styled` | Works with `fmt::format` and directly with `std::format`; inherits the underlying standard formatter; preserves reset behavior |
 | `ranges.h` | Standard range formatting aliases only; fmt-specific `join` views are out of scope |
-| `ostream.h` | Explicit compile-time unsupported diagnostic; use standard formatting/printing |
+| `ostream.h` | Removed; use standard formatting/printing |
 | `chrono.h` | Standard chrono formatting; upstream extensions such as `fmt::localtime`, `gmtime`, duration_cast helpers and nonstandard chrono specs are absent |
 | `std.h` | Only types formatable by the selected standard library; upstream optional, variant, filesystem/path and other fmt-only formatters are absent unless the standard library itself supplies them |
 | `xchar.h` | Standard wide format types/functions and wide runtime format adapters; wide printing and exotic character types are absent |
-| `compile.h` | Explicit compile-time unsupported diagnostic; use standard format strings |
-| `enum.h` | Explicit compile-time unsupported diagnostic; use `std::to_underlying` |
-| `args.h`, `printf.h`, `os.h`, `fmt-c.h` | Explicit compile-time unsupported diagnostics |
+| `compile.h` | Removed; use standard format strings |
+| `enum.h` | Removed; use `std::to_underlying` |
+| `args.h`, `printf.h`, `os.h`, `fmt-c.h` | Removed; these fmt-only interfaces are out of scope |
 
 There is no named-argument parser, dynamic argument store, `format_as` dispatch,
 `fmt::detail` compatibility, or automatic conversion of arbitrary pointers.
@@ -122,8 +122,8 @@ Recorded checks for this implementation:
 - Clang 19/libc++ 19: Release static/shared builds and adapted upstream color
   checks plus compiled/header-only regression tests pass, with warnings as errors.
 - Clang 19/libc++ 19: Debug UBSan regression tests pass.
-- Public supported headers compile independently; invalid literal format strings,
-  C++20 mode, and explicitly unsupported headers are rejected as intended.
+- Public supported headers compile independently; invalid literal format strings
+  and C++20 mode are rejected as intended.
 - Installed CMake package consumers build/run through both exported targets.
 - GCC 14/libstdc++ 14: core formatting, runtime strings, buffers, styles, and FILE
   printing smoke checks pass. Full package is rejected for missing range support.
@@ -143,3 +143,8 @@ old archives/shared libraries; use a clean install prefix for verification.
 Validation: Clang 19/libc++ 19 Release regression tests pass through both
 targets; clean installed-package consumers build and run without a fmt library.
 Earlier compiled/static/shared checks above record the pre-update implementation.
+
+Unsupported headers containing only `#error` directives have been deleted:
+`args.h`, `compile.h`, `enum.h`, `fmt-c.h`, `os.h`, `ostream.h`, and `printf.h`.
+Including them now yields the normal missing-header diagnostic. Compiler,
+language-mode, and standard-library feature checks remain in supported headers.
