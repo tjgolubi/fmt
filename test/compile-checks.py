@@ -24,7 +24,7 @@ if old_mode.returncode == 0 or 'requires C++23' not in old_mode.stderr:
 # Ordinary formatting and its types belong to std, not fmt.
 for expression in ('fmt::format("{}", 42)', 'fmt::print("{}", 42)',
                    'fmt::formatter<int>{}', 'fmt::format_error("error")',
-                   'fmt::memory_buffer{}', 'fmt::runtime("{}")'):
+                   'fmt::memory_buffer{}', 'fmt::runtime("{}")', 'fmt::emphasis::conceal'):
     result = compile_source('#include <fmt/color.h>\nint main() { (void)(' + expression + '); }\n')
     if result.returncode == 0:
         sys.exit(f'Out-of-scope public entry point still exists: {expression}')

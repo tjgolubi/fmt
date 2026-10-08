@@ -16,7 +16,7 @@ template <> struct std::formatter<point> : std::formatter<int> {
 };
 int main() {
   try {
-    const auto ts = fmt::emphasis::bold | fmt::fg(fmt::color::blue);
+    const auto ts = fmt::text_style{}.bold().fg(fmt::color::blue);
     point value{7};
     auto styled_value = fmt::styled(value, ts);
     check(std::format("{:04}", styled_value) ==

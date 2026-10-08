@@ -55,10 +55,54 @@ also borrows its value; wrapping a temporary in the formatting call is valid,
 but do not retain the wrapper past that temporary's lifetime. Output iterators
 must have sufficient writable space; use a back inserter for growable output.
 
-The upstream ANSI encoding and reset behavior are preserved. An inner reset
+Color escape encoding and the existing reset behavior are preserved. An inner reset
 does not restore an outer style; nested-style redesign remains deferred.
 The standard library determines formatting grammar, locale behavior, diagnostics,
 rounding and which underlying types are formattable.
+
+## Attributes and composition
+
+Intensity is mutually exclusive: normal, faint or bold. Blink is mutually
+exclusive: off, slow (`blink`, SGR 5) or rapid (`flash`, SGR 6). Terminal support
+for rapid blinking varies; this renderer emits SGR 6, with no capability
+negotiation or automatic fallback. Conceal has been removed.
+
+Fluent setters take `bool enabled = true`, mutate the style and return
+`text_style&`: `bold`, `faint`, `italic`, `underline`, `blink`, `flash`, `reverse`,
+and `strikethrough`. `inverse` and `strike` are aliases for the last two.
+Each has a corresponding const, nodiscard, constexpr `is_...()` query.
+Enabling bold replaces faint and vice versa; enabling flash replaces blink
+and vice versa. Disabling an inactive mode leaves the other mode unchanged.
+
+```cpp
+auto style = fmt::text_style{}.bold().flash()
+    .fg(fmt::terminal_color::red).bg(fmt::color::black);
+style.fg(fmt::rgb(0, 0, 255)); // Later color setters replace the previous color.
+style.bold(false).italic();
+bool rapid = style.is_flash();
+```
+
+`fg` and `bg` member setters replace only the selected color and its tag,
+leaving the other color and attributes intact. The standalone `fmt::fg` and
+`fmt::bg` factories remain available.
+
+By Terry's explicit selection, `operator|` and `operator|=` reject **any color
+in either operand**, including a color combined with an empty style or an
+attribute-only style. There is no color blending, and no exception for identical
+colors. Use fluent setters to construct colored styles. Failed `|=` leaves the
+left operand unchanged and throws `std::format_error`.
+
+Attribute-only OR is allowed. Bold takes precedence over faint, and flash
+takes precedence over blink; other attributes are OR-ed. Two-bit intensity and
+blink fields are canonicalized, so the combined encoding 3 becomes encoding 2
+and styles with the same effective attributes compare equal.
+
+The 64-bit layout now uses bits 0-23 for foreground, bits 24-25 for its tag,
+bits 26-27 for the background tag, bits 28-31 reserved, bits 32-55 for
+background, and bits 56-63 for attributes. This replaces upstream's carry-based
+merge trick. Tags remain unset/RGB/terminal; the spare tag is reserved.
+The emphasis encodings and packed layout have changed; they are not an
+upstream ABI or serialized-data compatibility surface.
 
 ## Build and validation
 
@@ -75,7 +119,7 @@ library and pkg-config has no fmt link flags. Use a clean installation prefix
 when removing obsolete headers or libraries from a previous installation.
 
 The active test directory contains `color-test.cc`, `cxx23-test.cc`, and
-`compile-checks.py`. CMake runs the adapted upstream color assertions, style
+`compile-checks.py`. CMake runs the updated color/style assertions, style
 integration tests through both target names, and compile-time checks for the
 supported header, literal validation and intentional removal of common aliases.
 Unused upstream tests and support files remain available in git history.

@@ -17,7 +17,7 @@ it does not re-export standard formatting names or provide unstyled adapters.
 int main() {
   std::println("The answer is {}", 42);
   std::println("Status: {}", fmt::styled("ready", fmt::fg(fmt::color::green)));
-  fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::green),
+  fmt::print(fmt::text_style{}.bold().fg(fmt::color::green),
              "Elapsed time: {:.2f} seconds\n", 1.23);
 }
 ```

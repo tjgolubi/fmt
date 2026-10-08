@@ -205,13 +205,13 @@ enum class terminal_color : std::uint8_t {
 };
 
 enum class emphasis : std::uint8_t {
-  bold = 1,
-  faint = 1 << 1,
+  faint = 1,
+  bold = 1 << 1,
   italic = 1 << 2,
   underline = 1 << 3,
   blink = 1 << 4,
-  reverse = 1 << 5,
-  conceal = 1 << 6,
+  flash = 1 << 5,
+  reverse = 1 << 6,
   strikethrough = 1 << 7,
 };
 
@@ -260,132 +260,173 @@ struct color_type {
 };
 }  // namespace detail
 
-/// A text style consisting of foreground and background colors and emphasis.
+/// A text style consisting of foreground/background colors and attributes.
 class text_style {
-  // The information is packed as follows:
-  // ┌──┐
-  // │ 0│─┐
-  // │..│ ├── foreground color value
-  // │23│─┘
-  // ├──┤
-  // │24│─┬── discriminator for the above value. 00 if unset, 01 if it's
-  // │25│─┘   an RGB color, or 11 if it's a terminal color (10 is unused)
-  // ├──┤
-  // │26│──── overflow bit, always zero (see below)
-  // ├──┤
-  // │27│─┐
-  // │..│ │
-  // │50│ │
-  // ├──┤ │
-  // │51│ ├── background color (same format as the foreground color)
-  // │52│ │
-  // ├──┤ │
-  // │53│─┘
-  // ├──┤
-  // │54│─┐
-  // │..│ ├── emphases
-  // │61│─┘
-  // ├──┤
-  // │62│─┬── unused
-  // │63│─┘
-  // └──┘
-  // The overflow bits are there to make operator|= efficient.
-  // When ORing, we must throw if, for either the foreground or background,
-  // one style specifies a terminal color and the other specifies any color
-  // (terminal or RGB); in other words, if one discriminator is 11 and the
-  // other is 11 or 01.
-  //
-  // We do that check by adding the styles. Consider what adding does to each
-  // possible pair of discriminators:
-  //    00 + 00 = 000
-  //    01 + 00 = 001
-  //    11 + 00 = 011
-  //    01 + 01 = 010
-  //    11 + 01 = 100 (!!)
-  //    11 + 11 = 110 (!!)
-  // In the last two cases, the ones we want to catch, the third bit——the
-  // overflow bit——is set. Bingo.
-  //
-  // We must take into account the possible carry bit from the bits
-  // before the discriminator. The only potentially problematic case is
-  // 11 + 00 = 011 (a carry bit would make it 100, not good!), but a carry
-  // bit is impossible in that case, because 00 (unset color) means the
-  // 24 bits that precede the discriminator are all zero.
-  //
-  // This test can be applied to both colors simultaneously.
+  // Byte-aligned payloads: foreground bits 0-23, both tags in bits 24-31,
+  // background bits 32-55, all attributes in bits 56-63.
+  static constexpr std::uint64_t payload_mask = 0xFFFFFF;
+  static constexpr std::uint64_t foreground_mask = 0x03FFFFFF;
+  static constexpr std::uint64_t background_mask =
+      (payload_mask << 32) | (3ULL << 26);
+  static constexpr std::uint64_t attributes_mask = 0xFFULL << 56;
+
+  static constexpr auto normalize(std::uint8_t bits) noexcept -> std::uint8_t {
+    // Canonicalize the two mutually exclusive modes; value 3 means value 2.
+    if ((bits & 3u) == 3u) bits &= ~1u;
+    if ((bits & 0x30u) == 0x30u) bits &= ~0x10u;
+    return bits;
+  }
+  constexpr auto attributes() const noexcept -> std::uint8_t {
+    return static_cast<std::uint8_t>(style_ >> 56);
+  }
+  constexpr auto set_attributes(std::uint8_t bits) noexcept -> text_style& {
+    style_ = (style_ & ~attributes_mask) |
+             (static_cast<std::uint64_t>(normalize(bits)) << 56);
+    return *this;
+  }
+  constexpr auto set_flag(emphasis flag, bool enabled) noexcept -> text_style& {
+    const auto mask = std::to_underlying(flag);
+    return set_attributes(enabled ? attributes() | mask : attributes() & ~mask);
+  }
+  constexpr auto set_mode(std::uint8_t mask, std::uint8_t value,
+                          bool enabled) noexcept -> text_style& {
+    const auto bits = attributes();
+    if (enabled) return set_attributes((bits & ~mask) | value);
+    if ((bits & mask) == value) return set_attributes(bits & ~mask);
+    return *this;
+  }
+  [[nodiscard]] constexpr auto is_flag(emphasis flag) const noexcept -> bool {
+    return (attributes() & std::to_underlying(flag)) != 0;
+  }
 
  public:
   constexpr text_style(emphasis em = emphasis()) noexcept
-      : style_(static_cast<std::uint64_t>(em) << 54) {}
+      : style_(static_cast<std::uint64_t>(normalize(std::to_underlying(em))) << 56) {}
 
   constexpr auto operator|=(text_style rhs) -> text_style& {
-    if (((style_ + rhs.style_) & ((1ULL << 26) | (1ULL << 53))) != 0)
-      throw std::format_error("can't OR a terminal color");
-    style_ |= rhs.style_;
-    return *this;
+    if (has_foreground() || has_background() ||
+        rhs.has_foreground() || rhs.has_background())
+      throw std::format_error("can't OR a style with colors");
+    return set_attributes(attributes() | rhs.attributes());
   }
-
-  friend constexpr auto operator|(text_style lhs, text_style rhs)
-      -> text_style {
+  friend constexpr auto operator|(text_style lhs, text_style rhs) -> text_style {
     return lhs |= rhs;
   }
-
   constexpr auto operator==(text_style rhs) const noexcept -> bool {
     return style_ == rhs.style_;
   }
-
   constexpr auto operator!=(text_style rhs) const noexcept -> bool {
     return !(*this == rhs);
   }
 
-  constexpr auto has_foreground() const noexcept -> bool {
-    return (style_ & (1 << 24)) != 0;
+  constexpr auto fg(detail::color_type color) noexcept -> text_style& {
+    style_ = (style_ & ~foreground_mask) | color.value_;
+    return *this;
   }
-  constexpr auto has_background() const noexcept -> bool {
-    return (style_ & (1ULL << 51)) != 0;
+  constexpr auto bg(detail::color_type color) noexcept -> text_style& {
+    style_ = (style_ & ~background_mask) |
+             (static_cast<std::uint64_t>(color.value()) << 32) |
+             (static_cast<std::uint64_t>(color.value_ >> 24) << 26);
+    return *this;
   }
-  constexpr auto has_emphasis() const noexcept -> bool {
-    return (style_ >> 54) != 0;
+
+  constexpr auto bold(bool enabled = true) noexcept -> text_style& {
+    return set_mode(3, 2, enabled);
   }
-  constexpr auto get_foreground() const noexcept -> detail::color_type {
+  constexpr auto faint(bool enabled = true) noexcept -> text_style& {
+    return set_mode(3, 1, enabled);
+  }
+  constexpr auto italic(bool enabled = true) noexcept -> text_style& {
+    return set_flag(emphasis::italic, enabled);
+  }
+  constexpr auto underline(bool enabled = true) noexcept -> text_style& {
+    return set_flag(emphasis::underline, enabled);
+  }
+  constexpr auto blink(bool enabled = true) noexcept -> text_style& {
+    return set_mode(0x30, 0x10, enabled);
+  }
+  constexpr auto flash(bool enabled = true) noexcept -> text_style& {
+    return set_mode(0x30, 0x20, enabled);
+  }
+  constexpr auto reverse(bool enabled = true) noexcept -> text_style& {
+    return set_flag(emphasis::reverse, enabled);
+  }
+  constexpr auto strikethrough(bool enabled = true) noexcept -> text_style& {
+    return set_flag(emphasis::strikethrough, enabled);
+  }
+  constexpr auto inverse(bool enabled = true) noexcept -> text_style& {
+    return reverse(enabled);
+  }
+  constexpr auto strike(bool enabled = true) noexcept -> text_style& {
+    return strikethrough(enabled);
+  }
+
+  [[nodiscard]] constexpr auto is_bold() const noexcept -> bool {
+    return (attributes() & 3u) == 2u;
+  }
+  [[nodiscard]] constexpr auto is_faint() const noexcept -> bool {
+    return (attributes() & 3u) == 1u;
+  }
+  [[nodiscard]] constexpr auto is_italic() const noexcept -> bool {
+    return is_flag(emphasis::italic);
+  }
+  [[nodiscard]] constexpr auto is_underline() const noexcept -> bool {
+    return is_flag(emphasis::underline);
+  }
+  [[nodiscard]] constexpr auto is_blink() const noexcept -> bool {
+    return (attributes() & 0x30u) == 0x10u;
+  }
+  [[nodiscard]] constexpr auto is_flash() const noexcept -> bool {
+    return (attributes() & 0x30u) == 0x20u;
+  }
+  [[nodiscard]] constexpr auto is_reverse() const noexcept -> bool {
+    return is_flag(emphasis::reverse);
+  }
+  [[nodiscard]] constexpr auto is_strikethrough() const noexcept -> bool {
+    return is_flag(emphasis::strikethrough);
+  }
+  [[nodiscard]] constexpr auto is_inverse() const noexcept -> bool {
+    return is_reverse();
+  }
+  [[nodiscard]] constexpr auto is_strike() const noexcept -> bool {
+    return is_strikethrough();
+  }
+
+  [[nodiscard]] constexpr auto has_foreground() const noexcept -> bool {
+    return (style_ & (3ULL << 24)) != 0;
+  }
+  [[nodiscard]] constexpr auto has_background() const noexcept -> bool {
+    return (style_ & (3ULL << 26)) != 0;
+  }
+  [[nodiscard]] constexpr auto has_emphasis() const noexcept -> bool {
+    return attributes() != 0;
+  }
+  [[nodiscard]] constexpr auto get_foreground() const noexcept -> detail::color_type {
     assert(has_foreground());
-    return style_ & 0x3FFFFFF;
+    return static_cast<std::uint32_t>(style_ & foreground_mask);
   }
-  constexpr auto get_background() const noexcept -> detail::color_type {
+  [[nodiscard]] constexpr auto get_background() const noexcept -> detail::color_type {
     assert(has_background());
-    return (style_ >> 27) & 0x3FFFFFF;
+    return static_cast<std::uint32_t>((style_ >> 32) & payload_mask) |
+           (static_cast<std::uint32_t>((style_ >> 26) & 3u) << 24);
   }
-  constexpr auto get_emphasis() const noexcept -> emphasis {
+  [[nodiscard]] constexpr auto get_emphasis() const noexcept -> emphasis {
     assert(has_emphasis());
-    return static_cast<emphasis>(style_ >> 54);
+    return static_cast<emphasis>(attributes());
   }
 
  private:
-  constexpr text_style(std::uint64_t style) noexcept : style_(style) {}
-
-  friend constexpr auto fg(detail::color_type foreground) noexcept
-      -> text_style;
-
-  friend constexpr auto bg(detail::color_type background) noexcept
-      -> text_style;
-
   std::uint64_t style_ = 0;
 };
 
-/// Creates a text style from the foreground (text) color.
-constexpr inline auto fg(detail::color_type foreground) noexcept
-    -> text_style {
-  return foreground.value_;
+/// Creates a foreground style. Further colors/attributes use fluent setters.
+constexpr inline auto fg(detail::color_type foreground) noexcept -> text_style {
+  return text_style{}.fg(foreground);
 }
-
-/// Creates a text style from the background color.
-constexpr inline auto bg(detail::color_type background) noexcept
-    -> text_style {
-  return static_cast<std::uint64_t>(background.value_) << 27;
+constexpr inline auto bg(detail::color_type background) noexcept -> text_style {
+  return text_style{}.bg(background);
 }
-
-constexpr inline auto operator|(emphasis lhs, emphasis rhs) noexcept
-    -> text_style {
+constexpr inline auto operator|(emphasis lhs, emphasis rhs) noexcept -> text_style {
   return text_style(lhs) | rhs;
 }
 
@@ -428,13 +469,15 @@ template <typename Char> struct ansi_color_escape {
   }
   constexpr ansi_color_escape(emphasis em) noexcept {
     std::uint8_t em_codes[num_emphases] = {};
-    if (has_emphasis(em, emphasis::bold)) em_codes[0] = 1;
-    if (has_emphasis(em, emphasis::faint)) em_codes[1] = 2;
+    const auto intensity = std::to_underlying(em) & 3u;
+    if (intensity >= 2u) em_codes[0] = 1;
+    else if (intensity == 1u) em_codes[1] = 2;
     if (has_emphasis(em, emphasis::italic)) em_codes[2] = 3;
     if (has_emphasis(em, emphasis::underline)) em_codes[3] = 4;
-    if (has_emphasis(em, emphasis::blink)) em_codes[4] = 5;
+    const auto blinking = std::to_underlying(em) & 0x30u;
+    if (blinking >= 0x20u) em_codes[4] = 6;
+    else if (blinking == 0x10u) em_codes[4] = 5;
     if (has_emphasis(em, emphasis::reverse)) em_codes[5] = 7;
-    if (has_emphasis(em, emphasis::conceal)) em_codes[6] = 8;
     if (has_emphasis(em, emphasis::strikethrough)) em_codes[7] = 9;
 
     buffer[size++] = static_cast<Char>('\x1b');
