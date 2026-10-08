@@ -11,6 +11,14 @@ The only public header is `<fmt/color.h>`. It defines `fmt::color`, `fmt::rgb`,
 `fmt::terminal_color` (all 16 terminal colors), `fmt::emphasis`, `fmt::text_style`,
 `fmt::fg`, `fmt::bg`, and `fmt::styled`.
 
+`terminal_color` has default consecutive values 0-15: black through white,
+then bright black through bright white. These values identify palette entries;
+the packed style stores and retrieves those indices. The SGR encoder maps them
+to foreground parameters 30-37/90-97 and background parameters 40-47/100-107.
+The underlying numbers have changed from upstream; code or serialized data
+using the former 30-37/90-97 values must be migrated. Named color calls produce
+the same escape sequences. There is no SGR text parser/decoder in this package.
+
 | Operation | Interface |
 | --- | --- |
 | Individual styled value | `std::format("{}", fmt::styled(value, style))`; also works with standard output-iterator and printing functions |

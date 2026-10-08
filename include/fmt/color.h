@@ -184,8 +184,9 @@ enum class color : std::uint32_t {
   yellow_green = 0x9ACD32              // rgb(154,205,50)
 };  // enum class color
 
+// Palette identities; SGR numbers are assigned only by the escape encoder.
 enum class terminal_color : std::uint8_t {
-  black = 30,
+  black,
   red,
   green,
   yellow,
@@ -193,7 +194,7 @@ enum class terminal_color : std::uint8_t {
   magenta,
   cyan,
   white,
-  bright_black = 90,
+  bright_black,
   bright_red,
   bright_green,
   bright_yellow,
@@ -397,9 +398,9 @@ template <typename Char> struct ansi_color_escape {
     // sequence.
     if (text_color.is_terminal_color()) {
       bool is_background = esc == std::string_view("\x1b[48;2;");
-      std::uint32_t value = text_color.value();
-      // Background ASCII codes are the same as the foreground ones but with
-      // 10 more.
+      const auto index = text_color.value();
+      // Translate palette indices 0-15 into the foreground SGR blocks.
+      std::uint32_t value = index < 8u ? 30u + index : 90u + (index - 8u);
       if (is_background) value += 10u;
 
       buffer[size++] = static_cast<Char>('\x1b');

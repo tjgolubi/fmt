@@ -138,6 +138,53 @@ TEST(color_test, format) {
       "\x1b[1;2;3;4;5;7;8;9mall\x1b[0m");
 }
 
+TEST(color_test, terminal_palette) {
+  struct palette_case {
+    fmt::terminal_color color;
+    const char* foreground;
+    const char* background;
+  };
+  constexpr palette_case cases[] = {
+    {fmt::terminal_color::black, "\x1b[30mx\x1b[0m", "\x1b[40mx\x1b[0m"},
+    {fmt::terminal_color::red, "\x1b[31mx\x1b[0m", "\x1b[41mx\x1b[0m"},
+    {fmt::terminal_color::green, "\x1b[32mx\x1b[0m", "\x1b[42mx\x1b[0m"},
+    {fmt::terminal_color::yellow, "\x1b[33mx\x1b[0m", "\x1b[43mx\x1b[0m"},
+    {fmt::terminal_color::blue, "\x1b[34mx\x1b[0m", "\x1b[44mx\x1b[0m"},
+    {fmt::terminal_color::magenta, "\x1b[35mx\x1b[0m", "\x1b[45mx\x1b[0m"},
+    {fmt::terminal_color::cyan, "\x1b[36mx\x1b[0m", "\x1b[46mx\x1b[0m"},
+    {fmt::terminal_color::white, "\x1b[37mx\x1b[0m", "\x1b[47mx\x1b[0m"},
+    {fmt::terminal_color::bright_black, "\x1b[90mx\x1b[0m", "\x1b[100mx\x1b[0m"},
+    {fmt::terminal_color::bright_red, "\x1b[91mx\x1b[0m", "\x1b[101mx\x1b[0m"},
+    {fmt::terminal_color::bright_green, "\x1b[92mx\x1b[0m", "\x1b[102mx\x1b[0m"},
+    {fmt::terminal_color::bright_yellow, "\x1b[93mx\x1b[0m", "\x1b[103mx\x1b[0m"},
+    {fmt::terminal_color::bright_blue, "\x1b[94mx\x1b[0m", "\x1b[104mx\x1b[0m"},
+    {fmt::terminal_color::bright_magenta, "\x1b[95mx\x1b[0m", "\x1b[105mx\x1b[0m"},
+    {fmt::terminal_color::bright_cyan, "\x1b[96mx\x1b[0m", "\x1b[106mx\x1b[0m"},
+    {fmt::terminal_color::bright_white, "\x1b[97mx\x1b[0m", "\x1b[107mx\x1b[0m"},
+  };
+  for (std::size_t index = 0; index != std::size(cases); ++index) {
+    const auto& entry = cases[index];
+    EXPECT_EQ(std::to_underlying(entry.color), index);
+    const auto foreground = fmt::fg(entry.color);
+    const auto background = fmt::bg(entry.color);
+    const auto combined = foreground | background;
+    EXPECT_TRUE(combined.has_foreground());
+    EXPECT_TRUE(combined.has_background());
+    EXPECT_TRUE(combined.get_foreground().is_terminal_color());
+    EXPECT_TRUE(combined.get_background().is_terminal_color());
+    EXPECT_EQ(combined.get_foreground().value(), index);
+    EXPECT_EQ(combined.get_background().value(), index);
+    EXPECT_EQ(fmt::format(foreground, "x"), entry.foreground);
+    EXPECT_EQ(fmt::format(background, "x"), entry.background);
+    EXPECT_EQ(std::format("{}", fmt::styled("x", foreground)), entry.foreground);
+    EXPECT_EQ(std::format("{}", fmt::styled("x", background)), entry.background);
+    EXPECT_EQ(std::format(L"{}", fmt::styled(L"x", foreground)),
+              std::wstring(entry.foreground, entry.foreground + std::char_traits<char>::length(entry.foreground)));
+    EXPECT_EQ(std::format(L"{}", fmt::styled(L"x", background)),
+              std::wstring(entry.background, entry.background + std::char_traits<char>::length(entry.background)));
+  }
+}
+
 TEST(color_test, format_to) {
   auto out = std::string();
   fmt::format_to(std::back_inserter(out), fg(fmt::rgb(255, 20, 30)),
@@ -151,6 +198,7 @@ int main() {
     color_test_text_style();
     color_test_format();
     color_test_format_to();
+    color_test_terminal_palette();
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
     return 1;
