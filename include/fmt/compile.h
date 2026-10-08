@@ -3,8 +3,4 @@
 // Copyright (c) 2026 Terry Golubiewski.
 // Distributed under the MIT license; see LICENSE.
 
-#ifndef FMT_COMPILE_H_
-#define FMT_COMPILE_H_
-#include "core.h"
-#define FMT_COMPILE(s) s
-#endif
+#error "Compiled-format extensions are not supported by this color-focused C++23 fork; see CXX23.md"

@@ -1,8 +1,6 @@
 // Standard-engine regression tests. These checks remain active in Release.
 #include "fmt/color.h"
 #include "fmt/chrono.h"
-#include "fmt/compile.h"
-#include "fmt/ostream.h"
 #include "fmt/ranges.h"
 #include "fmt/std.h"
 #include "fmt/xchar.h"
@@ -23,10 +21,6 @@ template <> struct std::formatter<point> : std::formatter<int> {
     return std::formatter<int>::format(value.x, ctx);
   }
 };
-struct streamable { int x; };
-auto operator<<(std::ostream& out, const streamable& value) -> std::ostream& {
-  return out << "value=" << value.x;
-}
 int main() {
   try {
     check(fmt::format("{} {:#x} {:.2f}", "hello", 42, 1.25) ==
@@ -64,7 +58,6 @@ int main() {
     check(fmt::format(L"{}", 42) == L"42", "wide formatting");
     check(fmt::format(fmt::runtime(std::wstring_view(L"{}")), 42) == L"42",
           "wide runtime formatting");
-    check(fmt::format(FMT_COMPILE("{}"), 42) == "42", "compile annotation");
     const auto ts = fmt::emphasis::bold | fmt::fg(fmt::color::blue);
     check(fmt::format(ts, "{}", "x") == "\x1b[1m\x1b[38;2;000;000;255mx\x1b[0m",
           "whole-string styling");
@@ -87,13 +80,6 @@ int main() {
     check(threw, "conflicting terminal style");
     std::vector<int> values{1, 2, 3};
     check(fmt::format("{}", values) == "[1, 2, 3]", "standard range formatting");
-    check(fmt::format("{:02}", fmt::join(values, ",")) == "01,02,03", "join element specs");
-    std::vector<int> empty;
-    check(fmt::format("{}", fmt::join(empty, ",")) == "", "empty join");
-    check(fmt::format("{}", fmt::streamed(streamable{7})) == "value=7", "streamed view");
-    std::ostringstream stream;
-    fmt::println(stream, "{}", 42);
-    check(stream.str() == "42\n", "ostream printing");
     FILE* file = std::tmpfile();
     check(file != nullptr, "temporary output file");
     fmt::print(file, "{}", 42);

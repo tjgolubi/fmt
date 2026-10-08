@@ -3,12 +3,16 @@
 This branch is an experimental source fork of {fmt}. It preserves the `fmt`
 namespace, include paths, and common call syntax while using the C++23 standard
 formatting engine. **It is not a complete source or binary drop-in replacement.**
-Terry chose the standard engine over strict compatibility during implementation.
+The supported extension scope is color and styling only: `text_style`, `color`,
+`rgb`, `terminal_color`, `fg`, `bg`, emphasis, `styled`, and style-aware calls.
+Other fmt-only extensions are deliberately out of scope, not compatibility
+work deferred to a later phase. Standard C++23 formatting and printing remain
+the foundation; common call adapters are retained for that interface.
 
 Baseline: fork commit `6b186b6aa13062ece0dfc05487479a32a8021a5f`; upstream parent
 `10cda465`, reporting {fmt} version 12.2.1. Upstream history, LICENSE, and
 attribution remain in this repository. Existing unrelated upstream tests are
-retained as material for subsequent compatibility work; they are not silently
+retained as upstream historical material; they are not silently
 counted as passing tests of this implementation.
 
 ## Architecture and compatibility-code audit
@@ -20,8 +24,8 @@ floating-point formatter, or compatibility engine.
 
 The upstream color enum, RGB/terminal color types, text-style packing, and ANSI
 encoding are reused. Their language-feature macros are replaced by ordinary
-`constexpr` and standard assertions. `styled`, join views, and ostream views
-are program-defined types with legal `std::formatter` specializations.
+`constexpr` and standard assertions. `styled` uses a program-defined type with
+a legal `std::formatter` specialization.
 
 | Former machinery | Result |
 | --- | --- |
@@ -32,7 +36,7 @@ are program-defined types with legal `std::formatter` specializations.
 | Module, C binding, fmt OS implementation sources | Removed; these interfaces have not been ported |
 | Shared/static and header-only consumption | CMake targets retained; functions are standard-backed/header defined |
 | Header guards and `FMT_VERSION` | Retained as metadata/build necessities |
-| `FMT_STRING` and `FMT_COMPILE` | Literal identity annotations; no separate compiled-format engine |
+| `FMT_STRING` | Literal identity annotation; no separate compiled-format engine |
 
 ## API inventory
 
@@ -46,13 +50,13 @@ are program-defined types with legal `std::formatter` specializations.
 | `memory_buffer` | Vector storage, not upstream inline storage; common append/reserve/resize/data interface retained |
 | `color.h` | Named colors, RGB, all 16 terminal colors, foreground/background, emphasis, style format/print/println/format_to and `styled` |
 | `styled` | Works with `fmt::format` and directly with `std::format`; inherits the underlying standard formatter; preserves reset behavior |
-| `ranges.h` | Standard range formatting plus iterator/range `join`; tuple joins and wide join convenience overloads are not implemented |
-| `ostream.h` | `streamed`, ostream formatters and print/println using standard formatting; upstream FILE-extraction optimizations removed |
+| `ranges.h` | Standard range formatting aliases only; fmt-specific `join` views are out of scope |
+| `ostream.h` | Explicit compile-time unsupported diagnostic; use standard formatting/printing |
 | `chrono.h` | Standard chrono formatting; upstream extensions such as `fmt::localtime`, `gmtime`, duration_cast helpers and nonstandard chrono specs are absent |
 | `std.h` | Only types formatable by the selected standard library; upstream optional, variant, filesystem/path and other fmt-only formatters are absent unless the standard library itself supplies them |
 | `xchar.h` | Standard wide format types/functions and wide runtime format adapters; wide printing and exotic character types are absent |
-| `compile.h` | `FMT_COMPILE` retains literal call syntax but not constexpr result formatting or upstream compiled-format types |
-| `enum.h` | C++23 `fmt::underlying` using `std::to_underlying`; C++26 reflection features are absent |
+| `compile.h` | Explicit compile-time unsupported diagnostic; use standard format strings |
+| `enum.h` | Explicit compile-time unsupported diagnostic; use `std::to_underlying` |
 | `args.h`, `printf.h`, `os.h`, `fmt-c.h` | Explicit compile-time unsupported diagnostics |
 
 There is no named-argument parser, dynamic argument store, `format_as` dispatch,
@@ -107,12 +111,12 @@ engine regression suite in compiled and header-only configurations. GCC 14
 checks the core and styling, but its libstdc++ lacks standard range formatting,
 so package configuration correctly rejects that combination.
 
-Before release: run the exact latest-stable three-way toolchain matrix; extend
-compatibility tests to real consumers; and decide which remaining fmt-only
-features should receive standard-backed adapters. Existing upstream tests that
-exercise removed implementation details cannot be used unchanged to certify
-this fork. Any future release claiming drop-in compatibility must close or
-explicitly constrain the gaps above first.
+Before release: run the exact latest-stable three-way toolchain matrix and
+validate standard formatting and color/style calls with real consumers.
+Do not add adapters for unrelated fmt-only extensions. Existing upstream tests
+that exercise removed implementation details cannot be used unchanged to certify
+this fork. Compatibility claims must be limited to the declared standard
+formatting and color/style surface.
 
 Recorded checks for this implementation:
 

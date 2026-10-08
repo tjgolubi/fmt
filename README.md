@@ -5,8 +5,10 @@ This is Terry Golubiewski's experimental C++23 fork of
 It uses `std::format`, `std::formatter`, and `std::print`, with adapters for
 upstream styling and common formatting call syntax.
 
-The `Refactor` branch deliberately prioritizes the standard engine. It is not
-yet a full source or binary drop-in replacement. See [CXX23.md](CXX23.md) for the
+The `Refactor` branch supports standard C++23 formatting and printing plus
+{fmt} color/style extensions (`text_style`, `styled`, and style-aware calls).
+Other {fmt} extensions are out of scope. Full upstream source or binary
+compatibility is not a project goal. See [CXX23.md](CXX23.md) for the
 API inventory, unsupported features, toolchain requirements, and validation.
 
 ```cpp

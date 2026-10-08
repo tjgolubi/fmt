@@ -235,10 +235,6 @@ template <typename T> auto to_string(const T& value) -> std::string {
 template <typename T> constexpr auto ptr(T* value) -> const void* {
   return static_cast<const void*>(value);
 }
-template <typename T> requires std::is_enum_v<T>
-constexpr auto underlying(T value) -> std::underlying_type_t<T> {
-  return std::to_underlying(value);
-}
 }  // namespace v12
 }  // namespace fmt
 #endif
