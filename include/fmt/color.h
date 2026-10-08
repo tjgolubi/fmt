@@ -1,21 +1,46 @@
 // Formatting library for C++ - color support
 //
 // Copyright (c) 2018 - present, Victor Zverovich and {fmt} contributors
+// Copyright (c) 2026 Terry Golubiewski.
 // All rights reserved.
 //
-// For the license information refer to format.h.
+// Distributed under the MIT license; see LICENSE.
 
 #ifndef FMT_COLOR_H_
 #define FMT_COLOR_H_
 
-#include "format.h"
+#if !defined(__GNUC__) && !defined(__clang__)
+#  error "This fmt fork requires GCC or Clang"
+#endif
+#if __cplusplus <= 202002L
+#  error "This fmt fork requires C++23"
+#endif
+
+#include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <format>
+#include <iterator>
+#include <print>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+#include <version>
+
+#if !defined(__cpp_lib_format) || __cpp_lib_format < 202110L
+#  error "This fmt fork requires C++23 std::format support"
+#endif
+#if !defined(__cpp_lib_print) || __cpp_lib_print < 202207L
+#  error "This fmt fork requires C++23 std::print support"
+#endif
 
 namespace fmt { inline namespace v12 {
 
 
-enum class color : uint32_t {
+enum class color : std::uint32_t {
   alice_blue = 0xF0F8FF,               // rgb(240,248,255)
   antique_white = 0xFAEBD7,            // rgb(250,235,215)
   aqua = 0x00FFFF,                     // rgb(0,255,255)
@@ -159,7 +184,7 @@ enum class color : uint32_t {
   yellow_green = 0x9ACD32              // rgb(154,205,50)
 };  // enum class color
 
-enum class terminal_color : uint8_t {
+enum class terminal_color : std::uint8_t {
   black = 30,
   red,
   green,
@@ -178,7 +203,7 @@ enum class terminal_color : uint8_t {
   bright_white
 };
 
-enum class emphasis : uint8_t {
+enum class emphasis : std::uint8_t {
   bold = 1,
   faint = 1 << 1,
   italic = 1 << 2,
@@ -193,16 +218,16 @@ enum class emphasis : uint8_t {
 // Using the name "rgb" makes some editors show the color in a tooltip.
 struct rgb {
   constexpr rgb() : r(0), g(0), b(0) {}
-  constexpr rgb(uint8_t r_, uint8_t g_, uint8_t b_) : r(r_), g(g_), b(b_) {}
-  constexpr rgb(uint32_t hex)
+  constexpr rgb(std::uint8_t r_, std::uint8_t g_, std::uint8_t b_) : r(r_), g(g_), b(b_) {}
+  constexpr rgb(std::uint32_t hex)
       : r((hex >> 16) & 0xFF), g((hex >> 8) & 0xFF), b(hex & 0xFF) {}
   constexpr rgb(color hex)
-      : r((uint32_t(hex) >> 16) & 0xFF),
-        g((uint32_t(hex) >> 8) & 0xFF),
-        b(uint32_t(hex) & 0xFF) {}
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
+      : r((std::uint32_t(hex) >> 16) & 0xFF),
+        g((std::uint32_t(hex) >> 8) & 0xFF),
+        b(std::uint32_t(hex) & 0xFF) {}
+  std::uint8_t r;
+  std::uint8_t g;
+  std::uint8_t b;
 };
 
 namespace detail {
@@ -212,25 +237,25 @@ namespace detail {
 struct color_type {
   constexpr color_type() noexcept = default;
   constexpr color_type(color rgb_color) noexcept
-      : value_(static_cast<uint32_t>(rgb_color) | (1 << 24)) {}
+      : value_(static_cast<std::uint32_t>(rgb_color) | (1 << 24)) {}
   constexpr color_type(rgb rgb_color) noexcept
       : color_type(static_cast<color>(
-            (static_cast<uint32_t>(rgb_color.r) << 16) |
-            (static_cast<uint32_t>(rgb_color.g) << 8) | rgb_color.b)) {}
+            (static_cast<std::uint32_t>(rgb_color.r) << 16) |
+            (static_cast<std::uint32_t>(rgb_color.g) << 8) | rgb_color.b)) {}
   constexpr color_type(terminal_color term_color) noexcept
-      : value_(static_cast<uint32_t>(term_color) | (3 << 24)) {}
+      : value_(static_cast<std::uint32_t>(term_color) | (3 << 24)) {}
 
   constexpr auto is_terminal_color() const noexcept -> bool {
     return (value_ & (1 << 25)) != 0;
   }
 
-  constexpr auto value() const noexcept -> uint32_t {
+  constexpr auto value() const noexcept -> std::uint32_t {
     return value_ & 0xFFFFFF;
   }
 
-  constexpr color_type(uint32_t value) noexcept : value_(value) {}
+  constexpr color_type(std::uint32_t value) noexcept : value_(value) {}
 
-  uint32_t value_ = 0;
+  std::uint32_t value_ = 0;
 };
 }  // namespace detail
 
@@ -290,11 +315,11 @@ class text_style {
 
  public:
   constexpr text_style(emphasis em = emphasis()) noexcept
-      : style_(static_cast<uint64_t>(em) << 54) {}
+      : style_(static_cast<std::uint64_t>(em) << 54) {}
 
   constexpr auto operator|=(text_style rhs) -> text_style& {
     if (((style_ + rhs.style_) & ((1ULL << 26) | (1ULL << 53))) != 0)
-      throw format_error("can't OR a terminal color");
+      throw std::format_error("can't OR a terminal color");
     style_ |= rhs.style_;
     return *this;
   }
@@ -335,7 +360,7 @@ class text_style {
   }
 
  private:
-  constexpr text_style(uint64_t style) noexcept : style_(style) {}
+  constexpr text_style(std::uint64_t style) noexcept : style_(style) {}
 
   friend constexpr auto fg(detail::color_type foreground) noexcept
       -> text_style;
@@ -343,7 +368,7 @@ class text_style {
   friend constexpr auto bg(detail::color_type background) noexcept
       -> text_style;
 
-  uint64_t style_ = 0;
+  std::uint64_t style_ = 0;
 };
 
 /// Creates a text style from the foreground (text) color.
@@ -355,7 +380,7 @@ constexpr inline auto fg(detail::color_type foreground) noexcept
 /// Creates a text style from the background color.
 constexpr inline auto bg(detail::color_type background) noexcept
     -> text_style {
-  return static_cast<uint64_t>(background.value_) << 27;
+  return static_cast<std::uint64_t>(background.value_) << 27;
 }
 
 constexpr inline auto operator|(emphasis lhs, emphasis rhs) noexcept
@@ -371,8 +396,8 @@ template <typename Char> struct ansi_color_escape {
     // If we have a terminal color, we need to output another escape code
     // sequence.
     if (text_color.is_terminal_color()) {
-      bool is_background = esc == string_view("\x1b[48;2;");
-      uint32_t value = text_color.value();
+      bool is_background = esc == std::string_view("\x1b[48;2;");
+      std::uint32_t value = text_color.value();
       // Background ASCII codes are the same as the foreground ones but with
       // 10 more.
       if (is_background) value += 10u;
@@ -401,7 +426,7 @@ template <typename Char> struct ansi_color_escape {
     size = 19;
   }
   constexpr ansi_color_escape(emphasis em) noexcept {
-    uint8_t em_codes[num_emphases] = {};
+    std::uint8_t em_codes[num_emphases] = {};
     if (has_emphasis(em, emphasis::bold)) em_codes[0] = 1;
     if (has_emphasis(em, emphasis::faint)) em_codes[1] = 2;
     if (has_emphasis(em, emphasis::italic)) em_codes[2] = 3;
@@ -414,7 +439,7 @@ template <typename Char> struct ansi_color_escape {
     buffer[size++] = static_cast<Char>('\x1b');
     buffer[size++] = static_cast<Char>('[');
 
-    for (size_t i = 0; i < num_emphases; ++i) {
+    for (std::size_t i = 0; i < num_emphases; ++i) {
       if (!em_codes[i]) continue;
       buffer[size++] = static_cast<Char>('0' + em_codes[i]);
       buffer[size++] = static_cast<Char>(';');
@@ -430,11 +455,11 @@ template <typename Char> struct ansi_color_escape {
   }
 
  private:
-  static constexpr size_t num_emphases = 8;
+  static constexpr std::size_t num_emphases = 8;
   Char buffer[7u + 4u * num_emphases] = {};
-  size_t size = 0;
+  std::size_t size = 0;
 
-  static constexpr void to_esc(uint8_t c, Char* out,
+  static constexpr void to_esc(std::uint8_t c, Char* out,
                                    char delimiter) noexcept {
     out[0] = static_cast<Char>('0' + c / 100);
     out[1] = static_cast<Char>('0' + c / 10 % 10);
@@ -443,7 +468,7 @@ template <typename Char> struct ansi_color_escape {
   }
   static constexpr auto has_emphasis(emphasis em, emphasis mask) noexcept
       -> bool {
-    return static_cast<uint8_t>(em) & static_cast<uint8_t>(mask);
+    return static_cast<std::uint8_t>(em) & static_cast<std::uint8_t>(mask);
   }
 };
 
@@ -485,7 +510,7 @@ auto write_style(OutputIt out, text_style ts) -> OutputIt {
 template <typename Char, typename OutputIt>
 auto write_reset(OutputIt out, text_style ts) -> OutputIt {
   if (ts != text_style())
-    for (char c : string_view("\x1b[0m")) *out++ = static_cast<Char>(c);
+    for (char c : std::string_view("\x1b[0m")) *out++ = static_cast<Char>(c);
   return out;
 }
 template <typename T>
@@ -502,7 +527,7 @@ template <typename T>
 constexpr auto styled(const T& value, text_style ts) -> detail::styled_arg<T> {
   return {value, ts};
 }
-inline auto vformat(text_style ts, string_view s, format_args args)
+inline auto vformat(text_style ts, std::string_view s, std::format_args args)
     -> std::string {
   std::string result;
   auto out = detail::write_style<char>(std::back_inserter(result), ts);
@@ -511,67 +536,41 @@ inline auto vformat(text_style ts, string_view s, format_args args)
   return result;
 }
 template <typename... T>
-auto format(text_style ts, format_string<T...> s, T&&... args) -> std::string {
+auto format(text_style ts, std::format_string<T...> s, T&&... args) -> std::string {
   return fmt::vformat(ts, s.get(), std::make_format_args(args...));
 }
-template <typename... T>
-auto format(text_style ts, runtime_format_string<> s, T&&... args)
-    -> std::string {
-  return fmt::vformat(ts, s.str, std::make_format_args(args...));
-}
 template <typename OutputIt>
-auto vformat_to(OutputIt out, text_style ts, string_view s, format_args args)
+auto vformat_to(OutputIt out, text_style ts, std::string_view s, std::format_args args)
     -> OutputIt {
   out = detail::write_style<char>(out, ts);
   out = std::vformat_to(out, s, args);
   return detail::write_reset<char>(out, ts);
 }
 template <typename OutputIt, typename... T>
-auto format_to(OutputIt out, text_style ts, format_string<T...> s, T&&... args)
+auto format_to(OutputIt out, text_style ts, std::format_string<T...> s, T&&... args)
     -> OutputIt {
   return fmt::vformat_to(out, ts, s.get(), std::make_format_args(args...));
 }
-template <typename OutputIt, typename... T>
-auto format_to(OutputIt out, text_style ts, runtime_format_string<> s,
-               T&&... args) -> OutputIt {
-  return fmt::vformat_to(out, ts, s.str, std::make_format_args(args...));
-}
-inline void vprint(FILE* file, text_style ts, string_view s, format_args args) {
+inline void vprint(std::FILE* file, text_style ts, std::string_view s, std::format_args args) {
   std::print(file, "{}", fmt::vformat(ts, s, args));
 }
-inline void vprintln(FILE* file, text_style ts, string_view s, format_args args) {
+inline void vprintln(std::FILE* file, text_style ts, std::string_view s, std::format_args args) {
   std::println(file, "{}", fmt::vformat(ts, s, args));
 }
 template <typename... T>
-void print(FILE* file, text_style ts, format_string<T...> s, T&&... args) {
+void print(std::FILE* file, text_style ts, std::format_string<T...> s, T&&... args) {
   fmt::vprint(file, ts, s.get(), std::make_format_args(args...));
 }
 template <typename... T>
-void print(text_style ts, format_string<T...> s, T&&... args) {
+void print(text_style ts, std::format_string<T...> s, T&&... args) {
   fmt::print(stdout, ts, s, std::forward<T>(args)...);
 }
 template <typename... T>
-void println(FILE* file, text_style ts, format_string<T...> s, T&&... args) {
+void println(std::FILE* file, text_style ts, std::format_string<T...> s, T&&... args) {
   fmt::vprintln(file, ts, s.get(), std::make_format_args(args...));
 }
 template <typename... T>
-void println(text_style ts, format_string<T...> s, T&&... args) {
-  fmt::println(stdout, ts, s, std::forward<T>(args)...);
-}
-template <typename... T>
-void print(FILE* file, text_style ts, runtime_format_string<> s, T&&... args) {
-  fmt::vprint(file, ts, s.str, std::make_format_args(args...));
-}
-template <typename... T>
-void print(text_style ts, runtime_format_string<> s, T&&... args) {
-  fmt::print(stdout, ts, s, std::forward<T>(args)...);
-}
-template <typename... T>
-void println(FILE* file, text_style ts, runtime_format_string<> s, T&&... args) {
-  fmt::vprintln(file, ts, s.str, std::make_format_args(args...));
-}
-template <typename... T>
-void println(text_style ts, runtime_format_string<> s, T&&... args) {
+void println(text_style ts, std::format_string<T...> s, T&&... args) {
   fmt::println(stdout, ts, s, std::forward<T>(args)...);
 }
 } } // namespace fmt::v12

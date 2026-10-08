@@ -16,9 +16,6 @@ check_cxx_source_compiles("
   #include <format>
   #include <print>
   #include <version>
-  #if !defined(__cpp_lib_format_ranges) || __cpp_lib_format_ranges < 202207L
-  #error C++23 range formatting required
-  #endif
   #if !defined(__cpp_lib_format) || __cpp_lib_format < 202110L
   #error C++23 formatting required
   #endif
@@ -28,10 +25,10 @@ check_cxx_source_compiles("
   int main() { std::print(\"{}\", std::format(\"{}\", 42)); }
 " FMT_HAS_CXX23_STANDARD_LIBRARY)
 if(NOT FMT_HAS_CXX23_STANDARD_LIBRARY)
-  message(FATAL_ERROR "The selected standard library must supply C++23 std::format, range formatting, and std::print; no fallback is provided")
+  message(FATAL_ERROR "The selected standard library must supply C++23 std::format and std::print; no fallback is provided")
 endif()
 
-option(FMT_TEST "Build standard-engine regression tests" ${PROJECT_IS_TOP_LEVEL})
+option(FMT_TEST "Build color/style regression tests" ${PROJECT_IS_TOP_LEVEL})
 option(FMT_INSTALL "Install fmt" ${PROJECT_IS_TOP_LEVEL})
 # Both public targets describe the same header-only implementation.
 add_library(fmt INTERFACE)

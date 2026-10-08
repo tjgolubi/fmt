@@ -1,149 +1,79 @@
-# C++23 standard-engine refactor
+# C++23 color/style fork
 
-This branch is an experimental source fork of {fmt}. It preserves the `fmt`
-namespace, include paths, and common call syntax while using the C++23 standard
-formatting engine. **It is not a complete source or binary drop-in replacement.**
-The supported extension scope is color and styling only: `text_style`, `color`,
-`rgb`, `terminal_color`, `fg`, `bg`, emphasis, `styled`, and style-aware calls.
-Other fmt-only extensions are deliberately out of scope, not compatibility
-work deferred to a later phase. Standard C++23 formatting and printing remain
-the foundation; common call adapters are retained for that interface.
+`RefactorMin` is a header-only source fork of {fmt}, limited to its color/style
+interface on the standard C++23 formatting engine. It is not an upstream
+source or binary drop-in replacement. Upstream history, LICENSE and attribution
+remain; the original baseline reported {fmt} version 12.2.1.
 
-Baseline: fork commit `6b186b6aa13062ece0dfc05487479a32a8021a5f`; upstream parent
-`10cda465`, reporting {fmt} version 12.2.1. Upstream history, LICENSE, and
-attribution remain in this repository. Unused upstream tests and their support files have been removed. Historical
-versions remain available in git history. The active test directory contains
-only `color-test.cc`, `cxx23-test.cc`, and `compile-checks.py`.
+## Public interface
 
-## Architecture and compatibility-code audit
+The only public header is `<fmt/color.h>`. It defines `fmt::color`, `fmt::rgb`,
+`fmt::terminal_color` (all 16 terminal colors), `fmt::emphasis`, `fmt::text_style`,
+`fmt::fg`, `fmt::bg`, and `fmt::styled`.
 
-`core.h` imports standard formatting types and functions, with small adapters
-for runtime strings, printing, bounded output, and memory buffers. `format.h`
-and `base.h` include this standard-backed core. There is no second parser,
-floating-point formatter, or compatibility engine.
-
-The upstream color enum, RGB/terminal color types, text-style packing, and ANSI
-encoding are reused. Their language-feature macros are replaced by ordinary
-`constexpr` and standard assertions. `styled` uses a program-defined type with
-a legal `std::formatter` specialization.
-
-| Former machinery | Result |
+| Operation | Interface |
 | --- | --- |
-| Pre-C++23 language and old compiler workarounds | Removed from active library code |
-| Constexpr, consteval, attribute and SFINAE compatibility macros | Removed |
-| Upstream parser, format contexts, argument type erasure, number conversion | Supplied by the standard library |
-| Unicode and platform-specific print machinery | Supplied by `std::print` and `std::vprint_unicode` |
-| Module, C binding, fmt OS implementation sources | Removed; these interfaces have not been ported |
-| Library consumption | Header-only INTERFACE targets `fmt::fmt` and `fmt::fmt-header-only`; no compiled fmt library |
-| Header guards and `FMT_VERSION` | Retained as metadata/build necessities |
-| `FMT_STRING` | Literal identity annotation; no separate compiled-format engine |
+| Individual styled value | `std::format("{}", fmt::styled(value, style))`; also works with standard output-iterator and printing functions |
+| Entire formatted output | `fmt::format(style, format_string, args...)` |
+| Entire output to an iterator | `fmt::format_to(out, style, format_string, args...)` |
+| Entire printed output | `fmt::print(style, format_string, args...)` and `fmt::println(style, format_string, args...)`; FILE overloads put the file first |
+| Runtime formatted output | `fmt::vformat(style, text, std::format_args)` and `fmt::vformat_to(out, style, text, std::format_args)` |
+| Runtime printed output | `fmt::vprint(file, style, text, std::format_args)` and `fmt::vprintln(file, style, text, std::format_args)` |
 
-## API inventory
+Style-aware whole-output functions use narrow strings. Wide styled values work
+through standard wide formatting functions. Specialize `std::formatter<T>` for
+custom types; the `styled` formatter inherits that standard formatter, including
+its format-spec parsing.
 
-| Header or API | Standard-engine behavior and gaps |
-| --- | --- |
-| `core.h`, `base.h`, `format.h` | Standard formatting functions, contexts, arguments, errors and compile-time format-string validation |
-| `fmt::runtime` | Runtime formatting/printing adapters; narrow and wide formatting, narrow printing |
-| `format_to`, `format_to_n`, `formatted_size` | Standard operations plus narrow runtime adapters; bounded narrow character-array `format_to` retains truncation reporting |
-| `vformat_to_n` | Narrow adapter formats into a temporary string, copies up to the limit, reports the full size |
-| `make_format_args` | Standard reference-holding argument store; keep the store and referenced values alive through the formatting call |
-| `memory_buffer` | Vector storage, not upstream inline storage; common append/reserve/resize/data interface retained |
-| `color.h` | Named colors, RGB, all 16 terminal colors, foreground/background, emphasis, style format/print/println/format_to and `styled` |
-| `styled` | Works with `fmt::format` and directly with `std::format`; inherits the underlying standard formatter; preserves reset behavior |
-| `ranges.h` | Standard range formatting aliases only; fmt-specific `join` views are out of scope |
-| `ostream.h` | Removed; use standard formatting/printing |
-| `chrono.h` | Standard chrono formatting; upstream extensions such as `fmt::localtime`, `gmtime`, duration_cast helpers and nonstandard chrono specs are absent |
-| `std.h` | Only types formatable by the selected standard library; upstream optional, variant, filesystem/path and other fmt-only formatters are absent unless the standard library itself supplies them |
-| `xchar.h` | Standard wide format types/functions and wide runtime format adapters; wide printing and exotic character types are absent |
-| `compile.h` | Removed; use standard format strings |
-| `enum.h` | Removed; use `std::to_underlying` |
-| `args.h`, `printf.h`, `os.h`, `fmt-c.h` | Removed; these fmt-only interfaces are out of scope |
+There are no common aliases or unstyled adapters in `fmt`: use standard
+formatting functions, types, argument stores and exceptions directly. The former
+core/buffer/runtime-string implementation and forwarding headers have been
+removed. In particular, there is no `fmt::formatter`, `fmt::format_error`,
+`fmt::runtime`, `fmt::memory_buffer`, `fmt::ptr`, or `FMT_STRING`.
+Other fmt-only extensions such as named arguments, joins, ostream adapters,
+compiled formatting, printf and OS helpers are outside the project scope.
 
-There is no named-argument parser, dynamic argument store, `format_as` dispatch,
-`fmt::detail` compatibility, or automatic conversion of arbitrary pointers.
-Use standard formatter specializations and `fmt::ptr` for object pointers.
-`fmt::formatter` is the standard template imported into `fmt`; existing
-specializations declared in `fmt` must be migrated to `std::formatter<T>`.
-There is no bridge that secretly falls back to the upstream formatter engine.
-The standard engine also determines formatting grammar, diagnostics, rounding,
-locale behavior, and which built-in types are formattable. This fork supplies no compiled fmt library or upstream ABI. Rebuild consumers
-against the headers.
+Runtime formatting uses the standard argument-store lifetime rules:
 
-Nested-style behavior remains upstream's escape/reset behavior: an inner reset
-does not restore an outer style. No relative/absolute-style redesign is included.
-View adapters borrow values/ranges; do not retain them beyond those lifetimes.
-
-## Toolchains and build
-
-The intended release matrix is latest stable GCC/libstdc++, latest stable
-Clang/libstdc++, and latest stable Clang/libc++. Exact versions must be recorded
-when those release checks run. No older-version fallback is implemented.
-Compiler/library combinations missing required standard features fail configuration.
-The package requires C++23, `__cpp_lib_format >= 202110L`,
-`__cpp_lib_print >= 202207L`, and `__cpp_lib_format_ranges >= 202207L`.
-These are separate feature-test macros; range support is not inferred from
-`__cpp_lib_format`.
-
-```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
-cmake --build build
-ctest --test-dir build --output-on-failure
-cmake --install build --prefix ~/.local
+```cpp
+int value = 42;
+auto arguments = std::make_format_args(value);
+std::string text = "{:04}";
+auto result = fmt::vformat(fmt::emphasis::bold, text, arguments);
 ```
 
-For Clang/libc++, add `-DCMAKE_CXX_COMPILER=clang++`
-and `-DCMAKE_CXX_FLAGS=-stdlib=libc++`. Consumers use `fmt::fmt` or
-`fmt::fmt-header-only`; both propagate `cxx_std_23`.
+Keep both the argument store and referenced values alive for the call. `styled`
+also borrows its value; wrapping a temporary in the formatting call is valid,
+but do not retain the wrapper past that temporary's lifetime. Output iterators
+must have sufficient writable space; use a back inserter for growable output.
 
-## Validation and remaining release work
+The upstream ANSI encoding and reset behavior are preserved. An inner reset
+does not restore an outer style; nested-style redesign remains deferred.
+The standard library determines formatting grammar, locale behavior, diagnostics,
+rounding and which underlying types are formattable.
 
-The diagnostic GitHub workflow uses Clang 19/libc++ 19 in Debug/Release and
-header-only configurations. It replaces the obsolete upstream workflows
-for old language modes, MSVC, docs, fuzzing, and release packaging on this branch.
-It does not certify the latest-stable target matrix.
+## Build and validation
 
+The intended release matrix is latest stable GCC/libstdc++, Clang/libstdc++,
+and Clang/libc++; exact latest-stable release validation remains outstanding.
+Require C++23, `__cpp_lib_format >= 202110L` and `__cpp_lib_print >= 202207L`.
+No legacy engine or fallback is provided. Range-format support is not required
+by this package; styled ranges can be used if the selected standard library
+supports formatting the underlying range.
 
-Local validation uses available GCC 14.2/libstdc++ and Clang 19.1.1/libc++ 19.
-These are diagnostic checks, not proof of the latest-stable release matrix.
-Clang/libc++ runs the adapted upstream color assertions and the new standard-
-engine regression suite through both public CMake targets. GCC 14
-checks the core and styling, but its libstdc++ lacks standard range formatting,
-so package configuration correctly rejects that combination.
+Both `fmt::fmt` and `fmt::fmt-header-only` are INTERFACE targets. Installation
+supplies the header and CMake/pkg-config metadata; there is no compiled fmt
+library and pkg-config has no fmt link flags. Use a clean installation prefix
+when removing obsolete headers or libraries from a previous installation.
 
-Before release: run the exact latest-stable three-way toolchain matrix and
-validate standard formatting and color/style calls with real consumers.
-Do not add adapters for unrelated fmt-only extensions. The removed upstream
-tests exercised APIs and implementation details outside this fork’s scope. Compatibility claims must be limited to the declared standard
-formatting and color/style surface.
+The active test directory contains `color-test.cc`, `cxx23-test.cc`, and
+`compile-checks.py`. CMake runs the adapted upstream color assertions, style
+integration tests through both target names, and compile-time checks for the
+supported header, literal validation and intentional removal of common aliases.
+Unused upstream tests and support files remain available in git history.
 
-Recorded checks for this implementation:
-
-- Clang 19/libc++ 19: Release static/shared builds and adapted upstream color
-  checks plus compiled/header-only regression tests pass, with warnings as errors.
-- Clang 19/libc++ 19: Debug UBSan regression tests pass.
-- Public supported headers compile independently; invalid literal format strings
-  and C++20 mode are rejected as intended.
-- Installed CMake package consumers build/run through both exported targets.
-- GCC 14/libstdc++ 14: core formatting, runtime strings, buffers, styles, and FILE
-  printing smoke checks pass. Full package is rejected for missing range support.
-- ASan is blocked by this environment's libc++/libc++abi allocation mismatch; a
-  standalone program that only throws `std::runtime_error` reproduces it.
-- Exact latest-stable matrix and remote CI have not yet been validated.
-
-## Header-only package update
-
-The `src` directory and placeholder compiled target have been removed.
-`fmt::fmt` is an INTERFACE target; `fmt::fmt-header-only` forwards to it.
-Installation exports both names and installs the headers and package metadata.
-The pkg-config file supplies include flags with an empty `Libs` field, so it
-no longer asks consumers to link `-lfmt`. Existing installations may still have
-old archives/shared libraries; use a clean install prefix for verification.
-
-Validation: Clang 19/libc++ 19 Release regression tests pass through both
-targets; clean installed-package consumers build and run without a fmt library.
-Earlier compiled/static/shared checks above record the pre-update implementation.
-
-Unsupported headers containing only `#error` directives have been deleted:
-`args.h`, `compile.h`, `enum.h`, `fmt-c.h`, `os.h`, `ostream.h`, and `printf.h`.
-Including them now yields the normal missing-header diagnostic. Compiler,
-language-mode, and standard-library feature checks remain in supported headers.
+Local validation of this narrow interface: Clang 19.1.1/libc++ 19 Release with
+warnings treated as errors passes all four configured checks. A clean installed
+package consumer uses standard calls plus `styled` and style-aware calls.
+These are diagnostic checks, not certification of the latest-stable matrix.
+The diagnostic GitHub workflow now targets `RefactorMin` in Debug and Release.

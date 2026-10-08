@@ -1,9 +1,9 @@
 name: C++23 diagnostic checks
 on:
   push:
-    branches: [Refactor]
+    branches: [RefactorMin]
   pull_request:
-    branches: [Refactor]
+    branches: [RefactorMin]
   workflow_dispatch:
 permissions:
   contents: read

@@ -3,7 +3,7 @@
 // Copyright (c) 2012 - present, Victor Zverovich and {fmt} contributors
 // All rights reserved.
 //
-// For the license information refer to format.h.
+// For the license information see LICENSE.
 
 #include "fmt/color.h"
 
@@ -53,20 +53,20 @@ TEST(color_test, text_style) {
 
   EXPECT_THROW_MSG(
       fg(fmt::terminal_color::black) | fg(fmt::terminal_color::black),
-      fmt::format_error, "can't OR a terminal color");
+      std::format_error, "can't OR a terminal color");
   EXPECT_THROW_MSG(
       fg(fmt::terminal_color::black) | fg(fmt::terminal_color::white),
-      fmt::format_error, "can't OR a terminal color");
+      std::format_error, "can't OR a terminal color");
   EXPECT_THROW_MSG(
       bg(fmt::terminal_color::black) | bg(fmt::terminal_color::black),
-      fmt::format_error, "can't OR a terminal color");
+      std::format_error, "can't OR a terminal color");
   EXPECT_THROW_MSG(
       bg(fmt::terminal_color::black) | bg(fmt::terminal_color::white),
-      fmt::format_error, "can't OR a terminal color");
+      std::format_error, "can't OR a terminal color");
   EXPECT_THROW_MSG(fg(fmt::terminal_color::black) | fg(fmt::color::black),
-                   fmt::format_error, "can't OR a terminal color");
+                   std::format_error, "can't OR a terminal color");
   EXPECT_THROW_MSG(bg(fmt::terminal_color::black) | bg(fmt::color::black),
-                   fmt::format_error, "can't OR a terminal color");
+                   std::format_error, "can't OR a terminal color");
 
   EXPECT_NO_THROW(fg(fmt::terminal_color::white) |
                   bg(fmt::terminal_color::white));
@@ -121,14 +121,14 @@ TEST(color_test, format) {
             "\x1b[105mtbmagenta\x1b[0m");
   EXPECT_EQ(fmt::format(fg(fmt::terminal_color::red), "{}", "foo"),
             "\x1b[31mfoo\x1b[0m");
-  EXPECT_EQ(fmt::format("{}{}", fmt::styled("red", fg(fmt::color::red)),
+  EXPECT_EQ(std::format("{}{}", fmt::styled("red", fg(fmt::color::red)),
                         fmt::styled("bold", fmt::emphasis::bold)),
             "\x1b[38;2;255;000;000mred\x1b[0m\x1b[1mbold\x1b[0m");
-  EXPECT_EQ(fmt::format("{}", fmt::styled("bar", fg(fmt::color::blue) |
+  EXPECT_EQ(std::format("{}", fmt::styled("bar", fg(fmt::color::blue) |
                                                      fmt::emphasis::underline)),
             "\x1b[4m\x1b[38;2;000;000;255mbar\x1b[0m");
   EXPECT_EQ(
-      fmt::format(
+      std::format(
           "{}", fmt::styled(
                     "all", fmt::emphasis::bold | fmt::emphasis::faint |
                                fmt::emphasis::italic |
@@ -142,7 +142,7 @@ TEST(color_test, format_to) {
   auto out = std::string();
   fmt::format_to(std::back_inserter(out), fg(fmt::rgb(255, 20, 30)),
                  "rgb(255,20,30){}{}{}", 1, 2, 3);
-  EXPECT_EQ(fmt::to_string(out),
+  EXPECT_EQ(out,
             "\x1b[38;2;255;020;030mrgb(255,20,30)123\x1b[0m");
 }
 
