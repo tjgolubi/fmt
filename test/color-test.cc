@@ -29,6 +29,10 @@ constexpr auto fluent_attributes() {
   return fmt::text_style{}.faint().bold().blink().flash()
       .italic().underline().inverse().strike();
 }
+constexpr auto composed_style = fmt::fg(fmt::terminal_color::black) |
+    fmt::bg(fmt::color::blue) | fmt::emphasis::bold | fmt::emphasis::flash;
+static_assert(composed_style.has_foreground() && composed_style.has_background());
+static_assert(composed_style.is_bold() && composed_style.is_flash());
 static_assert(sizeof(fmt::text_style) == sizeof(std::uint64_t));
 static_assert(fluent_attributes().is_bold() && !fluent_attributes().is_faint());
 static_assert(fluent_attributes().is_flash() && !fluent_attributes().is_blink());
@@ -92,27 +96,52 @@ TEST(color_test, text_style) {
   EXPECT_FALSE(style.get_background().is_terminal_color());
   EXPECT_EQ(style.get_background().value(), 0xABCDEFu);
 
-  const fmt::text_style colored[] = {
+  const fmt::text_style foregrounds[] = {
     fmt::fg(fmt::terminal_color::black), fmt::fg(fmt::color::black),
-    fmt::fg(fmt::rgb(0x123456)), fmt::bg(fmt::terminal_color::black),
-    fmt::bg(fmt::color::black), style
+    fmt::fg(fmt::rgb(0x123456))
   };
-  const fmt::text_style plain[] = {fmt::text_style{}, fmt::text_style{}.bold(),
-                                  fmt::text_style{}.flash().italic()};
-  for (const auto& color : colored) {
-    for (const auto& attrs : plain) {
-      EXPECT_THROW_MSG(color | attrs, std::format_error, "can't OR a style with colors");
-      EXPECT_THROW_MSG(attrs | color, std::format_error, "can't OR a style with colors");
-      auto lhs = color;
-      EXPECT_THROW_MSG(lhs |= attrs, std::format_error, "can't OR a style with colors");
-      EXPECT_EQ(lhs, color);
-      lhs = attrs;
-      EXPECT_THROW_MSG(lhs |= color, std::format_error, "can't OR a style with colors");
-      EXPECT_EQ(lhs, attrs);
+  const fmt::text_style backgrounds[] = {
+    fmt::bg(fmt::terminal_color::black), fmt::bg(fmt::color::black),
+    fmt::bg(fmt::rgb(0xABCDEF))
+  };
+  for (const auto& foreground : foregrounds) {
+    for (const auto& background : backgrounds) {
+      const auto combined = foreground | background;
+      EXPECT_EQ(combined, background | foreground);
+      EXPECT_EQ(combined.get_foreground().value_, foreground.get_foreground().value_);
+      EXPECT_EQ(combined.get_background().value_, background.get_background().value_);
+      EXPECT_EQ(combined | fmt::emphasis::bold, fmt::text_style(combined).bold());
+      EXPECT_EQ(fmt::emphasis::bold | combined, fmt::text_style(combined).bold());
+      EXPECT_EQ(combined | fmt::text_style{}, combined);
+      EXPECT_EQ(fmt::text_style{} | combined, combined);
+      auto lhs = foreground;
+      lhs |= background;
+      EXPECT_EQ(lhs, combined);
+      EXPECT_THROW_MSG(lhs |= foreground, std::format_error, "can't OR two foreground colors");
+      EXPECT_EQ(lhs, combined);
+      EXPECT_THROW_MSG(lhs |= background, std::format_error, "can't OR two background colors");
+      EXPECT_EQ(lhs, combined);
     }
-    for (const auto& other : colored)
-      EXPECT_THROW_MSG(color | other, std::format_error, "can't OR a style with colors");
+    for (const auto& other : foregrounds) {
+      EXPECT_THROW_MSG(foreground | other, std::format_error, "can't OR two foreground colors");
+      auto lhs = foreground;
+      // Reject a duplicate foreground before merging rhs's new background/attributes.
+      const auto rhs = fmt::text_style(other).bg(fmt::color::blue).flash();
+      EXPECT_THROW_MSG(lhs |= rhs, std::format_error, "can't OR two foreground colors");
+      EXPECT_EQ(lhs, foreground);
+    }
   }
+  for (const auto& background : backgrounds) {
+    for (const auto& other : backgrounds) {
+      EXPECT_THROW_MSG(background | other, std::format_error, "can't OR two background colors");
+      auto lhs = background;
+      const auto rhs = fmt::text_style(other).fg(fmt::color::red).bold();
+      EXPECT_THROW_MSG(lhs |= rhs, std::format_error, "can't OR two background colors");
+      EXPECT_EQ(lhs, background);
+    }
+  }
+  EXPECT_EQ(fmt::fg(fmt::color::red) | fmt::bg(fmt::color::blue),
+            fmt::fg(fmt::color::red).bg(fmt::color::blue));
   EXPECT_EQ(fmt::text_style{}.bold() | fmt::text_style{}.faint(), fmt::text_style{}.bold());
   EXPECT_EQ(fmt::text_style{}.faint() | fmt::text_style{}.bold(), fmt::text_style{}.bold());
   EXPECT_EQ(fmt::text_style{}.blink() | fmt::text_style{}.flash(), fmt::text_style{}.flash());
@@ -125,7 +154,7 @@ TEST(color_test, format) {
   EXPECT_EQ(fmt::format(fmt::text_style{}, "x"), "x");
   EXPECT_EQ(fmt::format(fmt::fg(fmt::rgb(255, 20, 30)), "x"),
             "\x1b[38;2;255;020;030mx\x1b[0m");
-  EXPECT_EQ(fmt::format(fmt::fg(fmt::color::blue).bg(fmt::color::red), "x"),
+  EXPECT_EQ(fmt::format(fmt::fg(fmt::color::blue) | fmt::bg(fmt::color::red), "x"),
             "\x1b[38;2;000;000;255m\x1b[48;2;255;000;000mx\x1b[0m");
   EXPECT_EQ(fmt::format(fmt::fg(fmt::terminal_color::black).bg(fmt::terminal_color::white), "x"),
             "\x1b[30m\x1b[47mx\x1b[0m");

@@ -86,11 +86,15 @@ bool rapid = style.is_flash();
 leaving the other color and attributes intact. The standalone `fmt::fg` and
 `fmt::bg` factories remain available.
 
-By Terry's explicit selection, `operator|` and `operator|=` reject **any color
-in either operand**, including a color combined with an empty style or an
-attribute-only style. There is no color blending, and no exception for identical
-colors. Use fluent setters to construct colored styles. Failed `|=` leaves the
-left operand unchanged and throws `std::format_error`.
+`operator|` and `operator|=` combine non-overlapping color fields and attributes.
+Two foreground assignments or two background assignments throw
+`std::format_error`, even if they specify the same color. There is no blending
+or identical-color exception. Foreground plus background, color plus attributes,
+and color plus an empty style are allowed. Failed `|=` leaves the left operand
+unchanged, including when rhs also supplies a new field.
+
+Use fluent color setters for intentional replacement; use OR for composing
+independent fields, for example `fmt::fg(red) | fmt::bg(blue)`.
 
 Attribute-only OR is allowed. Bold takes precedence over faint, and flash
 takes precedence over blink; other attributes are OR-ed. Two-bit intensity and

@@ -304,10 +304,12 @@ class text_style {
       : style_(static_cast<std::uint64_t>(normalize(std::to_underlying(em))) << 56) {}
 
   constexpr auto operator|=(text_style rhs) -> text_style& {
-    if (has_foreground() || has_background() ||
-        rhs.has_foreground() || rhs.has_background())
-      throw std::format_error("can't OR a style with colors");
-    return set_attributes(attributes() | rhs.attributes());
+    if (has_foreground() && rhs.has_foreground())
+      throw std::format_error("can't OR two foreground colors");
+    if (has_background() && rhs.has_background())
+      throw std::format_error("can't OR two background colors");
+    style_ |= rhs.style_;
+    return set_attributes(attributes());
   }
   friend constexpr auto operator|(text_style lhs, text_style rhs) -> text_style {
     return lhs |= rhs;
@@ -419,7 +421,7 @@ class text_style {
   std::uint64_t style_ = 0;
 };
 
-/// Creates a foreground style. Further colors/attributes use fluent setters.
+/// Creates a foreground style.
 constexpr inline auto fg(detail::color_type foreground) noexcept -> text_style {
   return text_style{}.fg(foreground);
 }
