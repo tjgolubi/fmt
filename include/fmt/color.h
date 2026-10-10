@@ -6,8 +6,7 @@
 //
 // Distributed under the MIT license; see LICENSE.
 
-#ifndef FMT_COLOR_H_
-#define FMT_COLOR_H_
+#pragma once
 
 #if !defined(__GNUC__) && !defined(__clang__)
 #  error "This fmt fork requires GCC or Clang"
@@ -39,229 +38,238 @@
 
 namespace fmt { inline namespace v12 {
 
-
 enum class color : std::uint32_t {
-  alice_blue = 0xF0F8FF,               // rgb(240,248,255)
-  antique_white = 0xFAEBD7,            // rgb(250,235,215)
-  aqua = 0x00FFFF,                     // rgb(0,255,255)
-  aquamarine = 0x7FFFD4,               // rgb(127,255,212)
-  azure = 0xF0FFFF,                    // rgb(240,255,255)
-  beige = 0xF5F5DC,                    // rgb(245,245,220)
-  bisque = 0xFFE4C4,                   // rgb(255,228,196)
-  black = 0x000000,                    // rgb(0,0,0)
-  blanched_almond = 0xFFEBCD,          // rgb(255,235,205)
-  blue = 0x0000FF,                     // rgb(0,0,255)
-  blue_violet = 0x8A2BE2,              // rgb(138,43,226)
-  brown = 0xA52A2A,                    // rgb(165,42,42)
-  burly_wood = 0xDEB887,               // rgb(222,184,135)
-  cadet_blue = 0x5F9EA0,               // rgb(95,158,160)
-  chartreuse = 0x7FFF00,               // rgb(127,255,0)
-  chocolate = 0xD2691E,                // rgb(210,105,30)
-  coral = 0xFF7F50,                    // rgb(255,127,80)
-  cornflower_blue = 0x6495ED,          // rgb(100,149,237)
-  cornsilk = 0xFFF8DC,                 // rgb(255,248,220)
-  crimson = 0xDC143C,                  // rgb(220,20,60)
-  cyan = 0x00FFFF,                     // rgb(0,255,255)
-  dark_blue = 0x00008B,                // rgb(0,0,139)
-  dark_cyan = 0x008B8B,                // rgb(0,139,139)
-  dark_golden_rod = 0xB8860B,          // rgb(184,134,11)
-  dark_gray = 0xA9A9A9,                // rgb(169,169,169)
-  dark_green = 0x006400,               // rgb(0,100,0)
-  dark_khaki = 0xBDB76B,               // rgb(189,183,107)
-  dark_magenta = 0x8B008B,             // rgb(139,0,139)
-  dark_olive_green = 0x556B2F,         // rgb(85,107,47)
-  dark_orange = 0xFF8C00,              // rgb(255,140,0)
-  dark_orchid = 0x9932CC,              // rgb(153,50,204)
-  dark_red = 0x8B0000,                 // rgb(139,0,0)
-  dark_salmon = 0xE9967A,              // rgb(233,150,122)
-  dark_sea_green = 0x8FBC8F,           // rgb(143,188,143)
-  dark_slate_blue = 0x483D8B,          // rgb(72,61,139)
-  dark_slate_gray = 0x2F4F4F,          // rgb(47,79,79)
-  dark_turquoise = 0x00CED1,           // rgb(0,206,209)
-  dark_violet = 0x9400D3,              // rgb(148,0,211)
-  deep_pink = 0xFF1493,                // rgb(255,20,147)
-  deep_sky_blue = 0x00BFFF,            // rgb(0,191,255)
-  dim_gray = 0x696969,                 // rgb(105,105,105)
-  dodger_blue = 0x1E90FF,              // rgb(30,144,255)
-  fire_brick = 0xB22222,               // rgb(178,34,34)
-  floral_white = 0xFFFAF0,             // rgb(255,250,240)
-  forest_green = 0x228B22,             // rgb(34,139,34)
-  fuchsia = 0xFF00FF,                  // rgb(255,0,255)
-  gainsboro = 0xDCDCDC,                // rgb(220,220,220)
-  ghost_white = 0xF8F8FF,              // rgb(248,248,255)
-  gold = 0xFFD700,                     // rgb(255,215,0)
-  golden_rod = 0xDAA520,               // rgb(218,165,32)
-  gray = 0x808080,                     // rgb(128,128,128)
-  green = 0x008000,                    // rgb(0,128,0)
-  green_yellow = 0xADFF2F,             // rgb(173,255,47)
-  honey_dew = 0xF0FFF0,                // rgb(240,255,240)
-  hot_pink = 0xFF69B4,                 // rgb(255,105,180)
-  indian_red = 0xCD5C5C,               // rgb(205,92,92)
-  indigo = 0x4B0082,                   // rgb(75,0,130)
-  ivory = 0xFFFFF0,                    // rgb(255,255,240)
-  khaki = 0xF0E68C,                    // rgb(240,230,140)
-  lavender = 0xE6E6FA,                 // rgb(230,230,250)
-  lavender_blush = 0xFFF0F5,           // rgb(255,240,245)
-  lawn_green = 0x7CFC00,               // rgb(124,252,0)
-  lemon_chiffon = 0xFFFACD,            // rgb(255,250,205)
-  light_blue = 0xADD8E6,               // rgb(173,216,230)
-  light_coral = 0xF08080,              // rgb(240,128,128)
-  light_cyan = 0xE0FFFF,               // rgb(224,255,255)
-  light_golden_rod_yellow = 0xFAFAD2,  // rgb(250,250,210)
-  light_gray = 0xD3D3D3,               // rgb(211,211,211)
-  light_green = 0x90EE90,              // rgb(144,238,144)
-  light_pink = 0xFFB6C1,               // rgb(255,182,193)
-  light_salmon = 0xFFA07A,             // rgb(255,160,122)
-  light_sea_green = 0x20B2AA,          // rgb(32,178,170)
-  light_sky_blue = 0x87CEFA,           // rgb(135,206,250)
-  light_slate_gray = 0x778899,         // rgb(119,136,153)
-  light_steel_blue = 0xB0C4DE,         // rgb(176,196,222)
-  light_yellow = 0xFFFFE0,             // rgb(255,255,224)
-  lime = 0x00FF00,                     // rgb(0,255,0)
-  lime_green = 0x32CD32,               // rgb(50,205,50)
-  linen = 0xFAF0E6,                    // rgb(250,240,230)
-  magenta = 0xFF00FF,                  // rgb(255,0,255)
-  maroon = 0x800000,                   // rgb(128,0,0)
-  medium_aquamarine = 0x66CDAA,        // rgb(102,205,170)
-  medium_blue = 0x0000CD,              // rgb(0,0,205)
-  medium_orchid = 0xBA55D3,            // rgb(186,85,211)
-  medium_purple = 0x9370DB,            // rgb(147,112,219)
-  medium_sea_green = 0x3CB371,         // rgb(60,179,113)
-  medium_slate_blue = 0x7B68EE,        // rgb(123,104,238)
-  medium_spring_green = 0x00FA9A,      // rgb(0,250,154)
-  medium_turquoise = 0x48D1CC,         // rgb(72,209,204)
-  medium_violet_red = 0xC71585,        // rgb(199,21,133)
-  midnight_blue = 0x191970,            // rgb(25,25,112)
-  mint_cream = 0xF5FFFA,               // rgb(245,255,250)
-  misty_rose = 0xFFE4E1,               // rgb(255,228,225)
-  moccasin = 0xFFE4B5,                 // rgb(255,228,181)
-  navajo_white = 0xFFDEAD,             // rgb(255,222,173)
-  navy = 0x000080,                     // rgb(0,0,128)
-  old_lace = 0xFDF5E6,                 // rgb(253,245,230)
-  olive = 0x808000,                    // rgb(128,128,0)
-  olive_drab = 0x6B8E23,               // rgb(107,142,35)
-  orange = 0xFFA500,                   // rgb(255,165,0)
-  orange_red = 0xFF4500,               // rgb(255,69,0)
-  orchid = 0xDA70D6,                   // rgb(218,112,214)
-  pale_golden_rod = 0xEEE8AA,          // rgb(238,232,170)
-  pale_green = 0x98FB98,               // rgb(152,251,152)
-  pale_turquoise = 0xAFEEEE,           // rgb(175,238,238)
-  pale_violet_red = 0xDB7093,          // rgb(219,112,147)
-  papaya_whip = 0xFFEFD5,              // rgb(255,239,213)
-  peach_puff = 0xFFDAB9,               // rgb(255,218,185)
-  peru = 0xCD853F,                     // rgb(205,133,63)
-  pink = 0xFFC0CB,                     // rgb(255,192,203)
-  plum = 0xDDA0DD,                     // rgb(221,160,221)
-  powder_blue = 0xB0E0E6,              // rgb(176,224,230)
-  purple = 0x800080,                   // rgb(128,0,128)
-  rebecca_purple = 0x663399,           // rgb(102,51,153)
-  red = 0xFF0000,                      // rgb(255,0,0)
-  rosy_brown = 0xBC8F8F,               // rgb(188,143,143)
-  royal_blue = 0x4169E1,               // rgb(65,105,225)
-  saddle_brown = 0x8B4513,             // rgb(139,69,19)
-  salmon = 0xFA8072,                   // rgb(250,128,114)
-  sandy_brown = 0xF4A460,              // rgb(244,164,96)
-  sea_green = 0x2E8B57,                // rgb(46,139,87)
-  sea_shell = 0xFFF5EE,                // rgb(255,245,238)
-  sienna = 0xA0522D,                   // rgb(160,82,45)
-  silver = 0xC0C0C0,                   // rgb(192,192,192)
-  sky_blue = 0x87CEEB,                 // rgb(135,206,235)
-  slate_blue = 0x6A5ACD,               // rgb(106,90,205)
-  slate_gray = 0x708090,               // rgb(112,128,144)
-  snow = 0xFFFAFA,                     // rgb(255,250,250)
-  spring_green = 0x00FF7F,             // rgb(0,255,127)
-  steel_blue = 0x4682B4,               // rgb(70,130,180)
-  tan = 0xD2B48C,                      // rgb(210,180,140)
-  teal = 0x008080,                     // rgb(0,128,128)
-  thistle = 0xD8BFD8,                  // rgb(216,191,216)
-  tomato = 0xFF6347,                   // rgb(255,99,71)
-  turquoise = 0x40E0D0,                // rgb(64,224,208)
-  violet = 0xEE82EE,                   // rgb(238,130,238)
-  wheat = 0xF5DEB3,                    // rgb(245,222,179)
-  white = 0xFFFFFF,                    // rgb(255,255,255)
-  white_smoke = 0xF5F5F5,              // rgb(245,245,245)
-  yellow = 0xFFFF00,                   // rgb(255,255,0)
-  yellow_green = 0x9ACD32              // rgb(154,205,50)
-};  // enum class color
+  alice_blue              = 0xF0F8FF, // rgb(240,248,255)
+  antique_white           = 0xFAEBD7, // rgb(250,235,215)
+  aqua                    = 0x00FFFF, // rgb(  0,255,255)
+  aquamarine              = 0x7FFFD4, // rgb(127,255,212)
+  azure                   = 0xF0FFFF, // rgb(240,255,255)
+  beige                   = 0xF5F5DC, // rgb(245,245,220)
+  bisque                  = 0xFFE4C4, // rgb(255,228,196)
+  black                   = 0x000000, // rgb(  0,  0,  0)
+  blanched_almond         = 0xFFEBCD, // rgb(255,235,205)
+  blue                    = 0x0000FF, // rgb(  0,  0,255)
+  blue_violet             = 0x8A2BE2, // rgb(138, 43,226)
+  brown                   = 0xA52A2A, // rgb(165, 42, 42)
+  burly_wood              = 0xDEB887, // rgb(222,184,135)
+  cadet_blue              = 0x5F9EA0, // rgb( 95,158,160)
+  chartreuse              = 0x7FFF00, // rgb(127,255,  0)
+  chocolate               = 0xD2691E, // rgb(210,105, 30)
+  coral                   = 0xFF7F50, // rgb(255,127, 80)
+  cornflower_blue         = 0x6495ED, // rgb(100,149,237)
+  cornsilk                = 0xFFF8DC, // rgb(255,248,220)
+  crimson                 = 0xDC143C, // rgb(220, 20, 60)
+  cyan                    = 0x00FFFF, // rgb(  0,255,255)
+  dark_blue               = 0x00008B, // rgb(  0,  0,139)
+  dark_cyan               = 0x008B8B, // rgb(  0,139,139)
+  dark_golden_rod         = 0xB8860B, // rgb(184,134, 11)
+  dark_gray               = 0xA9A9A9, // rgb(169,169,169)
+  dark_green              = 0x006400, // rgb(  0,100,  0)
+  dark_khaki              = 0xBDB76B, // rgb(189,183,107)
+  dark_magenta            = 0x8B008B, // rgb(139,  0,139)
+  dark_olive_green        = 0x556B2F, // rgb( 85,107, 47)
+  dark_orange             = 0xFF8C00, // rgb(255,140,  0)
+  dark_orchid             = 0x9932CC, // rgb(153, 50,204)
+  dark_red                = 0x8B0000, // rgb(139,  0,  0)
+  dark_salmon             = 0xE9967A, // rgb(233,150,122)
+  dark_sea_green          = 0x8FBC8F, // rgb(143,188,143)
+  dark_slate_blue         = 0x483D8B, // rgb( 72, 61,139)
+  dark_slate_gray         = 0x2F4F4F, // rgb( 47, 79, 79)
+  dark_turquoise          = 0x00CED1, // rgb(  0,206,209)
+  dark_violet             = 0x9400D3, // rgb(148,  0,211)
+  deep_pink               = 0xFF1493, // rgb(255, 20,147)
+  deep_sky_blue           = 0x00BFFF, // rgb(  0,191,255)
+  dim_gray                = 0x696969, // rgb(105,105,105)
+  dodger_blue             = 0x1E90FF, // rgb( 30,144,255)
+  fire_brick              = 0xB22222, // rgb(178, 34, 34)
+  floral_white            = 0xFFFAF0, // rgb(255,250,240)
+  forest_green            = 0x228B22, // rgb( 34,139, 34)
+  fuchsia                 = 0xFF00FF, // rgb(255,  0,255)
+  gainsboro               = 0xDCDCDC, // rgb(220,220,220)
+  ghost_white             = 0xF8F8FF, // rgb(248,248,255)
+  gold                    = 0xFFD700, // rgb(255,215,  0)
+  golden_rod              = 0xDAA520, // rgb(218,165, 32)
+  gray                    = 0x808080, // rgb(128,128,128)
+  green                   = 0x008000, // rgb(  0,128,  0)
+  green_yellow            = 0xADFF2F, // rgb(173,255, 47)
+  honey_dew               = 0xF0FFF0, // rgb(240,255,240)
+  hot_pink                = 0xFF69B4, // rgb(255,105,180)
+  indian_red              = 0xCD5C5C, // rgb(205, 92, 92)
+  indigo                  = 0x4B0082, // rgb( 75,  0,130)
+  ivory                   = 0xFFFFF0, // rgb(255,255,240)
+  khaki                   = 0xF0E68C, // rgb(240,230,140)
+  lavender                = 0xE6E6FA, // rgb(230,230,250)
+  lavender_blush          = 0xFFF0F5, // rgb(255,240,245)
+  lawn_green              = 0x7CFC00, // rgb(124,252,  0)
+  lemon_chiffon           = 0xFFFACD, // rgb(255,250,205)
+  light_blue              = 0xADD8E6, // rgb(173,216,230)
+  light_coral             = 0xF08080, // rgb(240,128,128)
+  light_cyan              = 0xE0FFFF, // rgb(224,255,255)
+  light_golden_rod_yellow = 0xFAFAD2, // rgb(250,250,210)
+  light_gray              = 0xD3D3D3, // rgb(211,211,211)
+  light_green             = 0x90EE90, // rgb(144,238,144)
+  light_pink              = 0xFFB6C1, // rgb(255,182,193)
+  light_salmon            = 0xFFA07A, // rgb(255,160,122)
+  light_sea_green         = 0x20B2AA, // rgb( 32,178,170)
+  light_sky_blue          = 0x87CEFA, // rgb(135,206,250)
+  light_slate_gray        = 0x778899, // rgb(119,136,153)
+  light_steel_blue        = 0xB0C4DE, // rgb(176,196,222)
+  light_yellow            = 0xFFFFE0, // rgb(255,255,224)
+  lime                    = 0x00FF00, // rgb(  0,255,  0)
+  lime_green              = 0x32CD32, // rgb( 50,205, 50)
+  linen                   = 0xFAF0E6, // rgb(250,240,230)
+  magenta                 = 0xFF00FF, // rgb(255,  0,255)
+  maroon                  = 0x800000, // rgb(128,  0,  0)
+  medium_aquamarine       = 0x66CDAA, // rgb(102,205,170)
+  medium_blue             = 0x0000CD, // rgb(  0,  0,205)
+  medium_orchid           = 0xBA55D3, // rgb(186, 85,211)
+  medium_purple           = 0x9370DB, // rgb(147,112,219)
+  medium_sea_green        = 0x3CB371, // rgb( 60,179,113)
+  medium_slate_blue       = 0x7B68EE, // rgb(123,104,238)
+  medium_spring_green     = 0x00FA9A, // rgb(  0,250,154)
+  medium_turquoise        = 0x48D1CC, // rgb( 72,209,204)
+  medium_violet_red       = 0xC71585, // rgb(199, 21,133)
+  midnight_blue           = 0x191970, // rgb( 25, 25,112)
+  mint_cream              = 0xF5FFFA, // rgb(245,255,250)
+  misty_rose              = 0xFFE4E1, // rgb(255,228,225)
+  moccasin                = 0xFFE4B5, // rgb(255,228,181)
+  navajo_white            = 0xFFDEAD, // rgb(255,222,173)
+  navy                    = 0x000080, // rgb(  0,  0,128)
+  old_lace                = 0xFDF5E6, // rgb(253,245,230)
+  olive                   = 0x808000, // rgb(128,128,  0)
+  olive_drab              = 0x6B8E23, // rgb(107,142, 35)
+  orange                  = 0xFFA500, // rgb(255,165,  0)
+  orange_red              = 0xFF4500, // rgb(255, 69,  0)
+  orchid                  = 0xDA70D6, // rgb(218,112,214)
+  pale_golden_rod         = 0xEEE8AA, // rgb(238,232,170)
+  pale_green              = 0x98FB98, // rgb(152,251,152)
+  pale_turquoise          = 0xAFEEEE, // rgb(175,238,238)
+  pale_violet_red         = 0xDB7093, // rgb(219,112,147)
+  papaya_whip             = 0xFFEFD5, // rgb(255,239,213)
+  peach_puff              = 0xFFDAB9, // rgb(255,218,185)
+  peru                    = 0xCD853F, // rgb(205,133, 63)
+  pink                    = 0xFFC0CB, // rgb(255,192,203)
+  plum                    = 0xDDA0DD, // rgb(221,160,221)
+  powder_blue             = 0xB0E0E6, // rgb(176,224,230)
+  purple                  = 0x800080, // rgb(128,  0,128)
+  rebecca_purple          = 0x663399, // rgb(102, 51,153)
+  red                     = 0xFF0000, // rgb(255,  0,  0)
+  rosy_brown              = 0xBC8F8F, // rgb(188,143,143)
+  royal_blue              = 0x4169E1, // rgb( 65,105,225)
+  saddle_brown            = 0x8B4513, // rgb(139, 69, 19)
+  salmon                  = 0xFA8072, // rgb(250,128,114)
+  sandy_brown             = 0xF4A460, // rgb(244,164, 96)
+  sea_green               = 0x2E8B57, // rgb( 46,139, 87)
+  sea_shell               = 0xFFF5EE, // rgb(255,245,238)
+  sienna                  = 0xA0522D, // rgb(160, 82, 45)
+  silver                  = 0xC0C0C0, // rgb(192,192,192)
+  sky_blue                = 0x87CEEB, // rgb(135,206,235)
+  slate_blue              = 0x6A5ACD, // rgb(106, 90,205)
+  slate_gray              = 0x708090, // rgb(112,128,144)
+  snow                    = 0xFFFAFA, // rgb(255,250,250)
+  spring_green            = 0x00FF7F, // rgb(  0,255,127)
+  steel_blue              = 0x4682B4, // rgb( 70,130,180)
+  tan                     = 0xD2B48C, // rgb(210,180,140)
+  teal                    = 0x008080, // rgb(  0,128,128)
+  thistle                 = 0xD8BFD8, // rgb(216,191,216)
+  tomato                  = 0xFF6347, // rgb(255, 99, 71)
+  turquoise               = 0x40E0D0, // rgb( 64,224,208)
+  violet                  = 0xEE82EE, // rgb(238,130,238)
+  wheat                   = 0xF5DEB3, // rgb(245,222,179)
+  white                   = 0xFFFFFF, // rgb(255,255,255)
+  white_smoke             = 0xF5F5F5, // rgb(245,245,245)
+  yellow                  = 0xFFFF00, // rgb(255,255,  0)
+  yellow_green            = 0x9ACD32  // rgb(154,205, 50)
+}; // color
 
 // Palette identities; SGR numbers are assigned only by the escape encoder.
 enum class terminal_color : std::uint8_t {
-  black,
-  red,
-  green,
-  yellow,
-  blue,
-  magenta,
-  cyan,
-  white,
-  bright_black,
-  bright_red,
-  bright_green,
-  bright_yellow,
-  bright_blue,
-  bright_magenta,
-  bright_cyan,
-  bright_white
-};
+  black, red, green, yellow, blue, magenta, cyan, white,
+  bright_black, bright_red    , bright_green, bright_yellow,
+  bright_blue , bright_magenta, bright_cyan , bright_white
+}; // terminal_color
 
 enum class emphasis : std::uint8_t {
-  bold = 1,
-  faint = 1 << 1,
-  italic = 1 << 2,
+  bold      = 1 << 0,
+  faint     = 1 << 1,
+  italic    = 1 << 2,
   underline = 1 << 3,
-  blink = 1 << 4,
-  reverse = 1 << 5,
-  conceal = 1 << 6,
-  strikethrough = 1 << 7,
-};
+  blink     = 1 << 4,
+  reverse   = 1 << 5,
+  conceal   = 1 << 6,
+  strikethrough = 1 << 7
+}; // emphasis
 
 // rgb is a struct for red, green and blue colors.
 // Using the name "rgb" makes some editors show the color in a tooltip.
 struct rgb {
-  constexpr rgb() : r(0), g(0), b(0) {}
-  constexpr rgb(std::uint8_t r_, std::uint8_t g_, std::uint8_t b_) : r(r_), g(g_), b(b_) {}
-  constexpr rgb(std::uint32_t hex)
-      : r((hex >> 16) & 0xFF), g((hex >> 8) & 0xFF), b(hex & 0xFF) {}
-  constexpr rgb(color hex)
-      : r((std::uint32_t(hex) >> 16) & 0xFF),
-        g((std::uint32_t(hex) >> 8) & 0xFF),
-        b(std::uint32_t(hex) & 0xFF) {}
-  std::uint8_t r;
-  std::uint8_t g;
-  std::uint8_t b;
-};
+  std::uint8_t r = 0;
+  std::uint8_t g = 0;
+  std::uint8_t b = 0;
+
+  constexpr rgb() noexcept = default;
+
+  constexpr rgb(std::uint8_t r_, std::uint8_t g_, std::uint8_t b_) noexcept
+    : r{r_}, g{g_}, b{b_} {}
+
+  explicit constexpr rgb(std::uint32_t hex) noexcept
+    : r{static_cast<std::uint8_t>(hex >> 16)}
+    , g{static_cast<std::uint8_t>(hex >>  8)}
+    , b{static_cast<std::uint8_t>(hex      )}
+    {}
+
+  constexpr rgb(color hex) noexcept
+    : r{static_cast<std::uint8_t>(std::to_underlying(hex) >> 16)}
+    , g{static_cast<std::uint8_t>(std::to_underlying(hex) >>  8)}
+    , b{static_cast<std::uint8_t>(std::to_underlying(hex)      )}
+    {}
+
+  explicit constexpr operator std::uint32_t() const noexcept {
+    return static_cast<std::uint32_t>(r) << 16
+         | static_cast<std::uint32_t>(g) <<  8
+         | static_cast<std::uint32_t>(b);
+  }
+}; // rgb
 
 namespace detail {
 
 // A bit-packed variant of an RGB color, a terminal color, or unset color.
 // see text_style for the bit-packing scheme.
 struct color_type {
+  std::uint32_t _value = 0;
+
   constexpr color_type() noexcept = default;
+
   constexpr color_type(color rgb_color) noexcept
-      : value_(static_cast<std::uint32_t>(rgb_color) | (1 << 24)) {}
+    : _value{static_cast<std::uint32_t>(rgb_color) | (1 << 24)} {}
+
   constexpr color_type(rgb rgb_color) noexcept
-      : color_type(static_cast<color>(
-            (static_cast<std::uint32_t>(rgb_color.r) << 16) |
-            (static_cast<std::uint32_t>(rgb_color.g) << 8) | rgb_color.b)) {}
+    : color_type{static_cast<color>(
+                                (static_cast<std::uint32_t>(rgb_color.r) << 16)
+                              | (static_cast<std::uint32_t>(rgb_color.g) <<  8)
+                              | (static_cast<std::uint32_t>(rgb_color.b)      ))
+                }
+    {}
+
   constexpr color_type(terminal_color term_color) noexcept
-      : value_(static_cast<std::uint32_t>(term_color) | (3 << 24)) {}
+    : _value{static_cast<std::uint32_t>(term_color) | (0x03 << 24)} {}
 
-  constexpr auto is_terminal_color() const noexcept -> bool {
-    return (value_ & (1 << 25)) != 0;
-  }
+  constexpr bool is_terminal_color() const noexcept
+  { return (_value & (1 << 25)) != 0; }
 
-  constexpr auto value() const noexcept -> std::uint32_t {
-    return value_ & 0xFFFFFF;
-  }
+  constexpr std::uint32_t value() const noexcept
+  { return _value & 0xFFFFFF; }
 
-  constexpr color_type(std::uint32_t value) noexcept : value_(value) {}
+  explicit constexpr color_type(std::uint32_t value) noexcept : _value{value} {}
+}; // color_type
 
-  std::uint32_t value_ = 0;
-};
-}  // namespace detail
+} // detail
 
 /// A text style consisting of foreground and background colors and emphasis.
 class text_style {
+
+  std::uint64_t _style = 0;
+
   // The information is packed as follows:
   // ┌──┐
   // │ 0│─┐
@@ -314,86 +322,73 @@ class text_style {
   //
   // This test can be applied to both colors simultaneously.
 
- public:
+public:
   constexpr text_style(emphasis em = emphasis()) noexcept
-      : style_(static_cast<std::uint64_t>(em) << 54) {}
+    : _style{static_cast<std::uint64_t>(em) << 54} {}
 
-  constexpr auto operator|=(text_style rhs) -> text_style& {
-    if (((style_ + rhs.style_) & ((1ULL << 26) | (1ULL << 53))) != 0)
+  constexpr text_style& operator|=(text_style rhs) {
+    if (((_style + rhs._style) & ((1ULL << 26) | (1ULL << 53))) != 0)
       throw std::format_error("can't OR a terminal color");
-    style_ |= rhs.style_;
+    _style |= rhs._style;
     return *this;
   }
 
-  friend constexpr auto operator|(text_style lhs, text_style rhs)
-      -> text_style {
-    return lhs |= rhs;
-  }
+  friend constexpr text_style operator|(text_style lhs, text_style rhs)
+  { return lhs |= rhs; }
 
-  constexpr auto operator==(text_style rhs) const noexcept -> bool {
-    return style_ == rhs.style_;
-  }
+  constexpr bool operator==(text_style rhs) const noexcept
+  { return _style == rhs._style; }
 
-  constexpr auto operator!=(text_style rhs) const noexcept -> bool {
-    return !(*this == rhs);
-  }
+  constexpr bool operator!=(text_style rhs) const noexcept
+  { return !(*this == rhs); }
 
-  constexpr auto has_foreground() const noexcept -> bool {
-    return (style_ & (1 << 24)) != 0;
-  }
-  constexpr auto has_background() const noexcept -> bool {
-    return (style_ & (1ULL << 51)) != 0;
-  }
-  constexpr auto has_emphasis() const noexcept -> bool {
-    return (style_ >> 54) != 0;
-  }
-  constexpr auto get_foreground() const noexcept -> detail::color_type {
+  constexpr bool has_foreground() const noexcept
+  { return (_style & (1 << 24)) != 0; }
+
+  constexpr bool has_background() const noexcept
+  { return (_style & (1ULL << 51)) != 0; }
+
+  constexpr bool has_emphasis() const noexcept
+  { return (_style >> 54) != 0; }
+
+  constexpr detail::color_type get_foreground() const noexcept {
     assert(has_foreground());
-    return style_ & 0x3FFFFFF;
+    return detail::color_type{static_cast<std::uint32_t>(_style) & 0x3FFFFFF};
   }
-  constexpr auto get_background() const noexcept -> detail::color_type {
+
+  constexpr detail::color_type get_background() const noexcept {
     assert(has_background());
-    return (style_ >> 27) & 0x3FFFFFF;
+    return detail::color_type{static_cast<std::uint32_t>(_style >> 27) & 0x3FFFFFF};
   }
-  constexpr auto get_emphasis() const noexcept -> emphasis {
+
+  constexpr emphasis get_emphasis() const noexcept {
     assert(has_emphasis());
-    return static_cast<emphasis>(style_ >> 54);
+    return static_cast<emphasis>(_style >> 54);
   }
 
- private:
-  constexpr text_style(std::uint64_t style) noexcept : style_(style) {}
+private:
+  constexpr text_style(std::uint64_t style) noexcept : _style{style} {}
 
-  friend constexpr auto fg(detail::color_type foreground) noexcept
-      -> text_style;
-
-  friend constexpr auto bg(detail::color_type background) noexcept
-      -> text_style;
-
-  std::uint64_t style_ = 0;
-};
+  friend constexpr text_style fg(detail::color_type foreground) noexcept;
+  friend constexpr text_style bg(detail::color_type background) noexcept;
+}; // text_style
 
 /// Creates a text style from the foreground (text) color.
-constexpr inline auto fg(detail::color_type foreground) noexcept
-    -> text_style {
-  return foreground.value_;
-}
+constexpr text_style fg(detail::color_type foreground) noexcept
+{ return foreground._value; }
 
 /// Creates a text style from the background color.
-constexpr inline auto bg(detail::color_type background) noexcept
-    -> text_style {
-  return static_cast<std::uint64_t>(background.value_) << 27;
-}
+constexpr text_style bg(detail::color_type background) noexcept
+{ return static_cast<std::uint64_t>(background._value) << 27; }
 
-constexpr inline auto operator|(emphasis lhs, emphasis rhs) noexcept
-    -> text_style {
-  return text_style(lhs) | rhs;
-}
+constexpr inline text_style operator|(emphasis lhs, emphasis rhs) noexcept
+{ return text_style(lhs) | rhs; }
 
 namespace detail {
 
-template <typename Char> struct ansi_color_escape {
-  constexpr ansi_color_escape(color_type text_color,
-                                  const char* esc) noexcept {
+template<typename Char>
+struct ansi_color_escape {
+  constexpr ansi_color_escape(color_type text_color, const char* esc) noexcept {
     // If we have a terminal color, we need to output another escape code
     // sequence.
     if (text_color.is_terminal_color()) {
@@ -410,31 +405,32 @@ template <typename Char> struct ansi_color_escape {
         buffer[size++] = static_cast<Char>('1');
         value %= 100u;
       }
+
       buffer[size++] = static_cast<Char>('0' + value / 10u);
       buffer[size++] = static_cast<Char>('0' + value % 10u);
-
       buffer[size++] = static_cast<Char>('m');
       return;
     }
 
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 7; i++)
       buffer[i] = static_cast<Char>(esc[i]);
-    }
+
     rgb color(text_color.value());
     to_esc(color.r, buffer + 7, ';');
     to_esc(color.g, buffer + 11, ';');
     to_esc(color.b, buffer + 15, 'm');
     size = 19;
   }
+
   constexpr ansi_color_escape(emphasis em) noexcept {
     std::uint8_t em_codes[num_emphases] = {};
-    if (has_emphasis(em, emphasis::bold)) em_codes[0] = 1;
-    if (has_emphasis(em, emphasis::faint)) em_codes[1] = 2;
-    if (has_emphasis(em, emphasis::italic)) em_codes[2] = 3;
+    if (has_emphasis(em, emphasis::bold))      em_codes[0] = 1;
+    if (has_emphasis(em, emphasis::faint))     em_codes[1] = 2;
+    if (has_emphasis(em, emphasis::italic))    em_codes[2] = 3;
     if (has_emphasis(em, emphasis::underline)) em_codes[3] = 4;
-    if (has_emphasis(em, emphasis::blink)) em_codes[4] = 5;
-    if (has_emphasis(em, emphasis::reverse)) em_codes[5] = 7;
-    if (has_emphasis(em, emphasis::conceal)) em_codes[6] = 8;
+    if (has_emphasis(em, emphasis::blink))     em_codes[4] = 5;
+    if (has_emphasis(em, emphasis::reverse))   em_codes[5] = 7;
+    if (has_emphasis(em, emphasis::conceal))   em_codes[6] = 8;
     if (has_emphasis(em, emphasis::strikethrough)) em_codes[7] = 9;
 
     buffer[size++] = static_cast<Char>('\x1b');
@@ -448,52 +444,46 @@ template <typename Char> struct ansi_color_escape {
 
     buffer[size - 1] = static_cast<Char>('m');
   }
+
   constexpr operator const Char*() const noexcept { return buffer; }
 
-  constexpr auto begin() const noexcept -> const Char* { return buffer; }
-  constexpr auto end() const noexcept -> const Char* {
-    return buffer + size;
-  }
+  constexpr const Char* begin() const noexcept { return buffer; }
+
+  constexpr const Char* end()   const noexcept { return buffer + size; }
 
  private:
   static constexpr std::size_t num_emphases = 8;
   Char buffer[7u + 4u * num_emphases] = {};
   std::size_t size = 0;
 
-  static constexpr void to_esc(std::uint8_t c, Char* out,
-                                   char delimiter) noexcept {
+  static
+  constexpr void to_esc(std::uint8_t c, Char* out, char delimiter) noexcept {
     out[0] = static_cast<Char>('0' + c / 100);
     out[1] = static_cast<Char>('0' + c / 10 % 10);
     out[2] = static_cast<Char>('0' + c % 10);
     out[3] = static_cast<Char>(delimiter);
   }
-  static constexpr auto has_emphasis(emphasis em, emphasis mask) noexcept
-      -> bool {
-    return static_cast<std::uint8_t>(em) & static_cast<std::uint8_t>(mask);
-  }
-};
 
-template <typename Char>
+  static constexpr bool has_emphasis(emphasis em, emphasis mask) noexcept
+  { return static_cast<std::uint8_t>(em) & static_cast<std::uint8_t>(mask); }
+}; // ansi_color_escape
+
+template<typename Char>
 constexpr auto make_foreground_color(color_type foreground) noexcept
-    -> ansi_color_escape<Char> {
-  return ansi_color_escape<Char>(foreground, "\x1b[38;2;");
-}
+    -> ansi_color_escape<Char>
+{ return ansi_color_escape<Char>(foreground, "\x1b[38;2;"); }
 
-template <typename Char>
+template<typename Char>
 constexpr auto make_background_color(color_type background) noexcept
-    -> ansi_color_escape<Char> {
-  return ansi_color_escape<Char>(background, "\x1b[48;2;");
-}
+    -> ansi_color_escape<Char>
+{ return ansi_color_escape<Char>(background, "\x1b[48;2;"); }
 
-template <typename Char>
-constexpr auto make_emphasis(emphasis em) noexcept
-    -> ansi_color_escape<Char> {
-  return ansi_color_escape<Char>(em);
-}
+template<typename Char>
+constexpr auto make_emphasis(emphasis em) noexcept -> ansi_color_escape<Char>
+{ return ansi_color_escape<Char>(em); }
 
-
-template <typename Char, typename OutputIt>
-auto write_style(OutputIt out, text_style ts) -> OutputIt {
+template<typename Char, typename OutputIt>
+OutputIt write_style(OutputIt out, text_style ts) {
   if (ts.has_emphasis()) {
     auto escape = make_emphasis<Char>(ts.get_emphasis());
     out = std::copy(escape.begin(), escape.end(), out);
@@ -507,86 +497,100 @@ auto write_style(OutputIt out, text_style ts) -> OutputIt {
     out = std::copy(escape.begin(), escape.end(), out);
   }
   return out;
-}
-template <typename Char, typename OutputIt>
-auto write_reset(OutputIt out, text_style ts) -> OutputIt {
-  if (ts != text_style())
-    for (char c : std::string_view("\x1b[0m")) *out++ = static_cast<Char>(c);
+} // write_style
+
+template<typename Char, typename OutputIt>
+OutputIt write_reset(OutputIt out, text_style ts) {
+  if (ts != text_style()) {
+    for (char c : std::string_view("\x1b[0m"))
+      *out++ = static_cast<Char>(c);
+  }
   return out;
 }
-template <typename T>
+
+template<typename T>
 using styled_value_t = std::conditional_t<std::is_array_v<T>,
-                                           std::decay_t<const T>,
-                                           std::remove_cv_t<T>>;
-template <typename T> struct styled_arg {
+                                          std::decay_t<const T>,
+                                          std::remove_cv_t<T>>;
+template<typename T>
+struct styled_arg {
   const T& value;
   text_style style;
-};
-} // namespace detail
+}; // styled_arg
 
-template <typename T>
-constexpr auto styled(const T& value, text_style ts) -> detail::styled_arg<T> {
-  return {value, ts};
-}
-inline auto vformat(text_style ts, std::string_view s, std::format_args args)
-    -> std::string {
-  std::string result;
+} // detail
+
+template<typename T>
+constexpr auto styled(const T& value, text_style ts) -> detail::styled_arg<T>
+{ return {value, ts}; }
+
+inline
+std::string vformat(text_style ts, std::string_view s, std::format_args args) {
+  auto result = std::string{};
   auto out = detail::write_style<char>(std::back_inserter(result), ts);
   out = std::vformat_to(out, s, args);
   detail::write_reset<char>(out, ts);
   return result;
 }
-template <typename... T>
-auto format(text_style ts, std::format_string<T...> s, T&&... args) -> std::string {
-  return fmt::vformat(ts, s.get(), std::make_format_args(args...));
-}
-template <typename OutputIt>
-auto vformat_to(OutputIt out, text_style ts, std::string_view s, std::format_args args)
-    -> OutputIt {
+
+template<typename... T>
+std::string format(text_style ts, std::format_string<T...> s, T&&... args)
+{ return fmt::vformat(ts, s.get(), std::make_format_args(args...)); }
+
+template<typename OutputIt>
+OutputIt vformat_to(OutputIt out,
+                    text_style ts, std::string_view s, std::format_args args)
+{
   out = detail::write_style<char>(out, ts);
   out = std::vformat_to(out, s, args);
   return detail::write_reset<char>(out, ts);
 }
-template <typename OutputIt, typename... T>
-auto format_to(OutputIt out, text_style ts, std::format_string<T...> s, T&&... args)
-    -> OutputIt {
-  return fmt::vformat_to(out, ts, s.get(), std::make_format_args(args...));
-}
-inline void vprint(std::FILE* file, text_style ts, std::string_view s, std::format_args args) {
-  std::print(file, "{}", fmt::vformat(ts, s, args));
-}
-inline void vprintln(std::FILE* file, text_style ts, std::string_view s, std::format_args args) {
-  std::println(file, "{}", fmt::vformat(ts, s, args));
-}
-template <typename... T>
-void print(std::FILE* file, text_style ts, std::format_string<T...> s, T&&... args) {
-  fmt::vprint(file, ts, s.get(), std::make_format_args(args...));
-}
-template <typename... T>
-void print(text_style ts, std::format_string<T...> s, T&&... args) {
-  fmt::print(stdout, ts, s, std::forward<T>(args)...);
-}
-template <typename... T>
-void println(std::FILE* file, text_style ts, std::format_string<T...> s, T&&... args) {
-  fmt::vprintln(file, ts, s.get(), std::make_format_args(args...));
-}
-template <typename... T>
-void println(text_style ts, std::format_string<T...> s, T&&... args) {
-  fmt::println(stdout, ts, s, std::forward<T>(args)...);
-}
-} } // namespace fmt::v12
+
+template<typename OutputIt, typename... T>
+OutputIt format_to(OutputIt out,
+                   text_style ts, std::format_string<T...> s, T&&... args)
+{ return fmt::vformat_to(out, ts, s.get(), std::make_format_args(args...)); }
+
+inline void vprint(std::FILE* file,
+                   text_style ts, std::string_view s, std::format_args args)
+{ std::print(file, "{}", fmt::vformat(ts, s, args)); }
+
+inline void vprintln(std::FILE* file,
+                     text_style ts, std::string_view s, std::format_args args)
+{ std::println(file, "{}", fmt::vformat(ts, s, args)); }
+
+template<typename... T>
+void print(std::FILE* file,
+           text_style ts, std::format_string<T...> s, T&&... args)
+{ fmt::vprint(file, ts, s.get(), std::make_format_args(args...)); }
+
+template<typename... T>
+void print(text_style ts, std::format_string<T...> s, T&&... args)
+{ fmt::print(stdout, ts, s, std::forward<T>(args)...); }
+
+template<typename... T>
+void println(std::FILE* file,
+             text_style ts, std::format_string<T...> s, T&&... args)
+{ fmt::vprintln(file, ts, s.get(), std::make_format_args(args...)); }
+
+template<typename... T>
+void println(text_style ts, std::format_string<T...> s, T&&... args)
+{ fmt::println(stdout, ts, s, std::forward<T>(args)...); }
+
+} } // fmt::v12
 
 // Specialization is permitted: styled_arg is a program-defined type.
-template <typename T, typename Char>
+template<typename T, typename Char>
 struct std::formatter<fmt::detail::styled_arg<T>, Char>
-    : std::formatter<fmt::detail::styled_value_t<T>, Char> {
-  template <typename Context>
+  : std::formatter<fmt::detail::styled_value_t<T>, Char>
+{
+  template<typename Context>
   auto format(const fmt::detail::styled_arg<T>& arg, Context& ctx) const
-      -> decltype(ctx.out()) {
+      -> decltype(ctx.out())
+  {
     auto out = fmt::detail::write_style<Char>(ctx.out(), arg.style);
     ctx.advance_to(out);
     out = std::formatter<fmt::detail::styled_value_t<T>, Char>::format(arg.value, ctx);
     return fmt::detail::write_reset<Char>(out, arg.style);
   }
-};
-#endif // FMT_COLOR_H_
+}; // std::formatter<styled_arg>
