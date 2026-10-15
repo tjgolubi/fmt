@@ -209,9 +209,9 @@ TEST(buffered_file_test, close_file_in_dtor) {
 }
 
 TEST(buffered_file_test, close_error_in_dtor) {
-#ifdef __ANDROID__
-  GTEST_SKIP() << "WARNING: Android fdsan rejects closing a descriptor owned by "
-                  "FILE*; this test's intentional close is not exercised.";
+#if defined(FMTCOLOR_SKIP) && FMTCOLOR_SKIP
+  GTEST_SKIP() << "WARNING: FMTCOLOR_SKIP is enabled; skipping intentional "
+                  "close of a FILE*-owned descriptor (Android fdsan conflict).";
 #endif
   auto f =
       std::unique_ptr<buffered_file>(new buffered_file(open_buffered_file()));
@@ -237,9 +237,9 @@ TEST(buffered_file_test, close) {
 }
 
 TEST(buffered_file_test, close_error) {
-#ifdef __ANDROID__
-  GTEST_SKIP() << "WARNING: Android fdsan rejects closing a descriptor owned by "
-                  "FILE*; this test's intentional close is not exercised.";
+#if defined(FMTCOLOR_SKIP) && FMTCOLOR_SKIP
+  GTEST_SKIP() << "WARNING: FMTCOLOR_SKIP is enabled; skipping intentional "
+                  "close of a FILE*-owned descriptor (Android fdsan conflict).";
 #endif
   buffered_file f = open_buffered_file();
   FMT_POSIX(close(f.descriptor()));
@@ -532,9 +532,9 @@ TEST(file_test, fdopen) {
 // Windows CRT implements _IOLBF incorrectly (full buffering).
 #  ifndef _WIN32
 TEST(file_test, line_buffering) {
-#ifdef __ANDROID__
-  GTEST_SKIP() << "WARNING: Android fdsan rejects closing a descriptor owned by "
-                  "FILE*; this test's intentional close is not exercised.";
+#if defined(FMTCOLOR_SKIP) && FMTCOLOR_SKIP
+  GTEST_SKIP() << "WARNING: FMTCOLOR_SKIP is enabled; skipping intentional "
+                  "close of a FILE*-owned descriptor (Android fdsan conflict).";
 #endif
   auto pipe = fmt::pipe();
 
