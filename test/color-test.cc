@@ -8,8 +8,30 @@
 #include "fmt/color.h"
 
 #include <iterator>  // std::back_inserter
+#include <type_traits>  // std::is_convertible, std::is_same
 
 #include "gtest-extra.h"  // EXPECT_WRITE, EXPECT_THROW_MSG
+
+TEST(color_test, rgb) {
+  static_assert(!std::is_convertible<uint32_t, fmt::rgb>::value,
+                "integer to rgb conversion must be explicit");
+  static_assert(!std::is_convertible<fmt::rgb, uint32_t>::value,
+                "rgb to integer conversion must be explicit");
+  static_assert(std::is_same<decltype(fmt::color::red), const fmt::rgb>::value,
+                "named colors must be rgb constants");
+  constexpr auto c = fmt::rgb{0xAB123456};
+  static_assert(c.r == 0x12 && c.g == 0x34 && c.b == 0x56,
+                "the high byte must be ignored");
+  static_assert(static_cast<uint32_t>(c) == 0x123456,
+                "packed rgb must have a zero high byte");
+  static_assert(static_cast<uint32_t>(fmt::color::alice_blue) == 0xF0F8FF,
+                "named colors must preserve their values");
+  auto components = fmt::rgb{0x12, 0x34, 0x56};
+  EXPECT_EQ(static_cast<uint32_t>(components), 0x123456u);
+  EXPECT_EQ(static_cast<uint32_t>(fmt::rgb{}), 0u);
+  EXPECT_EQ(static_cast<uint32_t>(fmt::color::black), 0u);
+  EXPECT_EQ(static_cast<uint32_t>(fmt::color::white), 0xFFFFFFu);
+}
 
 TEST(color_test, text_style) {
   EXPECT_FALSE(fmt::text_style().has_foreground());
