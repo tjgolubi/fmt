@@ -330,6 +330,10 @@ TEST(output_redirect_test, scoped_redirect) {
 
 // Test that output_redirect handles errors in flush correctly.
 TEST(output_redirect_test, flush_error_in_ctor) {
+#ifdef __ANDROID__
+  GTEST_SKIP() << "WARNING: Android fdsan rejects closing a descriptor owned by "
+                  "FILE*; this test's intentional close is not exercised.";
+#endif
   auto pipe = fmt::pipe();
   int write_fd = pipe.write_end.descriptor();
   file write_copy = pipe.write_end.dup(write_fd);
@@ -345,6 +349,10 @@ TEST(output_redirect_test, flush_error_in_ctor) {
 }
 
 TEST(output_redirect_test, dup_error_in_ctor) {
+#ifdef __ANDROID__
+  GTEST_SKIP() << "WARNING: Android fdsan rejects closing a descriptor owned by "
+                  "FILE*; this test's intentional close is not exercised.";
+#endif
   buffered_file f = open_buffered_file();
   int fd = (f.descriptor)();
   file copy = file::dup(fd);
@@ -371,6 +379,10 @@ TEST(output_redirect_test, restore_and_read) {
 
 // Test that OutputRedirect handles errors in flush correctly.
 TEST(output_redirect_test, flush_error_in_restore_and_read) {
+#ifdef __ANDROID__
+  GTEST_SKIP() << "WARNING: Android fdsan rejects closing a descriptor owned by "
+                  "FILE*; this test's intentional close is not exercised.";
+#endif
   auto pipe = fmt::pipe();
   int write_fd = pipe.write_end.descriptor();
   file write_copy = pipe.write_end.dup(write_fd);
@@ -385,6 +397,10 @@ TEST(output_redirect_test, flush_error_in_restore_and_read) {
 }
 
 TEST(output_redirect_test, error_in_dtor) {
+#ifdef __ANDROID__
+  GTEST_SKIP() << "WARNING: Android fdsan rejects closing a descriptor owned by "
+                  "FILE*; this test's intentional close is not exercised.";
+#endif
   auto pipe = fmt::pipe();
   int write_fd = pipe.write_end.descriptor();
   file write_copy = pipe.write_end.dup(write_fd);
