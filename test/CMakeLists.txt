@@ -1,3 +1,6 @@
+option(FMTCOLOR_SKIP
+       "Skip FILE-owned descriptor tests incompatible with Android fdsan" OFF)
+
 add_subdirectory(gtest)
 
 set(TEST_MAIN_SRC test-main.cc gtest-extra.cc gtest-extra.h util.cc)
@@ -25,6 +28,11 @@ function (add_fmt_test name)
   endif ()
   add_executable(${name} ${sources})
   target_link_libraries(${name} ${libs})
+
+  if (FMTCOLOR_SKIP AND (name STREQUAL "gtest-extra-test" OR
+                        name STREQUAL "os-test"))
+    target_compile_definitions(${name} PRIVATE FMTCOLOR_SKIP=1)
+  endif ()
 
   if (ADD_FMT_TEST_HEADER_ONLY AND NOT FMT_UNICODE)
     target_compile_definitions(${name} PUBLIC FMT_UNICODE=0)
