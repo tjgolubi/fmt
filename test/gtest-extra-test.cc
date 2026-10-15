@@ -330,9 +330,9 @@ TEST(output_redirect_test, scoped_redirect) {
 
 // Test that output_redirect handles errors in flush correctly.
 TEST(output_redirect_test, flush_error_in_ctor) {
-#ifdef __ANDROID__
-  GTEST_SKIP() << "WARNING: Android fdsan rejects closing a descriptor owned by "
-                  "FILE*; this test's intentional close is not exercised.";
+#if defined(FMTCOLOR_SKIP) && FMTCOLOR_SKIP
+  GTEST_SKIP() << "WARNING: FMTCOLOR_SKIP is enabled; skipping intentional "
+                  "close of a FILE*-owned descriptor (Android fdsan conflict).";
 #endif
   auto pipe = fmt::pipe();
   int write_fd = pipe.write_end.descriptor();
@@ -349,9 +349,9 @@ TEST(output_redirect_test, flush_error_in_ctor) {
 }
 
 TEST(output_redirect_test, dup_error_in_ctor) {
-#ifdef __ANDROID__
-  GTEST_SKIP() << "WARNING: Android fdsan rejects closing a descriptor owned by "
-                  "FILE*; this test's intentional close is not exercised.";
+#if defined(FMTCOLOR_SKIP) && FMTCOLOR_SKIP
+  GTEST_SKIP() << "WARNING: FMTCOLOR_SKIP is enabled; skipping intentional "
+                  "close of a FILE*-owned descriptor (Android fdsan conflict).";
 #endif
   buffered_file f = open_buffered_file();
   int fd = (f.descriptor)();
@@ -379,9 +379,9 @@ TEST(output_redirect_test, restore_and_read) {
 
 // Test that OutputRedirect handles errors in flush correctly.
 TEST(output_redirect_test, flush_error_in_restore_and_read) {
-#ifdef __ANDROID__
-  GTEST_SKIP() << "WARNING: Android fdsan rejects closing a descriptor owned by "
-                  "FILE*; this test's intentional close is not exercised.";
+#if defined(FMTCOLOR_SKIP) && FMTCOLOR_SKIP
+  GTEST_SKIP() << "WARNING: FMTCOLOR_SKIP is enabled; skipping intentional "
+                  "close of a FILE*-owned descriptor (Android fdsan conflict).";
 #endif
   auto pipe = fmt::pipe();
   int write_fd = pipe.write_end.descriptor();
@@ -397,9 +397,9 @@ TEST(output_redirect_test, flush_error_in_restore_and_read) {
 }
 
 TEST(output_redirect_test, error_in_dtor) {
-#ifdef __ANDROID__
-  GTEST_SKIP() << "WARNING: Android fdsan rejects closing a descriptor owned by "
-                  "FILE*; this test's intentional close is not exercised.";
+#if defined(FMTCOLOR_SKIP) && FMTCOLOR_SKIP
+  GTEST_SKIP() << "WARNING: FMTCOLOR_SKIP is enabled; skipping intentional "
+                  "close of a FILE*-owned descriptor (Android fdsan conflict).";
 #endif
   auto pipe = fmt::pipe();
   int write_fd = pipe.write_end.descriptor();
