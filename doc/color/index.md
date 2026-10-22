@@ -11,7 +11,7 @@ int main() {
   auto style = fmt::fg(fmt::color::forest_green) | fmt::emphasis::bold;
   fmt::println(style, "The result is {}.", 42);
   fmt::println("The result is {}.",
-               fmt::styled(42, fmt::fg(fmt::terminal_color::red)));
+               fmt::styled(42, fmt::fg(fmt::term_color::red)));
 }
 ```
 
@@ -36,12 +36,12 @@ The first call styles the entire message. The second styles only `42`.
 ## Choosing and combining styles
 
 Use constants in the `color` namespace for named RGB values, `rgb` for explicit
-RGB components, and `terminal_color` for colors from the terminal's palette. Pass a color to
-`fg()` or `bg()` to create a foreground or background style.
+RGB components, and `term_color` for colors from the terminal's palette. Pass
+a color to `fg()` or `bg()` to create a foreground or background style.
 
 ```cpp
 auto style = fmt::fg(fmt::rgb{30, 144, 255})
-           | fmt::bg(fmt::terminal_color::black)
+           | fmt::bg(fmt::term_color::black)
            | fmt::emphasis::bold | fmt::emphasis::underline;
 ```
 
@@ -66,7 +66,7 @@ A styled argument can therefore affect the rest of an enclosing styled message:
 
 ```cpp
 fmt::print(fmt::emphasis::underline, "The result is {} after rounding.",
-           fmt::styled(42, fmt::fg(fmt::terminal_color::red)));
+           fmt::styled(42, fmt::fg(fmt::term_color::red)));
 ```
 
 <pre class="color-output"><span style="text-decoration: underline">The result is <span style="color: #CD0000">42</span></span> after rounding.</pre>

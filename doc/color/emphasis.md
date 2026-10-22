@@ -5,10 +5,17 @@ Use emphasis values as styles or combine them with colors through
 
 ## Attributes
 
+`fmt::emphasis::strike` selects crossed-out text (SGR 9).
+
 ::: emphasis
     options:
       color_reference: true
       enum_value_placeholder: unspecified value
+
+!!! note "Backward compatibility"
+
+    `fmt::emphasis::strikethrough` remains an alias for `fmt::emphasis::strike`.
+    Both names select the same attribute bit and produce the same SGR sequence.
 
 ## Combining attributes
 

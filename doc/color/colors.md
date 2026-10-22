@@ -17,9 +17,9 @@ An unspecified color adds no foreground or background styling. It is distinct
 from the color black.
 
 ```cpp
-auto unspecified    = fmt::fg(fmt::no_color);              // No foreground.
-auto rgb_black      = fmt::fg(fmt::rgb{});                 // Black foreground.
-auto terminal_black = fmt::fg(fmt::terminal_color::black); // Black foreground.
+auto unspecified    = fmt::fg(fmt::no_color);          // No foreground.
+auto rgb_black      = fmt::fg(fmt::rgb{});             // Black foreground.
+auto terminal_black = fmt::fg(fmt::term_color::black); // Black foreground.
 ```
 
 Both `fmt::fg(fmt::no_color)` and `fmt::bg(fmt::no_color)` produce empty styles.
@@ -28,9 +28,14 @@ They do not clear a color already present in another style when combined with
 
 ## Terminal palette colors
 
-::: terminal_color
+::: term_color
     options:
       color_reference: true
+
+!!! note "Backward compatibility"
+
+    `fmt::terminal_color` remains an alias for `fmt::term_color`.
+    Both names denote the same type and provide the same color constants.
 
 Terminal colors use the terminal's palette rather than fixed RGB values.
 Their enum values are contiguous palette indices, separate from the ANSI
@@ -56,7 +61,7 @@ SGR codes emitted for foreground and background colors:
 | `bright_white`   |  15   |   97   |  107   |
 
 ```cpp
-auto style = fmt::fg(fmt::terminal_color::black);
+auto style = fmt::fg(fmt::term_color::black);
 bool specified = style.has_fg(); // true
 ```
 

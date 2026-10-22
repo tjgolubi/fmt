@@ -12,11 +12,13 @@
         - has_foreground
         - has_background
         - has_emphasis
+        - strikethrough
+        - is_strikethrough
 
 ### Construction
 
 Construct a style with colors first or emphasis first. Each color may be a
-named color, an `rgb`, a `terminal_color`, or `no_color`.
+named color, an `rgb`, a `term_color`, or `no_color`.
 
 The color-first constructor requires a foreground color; background and
 emphasis default to unspecified and empty. The emphasis-first constructor
@@ -26,11 +28,11 @@ an empty style. An emphasis value alone creates an emphasis-only style.
 
 ```cpp
 auto foreground = fmt::text_style{fmt::color::red};
-auto style = fmt::text_style{fmt::color::red, fmt::terminal_color::black,
+auto style = fmt::text_style{fmt::color::red, fmt::term_color::black,
                              fmt::emphasis::bold};
 auto background = fmt::text_style{fmt::no_color, fmt::color::blue};
 auto attributes_first = fmt::text_style{fmt::emphasis::bold, fmt::color::red,
-                                        fmt::terminal_color::black};
+                                        fmt::term_color::black};
 auto underlined_background = fmt::text_style{
     fmt::emphasis::underline, fmt::no_color, fmt::color::blue};
 ```
@@ -58,17 +60,17 @@ The `has_fg()`, `has_bg()`, and `has_emph()` queries return `bool`, preserve
 the style, and are `const`, `constexpr`, and `noexcept`. An empty style
 returns `false` for all three. RGB black and terminal black are specified
 colors, so their channel queries return `true`. `has_emph()` returns `true`
-when any emphasis bit is set, including faint or strikethrough alone.
+when any emphasis bit is set, including faint or strike alone.
 
 Each setter replaces its entire component, preserves the other two, and
 returns `text_style&` for chaining. Color setters accept a named RGB constant,
-an `rgb`, a `terminal_color`, or `no_color`. Passing `no_color` clears that
+an `rgb`, a `term_color`, or `no_color`. Passing `no_color` clears that
 channel to unspecified; it does not store a terminal-reset instruction.
 Passing `emphasis{}` clears all attributes.
 
 ```cpp
 auto style = fmt::text_style{fmt::color::coral};
-style.bg(fmt::terminal_color::black).emph(fmt::emphasis::bold);
+style.bg(fmt::term_color::black).emph(fmt::emphasis::bold);
 style.fg(fmt::no_color);  // Background and bold remain.
 // has_fg() is false; has_bg() and has_emph() are true.
 
@@ -93,14 +95,14 @@ auto copy = fmt::text_style{source.fg(), source.bg(), source.emph()};
 ### Attribute queries
 
 ```cpp
-bool is_bold()          const noexcept;
-bool is_faint()         const noexcept;
-bool is_italic()        const noexcept;
-bool is_underline()     const noexcept;
-bool is_blink()         const noexcept;
-bool is_reverse()       const noexcept;
-bool is_conceal()       const noexcept;
-bool is_strikethrough() const noexcept;
+bool is_bold()      const noexcept;
+bool is_faint()     const noexcept;
+bool is_italic()    const noexcept;
+bool is_underline() const noexcept;
+bool is_blink()     const noexcept;
+bool is_reverse()   const noexcept;
+bool is_conceal()   const noexcept;
+bool is_strike()    const noexcept;
 ```
 
 Each query returns whether its attribute is enabled. Unset attributes return
@@ -118,7 +120,7 @@ text_style& underline(bool enable = true) noexcept;
 text_style& blink(bool enable = true) noexcept;
 text_style& reverse(bool enable = true) noexcept;
 text_style& conceal(bool enable = true) noexcept;
-text_style& strikethrough(bool enable = true) noexcept;
+text_style& strike(bool enable = true) noexcept;
 ```
 
 Each setter enables its attribute by default, or disables it when passed
@@ -129,6 +131,13 @@ when both are enabled; their combined appearance depends on the terminal.
 Attribute and component setters support constant evaluation in C++14 and
 later on supported compilers.
 
+!!! note "Backward compatibility"
+
+    `strikethrough()` and `is_strikethrough()` remain forwarding aliases for
+    `strike()` and `is_strike()`, respectively. Either setter changes the same
+    attribute bit, and either query reports its state. The former setter keeps
+    its default argument and returns `text_style&` for chaining.
+
 Use `emph(attributes)` to set exactly a group of attributes, then individual
 setters to change selected bits. In C++20 and later, `using enum` makes the
 attribute names available without repeating their type:
@@ -137,8 +146,8 @@ attribute names available without repeating their type:
 using enum fmt::emphasis;
 
 auto style = fmt::text_style{fmt::color::coral};
-style.emph(bold | blink | strikethrough);  // Exactly these three attributes.
-style.blink(false).underline();            // Bold, underline, strikethrough.
+style.emph(bold | blink | strike);  // Exactly these three attributes.
+style.blink(false).underline();     // Bold, underline, strike.
 ```
 
 In older language modes, qualify names with `fmt::emphasis::` or use a type

@@ -63,7 +63,7 @@ FMT_INLINE_VARIABLE constexpr no_color_t no_color{};
  * Values are palette indices: 0-7 for normal colors and 8-15 for bright colors,
  * in declaration order.  Prefer symbolic names when selecting colors.
  */
-enum class terminal_color : uint8_t {
+enum class term_color : uint8_t {
   black,
   red,
   green,
@@ -80,9 +80,12 @@ enum class terminal_color : uint8_t {
   bright_magenta,
   bright_cyan,
   bright_white
-}; // terminal_color
+}; // term_color
 
-template<> struct underlying_type<terminal_color> { using type = uint8_t; };
+/// Alias for `term_color`, retained for backward compatibility.
+using terminal_color = term_color;
+
+template<> struct underlying_type<term_color> { using type = uint8_t; };
 
 /**
  * Independent text attributes that can be combined with `operator|`.
@@ -99,7 +102,8 @@ enum class emphasis : uint8_t {
   blink         = 1 << 4, ///< Blinking text       (SGR 5).
   reverse       = 1 << 5, ///< Reversed fg and bg  (SGR 7).
   conceal       = 1 << 6, ///< Concealed text      (SGR 8).
-  strikethrough = 1 << 7  ///< Crossed-out text    (SGR 9).
+  strike        = 1 << 7, ///< Crossed-out text    (SGR 9).
+  strikethrough = strike  ///< Alias for `strike`, for backward compatibility.
 }; // emphasis
 
 template<> struct underlying_type<emphasis> { using type = uint8_t; };
@@ -270,7 +274,7 @@ private:
 
   FMT_CONSTEXPR void set(rgb val) noexcept { set(disc::rgb, val); }
 
-  FMT_CONSTEXPR void set(terminal_color val) noexcept { set(disc::term, val); }
+  FMT_CONSTEXPR void set(term_color val) noexcept { set(disc::term, val); }
 
   template<typename T>
   friend constexpr auto holds_alternative(color_type color) noexcept -> bool;
@@ -280,10 +284,9 @@ public:
 
   constexpr color_type(no_color_t) noexcept {}
 
-  FMT_CONSTEXPR color_type(rgb rgb_color) noexcept { set(rgb_color); }
+  FMT_CONSTEXPR color_type(rgb clr) noexcept { set(clr); }
 
-  FMT_CONSTEXPR color_type(terminal_color term_color) noexcept
-  { set(term_color); }
+  FMT_CONSTEXPR color_type(term_color clr) noexcept { set(clr); }
 
   FMT_NODISCARD constexpr auto value() const noexcept -> value_type
   { return value_ & color_mask; }
@@ -314,11 +317,11 @@ template<typename T>
 FMT_NODISCARD
 constexpr auto holds_alternative(color_type color) noexcept -> bool {
   static_assert(std::is_same<T, no_color_t>::value ||
-                std::is_same<T, terminal_color>::value ||
+                std::is_same<T, term_color>::value ||
                 std::is_same<T, rgb>::value, "unsupported color alternative");
   return color.type() == (std::is_same<T, no_color_t>::value
                           ? color_type::disc::none
-                          : std::is_same<T, terminal_color>::value
+                          : std::is_same<T, term_color>::value
                               ? color_type::disc::term
                               : color_type::disc::rgb);
 } // holds_alternative
@@ -344,12 +347,12 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto get<no_color_t>(color_type color)
 }
 
 template<>
-FMT_NODISCARD FMT_CONSTEXPR inline auto get<terminal_color>(color_type color)
-  -> terminal_color
+FMT_NODISCARD FMT_CONSTEXPR inline auto get<term_color>(color_type color)
+  -> term_color
 {
-  if (!holds_alternative<terminal_color>(color))
-    report_error("color_type is not terminal_color");
-  return enum_cast<terminal_color>(color.value());
+  if (!holds_alternative<term_color>(color))
+    report_error("color_type is not term_color");
+  return enum_cast<term_color>(color.value());
 }
 
 template<>
@@ -375,7 +378,7 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto get<rgb>(color_type color) -> rgb {
  * **Example**:
  *
  *     auto style = fmt::fg(fmt::color::red)
- *                | fmt::bg(fmt::terminal_color::black)
+ *                | fmt::bg(fmt::term_color::black)
  *                | fmt::emphasis::bold;
  */
 class text_style {
@@ -686,8 +689,8 @@ public:
    * Enables strikethrough if `enable` is true, or disables it otherwise.
    * Preserves other attributes and colors.
    */
-  FMT_CONSTEXPR auto strikethrough(bool enable = true) noexcept -> text_style&
-  { return set(emphasis::strikethrough, enable); }
+  FMT_CONSTEXPR auto strike(bool enable = true) noexcept -> text_style&
+  { return set(emphasis::strike, enable); }
 
 private:
 
@@ -725,8 +728,16 @@ public:
   { return is_enabled(emphasis::conceal); }
 
   /// Returns true if strikethrough is enabled, or false if it is unset.
+  FMT_NODISCARD constexpr auto is_strike() const noexcept -> bool
+  { return is_enabled(emphasis::strike); }
+
+  /// Alias for `strike()`, retained for backward compatibility.
+  FMT_CONSTEXPR auto strikethrough(bool enable = true) noexcept -> text_style&
+  { return strike(enable); }
+
+  /// Alias for `is_strike()`, retained for backward compatibility.
   FMT_NODISCARD constexpr auto is_strikethrough() const noexcept -> bool
-  { return is_enabled(emphasis::strikethrough); }
+  { return is_strike(); }
 
   FMT_COLOR_COMPARISONS(text_style)
 
@@ -748,7 +759,7 @@ FMT_NODISCARD constexpr inline auto to_underlying(text_style value) noexcept
 
 /**
  * Creates a style with the specified foreground (text) color, no background
- * color, and no emphasis. Accepts `rgb`, `terminal_color`, or `no_color_t`
+ * color, and no emphasis. Accepts `rgb`, `term_color`, or `no_color_t`
  * values through implicit conversion to the parameter type.
  */
 FMT_NODISCARD
@@ -761,7 +772,7 @@ FMT_CONSTEXPR inline auto fg(detail::color_type foreground) noexcept
 
 /**
  * Creates a style with the specified background (text) color, no foreground
- * color, and no emphasis. Accepts `rgb`, `terminal_color`, or `no_color_t`
+ * color, and no emphasis. Accepts `rgb`, `term_color`, or `no_color_t`
  * values through implicit conversion to the parameter type.
  */
 FMT_NODISCARD
@@ -808,10 +819,10 @@ public:
 
     // If we have a terminal color, we need to output another escape code
     // sequence.
-    if (holds_alternative<terminal_color>(text_color)) {
+    if (holds_alternative<term_color>(text_color)) {
       constexpr unsigned BrightBlack =
-                                    to_underlying(terminal_color::bright_black);
-      unsigned value = to_underlying(get<terminal_color>(text_color));
+                                    to_underlying(term_color::bright_black);
+      unsigned value = to_underlying(get<term_color>(text_color));
       value += (value < BrightBlack) ? 30u : 90u - BrightBlack;
 
       // Background ASCII codes are the same as the foreground ones but with

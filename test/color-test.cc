@@ -85,8 +85,8 @@ TEST(color_test, color_type_comparisons) {
   static_assert(color_type{} < low, "unspecified differs from RGB black");
   static_assert(low < high, "RGB black differs from terminal black");
   const color_type values[] = {
-      {}, fmt::no_color, fmt::rgb{}, fmt::terminal_color::black,
-      fmt::rgb{0xFFFFFF}, fmt::terminal_color::bright_white,
+      {}, fmt::no_color, fmt::rgb{}, fmt::term_color::black,
+      fmt::rgb{0xFFFFFF}, fmt::term_color::bright_white,
       fmt::rgb{0x123456}, fmt::color::coral, fmt::rgb{0xFF7F50}};
   check_color_comparisons(values, sizeof(values) / sizeof(values[0]));
 }
@@ -97,11 +97,11 @@ TEST(color_test, text_style_comparisons) {
   static_assert(low < high, "an empty style sorts before bold");
   const fmt::text_style values[] = {
       {}, fmt::fg(fmt::no_color), fmt::fg(fmt::rgb{}),
-      fmt::fg(fmt::terminal_color::black), fmt::bg(fmt::rgb{}),
-      fmt::bg(fmt::terminal_color::black), fmt::fg(fmt::rgb{0xFFFFFF}),
-      fmt::emphasis::bold, fmt::emphasis::strikethrough,
-      fmt::fg(fmt::color::coral) | fmt::bg(fmt::terminal_color::bright_white) |
-          fmt::emphasis::bold | fmt::emphasis::strikethrough};
+      fmt::fg(fmt::term_color::black), fmt::bg(fmt::rgb{}),
+      fmt::bg(fmt::term_color::black), fmt::fg(fmt::rgb{0xFFFFFF}),
+      fmt::emphasis::bold, fmt::emphasis::strike,
+      fmt::fg(fmt::color::coral) | fmt::bg(fmt::term_color::bright_white) |
+          fmt::emphasis::bold | fmt::emphasis::strike};
   check_color_comparisons(values, sizeof(values) / sizeof(values[0]));
 }
 
@@ -146,8 +146,8 @@ TEST(color_test, rgb_hash) {
 TEST(color_test, color_type_hash) {
   using fmt::detail::color_type;
   const color_type values[] = {
-      {}, fmt::no_color, fmt::rgb{}, fmt::terminal_color::black,
-      fmt::rgb{0xFFFFFF}, fmt::terminal_color::bright_white,
+      {}, fmt::no_color, fmt::rgb{}, fmt::term_color::black,
+      fmt::rgb{0xFFFFFF}, fmt::term_color::bright_white,
       fmt::color::coral, fmt::rgb{0xFF7F50}};
   check_color_hashes(values, sizeof(values) / sizeof(values[0]));
 }
@@ -155,17 +155,17 @@ TEST(color_test, color_type_hash) {
 TEST(color_test, text_style_hash) {
   const fmt::text_style values[] = {
       {}, fmt::fg(fmt::no_color), fmt::fg(fmt::rgb{}),
-      fmt::fg(fmt::terminal_color::black), fmt::bg(fmt::rgb{}),
-      fmt::bg(fmt::terminal_color::black), fmt::emphasis::bold,
-      fmt::emphasis::strikethrough, fmt::fg(fmt::color::coral),
+      fmt::fg(fmt::term_color::black), fmt::bg(fmt::rgb{}),
+      fmt::bg(fmt::term_color::black), fmt::emphasis::bold,
+      fmt::emphasis::strike, fmt::fg(fmt::color::coral),
       fmt::fg(fmt::rgb{0xFF7F50}),
-      fmt::fg(fmt::color::coral) | fmt::bg(fmt::terminal_color::bright_white) |
-          fmt::emphasis::bold | fmt::emphasis::strikethrough};
+      fmt::fg(fmt::color::coral) | fmt::bg(fmt::term_color::bright_white) |
+          fmt::emphasis::bold | fmt::emphasis::strike};
   check_color_hashes(values, sizeof(values) / sizeof(values[0]));
 }
 
 TEST(color_test, underlying) {
-  static_assert(std::is_same<fmt::underlying_type<fmt::terminal_color>::type,
+  static_assert(std::is_same<fmt::underlying_type<fmt::term_color>::type,
                              uint8_t>::value, "terminal color underlying type");
   static_assert(std::is_same<fmt::underlying_type<fmt::emphasis>::type,
                              uint8_t>::value, "emphasis underlying type");
@@ -175,7 +175,7 @@ TEST(color_test, underlying) {
                              uint64_t>::value, "text style underlying type");
 
   static_assert(std::is_same<decltype(fmt::to_underlying(
-                                 fmt::terminal_color::black)),
+                                 fmt::term_color::black)),
                              uint8_t>::value, "terminal color return type");
   static_assert(std::is_same<decltype(fmt::to_underlying(fmt::emphasis::bold)),
                              uint8_t>::value, "emphasis return type");
@@ -184,7 +184,7 @@ TEST(color_test, underlying) {
   static_assert(std::is_same<decltype(fmt::to_underlying(fmt::text_style{})),
                              uint64_t>::value, "text style return type");
 
-  static_assert(noexcept(fmt::to_underlying(fmt::terminal_color::black)),
+  static_assert(noexcept(fmt::to_underlying(fmt::term_color::black)),
                 "terminal color conversion must be noexcept");
   static_assert(noexcept(fmt::to_underlying(fmt::emphasis::bold)),
                 "emphasis conversion must be noexcept");
@@ -193,16 +193,16 @@ TEST(color_test, underlying) {
   static_assert(noexcept(fmt::to_underlying(fmt::text_style{})),
                 "text style conversion must be noexcept");
 
-  static_assert(fmt::to_underlying(fmt::terminal_color::black) ==
-                    static_cast<uint8_t>(fmt::terminal_color::black),
+  static_assert(fmt::to_underlying(fmt::term_color::black) ==
+                    static_cast<uint8_t>(fmt::term_color::black),
                 "terminal color conversion must preserve the enum value");
-  static_assert(fmt::to_underlying(fmt::terminal_color::bright_white) ==
-                    static_cast<uint8_t>(fmt::terminal_color::bright_white),
+  static_assert(fmt::to_underlying(fmt::term_color::bright_white) ==
+                    static_cast<uint8_t>(fmt::term_color::bright_white),
                 "bright terminal color conversion must preserve the enum value");
   static_assert(fmt::to_underlying(fmt::emphasis::bold) == 1,
                 "bold must retain its bit");
-  static_assert(fmt::to_underlying(fmt::emphasis::strikethrough) == 128,
-                "strikethrough must retain its bit");
+  static_assert(fmt::to_underlying(fmt::emphasis::strike) == 128,
+                "strike must retain its bit");
   static_assert(fmt::to_underlying(fmt::rgb{0xAB123456}) == 0x123456,
                 "packed RGB must have a zero high byte");
   static_assert(fmt::to_underlying(fmt::rgb{}) == 0,
@@ -210,14 +210,14 @@ TEST(color_test, underlying) {
   static_assert(fmt::to_underlying(fmt::text_style{}) == 0,
                 "default text style must be empty");
   static_assert(fmt::to_underlying(
-                    fmt::text_style{fmt::emphasis::strikethrough}) ==
+                    fmt::text_style{fmt::emphasis::strike}) ==
                     (uint64_t{128} << 54),
                 "text style conversion must preserve high emphasis bits");
 
   auto foreground = fmt::fg(fmt::rgb{0x123456});
-  auto background = fmt::bg(fmt::terminal_color::black);
+  auto background = fmt::bg(fmt::term_color::black);
   auto attributes = fmt::text_style{fmt::emphasis::bold |
-                                    fmt::emphasis::strikethrough};
+                                    fmt::emphasis::strike};
   auto style = foreground | background | attributes;
   EXPECT_EQ(fmt::to_underlying(style),
             fmt::to_underlying(foreground) | fmt::to_underlying(background) |
@@ -245,7 +245,7 @@ TEST(color_test, color_type_underlying) {
   const color_type colors[] = {
       color_type{}, color_type{fmt::rgb{0}},
       color_type{fmt::rgb{0x123456}},
-      color_type{fmt::terminal_color::black}};
+      color_type{fmt::term_color::black}};
   for (auto color : colors)
     EXPECT_EQ(fmt::to_underlying(color), static_cast<uint32_t>(color));
 }
@@ -255,7 +255,7 @@ TEST(color_test, color_type_composition) {
   // The reserved discriminator is invalid and is not a supported input.
   const color_type colors[] = {
       color_type{}, color_type{fmt::rgb{0}},
-      color_type{fmt::terminal_color::black}};
+      color_type{fmt::term_color::black}};
   const bool allowed[3][3] = {
       {true, true, true},
       {true, true, false},
@@ -358,12 +358,12 @@ TEST(color_test, text_style_color_constructor) {
   static_assert(std::is_convertible<color_type, fmt::text_style>::value,
                 "the color constructor must not be explicit");
   static_assert(noexcept(fmt::text_style{fmt::color::red,
-                                         fmt::terminal_color::black,
+                                         fmt::term_color::black,
                                          fmt::emphasis::bold}),
                 "color construction must be noexcept");
   static_assert(noexcept(fmt::text_style{fmt::emphasis::bold,
                                          fmt::color::red,
-                                         fmt::terminal_color::black}),
+                                         fmt::term_color::black}),
                 "emphasis-first construction must be noexcept");
   constexpr auto emphasis_only = fmt::text_style{fmt::emphasis::bold};
   static_assert(fmt::to_underlying(emphasis_only) == (uint64_t{1} << 54),
@@ -374,11 +374,11 @@ TEST(color_test, text_style_color_constructor) {
 
   const color_type colors[] = {
       fmt::no_color, fmt::rgb{}, fmt::rgb{0xFFFFFF},
-      fmt::terminal_color::black, fmt::terminal_color::bright_white,
+      fmt::term_color::black, fmt::term_color::bright_white,
       fmt::color::coral};
   const fmt::emphasis attributes[] = {
       fmt::emphasis{}, fmt::emphasis::bold | fmt::emphasis::faint,
-      fmt::emphasis::strikethrough, static_cast<fmt::emphasis>(0xFF)};
+      fmt::emphasis::strike, static_cast<fmt::emphasis>(0xFF)};
   for (auto foreground : colors) {
     fmt::text_style implicit = foreground;
     EXPECT_EQ(implicit, fmt::fg(foreground));
@@ -405,7 +405,7 @@ TEST(color_test, text_style_color_constructor) {
   EXPECT_EQ(fmt::text_style{}, fmt::text_style{fmt::emphasis{}});
   EXPECT_EQ(fmt::text_style{fmt::color::red}, fmt::fg(fmt::color::red));
   EXPECT_TRUE(fmt::text_style{fmt::rgb{}}.has_foreground());
-  EXPECT_TRUE(fmt::text_style{fmt::terminal_color::black}.has_foreground());
+  EXPECT_TRUE(fmt::text_style{fmt::term_color::black}.has_foreground());
   fmt::text_style listed = {fmt::color::red, fmt::color::blue,
                            fmt::emphasis::bold};
   EXPECT_EQ(listed, fmt::fg(fmt::color::red) | fmt::bg(fmt::color::blue) |
@@ -414,11 +414,11 @@ TEST(color_test, text_style_color_constructor) {
                                      fmt::color::blue};
   EXPECT_EQ(attributes_first, listed);
   EXPECT_EQ((fmt::text_style{fmt::emphasis::bold, fmt::no_color,
-                             fmt::terminal_color::black}),
-            fmt::bg(fmt::terminal_color::black) | fmt::emphasis::bold);
+                             fmt::term_color::black}),
+            fmt::bg(fmt::term_color::black) | fmt::emphasis::bold);
 #if FMT_USE_CONSTEXPR
   constexpr auto style = fmt::text_style{fmt::color::coral,
-                                         fmt::terminal_color::black,
+                                         fmt::term_color::black,
                                          fmt::emphasis::bold};
   static_assert(fmt::to_underlying(style.get_foreground()) ==
                     ((uint32_t{1} << 24) | 0xFF7F50),
@@ -429,7 +429,7 @@ TEST(color_test, text_style_color_constructor) {
   static_assert(style.get_emphasis() == fmt::emphasis::bold,
                 "constant evaluation must preserve emphasis");
   constexpr auto constexpr_attributes_first = fmt::text_style{
-      fmt::emphasis::bold, fmt::color::coral, fmt::terminal_color::black};
+      fmt::emphasis::bold, fmt::color::coral, fmt::term_color::black};
   static_assert(constexpr_attributes_first == style,
                 "both constructor orders must agree in constant evaluation");
 #endif
@@ -442,7 +442,7 @@ void check_fluent_emphasis(fmt::emphasis attribute,
     SCOPED_TRACE(bits);
     auto original = fmt::text_style{static_cast<fmt::emphasis>(bits),
                                     fmt::color::coral,
-                                    fmt::terminal_color::black};
+                                    fmt::term_color::black};
     auto mask = static_cast<unsigned>(attribute);
     EXPECT_EQ((original.*get)(), (bits & mask) != 0);
     for (bool enabled : {false, true}) {
@@ -450,7 +450,7 @@ void check_fluent_emphasis(fmt::emphasis attribute,
       auto style = original;
       auto expected = fmt::text_style{
           static_cast<fmt::emphasis>(enabled ? bits | mask : bits & ~mask),
-          fmt::color::coral, fmt::terminal_color::black};
+          fmt::color::coral, fmt::term_color::black};
       EXPECT_EQ(&(style.*set)(enabled), &style);
       EXPECT_EQ(style, expected);
       EXPECT_EQ((style.*get)(), enabled);
@@ -476,16 +476,16 @@ TEST(color_test, fluent_emphasis) {
   CHECK_EMPHASIS(blink);
   CHECK_EMPHASIS(reverse);
   CHECK_EMPHASIS(conceal);
-  CHECK_EMPHASIS(strikethrough);
+  CHECK_EMPHASIS(strike);
 #undef CHECK_EMPHASIS
 
   auto style = text_style{};
   EXPECT_EQ(&style.bold().faint().italic().underline().blink().reverse()
-                 .conceal().strikethrough(), &style);
+                 .conceal().strike(), &style);
   EXPECT_EQ(style.emph(), static_cast<fmt::emphasis>(0xFF));
   EXPECT_EQ(&style.bold(false).faint(false).italic(false).underline(false)
                  .blink(false).reverse(false).conceal(false)
-                 .strikethrough(false), &style);
+                 .strike(false), &style);
   EXPECT_EQ(style, text_style{});
 
   style.bold().faint();
@@ -511,9 +511,9 @@ TEST(color_test, fluent_components) {
                 "empty background getter must be constexpr");
   static_assert(empty.emph() == emphasis{},
                 "empty emphasis getter must be constexpr");
-  constexpr auto filled = text_style{emphasis::strikethrough};
-  static_assert(filled.emph() == emphasis::strikethrough &&
-                    filled.get_emphasis() == emphasis::strikethrough,
+  constexpr auto filled = text_style{emphasis::strike};
+  static_assert(filled.emph() == emphasis::strike &&
+                    filled.get_emphasis() == emphasis::strike,
                 "both emphasis getters must be constexpr in C++11");
   static_assert(noexcept(empty.fg()) && noexcept(empty.bg()) &&
                     noexcept(empty.emph()), "getters must be noexcept");
@@ -524,7 +524,7 @@ TEST(color_test, fluent_components) {
 
   const color_type colors[] = {
       fmt::no_color, fmt::rgb{}, fmt::color::coral,
-      fmt::terminal_color::black, fmt::terminal_color::bright_white};
+      fmt::term_color::black, fmt::term_color::bright_white};
   for (auto foreground : colors) {
     for (auto background : colors) {
       const auto original = text_style{
@@ -547,7 +547,7 @@ TEST(color_test, fluent_components) {
         EXPECT_EQ(style.has_background(), replacement != color_type{});
       }
       auto style = original;
-      auto selected = emphasis::bold | emphasis::blink | emphasis::strikethrough;
+      auto selected = emphasis::bold | emphasis::blink | emphasis::strike;
       EXPECT_EQ(&style.emph(selected), &style);
       EXPECT_EQ(style, (text_style{selected, foreground, background}));
       EXPECT_EQ(style.emph(), selected);
@@ -558,10 +558,10 @@ TEST(color_test, fluent_components) {
   }
 
   auto style = text_style{};
-  EXPECT_EQ(&style.fg(fmt::color::coral).bg(fmt::terminal_color::black)
+  EXPECT_EQ(&style.fg(fmt::color::coral).bg(fmt::term_color::black)
                  .emph(emphasis::italic).underline(), &style);
   EXPECT_EQ(style, (text_style{emphasis::italic | emphasis::underline,
-                               fmt::color::coral, fmt::terminal_color::black}));
+                               fmt::color::coral, fmt::term_color::black}));
   EXPECT_EQ(&style.fg(fmt::no_color).bg(fmt::no_color).emph(emphasis{}), &style);
   EXPECT_EQ(style, empty);
   EXPECT_EQ(fmt::format(style, "plain"), "plain");
@@ -579,7 +579,7 @@ TEST(color_test, fluent_presence) {
                     std::is_same<decltype(empty.has_bg()), bool>::value &&
                     std::is_same<decltype(empty.has_emph()), bool>::value,
                 "presence queries must return bool");
-  constexpr auto high_bit = text_style{emphasis::strikethrough};
+  constexpr auto high_bit = text_style{emphasis::strike};
   static_assert(high_bit.has_emph() && !high_bit.has_fg() && !high_bit.has_bg(),
                 "emphasis presence must be constexpr and independent of colors");
 
@@ -587,12 +587,12 @@ TEST(color_test, fluent_presence) {
     fmt::detail::color_type value;
     bool specified;
   } colors[] = {{fmt::no_color, false}, {fmt::rgb{}, true},
-                {fmt::terminal_color::black, true}, {fmt::color::coral, true},
-                {fmt::terminal_color::bright_white, true}};
+                {fmt::term_color::black, true}, {fmt::color::coral, true},
+                {fmt::term_color::bright_white, true}};
   const emphasis attributes[] = {
       emphasis{}, emphasis::bold, emphasis::faint, emphasis::italic,
       emphasis::underline, emphasis::blink, emphasis::reverse,
-      emphasis::conceal, emphasis::strikethrough, static_cast<emphasis>(0xFF)};
+      emphasis::conceal, emphasis::strike, static_cast<emphasis>(0xFF)};
   for (const auto& foreground : colors) {
     for (const auto& background : colors) {
       for (auto attribute : attributes) {
@@ -608,7 +608,7 @@ TEST(color_test, fluent_presence) {
     }
   }
 
-  auto style = text_style{emphasis::bold, fmt::rgb{}, fmt::terminal_color::black};
+  auto style = text_style{emphasis::bold, fmt::rgb{}, fmt::term_color::black};
   style.fg(fmt::no_color);
   EXPECT_FALSE(style.has_fg());
   EXPECT_TRUE(style.has_bg());
@@ -619,7 +619,7 @@ TEST(color_test, fluent_presence) {
   EXPECT_TRUE(style.has_emph());
   style.bold(false);
   EXPECT_FALSE(style.has_emph());
-  style.emph(emphasis::faint).fg(fmt::terminal_color::black).bg(fmt::rgb{});
+  style.emph(emphasis::faint).fg(fmt::term_color::black).bg(fmt::rgb{});
   EXPECT_TRUE(style.has_fg());
   EXPECT_TRUE(style.has_bg());
   EXPECT_TRUE(style.has_emph());
@@ -632,22 +632,22 @@ TEST(color_test, fluent_presence) {
 #if FMT_USE_CONSTEXPR
 TEST(color_test, fluent_constexpr) {
   constexpr auto all = fmt::text_style{}.bold().faint().italic().underline()
-                          .blink().reverse().conceal().strikethrough();
+                          .blink().reverse().conceal().strike();
   static_assert(all.is_bold() && all.is_faint() && all.is_italic() &&
                     all.is_underline() && all.is_blink() && all.is_reverse() &&
-                    all.is_conceal() && all.is_strikethrough(),
+                    all.is_conceal() && all.is_strike(),
                 "all emphasis setters must support constant evaluation");
   constexpr auto cleared = fmt::text_style{all}.bold(false).faint(false)
                               .italic(false).underline(false).blink(false)
-                              .reverse(false).conceal(false).strikethrough(false);
+                              .reverse(false).conceal(false).strike(false);
   static_assert(!cleared.has_emphasis(),
                 "disabling emphasis must support constant evaluation");
   constexpr auto replaced = fmt::text_style{all}.fg(fmt::color::coral)
-                               .bg(fmt::terminal_color::black)
+                               .bg(fmt::term_color::black)
                                .emph(fmt::emphasis::underline);
   static_assert(replaced == fmt::text_style{fmt::emphasis::underline,
                                              fmt::color::coral,
-                                             fmt::terminal_color::black},
+                                             fmt::term_color::black},
                 "component replacement must support constant evaluation");
   static_assert(replaced.has_fg() && replaced.has_bg() && replaced.has_emph(),
                 "presence queries must detect constexpr component replacement");
@@ -713,31 +713,76 @@ TEST(color_test, text_style) {
   EXPECT_NO_THROW((void) (bg(fmt::terminal_color::white) | fmt::text_style()));
 }
 
-TEST(color_test, terminal_color_boundaries) {
-  using fmt::terminal_color;
-  EXPECT_EQ(static_cast<int>(terminal_color::black), 0);
-  EXPECT_EQ(static_cast<int>(terminal_color::white), 7);
-  EXPECT_EQ(static_cast<int>(terminal_color::bright_black), 8);
-  EXPECT_EQ(static_cast<int>(terminal_color::bright_white), 15);
+TEST(color_test, short_names_compatibility) {
+  using fmt::emphasis;
+  using fmt::term_color;
+  using fmt::text_style;
+  static_assert(std::is_same<term_color, fmt::terminal_color>::value,
+                "terminal_color must remain an alias");
+  static_assert(emphasis::strike == emphasis::strikethrough,
+                "both names must select the same emphasis bit");
+  static_assert(text_style{emphasis::strike}.is_strikethrough() &&
+                    text_style{emphasis::strikethrough}.is_strike(),
+                "both queries must recognize either emphasis name");
 
-  EXPECT_TRUE(fg(terminal_color::black).has_foreground());
-  EXPECT_TRUE(bg(terminal_color::black).has_background());
+  for (unsigned i = 0; i < 16; ++i) {
+    const auto color = static_cast<term_color>(i);
+    const auto legacy = static_cast<fmt::terminal_color>(i);
+    const auto stored = fmt::detail::color_type{color};
+    EXPECT_EQ(fmt::detail::get<fmt::terminal_color>(stored), color);
+    EXPECT_TRUE(fmt::detail::holds_alternative<fmt::terminal_color>(stored));
+    EXPECT_EQ(fmt::detail::get<term_color>(
+                  fmt::detail::color_type{legacy}), color);
+    EXPECT_EQ(fmt::format(fg(color), "fg"), fmt::format(fg(legacy), "fg"));
+    EXPECT_EQ(fmt::format(bg(color), "bg"), fmt::format(bg(legacy), "bg"));
+  }
 
-  EXPECT_EQ(fmt::format(fg(terminal_color::black), "black"),
+  auto style = text_style{emphasis::bold, term_color::red,
+                         fmt::terminal_color::black};
+  EXPECT_EQ(&style.strike(), &style);
+  EXPECT_TRUE(style.is_strikethrough());
+  EXPECT_EQ(fmt::format(style, "mixed"),
+            "\x1b[1;9m\x1b[31m\x1b[40mmixed\x1b[0m");
+  EXPECT_EQ(&style.strikethrough(false), &style);
+  EXPECT_FALSE(style.is_strike());
+  style.strikethrough().strike(false);
+  EXPECT_FALSE(style.is_strikethrough());
+  EXPECT_EQ(style, (text_style{emphasis::bold, term_color::red,
+                              fmt::terminal_color::black}));
+  EXPECT_EQ(fmt::format(emphasis::strike, "strike"),
+            "\x1b[9mstrike\x1b[0m");
+#if FMT_USE_CONSTEXPR
+  constexpr auto cleared = text_style{}.strike().strikethrough(false);
+  static_assert(!cleared.is_strike() && !cleared.is_strikethrough(),
+                "mixed setters must support constant evaluation");
+#endif
+}
+
+TEST(color_test, term_color_boundaries) {
+  using fmt::term_color;
+  EXPECT_EQ(static_cast<int>(term_color::black), 0);
+  EXPECT_EQ(static_cast<int>(term_color::white), 7);
+  EXPECT_EQ(static_cast<int>(term_color::bright_black), 8);
+  EXPECT_EQ(static_cast<int>(term_color::bright_white), 15);
+
+  EXPECT_TRUE(fg(term_color::black).has_foreground());
+  EXPECT_TRUE(bg(term_color::black).has_background());
+
+  EXPECT_EQ(fmt::format(fg(term_color::black), "black"),
             "\x1b[30mblack\x1b[0m");
-  EXPECT_EQ(fmt::format(bg(terminal_color::black), "black"),
+  EXPECT_EQ(fmt::format(bg(term_color::black), "black"),
             "\x1b[40mblack\x1b[0m");
-  EXPECT_EQ(fmt::format(fg(terminal_color::white), "white"),
+  EXPECT_EQ(fmt::format(fg(term_color::white), "white"),
             "\x1b[37mwhite\x1b[0m");
-  EXPECT_EQ(fmt::format(bg(terminal_color::white), "white"),
+  EXPECT_EQ(fmt::format(bg(term_color::white), "white"),
             "\x1b[47mwhite\x1b[0m");
-  EXPECT_EQ(fmt::format(fg(terminal_color::bright_black), "bright black"),
+  EXPECT_EQ(fmt::format(fg(term_color::bright_black), "bright black"),
             "\x1b[90mbright black\x1b[0m");
-  EXPECT_EQ(fmt::format(bg(terminal_color::bright_black), "bright black"),
+  EXPECT_EQ(fmt::format(bg(term_color::bright_black), "bright black"),
             "\x1b[100mbright black\x1b[0m");
-  EXPECT_EQ(fmt::format(fg(terminal_color::bright_white), "bright white"),
+  EXPECT_EQ(fmt::format(fg(term_color::bright_white), "bright white"),
             "\x1b[97mbright white\x1b[0m");
-  EXPECT_EQ(fmt::format(bg(terminal_color::bright_white), "bright white"),
+  EXPECT_EQ(fmt::format(bg(term_color::bright_white), "bright white"),
             "\x1b[107mbright white\x1b[0m");
 }
 
