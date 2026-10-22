@@ -15,3 +15,5 @@ Combining emphasis values returns emphasis rather than text_style.
 terminal_color uses palette indices 0-15 instead of SGR codes.
 Packed color and text_style representations have changed, affecting
 binary compatibility and stored representations.
+
+- *(color)* Add fluent component accessors and per-attribute emphasis controls

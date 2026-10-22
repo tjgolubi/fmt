@@ -467,7 +467,8 @@ private:
    * Default construction produces an empty style. Conversion from `emphasis`
    * is implicit.
    */
-  constexpr text_style(emphasis emp = emphasis{}, detail::color_type fg = no_color,
+  constexpr text_style(emphasis emp=emphasis{},
+                       detail::color_type fg = no_color,
                        detail::color_type bg = no_color) noexcept
     : text_style{fg, bg, emp} {}
 
@@ -518,23 +519,35 @@ private:
   { return lhs |= rhs; }
 
   /// Returns true if a foreground color is specified.
-  FMT_NODISCARD constexpr auto has_foreground() const noexcept -> bool
+  FMT_NODISCARD constexpr auto has_fg() const noexcept -> bool
   { return ((style_ & fg_disc_mask) != 0); }
 
   /// Returns true if a background color is specified.
-  FMT_NODISCARD constexpr auto has_background() const noexcept -> bool
+  FMT_NODISCARD constexpr auto has_bg() const noexcept -> bool
   { return ((style_ & bg_disc_mask) != 0); }
 
   /// Returns true if at least one emphasis attribute is set.
-  FMT_NODISCARD constexpr auto has_emphasis() const noexcept -> bool
+  FMT_NODISCARD constexpr auto has_emph() const noexcept -> bool
   { return ((style_ & emph_mask) != 0); }
+
+  /// Returns true if a foreground color is specified.
+  FMT_NODISCARD constexpr auto has_foreground() const noexcept -> bool
+  { return has_fg(); }
+
+  /// Returns true if a background color is specified.
+  FMT_NODISCARD constexpr auto has_background() const noexcept -> bool
+  { return has_bg(); }
+
+  /// Returns true if at least one emphasis attribute is set.
+  FMT_NODISCARD constexpr auto has_emphasis() const noexcept -> bool
+  { return has_emph(); }
 
   /**
    * Returns the foreground color, preserving its RGB or terminal color kind.
    * The result can be passed to `fg()` or `bg()`.
    */
   FMT_NODISCARD
-  constexpr auto get_foreground() const noexcept -> detail::color_type {
+  constexpr auto fg() const noexcept -> detail::color_type {
     using value_t = detail::color_type::value_type;
     return detail::color_type{
                       narrow_cast<value_t>((style_ >> fg_shift) & value_mask)};
@@ -545,15 +558,175 @@ private:
    * The result can be passed to `fg()` or `bg()`.
    */
   FMT_NODISCARD
-  constexpr auto get_background() const noexcept -> detail::color_type {
+  constexpr auto bg() const noexcept -> detail::color_type {
     using value_t = detail::color_type::value_type;
     return detail::color_type{
                       narrow_cast<value_t>((style_ >> bg_shift) & value_mask)};
   }
 
   /// Returns the combined emphasis bit mask.
-  FMT_NODISCARD FMT_CONSTEXPR auto get_emphasis() const noexcept -> emphasis
+  FMT_NODISCARD constexpr auto emph() const noexcept -> emphasis
   { return enum_cast<emphasis>((style_ & emph_mask) >> emph_shift); }
+
+  /**
+   * Returns the foreground color, preserving its RGB or terminal color kind.
+   * The result can be passed to `fg()` or `bg()`.
+   */
+  FMT_NODISCARD constexpr auto get_foreground() const noexcept
+    -> detail::color_type
+  { return fg(); }
+
+  /**
+   * Returns the background color, preserving its RGB or terminal color kind.
+   * The result can be passed to `fg()` or `bg()`.
+   */
+  FMT_NODISCARD constexpr auto get_background() const noexcept
+    -> detail::color_type
+  { return bg(); }
+
+  /// Returns the combined emphasis bit mask, or `emphasis{}` if none is set.
+  FMT_NODISCARD constexpr auto get_emphasis() const noexcept -> emphasis
+  { return emph(); }
+
+  /**
+   * Replaces the foreground color and returns a reference to this style.
+   * Accepts named RGB constants, RGB values, terminal colors, or `no_color`.
+   * Passing `no_color` clears the foreground to unspecified; it does not store
+   * a terminal reset. Preserves the background color and emphasis attributes.
+   */
+  FMT_CONSTEXPR auto fg(detail::color_type color) noexcept -> text_style& {
+    style_ = (style_ & ~fg_mask)
+           | (value_type{to_underlying(color)} << fg_shift);
+    return *this;
+  }
+
+  /**
+   * Replaces the background color and returns a reference to this style.
+   * Accepts named RGB constants, RGB values, terminal colors, or `no_color`.
+   * Passing `no_color` clears the background to unspecified; it does not store
+   * a terminal reset. Preserves the foreground color and emphasis attributes.
+   */
+  FMT_CONSTEXPR auto bg(detail::color_type color) noexcept -> text_style& {
+    style_ = (style_ & ~bg_mask)
+           | (value_type{to_underlying(color)} << bg_shift);
+    return *this;
+  }
+
+  /**
+   * Replaces all emphasis attributes and returns a reference to this style.
+   * Only the bits in `em` remain enabled; `emphasis{}` clears all attributes.
+   * Preserves both colors. Bold and faint remain independent bits.
+   */
+  FMT_CONSTEXPR auto emph(emphasis em) noexcept -> text_style& {
+    style_ = (style_ & ~emph_mask) | (enum_cast<value_type>(em) << emph_shift);
+    return *this;
+  }
+
+private:
+
+  FMT_CONSTEXPR auto set(emphasis em, bool enable=true) noexcept -> text_style&
+  {
+    auto mask = enum_cast<value_type>(em) << emph_shift;
+    style_ = enable ? (style_ | mask) : (style_ & ~mask);
+    return *this;
+  }
+
+public:
+
+  /**
+   * Enables bold if `enable` is true, or disables it otherwise.
+   * Preserves faint, other attributes, and colors.
+   */
+  FMT_CONSTEXPR auto bold(bool enable = true) noexcept -> text_style&
+  { return set(emphasis::bold, enable); }
+
+  /**
+   * Enables faint if `enable` is true, or disables it otherwise.
+   * Preserves bold, other attributes, and colors.
+   */
+  FMT_CONSTEXPR auto faint(bool enable = true) noexcept -> text_style&
+  { return set(emphasis::faint, enable); }
+
+  /**
+   * Enables italic if `enable` is true, or disables it otherwise.
+   * Preserves all other attributes and colors.
+   */
+  FMT_CONSTEXPR auto italic(bool enable = true) noexcept -> text_style&
+  { return set(emphasis::italic, enable); }
+
+  /**
+   * Enables underline if `enable` is true, or disables it otherwise.
+   * Preserves other attributes and colors.
+   */
+  FMT_CONSTEXPR auto underline(bool enable = true) noexcept -> text_style&
+  { return set(emphasis::underline, enable); }
+
+  /**
+   * Enables blink if `enable` is true, or disables it otherwise.
+   * Preserves all other attributes and colors.
+   */
+  FMT_CONSTEXPR auto blink(bool enable = true) noexcept -> text_style&
+  { return set(emphasis::blink, enable); }
+
+  /**
+   * Enables reverse if `enable` is true, or disables it otherwise.
+   * Preserves all other attributes and colors.
+   */
+  FMT_CONSTEXPR auto reverse(bool enable = true) noexcept -> text_style&
+  { return set(emphasis::reverse, enable); }
+
+  /**
+   * Enables conceal if `enable` is true, or disables it otherwise.
+   * Preserves all other attributes and colors.
+   */
+  FMT_CONSTEXPR auto conceal(bool enable = true) noexcept -> text_style&
+  { return set(emphasis::conceal, enable); }
+
+  /**
+   * Enables strikethrough if `enable` is true, or disables it otherwise.
+   * Preserves other attributes and colors.
+   */
+  FMT_CONSTEXPR auto strikethrough(bool enable = true) noexcept -> text_style&
+  { return set(emphasis::strikethrough, enable); }
+
+private:
+
+  FMT_NODISCARD constexpr auto is_enabled(emphasis em) const noexcept -> bool
+  { return ((style_ & (enum_cast<value_type>(em) << emph_shift)) != 0); }
+
+public:
+
+  /// Returns true if bold is enabled, or false if it is unset.
+  FMT_NODISCARD constexpr auto is_bold() const noexcept -> bool
+  { return is_enabled(emphasis::bold); }
+
+  /// Returns true if faint is enabled, or false if it is unset.
+  FMT_NODISCARD constexpr auto is_faint() const noexcept -> bool
+  { return is_enabled(emphasis::faint); }
+
+  /// Returns true if italic is enabled, or false if it is unset.
+  FMT_NODISCARD constexpr auto is_italic() const noexcept -> bool
+  { return is_enabled(emphasis::italic); }
+
+  /// Returns true if underline is enabled, or false if it is unset.
+  FMT_NODISCARD constexpr auto is_underline() const noexcept -> bool
+  { return is_enabled(emphasis::underline); }
+
+  /// Returns true if blink is enabled, or false if it is unset.
+  FMT_NODISCARD constexpr auto is_blink() const noexcept -> bool
+  { return is_enabled(emphasis::blink); }
+
+  /// Returns true if reverse is enabled, or false if it is unset.
+  FMT_NODISCARD constexpr auto is_reverse() const noexcept -> bool
+  { return is_enabled(emphasis::reverse); }
+
+  /// Returns true if conceal is enabled, or false if it is unset.
+  FMT_NODISCARD constexpr auto is_conceal() const noexcept -> bool
+  { return is_enabled(emphasis::conceal); }
+
+  /// Returns true if strikethrough is enabled, or false if it is unset.
+  FMT_NODISCARD constexpr auto is_strikethrough() const noexcept -> bool
+  { return is_enabled(emphasis::strikethrough); }
 
   FMT_COLOR_COMPARISONS(text_style)
 

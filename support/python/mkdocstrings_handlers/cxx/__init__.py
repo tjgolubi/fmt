@@ -577,6 +577,8 @@ class CxxHandler(BaseHandler):
                 text += "</tbody></table>"
         if d.members is not None:
             for m in d.members:
+                if m.name in options.get("exclude_members", []):
+                    continue
                 text += self.render(m, options, locale=locale)
         text += "</div>\n"
         text += "</div>\n"

@@ -57,7 +57,7 @@ SGR codes emitted for foreground and background colors:
 
 ```cpp
 auto style = fmt::fg(fmt::terminal_color::black);
-bool specified = style.has_foreground(); // true
+bool specified = style.has_fg(); // true
 ```
 
 !!! note "Changed behavior"

@@ -31,7 +31,7 @@ fmt::println(style, "Important: {}", 42);
 
 ```cpp
 fmt::text_style style = fmt::emphasis::bold | fmt::emphasis::underline;
-if (style.has_emphasis())
+if (style.has_emph())
   fmt::println(style, "Important");
 ```
 
