@@ -23,6 +23,10 @@ binary compatibility and stored representations.
 - *(color)* [**breaking**] Add public `color_t` with C++11 variant access — Replace `detail::color_type` with `fmt::color_t`.
 Remove packed-integer construction and integral conversion.
 
+- *(color)* [**breaking**] Add palette colors, blending, and RGB conversion — Remove `rsvd_color` and `rgb::blend()`. Overlapping
+style colors now promote to RGB and combine by bitwise OR,
+including terminal colors. Use free `blend()` for channel averaging.
+
 
 ### 🐛 Bug Fixes
 

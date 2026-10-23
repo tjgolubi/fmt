@@ -8,7 +8,9 @@
 #include "fmt/color.h"
 
 #include <iterator>  // std::back_inserter
+#include <limits>    // std::numeric_limits
 #include <map>       // std::map
+#include <stdexcept>  // std::out_of_range
 #include <type_traits>  // std::is_convertible, std::is_same
 #include <unordered_map>  // std::unordered_map
 #include <unordered_set>  // std::unordered_set
@@ -79,16 +81,184 @@ TEST(color_test, rgb_comparisons) {
   check_color_comparisons(values, sizeof(values) / sizeof(values[0]));
 }
 
+TEST(color_test, gray_color) {
+  using fmt::gray_color;
+  static_assert(std::is_same<gray_color::value_type, uint8_t>::value &&
+                    std::is_same<fmt::underlying_type<gray_color>::type,
+                                 uint8_t>::value,
+                "grayscale indices use uint8_t");
+  static_assert(std::is_same<decltype(fmt::to_underlying(gray_color{})),
+                             uint8_t>::value,
+                "numeric access returns the zero-based index");
+  static_assert(std::is_convertible<gray_color, fmt::rgb>::value &&
+                    !std::is_convertible<unsigned, gray_color>::value,
+                "RGB conversion is implicit; index construction is explicit");
+  static_assert(noexcept(static_cast<fmt::rgb>(gray_color{})),
+                "RGB conversion must be noexcept");
+  constexpr gray_color first{0}, last{23};
+  static_assert(fmt::to_underlying(first) == 0 &&
+                    fmt::to_underlying(last) == 23,
+                "boundary indices must support C++11 constant evaluation");
+  constexpr fmt::rgb dark = first, light = last;
+  static_assert(dark == fmt::rgb{8, 8, 8} && light == fmt::rgb{238, 238, 238},
+                "grayscale conversion supports C++11 constant evaluation");
+  constexpr fmt::rgb middle = gray_color{12};
+  static_assert(middle == fmt::rgb{128, 128, 128},
+                "a temporary gray color supports C++11 RGB conversion");
+  EXPECT_EQ(fmt::to_underlying(gray_color{}), 0);
+  const unsigned indices[] = {0, 1, 12, 22, 23};
+  const unsigned levels[] = {8, 18, 128, 228, 238};
+  for (size_t i = 0; i != sizeof(indices) / sizeof(indices[0]); ++i) {
+    SCOPED_TRACE(indices[i]);
+    gray_color color{indices[i]};
+    fmt::rgb converted = color;
+    EXPECT_EQ(fmt::to_underlying(color), indices[i]);
+    EXPECT_EQ(converted.r, levels[i]);
+    EXPECT_EQ(converted.g, levels[i]);
+    EXPECT_EQ(converted.b, levels[i]);
+    auto copy = color;
+    gray_color assigned;
+    assigned = color;
+    EXPECT_EQ(copy, color);
+    EXPECT_EQ(assigned, color);
+  }
+  const unsigned invalid[] = {24, 255, 256,
+                             (std::numeric_limits<unsigned>::max)()};
+  for (auto index : invalid) {
+    SCOPED_TRACE(index);
+    EXPECT_THROW((void)gray_color{index}, std::out_of_range);
+  }
+  const gray_color ordered[] = {gray_color{0}, gray_color{1}, gray_color{23}};
+  check_color_comparisons(ordered, sizeof(ordered) / sizeof(ordered[0]));
+}
+
+TEST(color_test, cube_color) {
+  using fmt::cube_color;
+  static_assert(std::is_same<cube_color::value_type, uint8_t>::value &&
+                    std::is_same<fmt::underlying_type<cube_color>::type,
+                                 uint8_t>::value,
+                "cube indices use uint8_t");
+  static_assert(std::is_same<decltype(fmt::to_underlying(cube_color{})),
+                             uint8_t>::value,
+                "numeric access returns the zero-based index");
+  static_assert(std::is_convertible<cube_color, fmt::rgb>::value &&
+                    !std::is_convertible<unsigned, cube_color>::value,
+                "RGB conversion is implicit; index construction is explicit");
+  static_assert(noexcept(static_cast<fmt::rgb>(cube_color{})),
+                "RGB conversion must be noexcept");
+  constexpr cube_color first{0}, last{215}, middle{1, 2, 3};
+  constexpr fmt::rgb converted = middle;
+  static_assert(fmt::to_underlying(first) == 0 &&
+                    fmt::to_underlying(last) == 215 && last.r() == 5 &&
+                    last.g() == 5 && last.b() == 5,
+                "cube index decoding supports C++11 constant evaluation");
+  static_assert(converted == fmt::rgb{95, 135, 175} &&
+                    fmt::to_underlying(middle) == 51,
+                "cube encoding and RGB conversion support C++11");
+  EXPECT_EQ(fmt::to_underlying(cube_color{}), 0);
+  const unsigned invalid_indices[] = {216, 255, 256,
+                                     (std::numeric_limits<unsigned>::max)()};
+  for (auto index : invalid_indices) {
+    SCOPED_TRACE(index);
+    EXPECT_THROW((void)cube_color{index}, std::out_of_range);
+  }
+  const unsigned invalid_channels[] = {6, 255, 256,
+                                      (std::numeric_limits<unsigned>::max)()};
+  for (auto channel : invalid_channels) {
+    SCOPED_TRACE(channel);
+    EXPECT_THROW((void)(cube_color{channel, 0, 0}), std::out_of_range);
+    EXPECT_THROW((void)(cube_color{0, channel, 0}), std::out_of_range);
+    EXPECT_THROW((void)(cube_color{0, 0, channel}), std::out_of_range);
+    auto color = middle;
+    EXPECT_THROW(color.r(channel), std::out_of_range);
+    EXPECT_EQ(color, middle);
+    EXPECT_THROW(color.g(channel), std::out_of_range);
+    EXPECT_EQ(color, middle);
+    EXPECT_THROW(color.b(channel), std::out_of_range);
+    EXPECT_EQ(color, middle);
+  }
+  auto color = middle;
+  EXPECT_EQ(&color.r(5), &color);
+  EXPECT_EQ(color, (cube_color{5, 2, 3}));
+  EXPECT_EQ(&color.g(0), &color);
+  EXPECT_EQ(color, (cube_color{5, 0, 3}));
+  EXPECT_EQ(&color.b(4), &color);
+  EXPECT_EQ(color, (cube_color{5, 0, 4}));
+  cube_color assigned;
+  assigned = color;
+  EXPECT_EQ(assigned, color);
+  const cube_color ordered[] = {cube_color{0}, cube_color{1}, cube_color{5},
+                                cube_color{6}, cube_color{35}, cube_color{36},
+                                cube_color{215}};
+  check_color_comparisons(ordered, sizeof(ordered) / sizeof(ordered[0]));
+}
+
+TEST(color_test, cube_color_xterm_rgb) {
+  // Independent truth source: Xterm FAQ, "Can I set a color by its number?"
+  // https://invisible-island.net/xterm/xterm.faq.html#color_by_number
+  // Use its arithmetic formula, never the implementation's cube_levels table.
+  // Our zero-based index omits the SGR palette's offset of 16.
+  for (unsigned red = 0; red != 6; ++red) {
+    for (unsigned green = 0; green != 6; ++green) {
+      for (unsigned blue = 0; blue != 6; ++blue) {
+        unsigned index = 36 * red + 6 * green + blue;
+        SCOPED_TRACE(index);
+        fmt::cube_color color{index};
+        EXPECT_EQ(color.r(), red);
+        EXPECT_EQ(color.g(), green);
+        EXPECT_EQ(color.b(), blue);
+        EXPECT_EQ(fmt::to_underlying(color), index);
+        EXPECT_EQ(color, (fmt::cube_color{red, green, blue}));
+        fmt::rgb converted = color;
+        EXPECT_EQ(converted.r, red == 0 ? 0 : 55 + 40 * red);
+        EXPECT_EQ(converted.g, green == 0 ? 0 : 55 + 40 * green);
+        EXPECT_EQ(converted.b, blue == 0 ? 0 : 55 + 40 * blue);
+      }
+    }
+  }
+}
+
+TEST(color_test, terminal_color_xterm_rgb) {
+  // Agreed Xterm-default palette, independent of the implementation table.
+  const fmt::rgb expected[] = {
+      {0, 0, 0}, {205, 0, 0}, {0, 205, 0}, {205, 205, 0},
+      {0, 0, 238}, {205, 0, 205}, {0, 205, 205}, {229, 229, 229},
+      {127, 127, 127}, {255, 0, 0}, {0, 255, 0}, {255, 255, 0},
+      {92, 92, 255}, {255, 0, 255}, {0, 255, 255}, {255, 255, 255}};
+  const fmt::rgb named[] = {
+      fmt::color::term_black, fmt::color::term_red, fmt::color::term_green,
+      fmt::color::term_yellow, fmt::color::term_blue, fmt::color::term_magenta,
+      fmt::color::term_cyan, fmt::color::term_white,
+      fmt::color::term_bright_black, fmt::color::term_bright_red,
+      fmt::color::term_bright_green, fmt::color::term_bright_yellow,
+      fmt::color::term_bright_blue, fmt::color::term_bright_magenta,
+      fmt::color::term_bright_cyan, fmt::color::term_bright_white};
+  static_assert(std::is_convertible<fmt::term_color, fmt::rgb>::value,
+                "terminal-to-RGB conversion must be implicit");
+  constexpr fmt::rgb black = fmt::term_color::black;
+  constexpr fmt::rgb bright = fmt::term_color::bright_white;
+  static_assert(black == fmt::rgb{} && bright == fmt::rgb{255, 255, 255},
+                "terminal conversion supports C++11 constant evaluation");
+  for (unsigned index = 0; index != 16; ++index) {
+    SCOPED_TRACE(index);
+    fmt::rgb converted = static_cast<fmt::term_color>(index);
+    EXPECT_EQ(converted, expected[index]);
+    EXPECT_EQ(named[index], expected[index]);
+  }
+}
+
 TEST(color_test, color_type_comparisons) {
   using fmt::color_t;
   constexpr auto low = fmt::detail::unpack_color(uint32_t{1} << 24);
-  constexpr auto high = fmt::detail::unpack_color(uint32_t{3} << 24);
+  constexpr auto high = fmt::detail::unpack_color(uint32_t{2} << 24);
   static_assert(color_t{} < low, "unspecified differs from RGB black");
   static_assert(low < high, "RGB black differs from terminal black");
   const color_t values[] = {
       {}, fmt::no_color, fmt::rgb{}, fmt::term_color::black,
       fmt::rgb{0xFFFFFF}, fmt::term_color::bright_white,
-      fmt::rgb{0x123456}, fmt::color::coral, fmt::rgb{0xFF7F50}};
+      fmt::rgb{0x123456}, fmt::color::coral, fmt::rgb{0xFF7F50},
+      fmt::cube_color{0}, fmt::cube_color{215}, fmt::gray_color{0},
+      fmt::gray_color{23}};
   check_color_comparisons(values, sizeof(values) / sizeof(values[0]));
 }
 
@@ -102,7 +272,9 @@ TEST(color_test, text_style_comparisons) {
       fmt::bg(fmt::term_color::black), fmt::fg(fmt::rgb{0xFFFFFF}),
       fmt::emphasis::bold, fmt::emphasis::strike,
       fmt::fg(fmt::color::coral) | fmt::bg(fmt::term_color::bright_white) |
-          fmt::emphasis::bold | fmt::emphasis::strike};
+          fmt::emphasis::bold | fmt::emphasis::strike,
+      fmt::fg(fmt::cube_color{0}), fmt::bg(fmt::cube_color{215}),
+      fmt::fg(fmt::gray_color{0}), fmt::bg(fmt::gray_color{23})};
   check_color_comparisons(values, sizeof(values) / sizeof(values[0]));
 }
 
@@ -149,7 +321,8 @@ TEST(color_test, color_type_hash) {
   const color_t values[] = {
       {}, fmt::no_color, fmt::rgb{}, fmt::term_color::black,
       fmt::rgb{0xFFFFFF}, fmt::term_color::bright_white,
-      fmt::color::coral, fmt::rgb{0xFF7F50}};
+      fmt::color::coral, fmt::rgb{0xFF7F50}, fmt::cube_color{0},
+      fmt::cube_color{215}, fmt::gray_color{0}, fmt::gray_color{23}};
   check_color_hashes(values, sizeof(values) / sizeof(values[0]));
 }
 
@@ -161,7 +334,9 @@ TEST(color_test, text_style_hash) {
       fmt::emphasis::strike, fmt::fg(fmt::color::coral),
       fmt::fg(fmt::rgb{0xFF7F50}),
       fmt::fg(fmt::color::coral) | fmt::bg(fmt::term_color::bright_white) |
-          fmt::emphasis::bold | fmt::emphasis::strike};
+          fmt::emphasis::bold | fmt::emphasis::strike,
+      fmt::fg(fmt::cube_color{0}), fmt::bg(fmt::cube_color{215}),
+      fmt::fg(fmt::gray_color{0}), fmt::bg(fmt::gray_color{23})};
   check_color_hashes(values, sizeof(values) / sizeof(values[0]));
 }
 
@@ -246,86 +421,226 @@ TEST(color_test, color_type_underlying) {
   const color_t colors[] = {
       color_t{}, color_t{fmt::rgb{0}},
       color_t{fmt::rgb{0x123456}},
-      color_t{fmt::term_color::black}};
+      color_t{fmt::term_color::black}, color_t{fmt::cube_color{215}},
+      color_t{fmt::gray_color{23}}};
   const uint32_t expected[] = {
       0u, (uint32_t{1} << 24),
-      (uint32_t{1} << 24) | 0x123456u, (uint32_t{3} << 24)};
+      (uint32_t{1} << 24) | 0x123456u, (uint32_t{2} << 24),
+      (uint32_t{3} << 24) | 215u, (uint32_t{4} << 24) | 23u};
   for (size_t i = 0; i < sizeof(colors) / sizeof(colors[0]); ++i)
     EXPECT_EQ(fmt::to_underlying(colors[i]), expected[i]);
 }
 
+namespace {
+struct composition_sample {
+  fmt::color_t color;
+  fmt::rgb promoted;
+};
+
+const composition_sample composition_samples[] = {
+    {fmt::no_color, {0, 0, 0}},
+    {fmt::rgb{1, 2, 3}, {1, 2, 3}},
+    {fmt::term_color::red, {205, 0, 0}},
+    {fmt::cube_color{1, 2, 3}, {95, 135, 175}},
+    {fmt::gray_color{12}, {128, 128, 128}}};
+
+// Expected RGB values above are independent of the conversion implementation.
+fmt::color_t expected_composition(size_t left, size_t right) {
+  if (left == 0) return composition_samples[right].color;
+  if (right == 0) return composition_samples[left].color;
+  auto lhs = composition_samples[left].promoted;
+  auto rhs = composition_samples[right].promoted;
+  return fmt::rgb{static_cast<uint8_t>(lhs.r | rhs.r),
+                 static_cast<uint8_t>(lhs.g | rhs.g),
+                 static_cast<uint8_t>(lhs.b | rhs.b)};
+}
+}  // namespace
+
 TEST(color_test, color_type_composition) {
-  using fmt::color_t;
-  // The reserved discriminator is invalid and is not a supported input.
-  const color_t colors[] = {
-      color_t{}, color_t{fmt::rgb{0}},
-      color_t{fmt::term_color::black}};
-  const bool allowed[3][3] = {
-      {true, true, true},
-      {true, true, false},
-      {true, false, false}};
-
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
+  static_assert(noexcept(fmt::color_t{} | fmt::color_t{}) &&
+                    noexcept(std::declval<fmt::color_t&>() |= fmt::color_t{}),
+                "color composition must be noexcept");
+  for (size_t i = 0; i != 5; ++i) {
+    for (size_t j = 0; j != 5; ++j) {
       SCOPED_TRACE(fmt::format("color kinds {} and {}", i, j));
-      auto lhs = colors[i];
-      auto rhs = colors[j];
-      if (allowed[i][j]) {
-        auto result = lhs | rhs;
-        EXPECT_EQ(fmt::to_underlying(result),
-                  fmt::to_underlying(lhs) | fmt::to_underlying(rhs));
-        EXPECT_EQ(fmt::to_underlying(lhs),
-                  fmt::to_underlying(colors[i]));
-        EXPECT_EQ(&(lhs |= rhs), &lhs);
-        EXPECT_EQ(fmt::to_underlying(lhs), fmt::to_underlying(result));
-      } else {
-        EXPECT_THROW((void) (lhs | rhs), fmt::format_error);
-        EXPECT_THROW((void) (lhs |= rhs), fmt::format_error);
-      }
-      if (!allowed[i][j]) {
-        EXPECT_EQ(fmt::to_underlying(lhs), fmt::to_underlying(colors[i]));
-      }
-      EXPECT_EQ(fmt::to_underlying(rhs), fmt::to_underlying(colors[j]));
+      auto lhs = composition_samples[i].color;
+      auto rhs = composition_samples[j].color;
+      const auto expected = expected_composition(i, j);
+      EXPECT_EQ(lhs | rhs, expected);
+      EXPECT_EQ(lhs, composition_samples[i].color);
+      EXPECT_EQ(&(lhs |= rhs), &lhs);
+      EXPECT_EQ(lhs, expected);
+      EXPECT_EQ(rhs, composition_samples[j].color);
     }
+    auto self = composition_samples[i].color;
+    EXPECT_EQ(&(self |= self), &self);
+    EXPECT_EQ(self, expected_composition(i, i));
   }
-
-  auto lhs = color_t{fmt::rgb{0xC0F000}};
-  auto rhs = color_t{fmt::rgb{0x000FEE}};
-  EXPECT_EQ(fmt::to_underlying(lhs | rhs), (uint32_t{1} << 24) | 0xC0FFEE);
-  EXPECT_EQ(fmt::to_underlying(lhs), (uint32_t{1} << 24) | 0xC0F000);
-  EXPECT_EQ(fmt::to_underlying(rhs), (uint32_t{1} << 24) | 0x000FEE);
+  auto lhs = fmt::color_t{fmt::rgb{0xC0F000}};
+  auto rhs = fmt::color_t{fmt::rgb{0x000FEE}};
+  EXPECT_EQ(lhs | rhs, fmt::color_t{fmt::rgb{0xC0FFEE}});
+  EXPECT_EQ(lhs, fmt::color_t{fmt::rgb{0xC0F000}});
+  EXPECT_EQ(rhs, fmt::color_t{fmt::rgb{0x000FEE}});
 }
 
 TEST(color_test, color_sentinels) {
   using fmt::no_color_t;
-  using fmt::rsvd_color;
-  static_assert(std::is_empty<no_color_t>::value &&
-                    std::is_empty<rsvd_color>::value,
-                "sentinels have no payload");
+  static_assert(std::is_empty<no_color_t>::value,
+                "the unspecified sentinel has no payload");
   static_assert(std::is_default_constructible<no_color_t>::value,
                 "the unspecified sentinel must be constructible");
-  static_assert(!std::is_default_constructible<rsvd_color>::value,
-                "the reserved alternative must not be constructible");
   // GCC 4.9's standard library does not provide this trait.
 #if !FMT_GCC_VERSION || FMT_GCC_VERSION >= 500
-  static_assert(std::is_trivially_copyable<rsvd_color>::value &&
-                    std::is_trivially_copyable<fmt::color_t>::value,
+  static_assert(std::is_trivially_copyable<fmt::color_t>::value,
                 "alternative replacement relies on trivial union copying");
 #endif
   static_assert(std::is_same<fmt::underlying_type<no_color_t>::type,
-                             unsigned>::value &&
-                    std::is_same<fmt::underlying_type<rsvd_color>::type,
-                                 unsigned>::value,
-                "sentinels have an unsigned numeric representation");
+                             unsigned>::value,
+                "the sentinel has an unsigned numeric representation");
   static_assert(fmt::to_underlying(fmt::no_color) == 0,
                 "the unspecified sentinel has zero payload");
-  static_assert(noexcept(fmt::to_underlying(fmt::no_color)) &&
-                    noexcept(fmt::to_underlying(std::declval<rsvd_color>())),
+  static_assert(noexcept(fmt::to_underlying(fmt::no_color)),
                 "sentinel conversion must be noexcept");
-  // Do not manufacture a reserved object just to test its numeric conversion.
-  static_assert(std::is_same<decltype(fmt::to_underlying(
-                                 std::declval<rsvd_color>())), unsigned>::value,
-                "reserved conversion must be available to generic visitors");
+}
+
+TEST(color_test, text_style_empty_and_clear) {
+  constexpr auto empty = fmt::text_style{};
+  static_assert(empty.empty(), "default style must be empty");
+  static_assert(!fmt::text_style{fmt::rgb{}}.empty(),
+                "specified RGB black must not be empty");
+  static_assert(!fmt::text_style{fmt::term_color::black}.empty(),
+                "specified terminal black must not be empty");
+  static_assert(!fmt::text_style{fmt::emphasis::strike}.empty(),
+                "emphasis alone must not be empty");
+  static_assert(noexcept(empty.empty()) &&
+                    noexcept(std::declval<fmt::text_style&>().clear()),
+                "empty and clear must be noexcept");
+  static_assert(std::is_same<decltype(empty.empty()), bool>::value &&
+                    std::is_same<decltype(std::declval<fmt::text_style&>().clear()),
+                                 fmt::text_style&>::value,
+                "empty returns bool and clear returns a style reference");
+
+  const fmt::color_t colors[] = {fmt::no_color, fmt::rgb{},
+      fmt::term_color::black, fmt::cube_color{0}, fmt::gray_color{0}};
+  const fmt::emphasis attributes[] = {
+      fmt::emphasis{}, fmt::emphasis::bold, fmt::emphasis::strike,
+      static_cast<fmt::emphasis>(255)};
+  for (size_t fg = 0; fg < 5; ++fg) {
+    for (size_t bg = 0; bg < 5; ++bg) {
+      for (auto attribute : attributes) {
+        auto style = fmt::text_style{colors[fg], colors[bg], attribute};
+        EXPECT_EQ(style.empty(),
+                  fg == 0 && bg == 0 && attribute == fmt::emphasis{});
+        EXPECT_EQ(&style.clear(), &style);
+        EXPECT_TRUE(style.empty());
+        EXPECT_EQ(style, fmt::text_style{});
+        EXPECT_FALSE(style.has_fg());
+        EXPECT_FALSE(style.has_bg());
+        EXPECT_FALSE(style.has_emph());
+        EXPECT_EQ(fmt::format(style, "plain"), "plain");
+        EXPECT_EQ(&style.clear(), &style);
+        EXPECT_TRUE(style.empty());
+        style.clear().fg(fmt::gray_color{12}).underline();
+        EXPECT_EQ(style, (fmt::text_style{fmt::gray_color{12}, fmt::no_color,
+                                         fmt::emphasis::underline}));
+      }
+    }
+  }
+}
+
+TEST(color_test, text_style_color_composition) {
+  static_assert(noexcept(fmt::text_style{} | fmt::text_style{}) &&
+                    noexcept(std::declval<fmt::text_style&>() |=
+                             fmt::text_style{}),
+                "style composition must be noexcept");
+  for (size_t i = 0; i != 5; ++i) {
+    for (size_t j = 0; j != 5; ++j) {
+      SCOPED_TRACE(fmt::format("style color kinds {} and {}", i, j));
+      const auto left = fmt::text_style{composition_samples[i].color,
+                                       composition_samples[j].color,
+                                       fmt::emphasis::bold};
+      const auto right = fmt::text_style{composition_samples[j].color,
+                                        composition_samples[i].color,
+                                        fmt::emphasis::strike};
+      const auto expected = fmt::text_style{
+          expected_composition(i, j), expected_composition(j, i),
+          fmt::emphasis::bold | fmt::emphasis::strike};
+      EXPECT_EQ(left | right, expected);
+      auto assigned = left;
+      EXPECT_EQ(&(assigned |= right), &assigned);
+      EXPECT_EQ(assigned, expected);
+      EXPECT_EQ(left.fg(), composition_samples[i].color);
+      EXPECT_EQ(right.bg(), composition_samples[i].color);
+      auto self = left;
+      self.operator|=(self);
+      EXPECT_EQ(self, (fmt::text_style{expected_composition(i, i),
+                                      expected_composition(j, j),
+                                      fmt::emphasis::bold}));
+    }
+  }
+}
+
+TEST(color_test, palette_style_replacement) {
+  const fmt::color_t replacements[] = {
+      fmt::gray_color{23}, fmt::cube_color{215}, fmt::term_color::black,
+      fmt::rgb{}, fmt::no_color};
+  auto style = fmt::text_style{fmt::gray_color{0}, fmt::gray_color{23},
+                              static_cast<fmt::emphasis>(0xFF)};
+  for (auto replacement : replacements) {
+    const auto background = style.bg();
+    EXPECT_EQ(&style.fg(replacement), &style);
+    EXPECT_EQ(style.fg(), replacement);
+    EXPECT_EQ(style.bg(), background);
+    EXPECT_EQ(style.has_fg(), replacement.index() != 0);
+    EXPECT_EQ(fmt::to_underlying(style.emph()), 0xFF);
+  }
+  style.fg(fmt::gray_color{23});
+  for (auto replacement : replacements) {
+    EXPECT_EQ(&style.bg(replacement), &style);
+    EXPECT_EQ(style.bg(), replacement);
+    EXPECT_EQ(style.fg(), fmt::color_t{fmt::gray_color{23}});
+    EXPECT_EQ(style.has_bg(), replacement.index() != 0);
+    EXPECT_EQ(fmt::to_underlying(style.emph()), 0xFF);
+  }
+  style.fg(fmt::no_color).emph(fmt::emphasis{});
+  EXPECT_EQ(style, fmt::text_style{});
+}
+
+namespace {
+template<typename Char>
+std::basic_string<Char> color_escape(fmt::color_t color, bool background) {
+  const auto escape = fmt::detail::ansi_color_escape<Char>{color, background};
+  return std::basic_string<Char>{escape.begin(), escape.end()};
+}
+}  // namespace
+
+TEST(color_test, palette_ansi_escape) {
+  const struct {
+    fmt::color_t color;
+    const char* foreground;
+    const char* background;
+  } samples[] = {
+      {fmt::no_color, "", ""},
+      {fmt::rgb{1, 2, 3}, "\x1b[38;2;001;002;003m", "\x1b[48;2;001;002;003m"},
+      {fmt::term_color::red, "\x1b[31m", "\x1b[41m"},
+      {fmt::term_color::bright_white, "\x1b[97m", "\x1b[107m"},
+      {fmt::cube_color{0}, "\x1b[38;5;016m", "\x1b[48;5;016m"},
+      {fmt::cube_color{215}, "\x1b[38;5;231m", "\x1b[48;5;231m"},
+      {fmt::gray_color{0}, "\x1b[38;5;232m", "\x1b[48;5;232m"},
+      {fmt::gray_color{23}, "\x1b[38;5;255m", "\x1b[48;5;255m"}};
+  for (const auto& sample : samples) {
+    for (bool background : {false, true}) {
+      const auto expected = std::string{background ? sample.background
+                                                  : sample.foreground};
+      EXPECT_EQ(color_escape<char>(sample.color, background), expected);
+      EXPECT_EQ(color_escape<wchar_t>(sample.color, background),
+                (std::wstring{expected.begin(), expected.end()}));
+      const auto style =
+          background ? fmt::bg(sample.color) : fmt::fg(sample.color);
+      EXPECT_EQ(fmt::format(style, "value"),
+                expected + "value" + (expected.empty() ? "" : "\x1b[0m"));
+    }
+  }
 }
 
 namespace {
@@ -360,7 +675,6 @@ void check_color_access(T value) {
   const color_t& constant = color;
   EXPECT_EQ(color.index(), Index);
   EXPECT_TRUE(fmt::holds_alternative<T>(constant));
-  EXPECT_FALSE(fmt::holds_alternative<fmt::rsvd_color>(constant));
   EXPECT_EQ(&fmt::get<T>(color), &fmt::get<Index>(color));
   EXPECT_EQ(&fmt::get<T>(constant), &fmt::get<Index>(constant));
   EXPECT_EQ(fmt::get_if<T>(&color), &fmt::get<T>(color));
@@ -387,7 +701,8 @@ void check_color_access(T value) {
             fmt::to_underlying(value));
 
   const color_t alternatives[] = {fmt::no_color, fmt::rgb{},
-                                 fmt::term_color::black};
+                                 fmt::term_color::black, fmt::cube_color{0},
+                                 fmt::gray_color{0}};
   for (auto other : alternatives) {
     if (other.index() == Index) continue;
     const auto& const_other = other;
@@ -411,7 +726,8 @@ void check_color_access(T value) {
 template<typename T>
 void check_color_assignment(T replacement) {
   const fmt::color_t original[] = {fmt::no_color, fmt::rgb{1, 2, 3},
-                                 fmt::term_color::bright_white};
+                                  fmt::term_color::bright_white,
+                                  fmt::cube_color{215}, fmt::gray_color{23}};
   for (auto color : original) {
     const fmt::color_t expected = replacement;
     EXPECT_EQ(&(color = replacement), &color);
@@ -430,9 +746,24 @@ struct color_kind_visitor {
   constexpr size_t operator()(fmt::no_color_t) const { return 0; }
 #endif
   constexpr size_t operator()(fmt::rgb) const { return 1; }
-  constexpr size_t operator()(fmt::rsvd_color) const { return 2; }
-  constexpr size_t operator()(fmt::term_color) const { return 3; }
+  constexpr size_t operator()(fmt::term_color) const { return 2; }
+  constexpr size_t operator()(fmt::cube_color) const { return 3; }
+  constexpr size_t operator()(fmt::gray_color) const { return 4; }
 };
+
+template<typename T, size_t Index>
+constexpr bool check_color_constexpr_access(fmt::color_t&& color) {
+  return
+#if !FMT_GCC_VERSION || FMT_GCC_VERSION >= 500
+         // GCC 4.9 rejects constexpr pointer comparisons involving temporaries.
+         fmt::get_if<T>(&color) == &fmt::get<Index>(color) &&
+         fmt::get_if<Index>(&color) == &fmt::get<T>(color) &&
+#endif
+         color_kind_visitor{}(fmt::get<Index>(std::move(color))) == Index &&
+         fmt::visit(color_kind_visitor{}, color) == Index &&
+         fmt::visit(color_kind_visitor{}, std::move(color)) == Index &&
+         fmt::fg(color).fg() == color && fmt::bg(color).bg() == color;
+}
 
 struct color_category_visitor {
   color_category_visitor() = default;
@@ -454,7 +785,14 @@ struct color_mutating_visitor {
     ++calls;
     value.r = 42;
   }
-  void operator()(fmt::rsvd_color&) const { ++calls; }
+  void operator()(fmt::cube_color& value) const {
+    ++calls;
+    value.r(5);
+  }
+  void operator()(fmt::gray_color& value) const {
+    ++calls;
+    value = fmt::gray_color{23};
+  }
   void operator()(fmt::term_color& value) const {
     ++calls;
     value = fmt::term_color::bright_white;
@@ -479,9 +817,13 @@ constexpr bool check_color_constexpr_assignment() {
   bool rgb_ok = fmt::get<1>(color) == fmt::rgb{4, 2, 5};
   color = fmt::term_color::black;
   bool terminal_ok = fmt::holds_alternative<fmt::term_color>(color) &&
-                     fmt::get<3>(color) == fmt::term_color::black;
+                     fmt::get<2>(color) == fmt::term_color::black;
+  color = fmt::cube_color{215};
+  bool cube_ok = fmt::get<3>(color) == fmt::cube_color{215};
+  color = fmt::gray_color{23};
+  bool gray_ok = fmt::get<4>(color) == fmt::gray_color{23};
   color = fmt::no_color;
-  return rgb_ok && terminal_ok &&
+  return rgb_ok && terminal_ok && cube_ok && gray_ok &&
          fmt::holds_alternative<fmt::no_color_t>(color);
 }
 #endif
@@ -491,8 +833,12 @@ TEST(color_test, color_variant_access) {
   check_color_access<fmt::no_color_t, 0>(fmt::no_color);
   check_color_access<fmt::rgb, 1>(fmt::rgb{});
   check_color_access<fmt::rgb, 1>(fmt::color::coral);
-  check_color_access<fmt::term_color, 3>(fmt::term_color::black);
-  check_color_access<fmt::term_color, 3>(fmt::term_color::bright_white);
+  check_color_access<fmt::term_color, 2>(fmt::term_color::black);
+  check_color_access<fmt::term_color, 2>(fmt::term_color::bright_white);
+  check_color_access<fmt::cube_color, 3>(fmt::cube_color{0});
+  check_color_access<fmt::cube_color, 3>(fmt::cube_color{215});
+  check_color_access<fmt::gray_color, 4>(fmt::gray_color{0});
+  check_color_access<fmt::gray_color, 4>(fmt::gray_color{23});
   auto color = fmt::color_t{fmt::rgb{1, 2, 3}};
   fmt::get<fmt::rgb>(color).r = 4;
   fmt::get<1>(color).g = 5;
@@ -500,7 +846,7 @@ TEST(color_test, color_variant_access) {
   fmt::get_if<1>(&color)->r = 7;
   EXPECT_EQ(fmt::get<fmt::rgb>(color), (fmt::rgb{7, 5, 6}));
   EXPECT_EQ(fmt::get_if<2>(&color), nullptr);
-  EXPECT_EQ(fmt::get_if<fmt::rsvd_color>(&color), nullptr);
+  EXPECT_EQ(fmt::get_if<fmt::gray_color>(&color), nullptr);
   EXPECT_THROW((void)fmt::get<2>(color), fmt::format_error);
 }
 
@@ -510,8 +856,11 @@ TEST(color_test, color_variant_assignment) {
   check_color_assignment(fmt::color::coral);
   check_color_assignment(fmt::term_color::black);
   check_color_assignment(fmt::term_color::bright_white);
+  check_color_assignment(fmt::cube_color{215});
+  check_color_assignment(fmt::gray_color{23});
   const fmt::color_t colors[] = {fmt::no_color, fmt::rgb{1, 2, 3},
-                                fmt::term_color::black};
+                                fmt::term_color::black, fmt::cube_color{1, 2, 3},
+                                fmt::gray_color{12}};
   for (const auto& source : colors) {
     fmt::color_t copy(source);
     fmt::color_t moved(std::move(copy));
@@ -529,10 +878,12 @@ TEST(color_test, color_variant_assignment) {
 
 TEST(color_test, color_variant_visit) {
   const fmt::color_t colors[] = {fmt::no_color, fmt::rgb{1, 2, 3},
-                                fmt::term_color::black};
+                                fmt::term_color::black, fmt::cube_color{1, 2, 3},
+                                fmt::gray_color{12}};
   const fmt::color_t changed[] = {fmt::no_color, fmt::rgb{42, 2, 3},
-                                fmt::term_color::bright_white};
-  for (size_t i = 0; i < 3; ++i) {
+                                 fmt::term_color::bright_white,
+                                 fmt::cube_color{5, 2, 3}, fmt::gray_color{23}};
+  for (size_t i = 0; i < 5; ++i) {
     auto color = colors[i];
     const auto& constant = color;
     EXPECT_EQ(fmt::visit(color_kind_visitor{}, constant), color.index());
@@ -559,6 +910,13 @@ TEST(color_test, color_variant_visit) {
 }
 
 TEST(color_test, color_variant_constexpr) {
+  static_assert(
+      check_color_constexpr_access<fmt::no_color_t, 0>(fmt::no_color) &&
+          check_color_constexpr_access<fmt::rgb, 1>(fmt::rgb{1, 2, 3}) &&
+          check_color_constexpr_access<fmt::term_color, 2>(fmt::term_color::red) &&
+          check_color_constexpr_access<fmt::cube_color, 3>(fmt::cube_color{215}) &&
+          check_color_constexpr_access<fmt::gray_color, 4>(fmt::gray_color{23}),
+      "mutable access, visitation, and style factories must be constexpr in C++11");
 #if FMT_GCC_VERSION && FMT_GCC_VERSION < 500
   // GCC 4.9 requires static storage for the constexpr pointer checks below.
   static constexpr fmt::color_t empty{};
@@ -569,12 +927,24 @@ TEST(color_test, color_variant_constexpr) {
   constexpr fmt::color_t rgb = fmt::rgb{1, 2, 3};
   constexpr fmt::color_t terminal = fmt::term_color::black;
 #endif
+  constexpr fmt::color_t cube = fmt::cube_color{215};
+  constexpr fmt::color_t gray = fmt::gray_color{23};
+  static_assert(fmt::get<3>(cube) == fmt::cube_color{215} &&
+                    fmt::get<4>(gray) == fmt::gray_color{23},
+                "palette access must be constexpr in C++11");
+  static_assert(fmt::detail::unpack_color(fmt::to_underlying(cube)) == cube &&
+                    fmt::detail::unpack_color(fmt::to_underlying(gray)) == gray,
+                "palette packing must round-trip in constant evaluation");
+  constexpr auto palette_style = fmt::text_style{cube, gray, fmt::emphasis::bold};
+  static_assert(palette_style.fg() == cube && palette_style.bg() == gray &&
+                    palette_style.emph() == fmt::emphasis::bold,
+                "palette style getters must be constexpr in C++11");
   static_assert(empty.index() == 0 && fmt::holds_alternative<fmt::no_color_t>(empty),
                 "default construction must hold the unspecified alternative");
   static_assert(rgb.index() == 1 && fmt::get<fmt::rgb>(rgb).g == 2 &&
                     fmt::get<1>(rgb).b == 3,
                 "RGB type and index access must be constexpr in C++11");
-  static_assert(terminal.index() == 3 &&
+  static_assert(terminal.index() == 2 &&
                     fmt::get<fmt::term_color>(terminal) == fmt::term_color::black,
                 "terminal black must remain specified in constant evaluation");
   static_assert(fmt::get_if<1>(&rgb) == &fmt::get<fmt::rgb>(rgb) &&
@@ -584,7 +954,9 @@ TEST(color_test, color_variant_constexpr) {
                 "pointer access must be constexpr in C++11");
   static_assert(fmt::visit(color_kind_visitor{}, empty) == 0 &&
                     fmt::visit(color_kind_visitor{}, rgb) == 1 &&
-                    fmt::visit(color_kind_visitor{}, terminal) == 3,
+                    fmt::visit(color_kind_visitor{}, terminal) == 2 &&
+                    fmt::visit(color_kind_visitor{}, cube) == 3 &&
+                    fmt::visit(color_kind_visitor{}, gray) == 4,
                 "visitation must be constexpr in C++11");
 #if FMT_USE_CONSTEXPR
   static_assert(check_color_constexpr_assignment(),
@@ -607,7 +979,7 @@ TEST(color_test, color_variant_style_values) {
   const auto style =
       fmt::text_style{foreground, background, fmt::emphasis::strike};
   fmt::get<1>(foreground).r = 255;
-  fmt::get<3>(background) = fmt::term_color::white;
+  fmt::get<2>(background) = fmt::term_color::white;
   EXPECT_EQ(fmt::get<fmt::rgb>(style.fg()), (fmt::rgb{1, 2, 3}));
   EXPECT_EQ(fmt::get<fmt::term_color>(style.bg()), fmt::term_color::black);
   auto extracted = style.fg();
@@ -643,6 +1015,20 @@ TEST(color_test, rgb) {
   EXPECT_EQ(static_cast<uint32_t>(fmt::color::white), 0xFFFFFFu);
 }
 
+TEST(color_test, rgb_or) {
+  constexpr auto lhs = fmt::rgb{0xC0F000};
+  constexpr auto rhs = fmt::rgb{0x000FEE};
+  static_assert((lhs | rhs) == fmt::rgb{0xC0FFEE},
+                "RGB OR supports C++11 constant evaluation");
+  static_assert(noexcept(lhs | rhs), "RGB OR must be noexcept");
+  EXPECT_EQ(lhs | rhs, fmt::rgb{0xC0FFEE});
+  EXPECT_EQ(lhs, fmt::rgb{0xC0F000});
+  EXPECT_EQ(rhs, fmt::rgb{0x000FEE});
+  auto assigned = lhs;
+  EXPECT_EQ(&(assigned |= rhs), &assigned);
+  EXPECT_EQ(assigned, lhs | rhs);
+}
+
 TEST(color_test, rgb_blend) {
   static_assert(std::is_same<decltype(fmt::blend(fmt::rgb{})), fmt::rgb>::value,
                 "blend must return an RGB value");
@@ -661,6 +1047,12 @@ TEST(color_test, rgb_blend) {
   EXPECT_EQ(black, fmt::rgb{});
   EXPECT_EQ(white, (fmt::rgb{255, 255, 255}));
 
+  auto updated = black;
+  updated = fmt::blend(updated, white);
+  EXPECT_EQ(updated, (fmt::rgb{127, 127, 127}));
+  EXPECT_EQ(black, fmt::rgb{});
+  EXPECT_EQ(white, (fmt::rgb{255, 255, 255}));
+
   auto first  = fmt::rgb{0, 1, 254};
   auto second = fmt::rgb{0, 2, 255};
   auto third  = fmt::rgb{2, 4, 255};
@@ -668,7 +1060,6 @@ TEST(color_test, rgb_blend) {
   EXPECT_EQ(fmt::blend(third, second, first), (fmt::rgb{0, 2, 254}));
   EXPECT_EQ(fmt::blend(fmt::color::red, fmt::color::green, fmt::color::blue),
             (fmt::rgb{85, 42, 85}));
-#if FMT_USE_CONSTEXPR
   constexpr auto single  = fmt::blend(fmt::rgb{1, 2, 3});
   constexpr auto average = fmt::blend(fmt::rgb{255, 0, 0}, fmt::rgb{0, 255, 0},
                                      fmt::rgb{0, 0, 255});
@@ -676,7 +1067,229 @@ TEST(color_test, rgb_blend) {
                 "one-argument blending must preserve all channels");
   static_assert(average.r == 85 && average.g == 85 && average.b == 85,
                 "blend must support constant evaluation");
+}
+
+namespace {
+template<typename... Colors>
+auto can_blend(int) -> decltype(fmt::blend(std::declval<Colors>()...),
+                                std::true_type{});
+template<typename... Colors> auto can_blend(...) -> std::false_type;
+template<typename T>
+auto can_to_rgb(int) -> decltype(fmt::to_rgb(std::declval<T>()), std::true_type{});
+template<typename T> auto can_to_rgb(...) -> std::false_type;
+} // namespace
+
+TEST(color_test, to_rgb) {
+  static_assert(std::is_same<decltype(fmt::to_rgb(fmt::rgb{})), fmt::rgb>::value &&
+                    std::is_same<decltype(fmt::to_rgb(fmt::term_color::red)),
+                                 fmt::rgb>::value &&
+                    std::is_same<decltype(fmt::to_rgb(std::declval<fmt::gray_color>())),
+                                 fmt::rgb>::value &&
+                    std::is_same<decltype(fmt::to_rgb(std::declval<fmt::cube_color>())),
+                                 fmt::rgb>::value,
+                "plain colors convert to RGB values");
+  static_assert(std::is_same<decltype(fmt::to_rgb(fmt::no_color)),
+                             fmt::no_color_t>::value &&
+                    std::is_same<decltype(fmt::to_rgb(fmt::color_t{})),
+                                 fmt::color_t>::value,
+                "unspecified and variant conversions preserve their result types");
+  static_assert(!decltype(can_to_rgb<int>(0))::value &&
+                    !decltype(can_to_rgb<const char*>(0))::value &&
+                    !decltype(can_to_rgb<fmt::emphasis>(0))::value &&
+                    !decltype(can_to_rgb<fmt::text_style>(0))::value,
+                "to_rgb rejects non-color arguments");
+  static_assert(noexcept(fmt::to_rgb(fmt::rgb{})) &&
+                    noexcept(fmt::to_rgb(fmt::term_color::red)) &&
+                    noexcept(fmt::to_rgb(std::declval<fmt::gray_color>())) &&
+                    noexcept(fmt::to_rgb(std::declval<fmt::cube_color>())) &&
+                    noexcept(fmt::to_rgb(fmt::no_color)) &&
+                    noexcept(fmt::to_rgb(fmt::color_t{})),
+                "all to_rgb overloads must be noexcept");
+  static_assert(fmt::to_rgb(fmt::rgb{0x123456}) == fmt::rgb{0x123456} &&
+                    fmt::to_rgb(fmt::term_color::red) == fmt::rgb{205, 0, 0} &&
+                    fmt::to_rgb(fmt::term_color::bright_blue) == fmt::rgb{92, 92, 255} &&
+                    fmt::to_rgb(fmt::gray_color{0}) == fmt::rgb{8, 8, 8} &&
+                    fmt::to_rgb(fmt::gray_color{23}) == fmt::rgb{238, 238, 238} &&
+                    fmt::to_rgb(fmt::cube_color{0}) == fmt::rgb{} &&
+                    fmt::to_rgb(fmt::cube_color{215}) == fmt::rgb{255, 255, 255},
+                "plain conversion supports C++11 constant evaluation");
+  constexpr auto unspecified = fmt::to_rgb(fmt::no_color);
+  static_assert(fmt::color_t{unspecified} == fmt::color_t{},
+                "the unspecified sentinel remains unspecified");
+  static_assert(fmt::to_rgb(fmt::color_t{}) == fmt::color_t{} &&
+                    fmt::to_rgb(fmt::color_t{fmt::rgb{1, 2, 3}}) ==
+                        fmt::color_t{fmt::rgb{1, 2, 3}} &&
+                    fmt::to_rgb(fmt::color_t{fmt::term_color::black}) ==
+                        fmt::color_t{fmt::rgb{}} &&
+                    fmt::to_rgb(fmt::color_t{fmt::gray_color{12}}) ==
+                        fmt::color_t{fmt::rgb{128, 128, 128}} &&
+                    fmt::to_rgb(fmt::color_t{fmt::cube_color{1, 2, 3}}) ==
+                        fmt::color_t{fmt::rgb{95, 135, 175}},
+                "all variant alternatives support C++11 constant conversion");
+  for (const auto& sample : composition_samples) {
+    const auto source = sample.color;
+    const auto converted = fmt::to_rgb(source);
+    EXPECT_EQ(converted, source.index() == 0 ? fmt::color_t{}
+                                             : fmt::color_t{sample.promoted});
+    EXPECT_EQ(source, sample.color);
+    EXPECT_EQ(fmt::to_rgb(converted), converted);
+  }
+  EXPECT_EQ(fmt::to_rgb(fmt::gray_color{12}), (fmt::rgb{128, 128, 128}));
+  EXPECT_EQ(fmt::to_rgb(fmt::cube_color{1, 2, 3}), (fmt::rgb{95, 135, 175}));
+}
+
+TEST(color_test, blend_overloads) {
+  static_assert(std::is_same<decltype(fmt::blend(fmt::term_color::red)),
+                             fmt::rgb>::value &&
+                    std::is_same<decltype(fmt::blend(fmt::cube_color{0},
+                                                     fmt::gray_color{0})),
+                                 fmt::rgb>::value,
+                "plain palette arguments return RGB");
+  static_assert(std::is_same<decltype(fmt::blend(fmt::rgb{}, fmt::color_t{})),
+                             fmt::color_t>::value &&
+                    std::is_same<decltype(fmt::blend(fmt::color_t{}, fmt::rgb{})),
+                                 fmt::color_t>::value &&
+                    std::is_same<decltype(fmt::blend(fmt::rgb{}, fmt::no_color)),
+                                 fmt::color_t>::value,
+                "a variant or unspecified argument selects variant blending");
+  static_assert(!decltype(can_blend<>(0))::value &&
+                    !decltype(can_blend<int>(0))::value &&
+                    !decltype(can_blend<fmt::rgb, int>(0))::value &&
+                    !decltype(can_blend<int, fmt::rgb>(0))::value &&
+                    !decltype(can_blend<fmt::color_t, const char*>(0))::value,
+                "blending requires one or more color arguments");
+  static_assert(noexcept(fmt::blend(fmt::term_color::red,
+                                    std::declval<fmt::gray_color>())) &&
+                    noexcept(fmt::blend(fmt::color_t{}, fmt::rgb{})),
+                "both blend overloads must be noexcept");
+#if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
+    __cpp_concepts >= 201907L
+  static_assert(fmt::Color<const fmt::rgb&> && fmt::Color<fmt::term_color> &&
+                    fmt::Color<fmt::cube_color> && fmt::Color<fmt::gray_color> &&
+                    !fmt::Color<fmt::color_t> && !fmt::Color<fmt::no_color_t> &&
+                    !fmt::Color<int>,
+                "Color identifies only plain color types");
 #endif
+  constexpr auto mixed = fmt::blend(fmt::term_color::red,
+                                    fmt::cube_color{1, 2, 3},
+                                    fmt::gray_color{12});
+  static_assert(mixed == fmt::rgb{142, 87, 101},
+                "plain palette promotion and averaging must be constexpr");
+  constexpr auto terminal = fmt::blend(fmt::term_color::red);
+  static_assert(terminal == fmt::rgb{205, 0, 0},
+                "a single plain terminal color returns its RGB equivalent");
+}
+
+TEST(color_test, color_variant_blend) {
+  constexpr auto empty = fmt::blend(fmt::no_color, fmt::color_t{}, fmt::no_color);
+  static_assert(empty == fmt::color_t{}, "all unspecified colors remain empty");
+  constexpr auto single = fmt::blend(fmt::no_color, fmt::gray_color{12},
+                                     fmt::color_t{});
+  static_assert(single == fmt::color_t{fmt::gray_color{12}},
+                "one specified color retains its palette kind");
+  constexpr auto same = fmt::blend(fmt::color_t{fmt::gray_color{12}},
+                                   fmt::gray_color{12});
+  static_assert(same == fmt::color_t{fmt::rgb{128, 128, 128}},
+                "two specified palette colors produce RGB");
+  constexpr auto average = fmt::blend(
+      fmt::rgb{0, 1, 254}, fmt::no_color, fmt::rgb{0, 2, 255},
+      fmt::color_t{fmt::rgb{2, 4, 255}}, fmt::no_color);
+  static_assert(average == fmt::color_t{fmt::rgb{0, 2, 254}},
+                "ignore unspecified colors and divide once after summation");
+  constexpr auto palette = fmt::blend(fmt::cube_color{1, 2, 3},
+                                      fmt::color_t{fmt::gray_color{12}});
+  static_assert(palette == fmt::color_t{fmt::rgb{111, 131, 151}},
+                "a trailing variant selects RGB promotion of plain arguments");
+
+  for (size_t i = 0; i != 5; ++i) {
+    for (size_t j = 0; j != 5; ++j) {
+      SCOPED_TRACE(fmt::format("blend kinds {} and {}", i, j));
+      const auto lhs = composition_samples[i].color;
+      const auto rhs = composition_samples[j].color;
+      const auto a = composition_samples[i].promoted;
+      const auto b = composition_samples[j].promoted;
+      const auto expected = i == 0 ? rhs : j == 0 ? lhs : fmt::color_t{fmt::rgb{
+          static_cast<uint8_t>((unsigned{a.r} + b.r) / 2),
+          static_cast<uint8_t>((unsigned{a.g} + b.g) / 2),
+          static_cast<uint8_t>((unsigned{a.b} + b.b) / 2)}};
+      EXPECT_EQ(fmt::blend(lhs, rhs), expected);
+      EXPECT_EQ(fmt::blend(fmt::no_color, lhs, fmt::no_color, rhs,
+                           fmt::no_color), expected);
+      EXPECT_EQ(fmt::blend(lhs), lhs);
+      EXPECT_EQ(lhs, composition_samples[i].color);
+      EXPECT_EQ(rhs, composition_samples[j].color);
+    }
+  }
+}
+
+TEST(color_test, text_style_blend) {
+  static_assert(std::is_same<decltype(fmt::blend(fmt::text_style{})),
+                             fmt::text_style>::value &&
+                    decltype(can_blend<const fmt::text_style&,
+                                       fmt::text_style>(0))::value,
+                "style blending accepts style values and returns a style");
+  static_assert(!decltype(can_blend<fmt::text_style, fmt::rgb>(0))::value &&
+                    !decltype(can_blend<fmt::rgb, fmt::text_style>(0))::value &&
+                    !decltype(can_blend<fmt::text_style, int>(0))::value &&
+                    !decltype(can_blend<fmt::emphasis>(0))::value,
+                "style blending requires style arguments without color overlap");
+  static_assert(noexcept(fmt::blend(fmt::text_style{}, fmt::text_style{})),
+                "style blending must be noexcept");
+  constexpr auto empty = fmt::blend(fmt::text_style{}, fmt::text_style{});
+  static_assert(empty == fmt::text_style{}, "empty styles blend to an empty style");
+  constexpr auto single = fmt::text_style{fmt::cube_color{1, 2, 3},
+                                         fmt::gray_color{12},
+                                         fmt::emphasis::bold};
+  static_assert(fmt::blend(single) == single &&
+                    fmt::blend(fmt::text_style{}, single, fmt::text_style{}) == single,
+                "one specified color per channel retains its kind");
+  constexpr auto first = fmt::text_style{fmt::term_color::red, fmt::no_color,
+                                        fmt::emphasis::bold};
+  constexpr auto second = fmt::text_style{fmt::gray_color{12},
+                                         fmt::cube_color{1, 2, 3},
+                                         fmt::emphasis::underline};
+  constexpr auto third = fmt::text_style{fmt::rgb{}, fmt::no_color,
+                                        fmt::emphasis::strike};
+  constexpr auto averaged = fmt::blend(first, second, third);
+  static_assert(averaged.fg() == fmt::color_t{fmt::rgb{111, 42, 42}} &&
+                    averaged.bg() == fmt::color_t{fmt::cube_color{1, 2, 3}} &&
+                    averaged.emph() == (fmt::emphasis::bold |
+                                        fmt::emphasis::underline |
+                                        fmt::emphasis::strike),
+                "channels use independent counts and emphasis bits are ORed");
+
+  for (size_t i = 0; i != 5; ++i) {
+    for (size_t j = 0; j != 5; ++j) {
+      SCOPED_TRACE(fmt::format("style blend kinds {} and {}", i, j));
+      const auto a = composition_samples[i].promoted;
+      const auto b = composition_samples[j].promoted;
+      const auto foreground = i == 0 ? composition_samples[j].color
+          : j == 0 ? composition_samples[i].color : fmt::color_t{fmt::rgb{
+              static_cast<uint8_t>((unsigned{a.r} + b.r) / 2),
+              static_cast<uint8_t>((unsigned{a.g} + b.g) / 2),
+              static_cast<uint8_t>((unsigned{a.b} + b.b) / 2)}};
+      const auto lhs = fmt::text_style{composition_samples[i].color,
+                                       fmt::gray_color{12}, fmt::emphasis::bold};
+      const auto rhs = fmt::text_style{composition_samples[j].color, fmt::no_color,
+                                       fmt::emphasis::underline};
+      EXPECT_EQ(fmt::blend(lhs, rhs),
+                (fmt::text_style{foreground, fmt::gray_color{12},
+                                 fmt::emphasis::bold | fmt::emphasis::underline}));
+      EXPECT_EQ(fmt::blend(lhs, rhs, fmt::bg(fmt::cube_color{1, 2, 3})),
+                (fmt::text_style{foreground, fmt::rgb{111, 131, 151},
+                                 fmt::emphasis::bold | fmt::emphasis::underline}));
+      EXPECT_EQ(lhs.fg(), composition_samples[i].color);
+      EXPECT_EQ(lhs.bg(), fmt::color_t{fmt::gray_color{12}});
+      EXPECT_EQ(rhs.fg(), composition_samples[j].color);
+      EXPECT_FALSE(rhs.has_bg());
+    }
+  }
+  for (unsigned mask = 0; mask != 256; ++mask) {
+    auto lhs = fmt::text_style{static_cast<fmt::emphasis>(mask)};
+    auto rhs = fmt::text_style{static_cast<fmt::emphasis>(mask ^ 0xFFu)};
+    EXPECT_EQ(fmt::blend(lhs, rhs),
+              fmt::text_style{static_cast<fmt::emphasis>(0xFF)});
+  }
 }
 
 TEST(color_test, text_style_color_constructor) {
@@ -705,7 +1318,8 @@ TEST(color_test, text_style_color_constructor) {
   const color_t colors[] = {
       fmt::no_color, fmt::rgb{}, fmt::rgb{0xFFFFFF},
       fmt::term_color::black, fmt::term_color::bright_white,
-      fmt::color::coral};
+      fmt::color::coral, fmt::cube_color{0}, fmt::cube_color{215},
+      fmt::gray_color{0}, fmt::gray_color{23}};
   const fmt::emphasis attributes[] = {
       fmt::emphasis{}, fmt::emphasis::bold | fmt::emphasis::faint,
       fmt::emphasis::strike, static_cast<fmt::emphasis>(0xFF)};
@@ -754,7 +1368,7 @@ TEST(color_test, text_style_color_constructor) {
                     ((uint32_t{1} << 24) | 0xFF7F50),
                 "constant evaluation must preserve the RGB kind and payload");
   static_assert(fmt::to_underlying(style.get_background()) ==
-                    (uint32_t{3} << 24),
+                    (uint32_t{2} << 24),
                 "constant evaluation must preserve specified terminal black");
   static_assert(style.get_emphasis() == fmt::emphasis::bold,
                 "constant evaluation must preserve emphasis");
@@ -987,6 +1601,12 @@ TEST(color_test, fluent_constexpr) {
                 "clearing components must support constant evaluation");
   static_assert(!empty.has_fg() && !empty.has_bg() && !empty.has_emph(),
                 "presence queries must detect constexpr component clearing");
+  constexpr auto cleared_style = fmt::text_style{replaced}.clear();
+  static_assert(cleared_style.empty() && cleared_style == fmt::text_style{},
+                "clear must restore an empty style during constant evaluation");
+  constexpr auto reused = fmt::text_style{replaced}.clear().strike();
+  static_assert(reused == fmt::text_style{fmt::emphasis::strike},
+                "clear must support fluent reuse during constant evaluation");
 }
 #endif
 
@@ -1016,24 +1636,18 @@ TEST(color_test, text_style) {
   EXPECT_EQ(fg(fmt::rgb(0xC0F000)) | fg(fmt::rgb(0x000FEE)),
             fg(fmt::rgb(0xC0FFEE)));
 
-  EXPECT_THROW_MSG(
-      (void) (fg(fmt::terminal_color::black) | fg(fmt::terminal_color::black)),
-      fmt::format_error, "can't OR a terminal color");
-  EXPECT_THROW_MSG(
-      (void) (fg(fmt::terminal_color::black) | fg(fmt::terminal_color::white)),
-      fmt::format_error, "can't OR a terminal color");
-  EXPECT_THROW_MSG(
-      (void) (bg(fmt::terminal_color::black) | bg(fmt::terminal_color::black)),
-      fmt::format_error, "can't OR a terminal color");
-  EXPECT_THROW_MSG(
-      (void) (bg(fmt::terminal_color::black) | bg(fmt::terminal_color::white)),
-      fmt::format_error, "can't OR a terminal color");
-  EXPECT_THROW_MSG(
-      (void) (fg(fmt::terminal_color::black) | fg(fmt::color::black)),
-      fmt::format_error, "can't OR a terminal color");
-  EXPECT_THROW_MSG(
-      (void) (bg(fmt::terminal_color::black) | bg(fmt::color::black)),
-      fmt::format_error, "can't OR a terminal color");
+  EXPECT_EQ(fg(fmt::terminal_color::black) | fg(fmt::terminal_color::black),
+            fg(fmt::rgb(0)));
+  EXPECT_EQ(fg(fmt::terminal_color::black) | fg(fmt::terminal_color::white),
+            fg(fmt::rgb(0xE5E5E5)));
+  EXPECT_EQ(bg(fmt::terminal_color::black) | bg(fmt::terminal_color::black),
+            bg(fmt::rgb(0)));
+  EXPECT_EQ(bg(fmt::terminal_color::black) | bg(fmt::terminal_color::white),
+            bg(fmt::rgb(0xE5E5E5)));
+  EXPECT_EQ(fg(fmt::terminal_color::black) | fg(fmt::color::black),
+            fg(fmt::rgb(0)));
+  EXPECT_EQ(bg(fmt::terminal_color::black) | bg(fmt::color::black),
+            bg(fmt::rgb(0)));
 
   EXPECT_NO_THROW((void) (fg(fmt::terminal_color::white) |
                           bg(fmt::terminal_color::white)));

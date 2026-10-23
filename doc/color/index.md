@@ -5,7 +5,8 @@ emphasis attributes, style individual formatting arguments, and produce
 formatted strings or output.
 
 The color and styling API supports C++11 and later. `fmt::color_t` stores an
-unspecified color, an RGB value, or a terminal palette color in one public type.
+unspecified color, an RGB value, or a terminal, cube, or gray palette color
+in one public type.
 
 ```cpp
 #include <fmt/color.h>
@@ -29,7 +30,7 @@ The first call styles the entire message. The second styles only `42`.
 
 | Page                           | Contents |
 | ------------------------------ | --- |
-| [Colors](colors.md)            | RGB and terminal colors, `no_color`, public `color_t` values, access and visitation, and integer representations |
+| [Colors](colors.md)            | RGB, terminal, cube, and gray colors; `no_color`; public `color_t` values, access and visitation, and integer representations |
 | [Emphasis](emphasis.md)        | Text attributes and their combination |
 | [Text styles](text-style.md)   | `text_style`, its members and operators, and `fg()`/`bg()` |
 | [Styled arguments](styled.md)  | `styled()`, format specifications, and lifetimes |
@@ -39,20 +40,65 @@ The first call styles the entire message. The second styles only `42`.
 ## Choosing and combining styles
 
 Use constants in the `color` namespace for named RGB values, `rgb` for explicit
-RGB components, and `term_color` for colors from the terminal's palette. Pass
-a color to `fg()` or `bg()` to create a foreground or background style.
+RGB components, and `term_color` for the terminal's 16 named palette colors.
+Use `cube_color` for its 6×6×6 cube and `gray_color` for its 24 gray levels.
+Pass a color to `fg()` or `bg()` to create a foreground or background style.
 
 ```cpp
-auto style = fmt::fg(fmt::rgb{30, 144, 255})
-           | fmt::bg(fmt::term_color::black)
-           | fmt::emphasis::bold | fmt::emphasis::underline;
+auto style = fmt::text_style{fmt::rgb{30, 144, 255}, fmt::term_color::black,
+                             fmt::emphasis::bold | fmt::emphasis::underline};
 ```
 
 A default-constructed `text_style` has no colors or emphasis. Combine styles
-with `|` or `|=`. Colors in different channels compose independently, and
-emphasis bits are combined. Two RGB colors in the same channel combine by
-bitwise OR. A same-channel conflict involving a terminal color throws
-`format_error`, including when both terminal colors are identical.
+with [`blend()`](text-style.md#blending-styles). Foreground and background are
+handled independently, unspecified colors are ignored, and emphasis bits are
+ORed. A channel specified by only one input preserves its color and kind.
+When multiple inputs specify the same channel, their colors convert to RGB
+and combine by averaging the color channels; that channel then holds RGB.
+
+[`operator|` and `operator|=`](text-style.md#combining-styles) offer a cheaper
+bitwise operation, but use care when combining colors: they OR the channel
+bits instead of averaging them. OR cannot lower a channel value, so combining
+a bright color with a dim color will not dim the bright color. Use constructors
+or fluent setters to select colors directly, and `blend()` to average them.
+
+The examples below compare both operations on foreground styles. Every input
+name is a `fmt::term_color` value. Conversion uses the fixed Xterm-default RGB
+mapping, which may differ from the user's terminal theme. **Both operations
+produce RGB foregrounds**, rather than terminal palette colors.
+
+```cpp
+auto red = fmt::text_style{fmt::term_color::bright_red};
+auto blue = fmt::text_style{fmt::term_color::blue};
+auto averaged = fmt::blend(red, blue); // RGB {127, 0, 119}.
+auto ored = red | blue;               // RGB {255, 0, 238}.
+```
+
+<table class="color-comparison">
+<thead><tr><th>Inputs (<code>term_color</code>)</th><th><code>blend()</code> — average</th><th><code>operator|</code> — bitwise OR</th></tr></thead>
+<tbody>
+<tr>
+<td><div class="color-inputs"><span class="color-chip" style="background-color:#FF0000;color:#000000"><code>bright_red</code><small>255, 0, 0</small></span><span class="color-chip" style="background-color:#0000EE;color:#FFFFFF"><code>blue</code><small>0, 0, 238</small></span></div></td>
+<td><span class="color-chip" style="background-color:#7F0077;color:#FFFFFF"><code>rgb{127, 0, 119}</code><small>#7F0077</small></span></td>
+<td><span class="color-chip" style="background-color:#FF00EE;color:#000000"><code>rgb{255, 0, 238}</code><small>#FF00EE</small></span></td>
+</tr>
+<tr>
+<td><div class="color-inputs"><span class="color-chip" style="background-color:#FF0000;color:#000000"><code>bright_red</code><small>255, 0, 0</small></span><span class="color-chip" style="background-color:#5C5CFF;color:#FFFFFF"><code>bright_blue</code><small>92, 92, 255</small></span></div></td>
+<td><span class="color-chip" style="background-color:#AD2E7F;color:#FFFFFF"><code>rgb{173, 46, 127}</code><small>#AD2E7F</small></span></td>
+<td><span class="color-chip" style="background-color:#FF5CFF;color:#000000"><code>rgb{255, 92, 255}</code><small>#FF5CFF</small></span></td>
+</tr>
+<tr>
+<td><div class="color-inputs"><span class="color-chip" style="background-color:#CD0000;color:#FFFFFF"><code>red</code><small>205, 0, 0</small></span><span class="color-chip" style="background-color:#0000EE;color:#FFFFFF"><code>blue</code><small>0, 0, 238</small></span></div></td>
+<td><span class="color-chip" style="background-color:#660077;color:#FFFFFF"><code>rgb{102, 0, 119}</code><small>#660077</small></span></td>
+<td><span class="color-chip" style="background-color:#CD00EE;color:#000000"><code>rgb{205, 0, 238}</code><small>#CD00EE</small></span></td>
+</tr>
+<tr>
+<td><div class="color-inputs"><span class="color-chip" style="background-color:#CD0000;color:#FFFFFF"><code>red</code><small>205, 0, 0</small></span><span class="color-chip" style="background-color:#5C5CFF;color:#FFFFFF"><code>bright_blue</code><small>92, 92, 255</small></span></div></td>
+<td><span class="color-chip" style="background-color:#942E7F;color:#FFFFFF"><code>rgb{148, 46, 127}</code><small>#942E7F</small></span></td>
+<td><span class="color-chip" style="background-color:#DD5CFF;color:#000000"><code>rgb{221, 92, 255}</code><small>#DD5CFF</small></span></td>
+</tr>
+</tbody>
+</table>
 
 ## Text style rendering
 

@@ -20,8 +20,7 @@ jobs:
       TZ: Europe/Kyiv
       GTEST_DEATH_TEST_USE_FORK: ${{ matrix.sanitizers && startsWith(matrix.cxx, 'g++') && '1' || '0' }}
     strategy:
-      # Temporary outage workaround; restore settings tracked in tjgolubi/fmt#2.
-      fail-fast: false
+      fail-fast: true
       matrix:
         cxx: [g++-4.9, g++-11, clang++-3.6, clang++-11]
         build_type: [Debug, Release]

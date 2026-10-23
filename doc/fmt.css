@@ -141,6 +141,88 @@ code.decl > div {
   text-align: center;
 }
 
+.md-typeset table.color-comparison {
+  border-collapse: separate;
+  border-spacing: .4rem .2rem;
+  font-family: var(--md-code-font-family);
+  font-size: .7rem;
+}
+
+.md-typeset table.color-comparison th {
+  padding: 0 .3rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.md-typeset table.color-comparison td {
+  padding: 0;
+}
+
+.md-typeset .color-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, 13ch);
+  gap: .4rem;
+}
+
+.md-typeset .color-chip {
+  display: inline-flex;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 20ch;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .3rem;
+  min-height: 4rem;
+  padding: .6rem 1ch;
+  border-radius: .2rem;
+  text-align: center;
+}
+
+.md-typeset .color-inputs .color-chip {
+  width: 13ch;
+  min-width: 0;
+}
+
+.md-typeset .color-chip code {
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+  background: transparent;
+  white-space: nowrap;
+}
+
+.md-typeset .cube-palette-scroll {
+  overflow-x: auto;
+}
+
+.md-typeset table.cube-palette {
+  border-spacing: .3rem;
+  border-collapse: separate;
+  font-family: var(--md-code-font-family);
+  font-size: .7rem;
+  text-align: center;
+}
+
+.md-typeset table.cube-palette th {
+  padding: .3rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.md-typeset table.cube-palette td {
+  padding: 0;
+  white-space: nowrap;
+}
+
+.md-typeset .cube-index {
+  display: inline-block;
+  width: 3ch;
+  line-height: 2.4;
+  white-space: pre;
+  text-align: center;
+}
+
 .md-typeset pre.color-output {
   padding: 1rem;
   background-color: #000000;

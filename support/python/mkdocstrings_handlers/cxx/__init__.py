@@ -160,9 +160,8 @@ def convert_params(func: ET.Element) -> list[Definition]:
     params: "list[Definition]" = []
     for p in func.findall("param"):
         declname = p.find("declname")
-        if declname is None or declname.text is None:
-            raise ValueError
-        d = Definition(declname.text, "param")
+        name = declname.text if declname is not None and declname.text else ""
+        d = Definition(name, "param")
         d.type = convert_type(p.find("type"))
         params.append(d)
     return params
@@ -263,30 +262,69 @@ def render_decl(d: Definition, color_reference: bool = False) -> str:
     return text
 
 
+def swatch_luminance(packed: int) -> float:
+    rgb = tuple(((packed >> shift) & 255) / 255 for shift in (16, 8, 0))
+    linear = tuple(c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+                   for c in rgb)
+    return sum(c * w for c, w in zip(linear, (0.2126, 0.7152, 0.0722)))
+
+
+def swatch_foreground(luminance: float) -> str:
+    return "#000000" if (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05) else "#FFFFFF"
+
+
+def render_cube_palette() -> str:
+    """Render red rows, green columns, and six three-character blue fields."""
+    levels = (0, 95, 135, 175, 215, 255)
+    text = '<div class="cube-palette-scroll"><table class="cube-palette">'
+    text += '<thead><tr><th></th><th colspan="6">Green index →</th></tr>'
+    text += '<tr><th scope="col">Red ↓</th>'
+    text += ''.join(f'<th scope="col">{green}</th>' for green in range(6))
+    text += '</tr></thead><tbody>'
+    for red in range(6):
+        text += f'<tr><th scope="row">{red}</th>'
+        for green in range(6):
+            text += '<td>'
+            for blue in range(6):
+                packed = (levels[red] << 16) | (levels[green] << 8) | levels[blue]
+                background = f'#{packed:06X}'
+                label = (f'cube_color{{{red}, {green}, {blue}}}: '
+                         f'rgb{{{levels[red]}, {levels[green]}, {levels[blue]}}} '
+                         f'({background}); palette index {16 + 36 * red + 6 * green + blue}')
+                text += (f'<span class="cube-index" '
+                         f'style="background-color:{background};color:{swatch_foreground(swatch_luminance(packed))}" '
+                         f'title="{label}" aria-label="{label}"> {blue} </span>')
+            text += '</td>'
+        text += '</tr>'
+    return text + '</tbody></table></div>'
+
+
 def render_color_swatches(
     values: "list[tuple[str, str, list[ET.Element[str]]]]", group: str
 ) -> str:
-    """Render named RGB values from Doxygen, grouped by hue and sorted by lightness."""
+    """Render hue groups by lightness, or terminal RGB constants in palette order."""
     groups = ("red", "yellow", "green", "cyan", "blue", "magenta")
-    if group not in groups + ("neutral",):
+    if group not in groups + ("neutral", "terminal", "terminal-normal", "terminal-bright"):
         raise ValueError(f"Unknown color group: {group}")
     swatches: "list[tuple[float, float, str, str]]" = []
-    for name, initializer, _ in values:
+    for index, (name, initializer, _) in enumerate(values):
         packed = int(initializer.removeprefix("=").strip(), 0)
         rgb = tuple(((packed >> shift) & 255) / 255 for shift in (16, 8, 0))
         hue, saturation, _ = colorsys.rgb_to_hsv(*rgb)
         category = "neutral" if saturation == 0 else groups[int((hue * 6 + 0.5) % 6)]
-        if category != group:
+        if name.startswith("term_"):
+            category = "terminal-bright" if name.startswith("term_bright_") else "terminal-normal"
+        if category != group and not (group == "terminal" and category.startswith("terminal-")):
             continue
-        linear = tuple(c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
-                       for c in rgb)
-        luminance = sum(c * w for c, w in zip(linear, (0.2126, 0.7152, 0.0722)))
-        foreground = "#000000" if (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05) else "#FFFFFF"
+        luminance = swatch_luminance(packed)
+        foreground = swatch_foreground(luminance)
         background = f"#{packed:06X}"
         tile = (f'<li id="named-color-{escape(name)}" class="color-swatch" '
                 f'style="background-color:{background};color:{foreground}" '
                 f'title="{escape(name)}: {background}">{escape(name)}</li>')
-        swatches.append(((hue + 1 / 12) % 1, luminance, name, tile))
+        order = (0.0, float(index)) if group.startswith("terminal") else (
+            (hue + 1 / 12) % 1, luminance)
+        swatches.append((*order, name, tile))
     swatches.sort()
     return '<ul class="color-swatches">' + "".join(tile for _, _, _, tile in swatches) + '</ul>'
 
@@ -544,6 +582,14 @@ class CxxHandler(BaseHandler):
         d = data
         swatch_group = options.get("color_swatch_group")
         if swatch_group is not None:
+            if d.name == "cube_color" and swatch_group == "cube":
+                return render_cube_palette()
+            if d.name == "gray_color" and swatch_group == "gray":
+                values: "list[tuple[str, str, list[ET.Element[str]]]]" = [
+                    (f"gray_color{{{index}}}",
+                     f"= 0x{(8 + 10 * index) * 0x010101:06X}", [])
+                    for index in range(24)]
+                return render_color_swatches(values, "neutral")
             if d.color_values is None:
                 raise ValueError("Color swatches require named RGB constants")
             return render_color_swatches(d.color_values, str(swatch_group))

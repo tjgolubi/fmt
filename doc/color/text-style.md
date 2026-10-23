@@ -19,7 +19,8 @@
 
 Construct a style with colors first or emphasis first. Each color may be a
 [`color_t`](colors.md#color-variants), or a named RGB constant, an `rgb`, a
-`term_color`, or `no_color` implicitly converted to `color_t`.
+`term_color`, `cube_color`, `gray_color`, or `no_color` implicitly converted
+to `color_t`.
 
 The color-first constructor requires a foreground color; background and
 emphasis default to unspecified and empty. The emphasis-first constructor
@@ -36,6 +37,86 @@ auto attributes_first = fmt::text_style{fmt::emphasis::bold, fmt::color::red,
                                         fmt::term_color::black};
 auto underlined_background = fmt::text_style{
     fmt::emphasis::underline, fmt::no_color, fmt::color::blue};
+auto palette = fmt::text_style{fmt::cube_color{1, 2, 3}, fmt::gray_color{12}};
+```
+
+### Combining styles
+
+`|` returns a combined style and leaves both operands unchanged. `|=` updates
+the left operand and returns `text_style&`. Both operations are `noexcept`.
+Emphasis bits combine by OR; foreground and background combine independently:
+
+- If a color channel is unspecified in one operand, it takes the other
+  operand's color and preserves that color's kind.
+- If both operands specify the same channel, both colors convert to RGB and
+  their channel bits combine by OR. That channel then holds `rgb`, including
+  when both original colors have the same palette kind and value.
+
+```cpp
+auto style = fmt::fg(fmt::cube_color{1, 2, 3}) | fmt::bg(fmt::gray_color{12});
+// Foreground remains cube_color; background remains gray_color.
+style |= fmt::fg(fmt::gray_color{12});
+// Foreground is now RGB {223, 135, 175}; background is unchanged.
+```
+
+Conversion uses fixed RGB values for palette colors; terminal colors use
+the Xterm-default mapping, which may differ from the terminal's current theme.
+Composition does not average colors or perform alpha compositing. See
+[color composition](colors.md#composition-comparisons-and-numeric-representation).
+Use a component setter to replace a color rather than combine its bits.
+
+### Blending styles
+
+::: blend(First, Styles...)
+    options:
+      color_reference: true
+
+Pass one or more `text_style` values to `fmt::blend()` to return a new style.
+Foreground colors are averaged independently of background colors, using
+[color blending](colors.md#blending-color-variants). Unspecified colors are
+ignored separately in each channel. Emphasis bits from every input are ORed.
+
+Each channel remains unspecified if no input supplies a color, preserves its
+color kind if exactly one input supplies it, and holds an RGB average if two
+or more inputs supply colors. Palette colors use their fixed RGB equivalents.
+All specified colors in a channel have equal weight; division occurs after
+summation, with fractional results rounded down.
+
+```cpp
+constexpr auto first = fmt::text_style{fmt::term_color::red, fmt::no_color,
+                                       fmt::emphasis::bold};
+constexpr auto second = fmt::text_style{fmt::gray_color{12},
+                                        fmt::cube_color{1, 2, 3},
+                                        fmt::emphasis::underline};
+constexpr auto third = fmt::text_style{fmt::rgb{}};
+constexpr auto mixed = fmt::blend(first, second, third);
+// Foreground: rgb{111, 42, 42}; background: cube_color{1, 2, 3}.
+// Emphasis: bold and underline.
+```
+
+The function leaves its inputs unchanged, is `noexcept`, and supports constant
+evaluation in C++11 and later. A single style is returned unchanged; blending
+only empty styles returns an empty style. All arguments must be styles; use a
+`text_style` constructor to combine colors and emphasis before blending.
+
+### Empty styles and clearing
+
+`empty()` returns `true` when both colors are unspecified and no emphasis
+attributes are set. A specified black color still makes a style nonempty.
+The query is `const`, `noexcept`, and `constexpr` in C++11 and later.
+
+`clear()` removes both colors and all emphasis attributes, restoring the
+default-constructed state. It is `noexcept` and returns `text_style&` for
+chaining. It supports constant evaluation in C++14 and later on supported
+compilers. Clearing a style changes the value; it does not emit an ANSI reset.
+
+```cpp
+auto style = fmt::text_style{fmt::color::red, fmt::term_color::black,
+                             fmt::emphasis::bold};
+assert(!style.empty());
+style.clear();
+assert(style.empty());
+style.clear().fg(fmt::gray_color{12}).underline();
 ```
 
 ### Component accessors
@@ -50,9 +131,9 @@ Each component has a getter, a replacement setter, and a presence query:
 
 All these members are `noexcept`. Getters are `const` and return values.
 The color getters return the public type [`fmt::color_t`](colors.md#color-variants),
-preserving the RGB, terminal, or unspecified alternative. The result can be
-passed to either color setter, either style constructor, or the free `fmt::fg()`
-and `fmt::bg()` functions. Use `fmt::holds_alternative`, `fmt::get`,
+preserving the RGB, terminal, cube, gray, or unspecified alternative. The result
+can be passed to either color setter, either style constructor, or the free
+`fmt::fg()` and `fmt::bg()` functions. Use `fmt::holds_alternative`, `fmt::get`,
 `fmt::get_if`, or `fmt::visit` to inspect its alternative. The emphasis getter
 returns `emphasis`.
 
@@ -67,8 +148,9 @@ when any emphasis bit is set, including faint or strike alone.
 
 Each setter replaces its entire component, preserves the other two, and
 returns `text_style&` for chaining. Color setters accept a named RGB constant,
-an `rgb`, a `term_color`, or `no_color`. Passing `no_color` clears that
-channel to unspecified; it does not store a terminal-reset instruction.
+an `rgb`, a `term_color`, a `cube_color`, a `gray_color`, or `no_color`.
+Passing `no_color` clears that channel to unspecified; it does not store a
+terminal-reset instruction.
 Passing `emphasis{}` clears all attributes.
 
 ```cpp
@@ -171,8 +253,8 @@ alias such as `using em = fmt::emphasis;` and write `em::bold`.
 
 `text_style` values support equality and ordering by their packed `uint64_t`
 representations, including color kinds, color values, and emphasis bits.
-An empty style sorts before any nonempty style. RGB and terminal colors
-remain distinct even when they display the same color. Styles can be used
+An empty style sorts before any nonempty style. Different color kinds
+remain distinct even when their RGB equivalents are equal. Styles can be used
 as keys in `std::map` and `std::set`. In C++20 and later, `operator<=>`
 returns `std::strong_ordering`.
 
@@ -197,9 +279,11 @@ The packed encoding is not a stable serialization format.
 
 ## Foreground and background
 
-Pass `fmt::no_color` to either function to produce an empty style. This
-specifies no color; combining it with an existing style does not clear that
-style's color or emit a terminal reset.
+`fg()` and `bg()` provide a convenient way to create a `text_style` without
+calling a constructor directly. When passed a color value from namespace `fmt`,
+argument-dependent lookup (ADL) finds these functions, so you can omit the
+`fmt::` prefix: for example, `fg(fmt::color::red)` instead of
+`fmt::text_style{fmt::color::red}`.
 
 ::: fg(color_t)
     options:
@@ -208,6 +292,10 @@ style's color or emit a terminal reset.
 ::: bg(color_t)
     options:
       color_reference: true
+
+Pass `fmt::no_color` to either function to produce an empty style. This
+specifies no color; combining it with an existing style does not clear that
+style's color or emit a terminal reset.
 
 See [Colors](colors.md) for the accepted color types and
 [Text style rendering](index.md#TextStyleRendering) for formatting behavior.
