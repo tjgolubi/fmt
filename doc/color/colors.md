@@ -161,8 +161,9 @@ values have equal hashes. Hash values are not a stable serialization format.
 using packed_t = fmt::underlying_type<fmt::rgb>::type;
 constexpr auto coral  = fmt::color::coral;
 constexpr auto packed = fmt::to_underlying(coral);  // 0x00FF7F50
-static_assert(std::is_same_v<const packed_t, decltype(packed)>);
-static_assert(fmt::rgb{packed} == coral);
+static_assert(std::is_same<const packed_t, decltype(packed)>::value,
+              "packed RGB type");
+static_assert(fmt::rgb{packed} == coral, "packed RGB round trip");
 ```
 Packed integer conversions are explicit in both directions. Direct construction
 accepts `0xRRGGBB` and ignores the high byte; conversion back produces
@@ -178,3 +179,155 @@ auto named  = static_cast<uint32_t>(fmt::color::coral); // 0x00FF7F50
 
     Packed integer construction of `rgb` was previously implicit. It is now
     explicit; conversion from `rgb` to a packed integer is also explicit.
+
+## Color variants
+
+`fmt::color_t` is a public value type for storing different kinds of color in
+one variable. It is available in C++11 and later and uses its own union-based
+implementation in every supported language mode; it does not require
+`std::variant`.
+
+::: color_t
+    options:
+      color_reference: true
+
+### Construction and assignment
+
+Default construction holds `no_color_t`. Construction from `no_color`, an
+`rgb` (including a named RGB constant), or a `term_color` is implicit and
+`noexcept`. Assignment replaces the active alternative and is also `noexcept`.
+Copying or moving a `color_t` preserves its kind and value.
+
+```cpp
+fmt::color_t accent;                    // Unspecified.
+accent = fmt::color::coral;             // Holds rgb.
+accent = fmt::term_color::red;          // Holds term_color.
+auto style = fmt::text_style{accent};
+style.bg(fmt::color_t{fmt::color::blue});
+accent = fmt::no_color;                 // Unspecified again; style is unchanged.
+```
+
+`text_style` constructors, color setters, and free `fg()`/`bg()` accept
+`color_t`. The style's `fg()` and `bg()` getters return independent `color_t`
+values. Changing a stored color or an extracted color leaves the style
+unchanged; use a style setter to replace a channel.
+
+### Alternatives and indices
+
+`index()` returns the active alternative's index as `std::size_t`:
+
+| Index | `color_t::kind` | Alternative  | Meaning                |
+| ----: | :-------------: | -----------  | ---------------------- |
+|    0  |     `none`      | `no_color_t` | Unspecified color      |
+|    1  |     `rgb`       | `rgb`        | Three RGB channels     |
+|    2  |     `rsvd`      | `rsvd_color` | Reserved; invalid      |
+|    3  |     `term`      | `term_color` | Terminal palette color |
+
+RGB black and terminal black remain specified alternatives, distinct from
+`no_color_t`.
+
+### Accessing a color
+
+::: holds_alternative
+    options:
+      color_reference: true
+
+::: get(color_t&)
+    options:
+      color_reference: true
+
+::: get_if(color_t*)
+    options:
+      color_reference: true
+
+`holds_alternative<T>(color)` reports whether the color holds `T`.
+`get<T>(color)` returns a reference to that alternative and throws
+`format_error` if another alternative is active. `get_if<T>(&color)` returns
+a pointer to the alternative, or `nullptr` for a different kind or a null
+input pointer. Classification and pointer access are `noexcept`.
+
+Both access functions also accept an index: `get<1>(color)` and
+`get_if<1>(&color)` access RGB. `T` must be one of the listed alternatives;
+an index must be in the range 0–3. An unsupported type or index is a compile-time
+error. The reserved alternative never matches a valid color.
+
+The `get` overloads preserve the argument's constness and value category:
+
+| Color argument    | Type-based result | Index-based result |
+| ----------------- | ----------------- | ------------------ |
+| `color_t&`        | `T&`              | Reference to the indexed alternative |
+| `const color_t&`  | `const T&`        | Const reference to the indexed alternative |
+| `color_t&&`       | `T&&`             | Rvalue reference to the indexed alternative |
+| `const color_t&&` | `const T&&`       | Const rvalue reference to the indexed alternative |
+
+`get_if` returns `T*` for a mutable color pointer and `const T*` for a const
+color pointer. Mutable references and pointers allow changes to the active
+color value.
+
+```cpp
+fmt::color_t accent = fmt::color::coral;
+if (auto* channels = fmt::get_if<fmt::rgb>(&accent))
+  channels->g = 128;
+
+bool is_rgb = fmt::holds_alternative<fmt::rgb>(accent); // true
+constexpr auto rgb_index = fmt::enum_cast<std::size_t>(fmt::color_t::kind::rgb);
+auto red = fmt::get<rgb_index>(accent).r;
+```
+
+References and pointers refer to storage inside the `color_t`; they must not
+outlive it or an alternative change. Style color getters return temporary
+values, so copy an alternative when extracting it directly:
+
+```cpp
+auto style = fmt::text_style{fmt::color::coral};
+auto channels = fmt::get<fmt::rgb>(style.fg()); // Copies RGB before the temporary dies.
+```
+
+Const access, classification, and `index()` support constant evaluation in
+C++11. Mutable access and alternative assignment support it in C++14 and
+later on supported compilers.
+
+### Visitation
+
+`fmt::visit(visitor, color)` calls the visitor with the active alternative of
+one `color_t`. It preserves the color argument's constness and value category
+and forwards the visitor. The visitor must accept all four alternatives,
+including `fmt::rsvd_color`, with exactly the same return type. Value,
+reference, and `void` results are supported; visitor exceptions propagate.
+
+A function object with overloads works in C++11:
+
+```cpp
+struct describe_color {
+  const char* operator()(fmt::no_color_t) const { return "unspecified";      }
+  const char* operator()(fmt::rgb)        const { return "RGB";              }
+  const char* operator()(fmt::term_color) const { return "terminal palette"; }
+  const char* operator()(fmt::rsvd_color) const { return "reserved";         }
+};
+
+fmt::color_t accent = fmt::color::coral;
+const char* description = fmt::visit(describe_color{}, accent); // "RGB"
+```
+
+The reserved overload is required for compilation but is never called for a
+valid color. A visitor can instead use a templated call operator that accepts
+every alternative. Visitation supports C++11 constant evaluation when the
+visitor and color access do.
+
+### Composition, comparisons, and numeric representation
+
+`color_t` supports `|` and `|=`. An unspecified color takes the other operand's
+value; two RGB colors combine their channel bits by OR. A conflict involving
+a terminal color throws `format_error`, even for identical terminal colors.
+Failed composition leaves the left operand unchanged.
+
+Equality and ordering include both kind and payload: unspecified, RGB, and
+terminal colors remain distinct. Ordering follows the unsigned packed value,
+with unspecified colors before RGB and RGB before terminal colors. C++20
+and later provide `std::strong_ordering` through `operator<=>`.
+`std::hash<fmt::color_t>` permits use as an unordered-container key.
+
+`color_t::value_type` and `underlying_type<color_t>::type` are `uint32_t`.
+`fmt::to_underlying(color)` returns the packed representation used by
+`text_style`, including the alternative's discriminator and payload. This
+encoding and its hash values are not stable serialization formats.

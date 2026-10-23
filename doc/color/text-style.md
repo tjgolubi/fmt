@@ -18,7 +18,8 @@
 ### Construction
 
 Construct a style with colors first or emphasis first. Each color may be a
-named color, an `rgb`, a `term_color`, or `no_color`.
+[`color_t`](colors.md#color-variants), or a named RGB constant, an `rgb`, a
+`term_color`, or `no_color` implicitly converted to `color_t`.
 
 The color-first constructor requires a foreground color; background and
 emphasis default to unspecified and empty. The emphasis-first constructor
@@ -48,10 +49,12 @@ Each component has a getter, a replacement setter, and a presence query:
 | Emphasis   | `emph()` | `emph(attributes)` | `has_emph()`   |
 
 All these members are `noexcept`. Getters are `const` and return values.
-The color getters return an *unspecified-type* that preserves the RGB or
-terminal color kind. Use `auto` to store the result; it can be passed to
-either color setter, either style constructor, or the free `fmt::fg()` and
-`fmt::bg()` functions. The emphasis getter returns `emphasis`.
+The color getters return the public type [`fmt::color_t`](colors.md#color-variants),
+preserving the RGB, terminal, or unspecified alternative. The result can be
+passed to either color setter, either style constructor, or the free `fmt::fg()`
+and `fmt::bg()` functions. Use `fmt::holds_alternative`, `fmt::get`,
+`fmt::get_if`, or `fmt::visit` to inspect its alternative. The emphasis getter
+returns `emphasis`.
 
 Getters accept empty components: color getters return an unspecified color,
 and `emph()` returns `emphasis{}`. Presence checks are optional.
@@ -76,6 +79,10 @@ style.fg(fmt::no_color);  // Background and bold remain.
 
 const auto source = style;
 auto copy = fmt::text_style{source.fg(), source.bg(), source.emph()};
+
+auto foreground = source.fg();
+auto has_foreground = source.has_fg(); // false
+auto unspecified = fmt::holds_alternative<fmt::no_color_t>(foreground); // true
 ```
 
 !!! note "Backward compatibility"
@@ -91,6 +98,13 @@ auto copy = fmt::text_style{source.fg(), source.bg(), source.emph()};
     Previously, the foreground, background, and emphasis getters required their
     components to be present. They can now be called when those components are
     absent.
+
+!!! note "Changed behavior"
+
+    Foreground and background values now have the public type `fmt::color_t`.
+    Their type was previously unspecified and named `detail::color_type`
+    internally. The short getters and their older aliases return `color_t`
+    by value.
 
 ### Attribute queries
 
@@ -187,11 +201,11 @@ Pass `fmt::no_color` to either function to produce an empty style. This
 specifies no color; combining it with an existing style does not clear that
 style's color or emit a terminal reset.
 
-::: fg(detail::color_type)
+::: fg(color_t)
     options:
       color_reference: true
 
-::: bg(detail::color_type)
+::: bg(color_t)
     options:
       color_reference: true
 

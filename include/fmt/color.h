@@ -51,8 +51,29 @@ FMT_NODISCARD constexpr auto to_underlying(T value) noexcept
  */
 struct no_color_t {};
 
+template<> struct underlying_type<no_color_t> { using type = unsigned; };
+
+FMT_NODISCARD constexpr auto to_underlying(no_color_t) noexcept -> unsigned
+{ return 0u; }
+
 /// The unspecified-color value.
 FMT_INLINE_VARIABLE constexpr no_color_t no_color{};
+
+/**
+ * The reserved color alternative, named in visitors but never active in a
+ * valid color. Its private constructor prevents construction, including
+ * aggregate initialization in C++11.
+ */
+class rsvd_color {
+  constexpr rsvd_color() noexcept {}
+}; // rsvd_color
+
+template<>
+struct underlying_type<rsvd_color> { using type = unsigned; };
+
+FMT_NODISCARD
+constexpr auto to_underlying(rsvd_color) noexcept -> unsigned
+{ return 0u; }
 
 /**
  * The eight normal and eight bright colors of the terminal's palette.
@@ -222,147 +243,314 @@ FMT_CONSTEXPR auto blend(rgb first, Colors... rest) noexcept -> rgb {
              narrow_cast<rgb::chan_type>(b / count)};
 } // blend
 
-namespace detail {
+/**
+ * A color value holding no_color_t, rgb, rsvd_color, or term_color.
+ * Indices 0, 1, 2, and 3 match the packed discriminator. The reserved type
+ * cannot be constructed and exists only to retain the discriminator mapping.
+ * Default construction holds no_color_t. Construction and assignment from a
+ * color preserve its kind. get/get_if provide reference/pointer access, and
+ * visit dispatches a visitor to the active alternative. The common interface
+ * supports single-color visitation with one result type for every alternative.
+ *
+ * Uses the union implementation in every supported language mode.
+ * References and pointers must not outlive the color or an alternative change.
+ * Wrong-kind get reports format_error; get_if provides nonthrowing access.
+ */
+class color_t;
+template<> struct underlying_type<color_t> { using type = uint32_t; };
+constexpr auto to_underlying(const color_t&) noexcept -> uint32_t;
+namespace detail { template<class T> struct color_access; }
 
-// A bit-packed variant of an RGB color, a terminal color, or unset color.
-class color_type {
+// Alternative indices match text_style's packed discriminator encoding.
+class color_t {
 public:
-  using value_type = uint32_t;
+   using value_type = uint32_t;
+
+  static_assert(std::is_same<value_type, underlying_type<color_t>::type>::value,
+                "color_t underlying type must match value_type");
+
+  /// Alternative identifiers, matching index() and the packed discriminator.
+  enum class kind : uint8_t {
+    none = 0, ///< Unspecified color.
+    rgb  = 1, ///< RGB color.
+    rsvd = 2, ///< Reserved, nonconstructible alternative.
+    term = 3  ///< Terminal palette color.
+  };
 
 private:
-  enum class disc { none, rgb, rsvd, term };
-  // These values must be in exactly this order for the overflow trick to work.
+  friend constexpr auto to_underlying(const color_t&) noexcept -> value_type;
 
-  // The information is packed as follows:
-  // ┌──┐
-  // │ 0│─┐
-  // │..│ ├── color value
-  // │23│─┘
-  // ├──┤
-  // │24│─┬── discriminator for the above value. 00 if unset, 01 if it's
-  // │25│─┘   an RGB color, or 11 if it's a terminal color (10 is unused)
-  // ├──┤
-  // │26│──── overflow bit, always zero (see below)
-  // ├──┤
-  // │27│─┐
-  // │..│ ├── unused
-  // │31│─┘
-  // └──┘
+  union storage {
+    no_color_t none;
+    rgb        truecolor;
+    rsvd_color reserved;
+    term_color terminal;
+    constexpr storage(no_color_t v) noexcept : none(v)      {}
+    constexpr storage(rgb v)        noexcept : truecolor(v) {}
+    constexpr storage(rsvd_color v) noexcept : reserved(v)  {}
+    constexpr storage(term_color v) noexcept : terminal(v)  {}
+  } _data{no_color};
 
-  static constexpr auto color_bits = 24;
-  static constexpr auto disc_bits  =  2;
-  static constexpr auto value_bits = color_bits + disc_bits;
-  static constexpr auto color_mask = (value_type{1} << color_bits) - 1;
-  static constexpr auto disc_mask  = value_type{0xff} << color_bits;
-  static constexpr auto value_mask = (value_type{1} << value_bits) - 1;
+  kind _kind{kind::none};
 
-  value_type value_ = 0;
-
-  FMT_NODISCARD constexpr auto type() const noexcept -> disc
-  { return enum_cast<disc>((value_ & disc_mask) >> color_bits); }
-
-  FMT_CONSTEXPR auto type(disc t) noexcept -> color_type& {
-    value_ = (value_ & ~disc_mask) | (enum_cast<value_type>(t) << color_bits);
-    return *this;
-  }
-
-  FMT_CONSTEXPR void clear() noexcept { value_ = 0; }
-
-  template<typename T>
-  FMT_CONSTEXPR void set(disc t, T v) noexcept
-  { value_ = (enum_cast<value_type>(t) << color_bits) | to_underlying(v); }
-
-  FMT_CONSTEXPR void set(rgb val) noexcept { set(disc::rgb, val); }
-
-  FMT_CONSTEXPR void set(term_color val) noexcept { set(disc::term, val); }
-
-  template<typename T>
-  friend constexpr auto holds_alternative(color_type color) noexcept -> bool;
+  template<class T> friend struct detail::color_access;
 
 public:
-  constexpr color_type() noexcept = default;
+  /// Constructs an unspecified color.
+  constexpr color_t() noexcept {}
 
-  constexpr color_type(no_color_t) noexcept {}
+  /// Constructs an unspecified color from its sentinel.
+  constexpr color_t(no_color_t v) noexcept : _data{v}, _kind{kind::none} {}
 
-  FMT_CONSTEXPR color_type(rgb clr) noexcept { set(clr); }
+  /// Constructs an RGB color, preserving all three channels.
+  constexpr color_t(rgb v)        noexcept : _data{v}, _kind{kind::rgb} {}
 
-  FMT_CONSTEXPR color_type(term_color clr) noexcept { set(clr); }
+  // Supports copying the reserved alternative if referenced by generic code.
+  constexpr color_t(rsvd_color v) noexcept : _data{v}, _kind{kind::rsvd} {}
 
-  FMT_NODISCARD constexpr auto value() const noexcept -> value_type
-  { return value_ & color_mask; }
+  /// Constructs a terminal palette color.
+  constexpr color_t(term_color v) noexcept : _data{v}, _kind{kind::term} {}
 
-  constexpr explicit color_type(value_type value) noexcept : value_{value} {}
+  color_t(const color_t&)            = default;
+  color_t(color_t&&)                 = default;
+  color_t& operator=(const color_t&) = default;
+  color_t& operator=(color_t&&)      = default;
 
-  constexpr explicit operator value_type() const noexcept { return value_; }
+#if defined(__cpp_lib_three_way_comparison) && \
+    __cpp_lib_three_way_comparison >= 201907L
+  // A union cannot use memberwise defaulted comparisons. Compare the packed
+  // values so ordering agrees with the older-language implementation.
+  FMT_NODISCARD constexpr auto operator==(const color_t& rhs) const noexcept
+    -> bool
+  { return to_underlying(*this) == to_underlying(rhs); }
 
-  /// Combines RGB payloads, rejecting overlapping non-RGB colors.
-  FMT_CONSTEXPR auto operator|=(color_type rhs) -> color_type& {
-    constexpr auto overflow_mask = value_type{1} << value_bits;
-    if (((value_ + rhs.value_) & overflow_mask) != 0)
-      report_error("can't OR a terminal color");
-    value_ |= rhs.value_;
-    return *this;
-  }
-
-  FMT_NODISCARD
-  friend FMT_CONSTEXPR auto operator|(color_type lhs, color_type rhs)
-    -> color_type
-  { return lhs |= rhs; }
-
-  FMT_COLOR_COMPARISONS(color_type)
-
-}; // color_type
-
-template<typename T>
-FMT_NODISCARD
-constexpr auto holds_alternative(color_type color) noexcept -> bool {
-  static_assert(std::is_same<T, no_color_t>::value ||
-                std::is_same<T, term_color>::value ||
-                std::is_same<T, rgb>::value, "unsupported color alternative");
-  return color.type() == (std::is_same<T, no_color_t>::value
-                          ? color_type::disc::none
-                          : std::is_same<T, term_color>::value
-                              ? color_type::disc::term
-                              : color_type::disc::rgb);
-} // holds_alternative
-
-#if FMT_CLANG_VERSION && FMT_CLANG_VERSION <= 306
-// Clang 3.6 and earlier treat specializations of a deleted template as deleted.
-template<typename T>
-auto get(color_type) -> T {
-  static_assert(sizeof(T) == 0, "unsupported color alternative");
-}
+  FMT_NODISCARD constexpr auto operator<=>(const color_t& rhs) const noexcept
+    -> std::strong_ordering
+  { return to_underlying(*this) <=> to_underlying(rhs); }
 #else
-template<typename T>
-auto get(color_type color) -> T = delete;
+  FMT_COLOR_COMPARISONS(color_t)
 #endif
 
-template<>
-FMT_NODISCARD FMT_CONSTEXPR inline auto get<no_color_t>(color_type color)
-  -> no_color_t
-{
-  if (!holds_alternative<no_color_t>(color))
-    report_error("color_type is not no_color_t");
-  return no_color;
+  // Trivial union copy assignment starts the corresponding member lifetime.
+  // These overloads also permit assignment from the currently held member.
+  /// Replaces the active alternative with an unspecified color.
+  FMT_CONSTEXPR color_t& operator=(no_color_t v) noexcept
+  { return *this = color_t{v}; }
+  /// Replaces the active alternative with an RGB color.
+  FMT_CONSTEXPR color_t& operator=(rgb v) noexcept
+  { return *this = color_t{v}; }
+  FMT_CONSTEXPR color_t& operator=(rsvd_color v) noexcept
+  { return *this = color_t{v}; }
+  /// Replaces the active alternative with a terminal palette color.
+  FMT_CONSTEXPR color_t& operator=(term_color v) noexcept
+  { return *this = color_t{v}; }
+
+  /// Returns the active alternative: 0 unspecified, 1 RGB, 2 reserved, 3 terminal.
+  constexpr std::size_t index() const noexcept
+  { return enum_cast<std::size_t>(_kind); }
+}; // color_t
+
+template<> struct underlying_type<color_t::kind> { using type = uint8_t; };
+
+namespace detail {
+
+template<> struct color_access<no_color_t> {
+  static constexpr std::size_t index = to_underlying(color_t::kind::none);
+  static FMT_CONSTEXPR no_color_t& ref(color_t& c) noexcept
+  { return c._data.none; }
+  static constexpr const no_color_t& ref(const color_t& c) noexcept
+  { return c._data.none; }
+};
+
+template<> struct color_access<rgb> {
+  static constexpr std::size_t index = to_underlying(color_t::kind::rgb);
+  static FMT_CONSTEXPR rgb& ref(color_t& c) noexcept
+  { return c._data.truecolor; }
+  static constexpr const rgb& ref(const color_t& c) noexcept
+  { return c._data.truecolor; }
+};
+
+template<> struct color_access<rsvd_color> {
+  static constexpr std::size_t index = to_underlying(color_t::kind::rsvd);
+  static FMT_CONSTEXPR rsvd_color& ref(color_t& c) noexcept
+  { return c._data.reserved; }
+  static constexpr const rsvd_color& ref(const color_t& c) noexcept
+  { return c._data.reserved; }
+};
+
+template<> struct color_access<term_color> {
+  static constexpr std::size_t index = to_underlying(color_t::kind::term);
+  static FMT_CONSTEXPR term_color& ref(color_t& c) noexcept
+  { return c._data.terminal; }
+  static constexpr const term_color& ref(const color_t& c) noexcept
+  { return c._data.terminal; }
+};
+
+template<std::size_t Index> struct color_alternative;
+template<> struct color_alternative<to_underlying(color_t::kind::none)>
+{ using type = no_color_t; };
+template<> struct color_alternative<to_underlying(color_t::kind::rgb)>
+{ using type = rgb; };
+template<> struct color_alternative<to_underlying(color_t::kind::rsvd)>
+{ using type = rsvd_color; };
+template<> struct color_alternative<to_underlying(color_t::kind::term)>
+{ using type = term_color; };
+
+} // detail
+
+/// Returns true if the color holds T; T must be a supported alternative.
+template<class T>
+constexpr bool holds_alternative(const color_t& c) noexcept
+{ return c.index() == detail::color_access<T>::index; }
+
+/// Returns a reference to T, reporting an error if another kind is active.
+template<class T>
+FMT_CONSTEXPR T& get(color_t& c) {
+  return holds_alternative<T>(c) ? detail::color_access<T>::ref(c)
+                                : (report_error("wrong color_t alternative"),
+                                   detail::color_access<T>::ref(c));
+}
+template<class T>
+constexpr const T& get(const color_t& c) {
+  return holds_alternative<T>(c) ? detail::color_access<T>::ref(c)
+                                : (report_error("wrong color_t alternative"),
+                                   detail::color_access<T>::ref(c));
+}
+template<class T>
+FMT_CONSTEXPR T&& get(color_t&& c) { return std::move(get<T>(c)); }
+
+template<class T>
+constexpr const T&& get(const color_t&& c) { return std::move(get<T>(c)); }
+
+/// Returns a pointer to T, or nullptr for null input or another active kind.
+template<class T>
+FMT_CONSTEXPR T* get_if(color_t* c) noexcept {
+  return c && holds_alternative<T>(*c) ? &detail::color_access<T>::ref(*c)
+                                       : nullptr;
 }
 
-template<>
-FMT_NODISCARD FMT_CONSTEXPR inline auto get<term_color>(color_type color)
-  -> term_color
-{
-  if (!holds_alternative<term_color>(color))
-    report_error("color_type is not term_color");
-  return enum_cast<term_color>(color.value());
+template<class T>
+constexpr const T* get_if(const color_t* c) noexcept {
+  return c && holds_alternative<T>(*c) ? &detail::color_access<T>::ref(*c)
+                                       : nullptr;
 }
 
-template<>
-FMT_NODISCARD FMT_CONSTEXPR inline auto get<rgb>(color_type color) -> rgb {
-  if (!holds_alternative<rgb>(color))
-    report_error("color_type is not rgb");
-  return rgb{color.value()};
+// Index access shares precisely the same checks as type access.
+template<std::size_t Index>
+FMT_CONSTEXPR typename detail::color_alternative<Index>::type& get(color_t& c)
+{ return get<typename detail::color_alternative<Index>::type>(c); }
+
+template<std::size_t Index>
+constexpr
+const typename detail::color_alternative<Index>::type& get(const color_t& c)
+{ return get<typename detail::color_alternative<Index>::type>(c); }
+
+template<std::size_t Index>
+FMT_CONSTEXPR typename detail::color_alternative<Index>::type&& get(color_t&& c)
+{ return get<typename detail::color_alternative<Index>::type>(std::move(c)); }
+
+template<std::size_t Index>
+constexpr
+const typename detail::color_alternative<Index>::type&& get(const color_t&& c)
+{ return get<typename detail::color_alternative<Index>::type>(std::move(c)); }
+
+template<std::size_t Index>
+FMT_CONSTEXPR
+typename detail::color_alternative<Index>::type* get_if(color_t* c) noexcept
+{ return get_if<typename detail::color_alternative<Index>::type>(c); }
+
+template<std::size_t Index>
+constexpr
+const typename detail::color_alternative<Index>::type* get_if(const color_t* c)
+  noexcept
+{ return get_if<typename detail::color_alternative<Index>::type>(c); }
+
+/**
+ * Calls visitor with the active alternative of one color.
+ * Preserves the color's cv/ref category and forwards the visitor.
+ * Every alternative must be callable with exactly the same return type.
+ * Visitor exceptions propagate; void and reference results are supported.
+ */
+template<class Visitor, class Color,
+         typename std::enable_if<std::is_same<
+           typename std::remove_cv<
+                             typename std::remove_reference<Color>::type>::type,
+           color_t>::value, int>::type = 0>
+constexpr auto visit(Visitor&& visitor, Color&& color)
+  -> decltype(std::forward<Visitor>(visitor)
+                                  (get<no_color_t>(std::forward<Color>(color))))
+{
+  using kind = color_t::kind;
+  using result = decltype(std::forward<Visitor>(visitor)(
+                                  get<no_color_t>(std::forward<Color>(color))));
+  static_assert(std::is_same<result, decltype(std::forward<Visitor>(visitor)(
+                  get<rgb>(std::forward<Color>(color))))>::value,
+          "color visitor must have the same return type for every alternative");
+  static_assert(std::is_same<result, decltype(std::forward<Visitor>(visitor)(
+                  get<rsvd_color>(std::forward<Color>(color))))>::value,
+          "color visitor must have the same return type for every alternative");
+  static_assert(std::is_same<result, decltype(std::forward<Visitor>(visitor)(
+                  get<term_color>(std::forward<Color>(color))))>::value,
+          "color visitor must have the same return type for every alternative");
+  return color.index() == to_underlying(kind::none)
+    ? std::forward<Visitor>(visitor)(
+                              get<no_color_t    >(std::forward<Color>(color)))
+    : color.index() == to_underlying(kind::rgb)
+    ? std::forward<Visitor>(visitor)(
+                              get<rgb           >(std::forward<Color>(color)))
+    : color.index() == to_underlying(kind::rsvd)
+    ? std::forward<Visitor>(visitor)(
+                              get<rsvd_color    >(std::forward<Color>(color)))
+    : std::forward<Visitor>(visitor)(
+                              get<term_color    >(std::forward<Color>(color)));
+} // visit
+
+namespace detail {
+struct color_payload {
+  template<typename Color>
+  constexpr auto operator()(const Color& color) const noexcept
+    -> color_t::value_type
+  { return to_underlying(color); }
+};
+} // detail
+
+/// The packed numeric representation used by text_style, not a stable archive.
+constexpr inline auto to_underlying(const color_t& color) noexcept
+  -> color_t::value_type
+{
+  return (narrow_cast<color_t::value_type>(color.index()) << 24)
+       | fmt::visit(detail::color_payload{}, color);
+}
+
+namespace detail {
+
+// Decode only valid packed colors produced by text_style. Index 2 is reserved
+// and cannot occur in a valid style; the original 00/01/11 tags are unchanged.
+constexpr auto unpack_color(color_t::value_type value) noexcept -> color_t {
+  return (value >> 24) == to_underlying(color_t::kind::none)
+      ? color_t{no_color}
+      : (value >> 24) == to_underlying(color_t::kind::rgb)
+         ? color_t{rgb{value & 0x0ffffffu}}
+         : color_t{enum_cast<term_color>(value & 0xffu)};
 }
 
 } // detail
+
+/// Combines RGB payloads, rejecting overlapping non-RGB colors.
+FMT_CONSTEXPR inline auto operator|=(color_t& lhs, color_t rhs) -> color_t& {
+  constexpr auto overflow_mask = color_t::value_type{1} << 26;
+  auto left  = to_underlying(lhs);
+  auto right = to_underlying(rhs);
+  if (((left + right) & overflow_mask) != 0)
+    report_error("can't OR a terminal color");
+  lhs = detail::unpack_color(left | right);
+  return lhs;
+}
+
+/// Returns the composition using RGB-OR and terminal-color conflict rules.
+FMT_NODISCARD
+FMT_CONSTEXPR inline auto operator|(color_t lhs, color_t rhs) -> color_t
+{ return lhs |= rhs; }
 
 /**
  * A text style consisting of optional foreground and background colors and a
@@ -447,10 +635,10 @@ private:
   static constexpr auto bg_shift   = 27;
   static constexpr auto emph_shift = 54;
 
-  static constexpr auto color_mask = (uint32_t{1} << color_bits) - 1;
+  static constexpr auto color_mask = (color_t::value_type{1} << color_bits) - 1;
   static constexpr auto disc_mask  = (1U  << disc_bits ) - 1;
   static constexpr auto value_bits = color_bits + disc_bits;
-  static constexpr auto value_mask = (uint32_t{1} << value_bits) - 1;
+  static constexpr auto value_mask = (color_t::value_type{1} << value_bits) - 1;
 
   static constexpr auto fg_mask = value_type{value_mask} << fg_shift;
   static constexpr auto bg_mask = value_type{value_mask} << bg_shift;
@@ -471,8 +659,8 @@ private:
    * is implicit.
    */
   constexpr text_style(emphasis emp=emphasis{},
-                       detail::color_type fg = no_color,
-                       detail::color_type bg = no_color) noexcept
+                       color_t fg = no_color,
+                       color_t bg = no_color) noexcept
     : text_style{fg, bg, emp} {}
 
   /**
@@ -482,7 +670,7 @@ private:
    * The background and emphasis default to unspecified and empty, respectively.
    * The foreground is required; `no_color` specifies a background-only style.
    */
-  constexpr text_style(detail::color_type fg, detail::color_type bg = no_color,
+  constexpr text_style(color_t fg, color_t bg = no_color,
                        emphasis emp = emphasis{}) noexcept
     : style_{(value_type{to_underlying(fg)}  <<   fg_shift)
            | (value_type{to_underlying(bg)}  <<   bg_shift)
@@ -550,10 +738,10 @@ private:
    * The result can be passed to `fg()` or `bg()`.
    */
   FMT_NODISCARD
-  constexpr auto fg() const noexcept -> detail::color_type {
-    using value_t = detail::color_type::value_type;
-    return detail::color_type{
-                      narrow_cast<value_t>((style_ >> fg_shift) & value_mask)};
+  constexpr auto fg() const noexcept -> color_t {
+    using value_t = color_t::value_type;
+    return detail::unpack_color(
+                      narrow_cast<value_t>((style_ >> fg_shift) & value_mask));
   }
 
   /**
@@ -561,10 +749,10 @@ private:
    * The result can be passed to `fg()` or `bg()`.
    */
   FMT_NODISCARD
-  constexpr auto bg() const noexcept -> detail::color_type {
-    using value_t = detail::color_type::value_type;
-    return detail::color_type{
-                      narrow_cast<value_t>((style_ >> bg_shift) & value_mask)};
+  constexpr auto bg() const noexcept -> color_t {
+    using value_t = color_t::value_type;
+    return detail::unpack_color(
+                      narrow_cast<value_t>((style_ >> bg_shift) & value_mask));
   }
 
   /// Returns the combined emphasis bit mask.
@@ -576,7 +764,7 @@ private:
    * The result can be passed to `fg()` or `bg()`.
    */
   FMT_NODISCARD constexpr auto get_foreground() const noexcept
-    -> detail::color_type
+    -> color_t
   { return fg(); }
 
   /**
@@ -584,7 +772,7 @@ private:
    * The result can be passed to `fg()` or `bg()`.
    */
   FMT_NODISCARD constexpr auto get_background() const noexcept
-    -> detail::color_type
+    -> color_t
   { return bg(); }
 
   /// Returns the combined emphasis bit mask, or `emphasis{}` if none is set.
@@ -597,7 +785,7 @@ private:
    * Passing `no_color` clears the foreground to unspecified; it does not store
    * a terminal reset. Preserves the background color and emphasis attributes.
    */
-  FMT_CONSTEXPR auto fg(detail::color_type color) noexcept -> text_style& {
+  FMT_CONSTEXPR auto fg(color_t color) noexcept -> text_style& {
     style_ = (style_ & ~fg_mask)
            | (value_type{to_underlying(color)} << fg_shift);
     return *this;
@@ -609,7 +797,7 @@ private:
    * Passing `no_color` clears the background to unspecified; it does not store
    * a terminal reset. Preserves the foreground color and emphasis attributes.
    */
-  FMT_CONSTEXPR auto bg(detail::color_type color) noexcept -> text_style& {
+  FMT_CONSTEXPR auto bg(color_t color) noexcept -> text_style& {
     style_ = (style_ & ~bg_mask)
            | (value_type{to_underlying(color)} << bg_shift);
     return *this;
@@ -746,11 +934,8 @@ public:
 
   constexpr explicit text_style(value_type style) noexcept : style_{style} {}
 
-  friend FMT_CONSTEXPR auto fg(detail::color_type foreground) noexcept
-    -> text_style;
-
-  friend FMT_CONSTEXPR auto bg(detail::color_type background) noexcept
-    -> text_style;
+  friend FMT_CONSTEXPR auto fg(color_t foreground) noexcept -> text_style;
+  friend FMT_CONSTEXPR auto bg(color_t background) noexcept -> text_style;
 }; // text_style
 
 FMT_NODISCARD constexpr inline auto to_underlying(text_style value) noexcept
@@ -763,9 +948,7 @@ FMT_NODISCARD constexpr inline auto to_underlying(text_style value) noexcept
  * values through implicit conversion to the parameter type.
  */
 FMT_NODISCARD
-FMT_CONSTEXPR inline auto fg(detail::color_type foreground) noexcept
-  -> text_style
-{
+FMT_CONSTEXPR inline auto fg(color_t foreground) noexcept -> text_style {
   return text_style{text_style::value_type{to_underlying(foreground)}
                     << text_style::fg_shift};
 }
@@ -776,9 +959,7 @@ FMT_CONSTEXPR inline auto fg(detail::color_type foreground) noexcept
  * values through implicit conversion to the parameter type.
  */
 FMT_NODISCARD
-FMT_CONSTEXPR inline auto bg(detail::color_type background) noexcept
-  -> text_style
-{
+FMT_CONSTEXPR inline auto bg(color_t background) noexcept -> text_style {
   return text_style{text_style::value_type{to_underlying(background)}
                     << text_style::bg_shift};
 }
@@ -813,7 +994,7 @@ class ansi_color_escape {
   }
 
 public:
-  FMT_CONSTEXPR ansi_color_escape(color_type text_color, bool is_bg) noexcept {
+  FMT_CONSTEXPR ansi_color_escape(color_t text_color, bool is_bg) noexcept {
     if (holds_alternative<no_color_t>(text_color))
       return;
 
@@ -877,12 +1058,12 @@ public:
 }; // ansi_color_escape
 
 template<typename Char>
-FMT_CONSTEXPR auto make_foreground_color(color_type foreground) noexcept
+FMT_CONSTEXPR auto make_foreground_color(color_t foreground) noexcept
   -> ansi_color_escape<Char>
 { return ansi_color_escape<Char>(foreground, false); }
 
 template<typename Char>
-FMT_CONSTEXPR auto make_background_color(color_type background) noexcept
+FMT_CONSTEXPR auto make_background_color(color_t background) noexcept
   -> ansi_color_escape<Char>
 { return ansi_color_escape<Char>(background, true); }
 
@@ -1097,7 +1278,8 @@ template<typename T, typename Char>
 struct formatter<detail::styled_arg<T>, Char> : formatter<T, Char> {
   template<typename FormatContext>
   FMT_CONSTEXPR auto format(const detail::styled_arg<T>& arg,
-                            FormatContext& ctx) const -> decltype(ctx.out()) {
+                            FormatContext& ctx) const -> decltype(ctx.out())
+{
     const auto& ts = arg.style;
     auto out = ctx.out();
 
@@ -1318,9 +1500,9 @@ template<> struct hash<fmt::rgb> {
   }
 };
 
-template<> struct hash<fmt::detail::color_type> {
-  auto operator()(fmt::detail::color_type value) const noexcept -> size_t {
-    return hash<fmt::detail::color_type::value_type>{}(fmt::to_underlying(value));
+template<> struct hash<fmt::color_t> {
+  auto operator()(fmt::color_t value) const noexcept -> size_t {
+    return hash<fmt::color_t::value_type>{}(fmt::to_underlying(value));
   }
 };
 

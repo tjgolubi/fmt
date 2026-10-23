@@ -4,6 +4,9 @@ Include `<fmt/color.h>` to combine foreground and background colors with
 emphasis attributes, style individual formatting arguments, and produce
 formatted strings or output.
 
+The color and styling API supports C++11 and later. `fmt::color_t` stores an
+unspecified color, an RGB value, or a terminal palette color in one public type.
+
 ```cpp
 #include <fmt/color.h>
 
@@ -26,7 +29,7 @@ The first call styles the entire message. The second styles only `42`.
 
 | Page                           | Contents |
 | ------------------------------ | --- |
-| [Colors](colors.md)            | Named RGB colors, terminal palette colors, `rgb`, `no_color`, and integer representations |
+| [Colors](colors.md)            | RGB and terminal colors, `no_color`, public `color_t` values, access and visitation, and integer representations |
 | [Emphasis](emphasis.md)        | Text attributes and their combination |
 | [Text styles](text-style.md)   | `text_style`, its members and operators, and `fg()`/`bg()` |
 | [Styled arguments](styled.md)  | `styled()`, format specifications, and lifetimes |
