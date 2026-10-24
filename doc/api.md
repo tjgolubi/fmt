@@ -681,9 +681,9 @@ Example:
 
 ::: print(text_style, format_string<T...>, T&&...)
 
-::: fg(detail::color_type)
+::: fg(color_t)
 
-::: bg(detail::color_type)
+::: bg(color_t)
 
 ::: styled(const T&, text_style)
 

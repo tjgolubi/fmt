@@ -37,28 +37,24 @@ TEST(color_test, text_style) {
   EXPECT_EQ(fg(fmt::rgb(0xC0F000)) | fg(fmt::rgb(0x000FEE)),
             fg(fmt::rgb(0xC0FFEE)));
 
-  EXPECT_THROW_MSG(
-      fg(fmt::terminal_color::black) | fg(fmt::terminal_color::black),
-      fmt::format_error, "can't OR a terminal color");
-  EXPECT_THROW_MSG(
-      fg(fmt::terminal_color::black) | fg(fmt::terminal_color::white),
-      fmt::format_error, "can't OR a terminal color");
-  EXPECT_THROW_MSG(
-      bg(fmt::terminal_color::black) | bg(fmt::terminal_color::black),
-      fmt::format_error, "can't OR a terminal color");
-  EXPECT_THROW_MSG(
-      bg(fmt::terminal_color::black) | bg(fmt::terminal_color::white),
-      fmt::format_error, "can't OR a terminal color");
-  EXPECT_THROW_MSG(fg(fmt::terminal_color::black) | fg(fmt::color::black),
-                   fmt::format_error, "can't OR a terminal color");
-  EXPECT_THROW_MSG(bg(fmt::terminal_color::black) | bg(fmt::color::black),
-                   fmt::format_error, "can't OR a terminal color");
+  EXPECT_EQ(fg(fmt::terminal_color::black) | fg(fmt::terminal_color::black),
+            fg(fmt::rgb(0, 0, 0)));
+  EXPECT_EQ(fg(fmt::terminal_color::black) | fg(fmt::terminal_color::white),
+            fg(fmt::rgb(229, 229, 229)));
+  EXPECT_EQ(bg(fmt::terminal_color::black) | bg(fmt::terminal_color::black),
+            bg(fmt::rgb(0, 0, 0)));
+  EXPECT_EQ(bg(fmt::terminal_color::black) | bg(fmt::terminal_color::white),
+            bg(fmt::rgb(229, 229, 229)));
+  EXPECT_EQ(fg(fmt::terminal_color::black) | fg(fmt::color::black),
+            fg(fmt::rgb(0, 0, 0)));
+  EXPECT_EQ(bg(fmt::terminal_color::black) | bg(fmt::color::black),
+            bg(fmt::rgb(0, 0, 0)));
 
-  EXPECT_NO_THROW(fg(fmt::terminal_color::white) |
-                  bg(fmt::terminal_color::white));
-  EXPECT_NO_THROW(fg(fmt::terminal_color::white) | bg(fmt::rgb(0xFFFFFF)));
-  EXPECT_NO_THROW(fg(fmt::terminal_color::white) | fmt::text_style());
-  EXPECT_NO_THROW(bg(fmt::terminal_color::white) | fmt::text_style());
+  EXPECT_NO_THROW((void)(fg(fmt::terminal_color::white) |
+                        bg(fmt::terminal_color::white)));
+  EXPECT_NO_THROW((void)(fg(fmt::terminal_color::white) | bg(fmt::rgb(0xFFFFFF))));
+  EXPECT_NO_THROW((void)(fg(fmt::terminal_color::white) | fmt::text_style()));
+  EXPECT_NO_THROW((void)(bg(fmt::terminal_color::white) | fmt::text_style()));
 }
 
 TEST(color_test, format) {
