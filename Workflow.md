@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated October 23, 2026.
+Updated October 26, 2026.
 
 ## Authorization and scope
 
@@ -48,7 +48,7 @@ assuming a checkout follows those settings.
 | Repository | Role |
 | --- | --- |
 | `tjgolubi/fmt` | Library source, tests, user documentation, and fork changelog. Current development branch: `FmtColorDev`. |
-| `tjgolubi/FmtColorGpt` | These coordination documents; default branch `master`. |
+| `docs/Coord` in this checkout | Current coordination handoff documents, separate from library development. Earlier history is in `tjgolubi/FmtColorGpt` (`master`). |
 | Sites source repository | Separate website implementation, managed by the Sites helper. |
 
 Use **MSYS2 Git** for `fmt` and `FmtColorGpt`: `/usr/bin/git` in MSYS, or
@@ -99,9 +99,16 @@ baseline; this policy does not authorize rewriting them.
    Verify local and GitHub full SHAs match. **Every applicable workflow and
    matrix job must pass for that exact SHA before squash preparation.** Queued,
    running, failed, cancelled, or missing expected jobs are not passes.
+   Creating or pushing a branch at an unchanged baseline tests that baseline,
+   not uncommitted feature files. Check that the feature itself is in the pushed
+   tree before treating a green run as candidate validation.
 5. Obtain authorization for the squash onto the agreed development baseline.
    Prepare it, verify the resulting tree and relevant integration checks, and
    stop uncommitted for Terry's review unless instructed otherwise.
+   A squash stages its changes: review with `git diff --cached`; plain
+   `git diff` shows only unstaged changes. `git commit -C <candidate>` reuses
+   the candidate's message and authorship without an editor; lowercase `-c`
+   opens the configured editor to revise that message.
 6. Terry commits the squash. Run git-cliff over the accepted history, starting
    at `main` and ending at that actual commit, inspect the generated changelog,
    and leave it for review.  Terry stages it and uses
@@ -158,7 +165,8 @@ external processing commands. Use the generated file, review its diff, and let
 Terry stage and amend it into the squash before pushing. Do not manually rewrite
 entries: adjust the template or relevant commit message when needed, then
 regenerate. Do not include intermediate feature commits or invent a prospective
-hash. This commit/generate/amend/push sequence was verified with VarColor and Palette.
+hash. This commit/generate/amend/push sequence was verified with VarColor,
+Palette, and Ostream.
 
 The current template groups entries by commit type and orders them oldest first
 within each group. It uses the subject, scope, breaking marker, and

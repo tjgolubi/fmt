@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated October 23, 2026. Implemented behavior is separated below from future
+Updated October 26, 2026. Implemented behavior is separated below from future
 design. A proposal is not permission to implement it.
 
 ## Goals and boundaries
@@ -33,8 +33,8 @@ naming and API conventions.
 
 ## Implemented foundation
 
-`FmtColorDev` at `d9d64d36` integrates Palette on the foundation, Fluent,
-ShortNames, and VarColor. Exact history and baseline are in
+`FmtColorDev` at `257cdac1` integrates the ostream bridge on the foundation,
+Fluent, ShortNames, VarColor, and Palette. Exact history and baseline are in
 [README.md](README.md#current-baseline). Current source and tests establish
 implemented behavior; private numeric representations are not stable contracts.
 
@@ -225,9 +225,10 @@ Preserve these targeted compiler provisions:
 
 ### Compatibility with upstream
 
-Production library changes are confined to `include/fmt/color.h`. Deliberate
-changes include RGB constants replacing the named-color enum, explicit packed
-RGB construction, emphasis OR's return type, terminal renumbering, the public
+The core styling changes are in `include/fmt/color.h`; the ostream addition is
+in `include/fmt/color-ostream.h`, with module registration in `src/fmt.cc`.
+Deliberate changes include RGB constants replacing the named-color enum,
+explicit packed RGB construction, emphasis OR's return type, terminal renumbering, the public
 variant API, automatic terminal promotion, and changed packed representations.
 The guide records behavior changes without treating every one as a defect.
 
@@ -243,6 +244,67 @@ Terminal renumbering remains negotiable during upstream review. If maintainers
 require SGR-valued enum constants, retain that representation in the {fmt}
 deliverable and defer renumbering to the independent library. This remains a
 contingency, not a request received or accepted.
+
+### Styled ostream output
+
+`<fmt/color-ostream.h>` provides `print(os, style, format, args...)`,
+`println(os, style, format, args...)`, and corresponding `vprint`/`vprintln`
+overloads with `format_args`. The destination is `std::ostream&`; no styled
+`std::wostream` overload is provided. The bridge includes `color.h` and
+`ostream.h`, leaving both existing headers independent.
+
+The style applies to the entire formatted message. Nonempty styles add SGR
+sequences and a reset to terminal defaults; empty styles emit plain formatted
+text. A newline follows the reset. Reset does not restore an enclosing style.
+The bridge formats into a buffer and delegates output to the existing ostream
+printer, retaining its stream behavior and Windows console path. It supports
+C++11, header-only use, installation, and C++20 module export.
+
+The `21eba01b` compatibility branch still verifies the same `color.h`, unchanged
+by Ostream; its 42-job result does not cover the new bridge. The final
+`FmtColorDev` 43-job result covers the integrated bridge and tests separately.
+
+## Pending TaskWarrior branch
+
+The local `TaskWarrior` branch at
+`e46006c9bc2e62c9bc3d0b5dd40e5644ab9bc5fe` contains application-driven work
+above Palette. These features are implemented on that branch, with tests and
+guide changes, but are not part of the accepted `FmtColorDev` baseline:
+
+- `FMT_COLOR_COMPACT_SGR=1` selects one combined SGR sequence per style with
+  unpadded decimal parameters. Undefined or `0` preserves legacy output.
+- `to_sgr<Char>(style)` returns an owning `std::basic_string<Char>` containing
+  opening style sequences; `Char` defaults to `char`. It replaces the removed
+  `text_style::str()`. Empty styles return an empty string; no reset is appended.
+- `sgr_reset<Char>()` returns a constexpr, noexcept fmt string view into static
+  storage. The local-static implementation is gated by
+  `__cpp_constexpr >= 202211L`; the fallback supports C++11 constant evaluation.
+- `wrap_sgr(style, text)` copies text between opening SGR and reset, returning
+  plain text for an empty style and an empty string for empty text. The template
+  takes `basic_string_view<Char>`; a narrow convenience overload accepts literals
+  and strings through conversion. Text and embedded nulls/escapes are preserved.
+- Member `overlay(other)` mutates a style; free `overlay(base, overrides)`
+  returns a copy. Specified incoming colors replace matching channels without
+  promotion, unspecified channels leave existing colors, and emphasis is ORed.
+- Free `bold`, `faint`, `italic`, `underline`, `blink`, `reverse`, `conceal`,
+  and `strike` take a style by value and return a changed copy. Their Boolean
+  defaults to `true`; `false` clears only that bit. They are noexcept and use
+  `FMT_CONSTEXPR` for supported C++14+ constant evaluation, retaining C++11 use.
+
+Use fmt string views for C++11 support. In this version they have `size()` but
+no `empty()`. Explicit character template arguments are needed when deduction
+cannot convert a literal to `basic_string_view<Char>`. SGR conversion allocates
+and is not noexcept. Keep style values independent of their rendering.
+
+The reserved single-sequence bound is 56 characters, excluding a null terminator;
+current combined output needs at most 52, leaving room for a future `000;`
+prefix. The reset length is separately four. Special extended-SGR semantics are
+not implemented by reserving that space.
+
+Review and reconcile TaskWarrior with the current baseline before integrating;
+do not overwrite the accepted ostream bridge with the older branch tree. The
+final ostream CI and website publication do not validate or publish these
+pending features. Their acceptance still requires the normal candidate gate.
 
 ## Planned work
 

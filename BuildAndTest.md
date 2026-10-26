@@ -2,8 +2,9 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Website](Website.md)
 
-Updated October 23, 2026. Commands run from the library checkout root unless
-stated otherwise. `/doc/` in project discussion means repository-relative.
+Updated October 26, 2026. Commands run from the library checkout root unless
+stated otherwise. Use `FmtColorDev` or the relevant candidate branch, not the
+documentation-only `docs/Coord` branch. `/doc/` means repository-relative.
 
 ## Platforms and tools
 
@@ -20,8 +21,9 @@ repositories. Before diagnosing tool failures, check:
 command -v git python cmake g++ doxygen
 ```
 
-The recorded PC toolchain is MSYS GCC 15.3.0, CMake 4.4.4, Python 3.12.15,
-MkDocs 1.6.1, and Doxygen 1.18.0. These are observed versions, not instructions
+The latest ostream checks used MSYS GCC 16.2.0 and CMake 4.4.4. Other recorded
+tools are Python 3.12.15, MkDocs 1.6.1, and Doxygen 1.18.0.
+These are observed versions, not instructions
 to install arbitrary latest releases. Keep CMake caches and virtual environments
 specific to the selected platform/toolchain. See
 [Workflow.md](Workflow.md#repositories-and-tools) for Git, SSH, and PATH rules.
@@ -198,39 +200,74 @@ retain aliases and all 16 terminal colors. Existing upstream spellings remain
 in older tests. Targeted old GCC/native MSVC workarounds stay gated as described
 in [CppDesign.md](CppDesign.md#compiler-constraints).
 
+`color-ostream-test` covers styled `print`, `println`, `vprint`, and `vprintln`
+with whole-message styling, argument formatting, newline/reset order, empty
+styles and text, embedded nulls/braces, long text, stream-state preservation,
+formatting errors before output, and stream failures and exceptions. Keep the
+existing `ostream-test` and `color-test` when checking bridge changes.
+
+### Pending TaskWarrior build mode
+
+On the **TaskWarrior branch only**, `./build.bash taskwarrior` configures
+`build/taskwarrior` with compiler definition `FMT_COLOR_COMPACT_SGR=1`, builds
+the library and tests, then runs CTest. It passes `FMT_DOC=OFF` and skips the
+documentation target; it still prepares the documentation virtual environment
+if missing. The no-argument script uses `build` with documentation enabled.
+Neither this build mode nor compact-SGR output is in the accepted baseline yet.
+
+The setting must also be defined when compiling an application: SGR generation
+is in the header. A CMake cache argument named `FMT_COLOR_COMPACT_SGR` alone
+does not define a compiler macro. Use `target_compile_definitions` or compiler
+flags, consistently across the application's translation units and libraries.
+The same installed compiled library supports either header-selected mode.
+`FmtColorIntegration.md` on TaskWarrior gives Makefile and CMake examples.
+
 ## Current validation
 
-### Integrated Palette
+### Integrated ostream output
 
-Verified October 23, 2026 for final amended `FmtColorDev` commit
-[`d9d64d361591311901e06c662c24879128c63724`](https://github.com/tjgolubi/fmt/commit/d9d64d361591311901e06c662c24879128c63724):
+Verified October 26, 2026 for final amended `FmtColorDev` commit
+[`257cdac170506770ef3c807abc3ddd9928ef8191`](https://github.com/tjgolubi/fmt/commit/257cdac170506770ef3c807abc3ddd9928ef8191):
 
 | Workflow      | Successful jobs | Evidence |
 |---------------------|----| ---- |
-| Linux               | 18 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40042644485) |
-| Windows             | 13 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40042644491) |
-| macOS               |  9 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40042644509) |
-| Documentation build |  1 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40042644586) |
-| Guide publication   |  2 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40042644505) |
+| Linux               | 18 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40305543116) |
+| Windows             | 13 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40305543049) |
+| macOS               |  9 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40305543144) |
+| Documentation build |  1 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40305543000) |
+| Guide publication   |  2 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40305542983) |
 
 *Guide publication includes deployment*
 
 All **43 jobs** passed, with exact local/GitHub/run SHAs matched and every job
-independently checked. The deployed guide includes the generated changelog's
-commit, palette swatches, conversions, blending, and style clearing.
+independently checked. The deployed guide includes the styled ostream section,
+all four bridge overloads, and the generated changelog alongside the existing
+palette, conversion, blending, and style documentation.
 
-Feature development included C++11/14/17/20/23 test-source checks, strict
-C++11/C++23 headers, disabled-exception compilation, C++11 color-test execution,
-focused Release/C++23 tests, and guide builds. Final integration additionally
-verified the staged tree exactly matched the CI-passed candidate and reran the
-focused color tests. These do not claim a fresh local full-suite/Termux run for
-the feature branch; exact final-SHA CI supplies broader coverage.
+The candidate `a80377d5c215bf77dda7b75f1af9991205397272` passed all 41 jobs in
+the four push workflows before squash preparation. The staged squash tree
+matched that candidate exactly; the generated changelog was included by
+amendment before the final push. These final 43-job results supersede the
+candidate's evidence for acceptance.
+
+Local checks used an isolated Release/C++23 build in `build/ostream` with
+tests enabled and documentation disabled. All three affected CTest targets
+(`color-ostream-test`, `ostream-test`, and `color-test`) passed, including after
+squash preparation. Strict C++11 header/test-source compilation, header-only
+C++11 execution, both header include orders, disabled-exception compilation,
+C++20 module compilation and an importing consumer, and installation passed.
+MSYS module compilation required `-D_GNU_SOURCE` for POSIX declarations.
+The guide built and all four generated ostream declarations were inspected.
+No new local full-suite or Termux run is claimed; exact final-SHA CI supplies
+the broader coverage.
 
 ### Upstream compatibility branch
 
 Verified October 23, 2026 for `test/UpstreamCompatibility` commit
 [`21eba01b33becd9f94cd34a1a8758f64ecbc53c3`](https://github.com/tjgolubi/fmt/commit/21eba01b33becd9f94cd34a1a8758f64ecbc53c3). It is based on
-upstream `0fc31633`, with `color.h` identical to `FmtColorDev` at `d9d64d36`.
+upstream `0fc31633`, with `color.h` identical to `FmtColorDev` at both
+`d9d64d36` and current `257cdac1`. This verification does not include the new
+ostream bridge; the final integration CI above tests that addition.
 
 | Workflow        | Successful jobs | Evidence |
 |---------------------|----| --- |
@@ -295,11 +332,12 @@ and every applicable job; never cite a baseline-only run for uncommitted work.
 
 ### Website validation
 
-Website version **26** adds the compatibility overview callout and detailed
-evidence section. Three pages and 39 local links/anchors were validated, with
-downloads and Future Work preserved; the new section was inspected locally and
-live after native Sites deployment succeeded. Earlier Palette page checks
-validated guide links and C++11/C++23 examples. See
+Website version **27** adds the ostream overview callout, implementation and
+usage section, and exact final CI links for `257cdac1`, while preserving the
+upstream-compatibility evidence. Three pages and 39 local links/anchors were
+validated, with unique IDs and unchanged downloads, demo, design, and rendering
+sections. The new section was inspected locally and live after native Sites
+deployment succeeded. See
 [Website.md](Website.md#current-publication) for exact publication provenance.
 
 For new test results, record branch/full SHA, toolchain, mode, CMake options,
