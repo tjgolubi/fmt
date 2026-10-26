@@ -348,6 +348,7 @@ class CxxHandler(BaseHandler):
         headers = [
             "args.h",
             "chrono.h",
+            "color-ostream.h",
             "color.h",
             "compile.h",
             "core.h",

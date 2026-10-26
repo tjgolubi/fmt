@@ -278,6 +278,7 @@ foreach (
   args.h
   base.h
   chrono.h
+  color-ostream.h
   color.h
   compile.h
   core.h

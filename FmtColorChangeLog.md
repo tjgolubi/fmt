@@ -27,6 +27,8 @@ Remove packed-integer construction and integral conversion.
 style colors now promote to RGB and combine by bitwise OR,
 including terminal colors. Use free `blend()` for channel averaging.
 
+- *(color)* Add styled ostream output
+
 
 ### 🐛 Bug Fixes
 
