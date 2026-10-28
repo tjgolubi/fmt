@@ -2,7 +2,7 @@ name: FmtColor documentation
 
 on:
   push:
-    branches: [dev]
+    branches: [color-dev]
 
 permissions:
   contents: read
