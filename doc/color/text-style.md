@@ -295,11 +295,64 @@ alias such as `using em = fmt::emphasis;` and write `em::bold`.
 ### Attribute functions returning a new style
 
 The free functions `bold()`, `faint()`, `italic()`, `underline()`, `blink()`,
-`reverse()`, `conceal()`, and `strike()` take a style by value and return a
-modified copy. The original style is unchanged. Each function enables its
-attribute by default; pass `false` as the second argument to disable it.
-All other attributes and both color channels retain their values and kinds.
-Bold and faint remain independent.
+`reverse()`, `conceal()`, and `strike()` return `text_style` values. Each has a
+Boolean factory overload and an overload that derives a copy from a base style.
+All are `noexcept`. Bold and faint remain independent.
+
+#### Creating an attribute-only style
+
+Call a function without arguments, or with `true`, to create a style containing
+only that emphasis attribute. Both color channels are unspecified. Passing
+`false` returns an empty style with no colors or attributes. The Boolean
+parameter defaults to `true`; these factories support constant evaluation in
+C++11 and later.
+
+```cpp
+constexpr auto heading = fmt::bold();
+constexpr auto plain = fmt::bold(false); // Empty style.
+bool use_bold = true;                    // For example, a user preference.
+fmt::println("{}", fmt::styled(42, fmt::bold(use_bold)));
+fmt::println("{}", fmt::styled("Heading", fmt::bold()));
+```
+
+::: bold(bool)
+    options:
+      color_reference: true
+
+::: faint(bool)
+    options:
+      color_reference: true
+
+::: italic(bool)
+    options:
+      color_reference: true
+
+::: underline(bool)
+    options:
+      color_reference: true
+
+::: blink(bool)
+    options:
+      color_reference: true
+
+::: reverse(bool)
+    options:
+      color_reference: true
+
+::: conceal(bool)
+    options:
+      color_reference: true
+
+::: strike(bool)
+    options:
+      color_reference: true
+
+#### Deriving a style from a base
+
+Pass a style as the first argument to return a modified copy. The original
+style is unchanged. Each function enables its attribute by default; pass
+`false` as the second argument to disable it. All other attributes and both
+color channels retain their values and kinds.
 
 ```cpp
 const auto theme = fmt::text_style{fmt::color::coral, fmt::term_color::black};
@@ -309,11 +362,10 @@ auto bold_only = fmt::underline(bold_underlined, false);
 // theme still has no emphasis attributes.
 ```
 
-Use these functions when deriving a style from a reusable base. The member
+Use these overloads when deriving a style from a reusable base. The member
 call `style.underline()` modifies `style`; `fmt::underline(style)` returns a
-new value. Every free attribute function returns `text_style`, is `noexcept`,
-and supports constant evaluation in C++14 and later on supported compilers.
-They are available for runtime use in C++11.
+new value. The style-copy overloads support constant evaluation in C++14 and
+later on supported compilers, with runtime use available in C++11.
 
 ::: bold(text_style, bool)
     options:

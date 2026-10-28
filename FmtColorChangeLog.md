@@ -33,6 +33,8 @@ including terminal colors. Use free `blend()` for channel averaging.
 with assertion and clamping behavior. term_color uses int8_t, cube channel
 getters return int, and cube_color::chan_type is now private.
 
+- *(color)* Add conditional emphasis factories
+
 
 ### 🐛 Bug Fixes
 

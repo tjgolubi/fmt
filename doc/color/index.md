@@ -8,6 +8,12 @@ The color and styling API supports C++11 and later. `fmt::color_t` stores an
 unspecified color, an RGB value, or a terminal, cube, or gray palette color
 in one public type.
 
+Convenience is a major design goal. The API deliberately provides several ways
+to express common styling operations: constructors for complete styles, fluent
+member functions for updating values, and free functions for creating or deriving
+styles. These overlapping forms let you choose the clearest expression for each
+use, from concise one-off styles to attributes controlled by user configuration.
+
 ```cpp
 #include <fmt/color.h>
 

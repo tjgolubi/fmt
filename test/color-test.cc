@@ -1661,6 +1661,40 @@ void check_free_emphasis(fmt::emphasis attribute,
   }
 }
 
+TEST(color_test, emphasis_factories) {
+#define CHECK_EMPHASIS_FACTORY(name)                                      \
+  static_assert(std::is_same<decltype(fmt::name()),                        \
+                             fmt::text_style>::value,                    \
+                "attribute factories must return text_style");           \
+  static_assert(noexcept(fmt::name()) && noexcept(fmt::name(true)) &&      \
+                    noexcept(fmt::name(false)),                          \
+                "attribute factories must be noexcept");                 \
+  static_assert(fmt::name() == fmt::text_style{fmt::emphasis::name} &&      \
+                    fmt::name(true) == fmt::name(),                       \
+                "default and true must set exactly one attribute");       \
+  static_assert(fmt::name(false).empty(),                                 \
+                "false must produce an empty style");                    \
+  for (bool enabled : {false, true}) {                                    \
+    const auto style = fmt::name(enabled);                               \
+    EXPECT_EQ(style.emph(), enabled ? fmt::emphasis::name                  \
+                                   : fmt::emphasis{});                   \
+    EXPECT_FALSE(style.has_fg());                                        \
+    EXPECT_FALSE(style.has_bg());                                        \
+  }
+  CHECK_EMPHASIS_FACTORY(bold);
+  CHECK_EMPHASIS_FACTORY(faint);
+  CHECK_EMPHASIS_FACTORY(italic);
+  CHECK_EMPHASIS_FACTORY(underline);
+  CHECK_EMPHASIS_FACTORY(blink);
+  CHECK_EMPHASIS_FACTORY(reverse);
+  CHECK_EMPHASIS_FACTORY(conceal);
+  CHECK_EMPHASIS_FACTORY(strike);
+#undef CHECK_EMPHASIS_FACTORY
+  EXPECT_EQ(fmt::format("{}", fmt::styled(42, fmt::bold())),
+            "\x1b[1m42\x1b[0m");
+  EXPECT_EQ(fmt::format("{}", fmt::styled(42, fmt::bold(false))), "42");
+}
+
 TEST(color_test, free_emphasis) {
 #define CHECK_FREE_EMPHASIS(name)                                            \
   static_assert(noexcept(fmt::name(fmt::text_style{})) &&                    \

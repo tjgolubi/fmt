@@ -1402,40 +1402,104 @@ public:
   friend constexpr auto bg(color_t background) noexcept -> text_style;
 }; // text_style
 
+/**
+ * Returns a style with only bold enabled when `enable` is true (the default),
+ * or an empty style otherwise. Both color channels are unspecified.
+ */
+FMT_NODISCARD constexpr inline
+auto bold(bool enable = true) noexcept -> text_style
+{ return text_style{enable ? emphasis::bold : emphasis{}}; }
+
 /// Returns a copy of `style` with bold enabled or disabled by `enable`.
 FMT_NODISCARD FMT_CONSTEXPR inline
 auto bold(text_style style, bool enable = true) noexcept -> text_style
 { return style.bold(enable); }
+
+/**
+ * Returns a style with only faint enabled when `enable` is true (the default),
+ * or an empty style otherwise. Both color channels are unspecified.
+ */
+FMT_NODISCARD constexpr inline
+auto faint(bool enable = true) noexcept -> text_style
+{ return text_style{enable ? emphasis::faint : emphasis{}}; }
 
 /// Returns a copy of `style` with faint enabled or disabled by `enable`.
 FMT_NODISCARD FMT_CONSTEXPR inline
 auto faint(text_style style, bool enable = true) noexcept -> text_style
 { return style.faint(enable); }
 
+/**
+ * Returns a style with only italic enabled when `enable` is true (the default),
+ * or an empty style otherwise. Both color channels are unspecified.
+ */
+FMT_NODISCARD constexpr inline
+auto italic(bool enable = true) noexcept -> text_style
+{ return text_style{enable ? emphasis::italic : emphasis{}}; }
+
 /// Returns a copy of `style` with italic enabled or disabled by `enable`.
 FMT_NODISCARD FMT_CONSTEXPR inline
 auto italic(text_style style, bool enable = true) noexcept -> text_style
 { return style.italic(enable); }
+
+/**
+ * Returns a style with only underline enabled when `enable` is true (the default),
+ * or an empty style otherwise. Both color channels are unspecified.
+ */
+FMT_NODISCARD constexpr inline
+auto underline(bool enable = true) noexcept -> text_style
+{ return text_style{enable ? emphasis::underline : emphasis{}}; }
 
 /// Returns a copy of `style` with underline enabled or disabled by `enable`.
 FMT_NODISCARD FMT_CONSTEXPR inline
 auto underline(text_style style, bool enable = true) noexcept -> text_style
 { return style.underline(enable); }
 
+/**
+ * Returns a style with only blink enabled when `enable` is true (the default),
+ * or an empty style otherwise. Both color channels are unspecified.
+ */
+FMT_NODISCARD constexpr inline
+auto blink(bool enable = true) noexcept -> text_style
+{ return text_style{enable ? emphasis::blink : emphasis{}}; }
+
 /// Returns a copy of `style` with blink enabled or disabled by `enable`.
 FMT_NODISCARD FMT_CONSTEXPR inline
 auto blink(text_style style, bool enable = true) noexcept -> text_style
 { return style.blink(enable); }
+
+/**
+ * Returns a style with only reverse enabled when `enable` is true (the default),
+ * or an empty style otherwise. Both color channels are unspecified.
+ */
+FMT_NODISCARD constexpr inline
+auto reverse(bool enable = true) noexcept -> text_style
+{ return text_style{enable ? emphasis::reverse : emphasis{}}; }
 
 /// Returns a copy of `style` with reverse enabled or disabled by `enable`.
 FMT_NODISCARD FMT_CONSTEXPR inline
 auto reverse(text_style style, bool enable = true) noexcept -> text_style
 { return style.reverse(enable); }
 
+/**
+ * Returns a style with only conceal enabled when `enable` is true (the default),
+ * or an empty style otherwise. Both color channels are unspecified.
+ */
+FMT_NODISCARD constexpr inline
+auto conceal(bool enable = true) noexcept -> text_style
+{ return text_style{enable ? emphasis::conceal : emphasis{}}; }
+
 /// Returns a copy of `style` with conceal enabled or disabled by `enable`.
 FMT_NODISCARD FMT_CONSTEXPR inline
 auto conceal(text_style style, bool enable = true) noexcept -> text_style
 { return style.conceal(enable); }
+
+/**
+ * Returns a style with only strike enabled when `enable` is true (the default),
+ * or an empty style otherwise. Both color channels are unspecified.
+ */
+FMT_NODISCARD constexpr inline
+auto strike(bool enable = true) noexcept -> text_style
+{ return text_style{enable ? emphasis::strike : emphasis{}}; }
 
 /// Returns a copy of `style` with strike enabled or disabled by `enable`.
 FMT_NODISCARD FMT_CONSTEXPR inline
