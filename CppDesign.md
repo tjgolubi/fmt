@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated October 26, 2026. Implemented behavior is separated below from future
+Updated October 27, 2026. Implemented behavior is separated below from future
 design. A proposal is not permission to implement it.
 
 ## Goals and boundaries
@@ -33,10 +33,11 @@ naming and API conventions.
 
 ## Implemented foundation
 
-`FmtColorDev` at `257cdac1` integrates the ostream bridge on the foundation,
-Fluent, ShortNames, VarColor, and Palette. Exact history and baseline are in
-[README.md](README.md#current-baseline). Current source and tests establish
-implemented behavior; private numeric representations are not stable contracts.
+`FmtColorDev` at `25bcc4f7` includes the foundation, Fluent, ShortNames,
+VarColor, Palette, Ostream, and the integrated styling helpers described below.
+Exact history and baseline are in [README.md](README.md#current-baseline).
+Current source and tests establish behavior; private numeric representations
+are not stable contracts.
 
 Use `term_color`, `emphasis::strike`, `strike()`, and `is_strike()` in new
 examples and tests. `terminal_color`, `emphasis::strikethrough`,
@@ -54,28 +55,33 @@ forwarders. Preserve their use in older upstream tests and compatibility checks.
   black. They do not store or emit a terminal-reset instruction.
 - `term_color` has zero-based indices 0–15. Normal foreground/background SGR
   codes are 30–37/40–47; bright codes are 90–97/100–107.
-- `gray_color` has `value_type = uint8_t`, indices 0–23, and equal RGB channel
+- `gray_color` accepts an `int` index, stores it privately as a signed byte,
+  exposes `value_type = uint8_t`, and has indices 0–23 and equal RGB channel
   levels `8 + 10 * index`. Indexed SGR uses palette index `232 + index`.
-- `cube_color` has `value_type = uint8_t`, channels 0–5 and cube index
+- `cube_color` exposes `value_type = uint8_t`, stores signed-byte channels
+  privately, accepts/returns `int` channel values, and has channels 0–5 and
+  cube index
   `36*r + 6*g + b` in 0–215. RGB levels are `{0, 95, 135, 175, 215, 255}`;
   indexed SGR uses `16 + index`.
 
-Cube and gray constructors validate the original unsigned values before
-narrowing, using `FMT_THROW(std::out_of_range(...))` and upstream's disabled-
-exception machinery. Both implicitly convert to `rgb`, as do terminal colors.
+The numeric constructors and cube setters assert on invalid inputs and
+clamp when assertions are disabled; they are noexcept and do not throw. The
+combined cube-index constructor still accepts `unsigned` and clamps before
+decomposition. See the integrated-helper section for exact ranges. Both palette
+colors implicitly convert to `rgb`, as do terminal colors.
 Terminal conversion uses this fixed Xterm-default mapping, in index order:
 
-|Indices | RGB values |
-| ------ | --- |
-|  0– 3  | `(0,0,0)`, `(205,0,0)`, `(0,205,0)`, `(205,205,0)` |
-|  4– 7  | `(0,0,238)`, `(205,0,205)`, `(0,205,205)`, `(229,229,229)` |
-|  8–11  | `(127,127,127)`, `(255,0,0)`, `(0,255,0)`, `(255,255,0)` |
-| 12–15  | `(92,92,255)`, `(255,0,255)`, `(0,255,255)`, `(255,255,255)` |
+| Indices | RGB values                                                   |
+| ------- | ------------------------------------------------------------ |
+| 0– 3    | `(0,0,0)`, `(205,0,0)`, `(0,205,0)`, `(205,205,0)`           |
+| 4– 7    | `(0,0,238)`, `(205,0,205)`, `(0,205,205)`, `(229,229,229)`   |
+| 8–11    | `(127,127,127)`, `(255,0,0)`, `(0,255,0)`, `(255,255,0)`     |
+| 12–15   | `(92,92,255)`, `(255,0,255)`, `(0,255,255)`, `(255,255,255)` |
 
 This mapping cannot discover a user's terminal theme. `underlying_type<T>` and
-`to_underlying()` expose numeric values: `uint8_t` for terminal, cube, gray,
-and emphasis; `uint32_t` for RGB and `color_t`; `unsigned` zero for `no_color_t`;
-and `uint64_t` for styles. `narrow_cast` is unchecked; `enum_cast` expresses
+`to_underlying()` expose numeric values: `int8_t` for terminal; `uint8_t`
+for cube, gray, and emphasis; `uint32_t` for RGB and `color_t`; `unsigned` zero
+for `no_color_t`; and `uint64_t` for styles. `narrow_cast` is unchecked; `enum_cast` expresses
 enum-related casts. Numeric helpers are not archive interfaces.
 
 ### RGB conversion and blending
@@ -191,7 +197,8 @@ size does not establish ABI or persisted-data compatibility.
 ### Compiler constraints
 
 ANSI generation uses append helpers, visitation, and an emphasis-to-SGR table.
-RGB and indexed-palette parameters retain three-digit padding. Packed colors
+RGB and indexed-palette parameters retain three-digit padding in default
+output; compact output omits padding and combines components into one sequence. Packed colors
 and styles have changed from upstream; object size alone cannot establish ABI
 or persisted-data compatibility.
 
@@ -232,8 +239,9 @@ explicit packed RGB construction, emphasis OR's return type, terminal renumberin
 variant API, automatic terminal promotion, and changed packed representations.
 The guide records behavior changes without treating every one as a defect.
 
-`test/UpstreamCompatibility` at `21eba01b` verifies this header with upstream
-tests and workflows. Six terminal-overlap exception assertions become exact
+`test/UpstreamCompatibility` at `21eba01b` verifies the earlier Palette-era
+header from `d9d64d36`, not the current `25bcc4f7` header, with upstream tests
+and workflows. Six terminal-overlap exception assertions become exact
 RGB-result checks, four discarded nodiscard results are explicit, and two
 documentation signatures use `color_t`. All other upstream tests are unchanged.
 All 42 CI jobs passed; see [BuildAndTest.md](BuildAndTest.md#upstream-compatibility-branch).
@@ -247,35 +255,38 @@ contingency, not a request received or accepted.
 
 ### Styled ostream output
 
-`<fmt/color-ostream.h>` provides `print(os, style, format, args...)`,
-`println(os, style, format, args...)`, and corresponding `vprint`/`vprintln`
-overloads with `format_args`. The destination is `std::ostream&`; no styled
-`std::wostream` overload is provided. The bridge includes `color.h` and
-`ostream.h`, leaving both existing headers independent.
+`<fmt/color-ostream.h>` provides styled `print`, `println`, `vprint`, and
+`vprintln` for narrow and wide streams, plus ADL-found insertion of
+`styled(value, style)`. `print`/`println` have separate `std::ostream&` and
+`std::wostream&` overloads using direct `format_string`/`wformat_string` types;
+this avoids Clang 3.6 dependent-alias deduction failures. The `v` overloads use
+`std::basic_ostream<Char>&` and matching argument packs. The bridge includes
+`color.h`, `ostream.h`, and `xchar.h`, leaving the existing headers independent.
 
-The style applies to the entire formatted message. Nonempty styles add SGR
-sequences and a reset to terminal defaults; empty styles emit plain formatted
-text. A newline follows the reset. Reset does not restore an enclosing style.
-The bridge formats into a buffer and delegates output to the existing ostream
-printer, retaining its stream behavior and Windows console path. It supports
-C++11, header-only use, installation, and C++20 module export.
+Whole-message formatting adds a reset for nonempty styles and places a newline
+after it. Empty styles produce plain output. Reset restores terminal defaults,
+not an enclosing style. Narrow formatting retains the existing Windows console
+path; wide formatting uses the existing buffer writer. Insertion uses ordinary
+stream formatting and preserves field width while writing SGR. Detailed lifetime
+and exception-recovery rules are recorded below.
 
-The `21eba01b` compatibility branch still verifies the same `color.h`, unchanged
-by Ostream; its 42-job result does not cover the new bridge. The final
-`FmtColorDev` 43-job result covers the integrated bridge and tests separately.
+The bridge supports C++11, header-only use, installation, and C++20 module
+export. All 43 final `FmtColorDev` jobs passed at `25bcc4f7`, including guide
+publication. The separate 42-job compatibility result at `21eba01b` covers
+neither the bridge nor the later changes to `color.h`.
 
-## Pending TaskWarrior branch
+## Integrated styling helpers
 
-The local `TaskWarrior` branch at
-`e46006c9bc2e62c9bc3d0b5dd40e5644ab9bc5fe` contains application-driven work
-above Palette. These features are implemented on that branch, with tests and
-guide changes, but are not part of the accepted `FmtColorDev` baseline:
+The reviewed `TaskWarrior` candidate `d248d1bda83bb6bc977c9b6adcca68de8fc67bcb` was
+squash-integrated as accepted `FmtColorDev` commit `25bcc4f7f5db75c6ed3971311bd676add543089b`.
+The following features have tests and deployed guide documentation; they are
+implemented behavior, rather than proposals.
 
 - `FMT_COLOR_COMPACT_SGR=1` selects one combined SGR sequence per style with
   unpadded decimal parameters. Undefined or `0` preserves legacy output.
 - `to_sgr<Char>(style)` returns an owning `std::basic_string<Char>` containing
-  opening style sequences; `Char` defaults to `char`. It replaces the removed
-  `text_style::str()`. Empty styles return an empty string; no reset is appended.
+  opening style sequences; `Char` defaults to `char`. Style values remain
+  independent of rendering; no `text_style::str()` member is provided. Empty styles return an empty string; no reset is appended.
 - `sgr_reset<Char>()` returns a constexpr, noexcept fmt string view into static
   storage. The local-static implementation is gated by
   `__cpp_constexpr >= 202211L`; the fallback supports C++11 constant evaluation.
@@ -291,20 +302,66 @@ guide changes, but are not part of the accepted `FmtColorDev` baseline:
   defaults to `true`; `false` clears only that bit. They are noexcept and use
   `FMT_CONSTEXPR` for supported C++14+ constant evaluation, retaining C++11 use.
 
+- `operator|=(emphasis&, emphasis)` modifies its left operand, returns
+  `emphasis&`, and is noexcept. `FMT_CONSTEXPR` preserves C++14+ constant evaluation; nonmutating
+  `operator|` remains usable in C++11 constant expressions.
+- `rgb(int, int, int)`, `gray_color(int)`, cube channel construction and setters
+  accept signed numeric inputs. RGB channels remain public `uint8_t`; gray and
+  cube use private signed-byte storage. Cube getters return `int`.
+  The single-index cube constructor still accepts `unsigned`.
+- Invalid RGB/gray/cube numeric arguments trigger `FMT_ASSERT`. If assertions
+  are disabled, inputs clamp to their nearest legal endpoints: RGB `0..255`,
+  gray `0..23`, cube channels `0..5`, and combined cube indices `0..215`.
+  Clamp a combined index before decomposition. These constructors and setters
+  are noexcept and no longer throw or use the disabled-exception termination
+  path. Valid construction remains constexpr in C++11.
+- `term_color` and its `underlying_type`/`to_underlying` use `int8_t`; named
+  indices stay `0..15`. RGB conversion asserts both lower and upper bounds.
+  Packed RGB, color/style representations, emphasis masks, and the public
+  gray/cube numeric representations remain unsigned. Preserve `std::size_t`
+  at standard-library size interfaces; do not mechanically replace bit types.
+- `<fmt/color-ostream.h>` provides ADL-found insertion of `styled(value, style)`
+  into narrow and wide streams. It uses the value's normal stream insertion,
+  including flags, precision, padding, and custom stream-only types. Opening
+  SGR and reset use `write()` so they do not consume field width. Empty styles
+  emit no reset; nonempty styles around empty text still emit SGR and reset.
+  The wrapper borrows its value; stored wrappers require a surviving referent.
+- Insertion attempts a reset if the value throws, suppresses reset-recovery
+  failures, and rethrows the original exception. It cannot guarantee a reset
+  on a failed stream. The normal trailing reset is outside the recovery block.
+  Gate recovery with the current `FMT_USE_EXCEPTIONS` macro.
+- Styled `print` and `println` have separate narrow/wide overloads; `vprint`
+  and `vprintln` take `std::basic_ostream<Char>&`, with matching packs.
+  The bridge includes `xchar.h`; narrow output retains the existing console
+  path, wide output uses the existing buffer writer. Formatting functions use
+  fmt specifications and preserve stream format settings, unlike insertion.
+
+These public signature/type changes can affect callers: unsigned variables may
+need a checked conversion before signed brace construction; the old public cube
+`chan_type` alias is now private. Do not claim numeric or source compatibility
+for all changed interfaces.
+
 Use fmt string views for C++11 support. In this version they have `size()` but
 no `empty()`. Explicit character template arguments are needed when deduction
 cannot convert a literal to `basic_string_view<Char>`. SGR conversion allocates
 and is not noexcept. Keep style values independent of their rendering.
 
-The reserved single-sequence bound is 56 characters, excluding a null terminator;
-current combined output needs at most 52, leaving room for a future `000;`
-prefix. The reset length is separately four. Special extended-SGR semantics are
-not implemented by reserving that space.
+The public opening-output bound is 56 characters, excluding a null terminator.
+Legacy output can use all 56; current compact output needs at most 52, leaving
+room for a future `000;` prefix in a combined sequence. The reset length is
+separately four. Special extended-SGR semantics are not implemented by
+reserving that space.
 
-Review and reconcile TaskWarrior with the current baseline before integrating;
-do not overwrite the accepted ostream bridge with the older branch tree. The
-final ostream CI and website publication do not validate or publish these
-pending features. Their acceptance still requires the normal candidate gate.
+Compatibility provisions found during candidate CI are retained: default the
+compact macro to zero; cast signed payloads explicitly; perform terminal SGR
+arithmetic as `int`; emit the reset-storage out-of-class definition only before
+C++17; and avoid copying the empty union member in the SGR visitor during MSVC
+constant evaluation. Tests explicitly initialize const stream-only values and
+avoid shadowing and self-assignment warnings.
+
+The final 43-job result validates the accepted commit. Compact mode has separate
+local full-suite and strict C++11 evidence; GitHub CI uses the default SGR mode.
+The guide deployment and public Site version 29 include these features.
 
 ## Planned work
 
@@ -320,6 +377,23 @@ StyledText representations below do not settle a C++11 implementation path.
 Do not restore a C++17 variant gate or the superseded strict style-OR policy.
 Experimental branches such as `refactor/Crazy` need explicit approval for
 implementation or website inclusion.
+
+### Conditional attribute factories
+
+TODO: Consider overloads `bold(bool enable = true)` and equivalents for all
+eight emphasis attributes, returning a `text_style` containing only that
+attribute when enabled, or an empty style otherwise. Keep the existing
+`bold(text_style, bool = true)` forms for deriving a copy from a base style.
+This would support `styled(value, fmt::bold())` and configuration-driven calls
+such as `fmt::bold(userWantsBold)`. No implementation is authorized yet.
+
+After implementing these factories, notify the TaskWarrior team and have them
+try the new functions before attempting to merge the feature onto `FmtColorDev`.
+
+Revisit the convenience and naming of these factories for the independent
+C++23-and-later library. `using enum fmt::emphasis` (available since C++20)
+already shortens unconditional styling; imported enum names can hide or
+conflict with unqualified factory names. Qualified `fmt::bold()` remains clear.
 
 ## Structured styled text
 

@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated October 26, 2026.
+Updated October 27, 2026.
 
 ## Authorization and scope
 
@@ -45,11 +45,11 @@ assuming a checkout follows those settings.
 
 ## Repositories and tools
 
-| Repository | Role |
-| --- | --- |
-| `tjgolubi/fmt` | Library source, tests, user documentation, and fork changelog. Current development branch: `FmtColorDev`. |
-| `docs/Coord` in this checkout | Current coordination handoff documents, separate from library development. Earlier history is in `tjgolubi/FmtColorGpt` (`master`). |
-| Sites source repository | Separate website implementation, managed by the Sites helper. |
+| Repository                        | Role                                                                                                                                |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `tjgolubi/fmt`                    | Library source, tests, user documentation, and fork changelog. Current development branch: `FmtColorDev`.                           |
+| `coord/` worktree on `docs/Coord` | Current coordination handoff documents, separate from library development. Earlier history is in `tjgolubi/FmtColorGpt` (`master`). |
+| Sites source repository           | Separate website implementation, managed by the Sites helper.                                                                       |
 
 Use **MSYS2 Git** for `fmt` and `FmtColorGpt`: `/usr/bin/git` in MSYS, or
 `C:\msys64\usr\bin\git.exe` from PowerShell. Verify executable provenance;
@@ -131,8 +131,10 @@ Pull-request-only checks such as `lint` and `fuzz` must pass when applicable;
 push results do not establish those passes. Do not trigger unrelated release,
 security, or publication workflows merely to manufacture a broader result.
 
-Record intentional skips and exclusions explicitly. Linux fail-fast is enabled
-on `FmtColorDev`; its GCC 16/C++26 reflection exclusion remains tracked in
+Record intentional skips and exclusions explicitly. Matrix fail-fast is
+permanently disabled across Linux, Windows (including MinGW), and macOS by
+Terry’s decision so every matrix job can finish. Do not restore it as temporary
+cleanup. The GCC 16/C++26 reflection exclusion remains tracked in
 [issue #2](https://github.com/tjgolubi/fmt/issues/2). The separate upstream
 compatibility branch includes that job and has passed it. Results from one
 branch do not restore disabled coverage on another.
@@ -232,6 +234,24 @@ A lease protects the expected remote ref, not the intended content. Inspect
 refs and reflogs before synchronizing a second machine; never force-push older
 history simply to make a rejected push succeed. Refresh website commit links
 after an authorized rewrite.
+
+## Coordination worktree
+
+The library root and `coord/` are separate working trees of the same repository.
+The root currently uses `FmtColorDev`; `coord/` uses `docs/Coord`. Entering the
+directory changes which checkout Git sees; it does not switch either worktree's
+branch. Use `git -C coord status` and `git -C coord diff` from the library root.
+Do not switch the library checkout to `docs/Coord` while that branch is checked
+out in `coord/`. Inspect `git worktree list` before creating another checkout.
+
+The setup matches `../taskwarrior/coord`, except that project uses `doc/Coord`
+and this project retains `docs/Coord`. `/coord/` is listed in the common
+`.git/info/exclude`, not the tracked `.gitignore`. Worktree registration and
+that exclusion are local; there is no setup commit to push. On another machine,
+inspect its paths/worktrees before recreating the setup with
+`git worktree add coord docs/Coord` and the local exclusion.
+
+Keep Markdown table columns aligned for readability in Vim.
 
 ## Coordination maintenance
 

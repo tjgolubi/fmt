@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md)
 
-Updated October 26, 2026.
+Updated October 27, 2026.
 
 ## Purpose and content
 
@@ -24,20 +24,25 @@ The current structure is:
   deliverables, a prominent upstream-compatibility callout, design, and demo.
 - [The contribution](https://fmtcolor.ardentokapi66.chatgpt.site/integrated-changes.html):
   upstream compatibility evidence first, followed by implemented styling,
-  palette colors, conversion, blending, styled ostream output, compatibility
+  palette colors, conversion, blending, SGR helpers, overlays, stream output, compatibility
   changes, and final CI.
 - [Future work](https://fmtcolor.ardentokapi66.chatgpt.site/work-in-progress.html):
   the retained introduction/development summary, then `feat/StyledText` and
   inclusion policy. Repeated completed-feature sections are removed.
 
-Fluent, ShortNames, VarColor, Palette, RGB conversion, color/style blending,
-style clearing, and styled ostream output are integrated on `FmtColorDev` at
-`257cdac1`. The branch contains six feature commits and a publication fix above
-upstream `0fc31633`.
-All 43 final integration CI jobs passed, including guide deployment. The
-separate `test/UpstreamCompatibility` commit `21eba01b` passed 42 jobs using
-upstream test infrastructure and the documented adjustments. Neither result
-means the contribution has been accepted into fmtlib/fmt.
+Fluent, ShortNames, VarColor, Palette, conversion/blending, style clearing,
+styled ostream output, compact SGR, wrapping/reset helpers, overlays, free
+attribute functions, emphasis compound assignment, checked signed inputs,
+styled stream insertion, and wide output are integrated on `FmtColorDev` at
+`25bcc4f7`. The branch has seven feature commits and a publication fix above
+upstream `0fc31633`. All 43 final CI jobs passed, including guide deployment.
+The root README now identifies the fork and links its guide, website,
+changelog, integration instructions, and branch-specific CI.
+
+The separate `test/UpstreamCompatibility` commit `21eba01b` passed 42 jobs for
+the earlier Palette-era header from `d9d64d36`. It does not validate the current
+header’s later additions or the ostream bridge. Neither result establishes
+acceptance into fmtlib/fmt.
 
 Keep upstream compatibility prominent and link its exact report/diff/CI.
 State the six result-expectation changes, four explicit nodiscard discards,
@@ -92,23 +97,26 @@ Pages source and uploads generated HTML as an artifact, not committed output.
 The ordinary `doc` workflow builds but does not publish this guide.
 See `support/fmtcolor-pages.md` and [BuildAndTest.md](BuildAndTest.md#documentation).
 
-Guide build and deployment succeeded for `257cdac1`. The guide includes
+Guide build and deployment succeeded for `25bcc4f7`. The guide includes
 five-alternative public variants, `to_rgb()`, color/style blending, `empty()`
 and `clear()`, and the grouped Fluent API. Constructors and fluent operations
 precede the less desirable OR examples; the scoped `using enum` style example
 is labeled C++20 and later. Free fg/bg docs explain ADL convenience.
 
-The Styled output page has a
-[styled ostream section](https://tjgolubi.github.io/fmt/color/print.html#styled-ostream-output)
-with `<fmt/color-ostream.h>`, a usage example, reset/newline behavior, and API
-references for `print`, `println`, `vprint`, and `vprintln` taking
-`std::ostream&`. The new header is included in the Doxygen reference handler.
-Keep the website explanation linked to this generated guide.
+The Styled output page documents `<fmt/color-ostream.h>` formatting and
+insertion, including narrow/wide examples, reset/newline rules, stream formatting,
+borrowed lifetimes, and exception recovery. `print`/`println` have separate
+narrow/wide references; `vprint`/`vprintln` retain character-templated references.
+Keep these directives synchronized with source signatures: the obsolete generic
+`print`/`println` references caused a documentation build failure and were fixed.
 
-Pending TaskWarrior features are not part of this publication: compact SGR,
-`to_sgr`, `sgr_reset`, `wrap_sgr`, overlays, and free attribute functions remain
-on that branch. Their local guide changes must not be described as deployed
-from the accepted `FmtColorDev` baseline.
+The published guide now covers compact SGR, `to_sgr`, `sgr_reset`, `wrap_sgr`,
+overlays, free attribute functions, emphasis compound assignment, and signed
+numeric interfaces with assertion/clamping behavior. Boolean-only attribute
+factories such as `bold(bool = true)` remain proposed; do not describe them as
+available. Site version 29 explains the integrated APIs and links their guide.
+Its validation section distinguishes default-mode CI from local compact-mode
+checks, records permanent fail-fast disabling, and links exact final runs.
 
 The Colors page orders terminal, RGB, gray, cube, unspecified, then variants.
 Terminal tables include RGB equivalents and link to swatches, as do gray/cube
@@ -214,46 +222,45 @@ and exact archive returned for the selected site.
 
 ## Current publication
 
-**Public Site version 27** is live at
+**Public Site version 29** is live at
 [fmtcolor.ardentokapi66.chatgpt.site](https://fmtcolor.ardentokapi66.chatgpt.site).
-The overview prominently links to
-[upstream compatibility](https://fmtcolor.ardentokapi66.chatgpt.site/integrated-changes.html#upstream-compatibility).
-That section documents the exact compatibility changes and 42 successful jobs
-for `21eba01b`, including GCC 16/C++26 reflection. The contribution also covers
-integrated Palette, conversion, color/style blending,
-[styled ostream output](https://fmtcolor.ardentokapi66.chatgpt.site/integrated-changes.html#ostream),
-and the separate 43-job FmtColorDev result at `257cdac1`.
-The complete {fmt} release supports C++11;
-the later independent library requires C++23 and `std::variant`.
+The overview prominently links the scoped
+[upstream compatibility evidence](https://fmtcolor.ardentokapi66.chatgpt.site/integrated-changes.html#upstream-compatibility).
+The contribution includes
+[application styling helpers](https://fmtcolor.ardentokapi66.chatgpt.site/integrated-changes.html#application-styling),
+styled ostream output, signed-input compatibility notes, and the separate
+43-job `FmtColorDev` result at `25bcc4f7`. Completed helper material has moved
+out of Future work; the old `#taskwarrior` anchor links to the integrated section.
+Structured styled text remains a future acceptance target. The complete {fmt}
+release supports C++11; the later independent library requires C++23 and
+`std::variant`.
 
-| Item | Current value |
-| --- | --- |
-| Site project ID | `appgprj_6ad129c3e8408191b873a4e06e601c63` |
-| Source commit | `2d981ac651e08933406f435db9323f960c2e0527` |
-| Saved version ID | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_998d9922111c8191b4bd981481e12095` |
-| Successful deployment ID | `appgdep_6adf2b8d92f48191a8d558f966762bf7` |
-| Audience | Public |
+| Item                     | Current value                                                                                |
+| ------------------------ | -------------------------------------------------------------------------------------------- |
+| Site project ID          | `appgprj_6ad129c3e8408191b873a4e06e601c63`                                                   |
+| Source commit            | `25d5b6ffaea0c28ca1029bbebb02250ee4e2f97d`                                                   |
+| Saved version ID         | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_6cb429f616988191aef7e80bdce4c187`          |
+| Successful deployment ID | `appgdep_6ae17879da848191a7d8fbc988b5fa22`                                                   |
+| Audience                 | Public                                                                                       |
 
-Native Sites deployment returned `succeeded`. Validation covered all three
-pages, 39 local links/anchors, unique IDs, whitespace, and the exact five final
-CI links. Downloads and the demo, design, and rendering sections were unchanged;
-the Future Work introduction was updated without changing its proposals.
-The new ostream section was inspected locally and live. Upstream compatibility
-remains prominent, with its own 42-job evidence kept separate from final CI.
-The demo remains a future acceptance target; nested text is not implemented.
+Native Sites deployment returned `succeeded` with the production URL. Validation
+covered all three pages, 41 local links/anchors, unique IDs, and the exact five
+final CI links. Demo, design, and deliverable sections were compared against
+the previous source and remained identical; downloads and assets were preserved.
+All three updated pages were inspected locally; the published helper section
+was read and inspected in the browser. The local preview server was stopped.
 Website checks do not establish library runtime or tablet coverage.
 
-The successful helper result used the checkout at
-`C:/Users/tjgolubi/.codex/visualizations/2026/10/25/01a17106-ee81-76c3-95ab-c8186910c8a9/fmtcolor-site`
-and archive
-`C:/Users/tjgolubi/.codex/visualizations/2026/10/25/01a17106-ee81-76c3-95ab-c8186910c8a9/fmtcolor-ostream.tar.gz`.
-The archive was saved as version 27 and its deployment returned `succeeded`.
-Refresh native Site metadata and source access before any further update.
+The successful helper opened source `e2bd1f2c5e40beae9a44afb1098c51d1a77c33c1`
+and pushed the source commit above from the checkout at
+`C:/Users/tjgolubi/.codex/visualizations/2026/10/28/01a18004-60af-76b1-bb3b-daebf6eb32b3/fmtcolor-site`.
+Its exact archive was
+`C:/Users/tjgolubi/.codex/visualizations/2026/10/28/01a18004-60af-76b1-bb3b-daebf6eb32b3/fmtcolor-integrated-helpers.tar.gz`.
+The archive was saved as version 29 and deployed successfully. Refresh native
+Site metadata and source access before further updates; do not reuse an old
+checkout as authoritative source.
 
-Keep preview screenshots outside the source checkout (or in a helper-supported
-ignored directory) so the helper's commit step does not add them. Package an
-archive outside the website checkout; on this Windows setup the helper rejected
-paths inside it. Preserve the project, opening result, source commit, archive,
-saved version, and successful deployment when continuing work.
-
-Future migration to MkDocs/Material remains a separate task.
+Keep screenshots outside the source checkout or in a helper-supported ignored
+directory. Package outside the checkout. Preserve project identity, opening
+result, source commit, exact archive, saved version, and deployment IDs when
+continuing work. Future migration to MkDocs/Material remains a separate task.
