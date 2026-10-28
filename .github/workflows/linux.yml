@@ -20,7 +20,7 @@ jobs:
       TZ: Europe/Kyiv
       GTEST_DEATH_TEST_USE_FORK: ${{ matrix.sanitizers && startsWith(matrix.cxx, 'g++') && '1' || '0' }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         cxx: [g++-4.9, g++-11, clang++-3.6, clang++-11]
         build_type: [Debug, Release]

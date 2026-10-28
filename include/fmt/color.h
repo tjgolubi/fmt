@@ -21,6 +21,10 @@
 #  include <compare>
 #endif
 
+#ifndef FMT_COLOR_COMPACT_SGR
+#define FMT_COLOR_COMPACT_SGR 0
+#endif
+
 FMT_BEGIN_NAMESPACE
 FMT_BEGIN_EXPORT
 
@@ -63,7 +67,7 @@ FMT_INLINE_VARIABLE constexpr no_color_t no_color{};
  * Values are palette indices: 0-7 for normal colors and 8-15 for bright colors,
  * in declaration order.  Prefer symbolic names when selecting colors.
  */
-enum class term_color : uint8_t {
+enum class term_color: int8_t {
   black,
   red,
   green,
@@ -85,10 +89,10 @@ enum class term_color : uint8_t {
 /// Alias for `term_color`, retained for backward compatibility.
 using terminal_color = term_color;
 
-template<> struct underlying_type<term_color> { using type = uint8_t; };
+template<> struct underlying_type<term_color> { using type = int8_t; };
 
-FMT_NODISCARD constexpr auto to_underlying(term_color x) noexcept -> uint8_t
-{ return enum_cast<uint8_t>(x); }
+FMT_NODISCARD constexpr auto to_underlying(term_color x) noexcept -> int8_t
+{ return enum_cast<int8_t>(x); }
 /**
  * Independent text attributes that can be combined with `operator|`.
  * `emphasis()` specifies no attributes.
@@ -117,6 +121,10 @@ FMT_NODISCARD
 constexpr inline auto operator|(emphasis lhs, emphasis rhs) noexcept
   -> emphasis
 { return enum_cast<emphasis>(to_underlying(lhs) | to_underlying(rhs)); }
+
+FMT_CONSTEXPR inline auto operator|=(emphasis& lhs, emphasis rhs) noexcept
+  -> emphasis&
+{ return lhs = lhs | rhs; }
 
 #if defined(__cpp_lib_three_way_comparison) && \
     __cpp_lib_three_way_comparison >= 201907L
@@ -163,15 +171,22 @@ private:
          | (value_type{b} <<  0);
   }
 
+  FMT_NODISCARD static constexpr auto check_arg(int v) noexcept -> chan_type {
+    return (v >= 0 && v <= 255) ? narrow_cast<chan_type>(v)
+        : (FMT_ASSERT(false, "rgb::rgb: channel out of range"),
+           narrow_cast<chan_type>(v < 0 ? 0 : 255));
+  }
+
   friend constexpr auto to_underlying(rgb) noexcept -> value_type;
 
 public:
   /// Constructs black, with all three components set to zero.
   constexpr rgb() noexcept = default;
 
-  /// Constructs a color from red, green, and blue components, respectively.
-  constexpr rgb(chan_type r_, chan_type g_, chan_type b_) noexcept
-    : r{r_}, g{g_}, b{b_} {}
+  /// Constructs channels in the range 0-255.
+  /// Asserts on invalid values; clamps them when assertions are disabled.
+  constexpr rgb(int r_, int g_, int b_) noexcept
+    : r{check_arg(r_)}, g{check_arg(g_)}, b{check_arg(b_)} {}
 
   /**
    * Constructs a color from the low 24 bits of `hex`, interpreted as
@@ -261,8 +276,9 @@ FMT_INLINE_VARIABLE constexpr rgb term_color_palette[16] = {
   color::term_bright_white
 }; // term_color_palette
 
-constexpr auto checked_term_index(term_color clr) noexcept -> uint8_t {
-  return to_underlying(clr) <= to_underlying(term_color::bright_white)
+constexpr auto checked_term_index(term_color clr) noexcept -> int8_t {
+  return (  to_underlying(clr) >= 0
+         && to_underlying(clr) <= to_underlying(term_color::bright_white))
       ? to_underlying(clr)
       : (FMT_ASSERT(false, "rgb::rgb: terminal color out of range"),
          to_underlying(clr));
@@ -274,11 +290,8 @@ FMT_END_EXPORT
 
 #if FMT_USE_CONSTEXPR
 
-constexpr inline rgb::rgb(term_color clr) noexcept {
-  FMT_ASSERT(to_underlying(clr) <= to_underlying(term_color::bright_white),
-             "rgb::rgb: terminal color out of range");
-  *this = detail::term_color_palette[to_underlying(clr)];
-}
+constexpr inline rgb::rgb(term_color clr) noexcept
+{ *this = detail::term_color_palette[detail::checked_term_index(clr)]; }
 
 #else
 
@@ -294,15 +307,16 @@ struct gray_color {
   using value_type = uint8_t;
 
 private:
-  value_type _value = 0;
+  using chan_type = int8_t;
+  chan_type _value = 0;
 
-  static constexpr auto make_rgb(rgb::chan_type level) noexcept -> rgb
+  static constexpr auto make_rgb(int level) noexcept -> rgb
   { return rgb{level, level, level}; }
 
-  FMT_NODISCARD static constexpr value_type check_arg(unsigned v) {
-    return (v < 24) ? narrow_cast<value_type>(v)
-                    : (FMT_THROW(std::out_of_range{"gray_color::gray_color"}),
-                       value_type{});
+  FMT_NODISCARD static constexpr chan_type check_arg(int v) noexcept {
+    return (v >= 0 && v < 24) ? narrow_cast<chan_type>(v)
+        : (FMT_ASSERT(false, "gray_color::gray_color: index out of range"),
+           narrow_cast<chan_type>(v < 0 ? 0 : 23));
   }
 
   friend constexpr auto to_underlying(gray_color) noexcept -> value_type;
@@ -315,8 +329,9 @@ public:
 
   FMT_COLOR_COMPARISONS(gray_color)
 
-  /// Constructs a gray index; an index above 23 reports std::out_of_range.
-  constexpr explicit gray_color(unsigned v) : _value{check_arg(v)} {}
+  /// Constructs a gray index in the range 0-23.
+  /// Asserts on invalid values; clamps them when assertions are disabled.
+  constexpr explicit gray_color(int v) noexcept : _value{check_arg(v)} {}
 
   /// Converts to RGB, with each channel equal to 8 + 10 * index.
   FMT_NODISCARD constexpr operator rgb() const noexcept
@@ -329,7 +344,7 @@ struct underlying_type<gray_color> { using type = gray_color::value_type; };
 
 FMT_NODISCARD
 constexpr auto to_underlying(gray_color v) noexcept -> gray_color::value_type
-{ return v._value; }
+{ return static_cast<gray_color::value_type>(v._value); }
 
 namespace detail {
 
@@ -340,18 +355,25 @@ FMT_INLINE_VARIABLE constexpr rgb::chan_type cube_levels[6] =
 /// A 6x6x6 palette color with channel indices 0-5 and a combined index 0-215.
 struct cube_color {
   using value_type  = uint8_t;
-  using chan_type   = uint8_t;
 
 private:
+  using chan_type  =  int8_t;
   chan_type _r = 0;
   chan_type _g = 0;
   chan_type _b = 0;
 
   FMT_NODISCARD
-  static constexpr auto check_arg(unsigned v) -> chan_type {
-    return (v < 6) ? narrow_cast<chan_type>(v)
-                   : (FMT_THROW(std::out_of_range{"cube_color::cube_color"}),
-                      chan_type{});
+  static constexpr auto check_arg(int v) noexcept -> chan_type {
+    return (v >= 0 && v < 6) ? narrow_cast<chan_type>(v)
+        : (FMT_ASSERT(false, "cube_color::cube_color: channel out of range"),
+           narrow_cast<chan_type>(v < 0 ? 0 : 5));
+  }
+
+  FMT_NODISCARD static constexpr auto check_index(unsigned v) noexcept
+      -> value_type {
+    return v <= 215 ? narrow_cast<value_type>(v)
+        : (FMT_ASSERT(false, "cube_color::cube_color: index out of range"),
+           value_type{215});
   }
 
   FMT_NODISCARD constexpr value_type value() const noexcept
@@ -361,22 +383,22 @@ private:
 
 public:
   /// Returns the red channel index, from 0 to 5.
-  FMT_NODISCARD constexpr auto r() const noexcept -> chan_type { return _r; };
+  FMT_NODISCARD constexpr auto r() const noexcept -> int { return _r; };
   /// Returns the green channel index, from 0 to 5.
-  FMT_NODISCARD constexpr auto g() const noexcept -> chan_type { return _g; };
+  FMT_NODISCARD constexpr auto g() const noexcept -> int { return _g; };
   /// Returns the blue channel index, from 0 to 5.
-  FMT_NODISCARD constexpr auto b() const noexcept -> chan_type { return _b; };
+  FMT_NODISCARD constexpr auto b() const noexcept -> int { return _b; };
 
-  /// Replaces the red index and returns this color; validates the range 0-5.
-  FMT_CONSTEXPR auto r(unsigned v) -> cube_color&
+  /// Sets the red index; asserts on invalid input and clamps to 0-5.
+  FMT_CONSTEXPR auto r(int v) noexcept -> cube_color&
   { _r = check_arg(v); return *this; }
 
-  /// Replaces the green index and returns this color; validates the range 0-5.
-  FMT_CONSTEXPR auto g(unsigned v) -> cube_color&
+  /// Sets the green index; asserts on invalid input and clamps to 0-5.
+  FMT_CONSTEXPR auto g(int v) noexcept -> cube_color&
   { _g = check_arg(v); return *this; }
 
-  /// Replaces the blue index and returns this color; validates the range 0-5.
-  FMT_CONSTEXPR auto b(unsigned v) -> cube_color&
+  /// Sets the blue index; asserts on invalid input and clamps to 0-5.
+  FMT_CONSTEXPR auto b(int v) noexcept -> cube_color&
   { _b = check_arg(v); return *this; }
 
   /// Constructs cube index zero, with all channel indices zero.
@@ -386,13 +408,16 @@ public:
 
   FMT_COLOR_COMPARISONS(cube_color)
 
-  /// Constructs channel indices 0-5; invalid indices report std::out_of_range.
-  constexpr cube_color(unsigned r_, unsigned g_, unsigned b_)
+  /// Constructs channel indices 0-5.
+  /// Asserts on invalid values; clamps them when assertions are disabled.
+  constexpr cube_color(int r_, int g_, int b_) noexcept
     : _r{check_arg(r_)}, _g{check_arg(g_)}, _b{check_arg(b_)} {}
 
-  /// Constructs a zero-based index 0-215; invalid indices report std::out_of_range.
-  constexpr explicit cube_color(unsigned value)
-    : cube_color{value / 36, (value / 6) % 6, value % 6} {}
+  /// Constructs a zero-based index 0-215.
+  /// Asserts on invalid values; clamps them when assertions are disabled.
+  constexpr explicit cube_color(unsigned value) noexcept
+    : cube_color{check_index(value) / 36, (check_index(value) / 6) % 6,
+                 check_index(value) % 6} {}
 
   /// Converts channel indices to RGB levels {0, 95, 135, 175, 215, 255}.
   FMT_NODISCARD constexpr operator rgb() const noexcept {
@@ -811,6 +836,7 @@ constexpr auto visit(Visitor&& visitor, Color&& color)
 } // visit
 
 namespace detail {
+
 struct to_rgb_visitor {
   constexpr auto operator()(const no_color_t&) const noexcept -> color_t
   { return color_t{no_color}; }
@@ -832,7 +858,7 @@ struct color_payload {
   template<typename Color>
   constexpr auto operator()(const Color& color) const noexcept
     -> color_t::value_type
-  { return to_underlying(color); }
+  { return static_cast<color_t::value_type>(to_underlying(color)); }
 };
 } // detail
 
@@ -847,26 +873,26 @@ constexpr inline auto to_underlying(const color_t& color) noexcept
 namespace detail {
 
 // Decode valid packed colors produced by text_style using color_t::kind tags.
-constexpr auto unpack_color(color_t::value_type value) noexcept -> color_t {
+constexpr auto unpack_color(color_t::value_type value) -> color_t {
   using kind = color_t::kind;
 #if FMT_USE_CONSTEXPR
   switch (enum_cast<kind>(value >> 24)) {
-    case kind::rgb:  return color_t{rgb{value & 0x00ffffffu}};
-    case kind::term: return color_t{enum_cast<term_color>(value & 0xffu)};
-    case kind::cube: return color_t{cube_color{value & 0xffu}};
-    case kind::gray: return color_t{gray_color{value & 0xffu}};
+    case kind::rgb:  return color_t{rgb{value & 0x00ffffff}};
+    case kind::term: return color_t{enum_cast<term_color>(value & 0xff)};
+    case kind::cube: return color_t{cube_color{value & 0xff}};
+    case kind::gray: return color_t{gray_color{static_cast<int>(value & 0xff)}};
     case kind::none:
     default: return color_t{no_color};
   }
 #else
   return (value >> 24) == to_underlying(kind::rgb)
-      ? color_t{rgb{value & 0x00ffffffu}}
+      ? color_t{rgb{value & 0x00ffffff}}
       : (value >> 24) == to_underlying(kind::term)
-      ? color_t{enum_cast<term_color>(value & 0xffu)}
+      ? color_t{enum_cast<term_color>(value & 0xff)}
       : (value >> 24) == to_underlying(kind::cube)
-      ? color_t{cube_color{value & 0xffu}}
+      ? color_t{cube_color{value & 0xff}}
       : (value >> 24) == to_underlying(kind::gray)
-      ? color_t{gray_color{value & 0xffu}}
+      ? color_t{gray_color{static_cast<int>(value & 0xff)}}
       : color_t{no_color};
 #endif
 } // unpack_color
@@ -1103,6 +1129,38 @@ private:
            | (value_type{to_underlying(emp)} << emph_shift)}
            {}
 
+  /// Returns true if both colors are unspecified and no emphasis is set.
+  FMT_NODISCARD constexpr auto empty() const noexcept -> bool
+  { return style_ == 0; }
+
+  /**
+   * Clears both colors and all emphasis attributes, restoring an empty style.
+   * Returns a reference to this style for chaining.
+   */
+  FMT_CONSTEXPR auto clear() noexcept -> text_style& {
+    style_ = 0;
+    return *this;
+  }
+
+  /**
+   * Applies `other` over this style.
+   *
+   * Specified foreground and background colors in `other` replace the matching
+   * channels, preserving their color kinds. Unspecified channels leave this
+   * style's colors unchanged. Emphasis bits are combined by OR.
+   */
+  FMT_CONSTEXPR auto overlay(const text_style& other) noexcept -> text_style& {
+    if (other == *this || other.empty())
+      return *this;
+
+    if (empty()) return *this = other;
+
+    emph(emph() | other.emph());
+    if (other.has_fg()) fg(other.fg());
+    if (other.has_bg()) bg(other.bg());
+    return *this;
+  } // overlay
+
   /**
    * Combines this style with `rhs` and returns a reference to this style.
    *
@@ -1130,7 +1188,7 @@ private:
   }
 
   /**
-   * Returns the composition of `lhs` and `rhs`, leaving both operands unchanged.
+   * Returns the composition of `lhs` and `rhs`.
    *
    * Uses the same color promotion, RGB bitwise-OR, and emphasis combination
    * rules as `operator|=`.
@@ -1139,19 +1197,6 @@ private:
   friend FMT_CONSTEXPR auto operator|(text_style lhs, text_style rhs) noexcept
     -> text_style
   { return lhs |= rhs; }
-
-  /// Returns true if both colors are unspecified and no emphasis is set.
-  FMT_NODISCARD constexpr auto empty() const noexcept -> bool
-  { return style_ == 0; }
-
-  /**
-   * Clears both colors and all emphasis attributes, restoring an empty style.
-   * Returns a reference to this style for chaining.
-   */
-  FMT_CONSTEXPR auto clear() noexcept -> text_style& {
-    style_ = 0;
-    return *this;
-  }
 
   /// Returns true if a foreground color is specified.
   FMT_NODISCARD constexpr auto has_fg() const noexcept -> bool
@@ -1268,59 +1313,35 @@ private:
 
 public:
 
-  /**
-   * Enables bold if `enable` is true, or disables it otherwise.
-   * Preserves faint, other attributes, and colors.
-   */
+  /// Enables bold if `enable` is true, or disables it otherwise.
   FMT_CONSTEXPR auto bold(bool enable = true) noexcept -> text_style&
   { return set(emphasis::bold, enable); }
 
-  /**
-   * Enables faint if `enable` is true, or disables it otherwise.
-   * Preserves bold, other attributes, and colors.
-   */
+  /// Enables faint if `enable` is true, or disables it otherwise.
   FMT_CONSTEXPR auto faint(bool enable = true) noexcept -> text_style&
   { return set(emphasis::faint, enable); }
 
-  /**
-   * Enables italic if `enable` is true, or disables it otherwise.
-   * Preserves all other attributes and colors.
-   */
+  /// Enables italic if `enable` is true, or disables it otherwise.
   FMT_CONSTEXPR auto italic(bool enable = true) noexcept -> text_style&
   { return set(emphasis::italic, enable); }
 
-  /**
-   * Enables underline if `enable` is true, or disables it otherwise.
-   * Preserves other attributes and colors.
-   */
+  /// Enables underline if `enable` is true, or disables it otherwise.
   FMT_CONSTEXPR auto underline(bool enable = true) noexcept -> text_style&
   { return set(emphasis::underline, enable); }
 
-  /**
-   * Enables blink if `enable` is true, or disables it otherwise.
-   * Preserves all other attributes and colors.
-   */
+  /// Enables blink if `enable` is true, or disables it otherwise.
   FMT_CONSTEXPR auto blink(bool enable = true) noexcept -> text_style&
   { return set(emphasis::blink, enable); }
 
-  /**
-   * Enables reverse if `enable` is true, or disables it otherwise.
-   * Preserves all other attributes and colors.
-   */
+  /// Enables reverse if `enable` is true, or disables it otherwise.
   FMT_CONSTEXPR auto reverse(bool enable = true) noexcept -> text_style&
   { return set(emphasis::reverse, enable); }
 
-  /**
-   * Enables conceal if `enable` is true, or disables it otherwise.
-   * Preserves all other attributes and colors.
-   */
+  /// Enables conceal if `enable` is true, or disables it otherwise.
   FMT_CONSTEXPR auto conceal(bool enable = true) noexcept -> text_style&
   { return set(emphasis::conceal, enable); }
 
-  /**
-   * Enables strikethrough if `enable` is true, or disables it otherwise.
-   * Preserves other attributes and colors.
-   */
+  /// Enables strikethrough if `enable` is true, or disables it otherwise.
   FMT_CONSTEXPR auto strike(bool enable = true) noexcept -> text_style&
   { return set(emphasis::strike, enable); }
 
@@ -1374,13 +1395,62 @@ public:
   FMT_COLOR_COMPARISONS(text_style)
 
  private:
-  friend constexpr auto to_underlying(text_style value) noexcept -> value_type;
-
   constexpr explicit text_style(value_type style) noexcept : style_{style} {}
 
+  friend constexpr auto to_underlying(text_style value) noexcept -> value_type;
   friend constexpr auto fg(color_t foreground) noexcept -> text_style;
   friend constexpr auto bg(color_t background) noexcept -> text_style;
 }; // text_style
+
+/// Returns a copy of `style` with bold enabled or disabled by `enable`.
+FMT_NODISCARD FMT_CONSTEXPR inline
+auto bold(text_style style, bool enable = true) noexcept -> text_style
+{ return style.bold(enable); }
+
+/// Returns a copy of `style` with faint enabled or disabled by `enable`.
+FMT_NODISCARD FMT_CONSTEXPR inline
+auto faint(text_style style, bool enable = true) noexcept -> text_style
+{ return style.faint(enable); }
+
+/// Returns a copy of `style` with italic enabled or disabled by `enable`.
+FMT_NODISCARD FMT_CONSTEXPR inline
+auto italic(text_style style, bool enable = true) noexcept -> text_style
+{ return style.italic(enable); }
+
+/// Returns a copy of `style` with underline enabled or disabled by `enable`.
+FMT_NODISCARD FMT_CONSTEXPR inline
+auto underline(text_style style, bool enable = true) noexcept -> text_style
+{ return style.underline(enable); }
+
+/// Returns a copy of `style` with blink enabled or disabled by `enable`.
+FMT_NODISCARD FMT_CONSTEXPR inline
+auto blink(text_style style, bool enable = true) noexcept -> text_style
+{ return style.blink(enable); }
+
+/// Returns a copy of `style` with reverse enabled or disabled by `enable`.
+FMT_NODISCARD FMT_CONSTEXPR inline
+auto reverse(text_style style, bool enable = true) noexcept -> text_style
+{ return style.reverse(enable); }
+
+/// Returns a copy of `style` with conceal enabled or disabled by `enable`.
+FMT_NODISCARD FMT_CONSTEXPR inline
+auto conceal(text_style style, bool enable = true) noexcept -> text_style
+{ return style.conceal(enable); }
+
+/// Returns a copy of `style` with strike enabled or disabled by `enable`.
+FMT_NODISCARD FMT_CONSTEXPR inline
+auto strike(text_style style, bool enable = true) noexcept -> text_style
+{ return style.strike(enable); }
+
+/**
+ * Returns a copy of `base` with `overrides` applied, leaving both inputs
+ * unchanged. Specified colors in `overrides` replace matching channels and
+ * preserve their kinds; unspecified channels retain the base colors.
+ * Emphasis bits are combined by OR.
+ */
+FMT_NODISCARD FMT_CONSTEXPR inline
+auto overlay(text_style base, text_style overrides) noexcept -> text_style
+{ return base.overlay(overrides); }
 
 template<>
 struct underlying_type<text_style> { using type = text_style::value_type; };
@@ -1483,7 +1553,129 @@ constexpr inline auto bg(color_t background) noexcept -> text_style {
                     << text_style::bg_shift};
 }
 
+/// Upper bound on style SGR output length.
+constexpr auto sgr_max_length   = std::size_t{56};
+
+/// Length of the terminal-reset SGR sequence.
+constexpr auto sgr_reset_length = std::size_t{ 4};
+
+#if defined(__cpp_constexpr) && __cpp_constexpr >= 202211L
+
+/**
+ * Returns the ANSI SGR sequence that resets colors and emphasis to terminal
+ * defaults. The returned view refers to static storage. `Char` defaults to
+ * `char`.
+ */
+template<typename Char = char>
+FMT_NODISCARD constexpr auto sgr_reset() noexcept -> basic_string_view<Char> {
+  static constexpr Char reset[] = {'\x1b', '[', '0', 'm'};
+  return {reset, sgr_reset_length};
+}
+
+#else
+
 namespace detail {
+
+template<typename Char>
+struct sgr_reset_storage {
+  static constexpr Char value[sgr_reset_length] = {'\x1b', '[', '0', 'm'};
+};
+
+#if FMT_CPLUSPLUS < 201703L
+template<typename Char>
+constexpr Char sgr_reset_storage<Char>::value[sgr_reset_length];
+#endif
+
+} // detail
+
+/**
+ * Returns the ANSI SGR sequence that resets colors and emphasis to terminal
+ * defaults. The returned view refers to static storage. `Char` defaults to
+ * `char`.
+ */
+template<typename Char = char>
+FMT_NODISCARD constexpr auto sgr_reset() noexcept -> basic_string_view<Char>
+{ return {detail::sgr_reset_storage<Char>::value, sgr_reset_length}; }
+
+#endif
+
+namespace detail {
+
+#if FMT_COLOR_COMPACT_SGR
+
+constexpr const char* decimal_strings[256] = {
+    "0",   "1",   "2",   "3",   "4",   "5",   "6",   "7",
+    "8",   "9",  "10",  "11",  "12",  "13",  "14",  "15",
+   "16",  "17",  "18",  "19",  "20",  "21",  "22",  "23",
+   "24",  "25",  "26",  "27",  "28",  "29",  "30",  "31",
+   "32",  "33",  "34",  "35",  "36",  "37",  "38",  "39",
+   "40",  "41",  "42",  "43",  "44",  "45",  "46",  "47",
+   "48",  "49",  "50",  "51",  "52",  "53",  "54",  "55",
+   "56",  "57",  "58",  "59",  "60",  "61",  "62",  "63",
+   "64",  "65",  "66",  "67",  "68",  "69",  "70",  "71",
+   "72",  "73",  "74",  "75",  "76",  "77",  "78",  "79",
+   "80",  "81",  "82",  "83",  "84",  "85",  "86",  "87",
+   "88",  "89",  "90",  "91",  "92",  "93",  "94",  "95",
+   "96",  "97",  "98",  "99", "100", "101", "102", "103",
+  "104", "105", "106", "107", "108", "109", "110", "111",
+  "112", "113", "114", "115", "116", "117", "118", "119",
+  "120", "121", "122", "123", "124", "125", "126", "127",
+  "128", "129", "130", "131", "132", "133", "134", "135",
+  "136", "137", "138", "139", "140", "141", "142", "143",
+  "144", "145", "146", "147", "148", "149", "150", "151",
+  "152", "153", "154", "155", "156", "157", "158", "159",
+  "160", "161", "162", "163", "164", "165", "166", "167",
+  "168", "169", "170", "171", "172", "173", "174", "175",
+  "176", "177", "178", "179", "180", "181", "182", "183",
+  "184", "185", "186", "187", "188", "189", "190", "191",
+  "192", "193", "194", "195", "196", "197", "198", "199",
+  "200", "201", "202", "203", "204", "205", "206", "207",
+  "208", "209", "210", "211", "212", "213", "214", "215",
+  "216", "217", "218", "219", "220", "221", "222", "223",
+  "224", "225", "226", "227", "228", "229", "230", "231",
+  "232", "233", "234", "235", "236", "237", "238", "239",
+  "240", "241", "242", "243", "244", "245", "246", "247",
+  "248", "249", "250", "251", "252", "253", "254", "255"
+}; // decimal_strings
+
+#else
+
+constexpr const char* decimal_strings[256] = {
+  "000", "001", "002", "003", "004", "005", "006", "007",
+  "008", "009", "010", "011", "012", "013", "014", "015",
+  "016", "017", "018", "019", "020", "021", "022", "023",
+  "024", "025", "026", "027", "028", "029", "030", "031",
+  "032", "033", "034", "035", "036", "037", "038", "039",
+  "040", "041", "042", "043", "044", "045", "046", "047",
+  "048", "049", "050", "051", "052", "053", "054", "055",
+  "056", "057", "058", "059", "060", "061", "062", "063",
+  "064", "065", "066", "067", "068", "069", "070", "071",
+  "072", "073", "074", "075", "076", "077", "078", "079",
+  "080", "081", "082", "083", "084", "085", "086", "087",
+  "088", "089", "090", "091", "092", "093", "094", "095",
+  "096", "097", "098", "099", "100", "101", "102", "103",
+  "104", "105", "106", "107", "108", "109", "110", "111",
+  "112", "113", "114", "115", "116", "117", "118", "119",
+  "120", "121", "122", "123", "124", "125", "126", "127",
+  "128", "129", "130", "131", "132", "133", "134", "135",
+  "136", "137", "138", "139", "140", "141", "142", "143",
+  "144", "145", "146", "147", "148", "149", "150", "151",
+  "152", "153", "154", "155", "156", "157", "158", "159",
+  "160", "161", "162", "163", "164", "165", "166", "167",
+  "168", "169", "170", "171", "172", "173", "174", "175",
+  "176", "177", "178", "179", "180", "181", "182", "183",
+  "184", "185", "186", "187", "188", "189", "190", "191",
+  "192", "193", "194", "195", "196", "197", "198", "199",
+  "200", "201", "202", "203", "204", "205", "206", "207",
+  "208", "209", "210", "211", "212", "213", "214", "215",
+  "216", "217", "218", "219", "220", "221", "222", "223",
+  "224", "225", "226", "227", "228", "229", "230", "231",
+  "232", "233", "234", "235", "236", "237", "238", "239",
+  "240", "241", "242", "243", "244", "245", "246", "247",
+  "248", "249", "250", "251", "252", "253", "254", "255"
+}; // padded_decimal_strings
+
+#endif
 
 template<typename Char>
 class ansi_color_escape {
@@ -1506,56 +1698,57 @@ class ansi_color_escape {
   }
 
   FMT_CONSTEXPR void append(uint8_t n, char c) noexcept {
-    append(narrow_cast<char>('0' + n / 100));
-    append(narrow_cast<char>('0' + n / 10 % 10));
-    append(narrow_cast<char>('0' + n % 10));
+    append(decimal_strings[n]);
     append(c);
   }
 
   FMT_CONSTEXPR void append(no_color_t, bool) noexcept {}
 
   FMT_CONSTEXPR void append(term_color clr, bool is_bg) noexcept {
-    constexpr unsigned BrightBlack = to_underlying(term_color::bright_black);
-    unsigned value = to_underlying(clr);
-    value += (value < BrightBlack) ? 30u : 90u - BrightBlack;
+    constexpr auto BrightBlack
+                    = static_cast<int>(to_underlying(term_color::bright_black));
+    auto value = static_cast<int>(to_underlying(clr));
+    value += (value < BrightBlack) ? 30 : 90 - BrightBlack;
 
     // Background ASCII codes are the same as the foreground ones + 10.
-    if (is_bg) value += 10u;
-    append("\x1b[");
-    if (value >= 100u) {
+    if (is_bg) value += 10;
+    if (value >= 100) {
       append('1');
-      value %= 100u;
+      value %= 100;
     }
-    append(narrow_cast<char>('0' + value / 10u));
-    append(narrow_cast<char>('0' + value % 10u));
-    append('m');
+    append(narrow_cast<char>('0' + value / 10));
+    append(narrow_cast<char>('0' + value % 10));
+    append(';');
   }
 
   FMT_CONSTEXPR void append(rgb clr, bool is_bg) noexcept {
-    append("\x1b[38;2;");
-    if (is_bg) buffer[2] = Char{'4'};
+    append("38;2;");
+    if (is_bg) buffer[0] = Char{'4'};
     append(clr.r, ';');
     append(clr.g, ';');
-    append(clr.b, 'm');
+    append(clr.b, ';');
   }
 
   FMT_CONSTEXPR void append(cube_color clr, bool is_bg) noexcept {
-    append("\x1b[38;5;");
-    if (is_bg) buffer[2] = Char{'4'};
+    append("38;5;");
+    if (is_bg) buffer[0] = Char{'4'};
     auto index = narrow_cast<uint8_t>(to_underlying(clr) + 16);
-    append(index, 'm');
+    append(index, ';');
   }
 
   FMT_CONSTEXPR void append(gray_color clr, bool is_bg) noexcept {
-    append("\x1b[38;5;");
-    if (is_bg) buffer[2] = Char{'4'};
+    append("38;5;");
+    if (is_bg) buffer[0] = Char{'4'};
     auto index = narrow_cast<uint8_t>(to_underlying(clr) + 232);
-    append(index, 'm');
+    append(index, ';');
   }
 
   struct color_visitor {
     ansi_color_escape& escape;
     bool is_bg;
+
+    // Avoid copying the empty union member during MSVC constant evaluation.
+    FMT_CONSTEXPR void operator()(const no_color_t&) const noexcept {}
 
     template<typename Color>
     FMT_CONSTEXPR void operator()(Color clr) const noexcept {
@@ -1576,17 +1769,16 @@ public:
 
     constexpr char sgr[] = { '1', '2', '3', '4', '5', '7', '8', '9' };
 
-    append("\x1b[");
-
     for (int i = 0; i < 8; ++i, bits >>= 1) {
       if (!(bits & 1))
         continue;
       append(sgr[i]);
       append(';');
     }
-
-    buffer[size - 1] = Char{'m'};
   }
+
+  FMT_NODISCARD constexpr auto empty() const noexcept -> bool
+  { return (size == 0); }
 
   constexpr operator const Char*() const noexcept { return buffer; }
 
@@ -1614,7 +1806,7 @@ FMT_CONSTEXPR auto make_emphasis(emphasis em) noexcept
 
 template<typename Char>
 inline void reset_color(buffer<Char>& buffer) {
-  auto reset_color = string_view{"\x1b[0m"};
+  constexpr auto reset_color = sgr_reset<Char>();
   buffer.append(reset_color.begin(), reset_color.end());
 }
 
@@ -1625,20 +1817,99 @@ struct styled_arg : view {
   constexpr styled_arg(const T& v, text_style s) : value{v}, style{s} {}
 }; // styled_arg
 
+#if FMT_COLOR_COMPACT_SGR
+
+template<typename Char>
+FMT_CONSTEXPR20 void append_sgr(buffer<Char>& buf, text_style ts) {
+  if (ts.empty()) return;
+  buf.push_back(static_cast<Char>('\x1b'));
+  buf.push_back(static_cast<Char>('['));
+  auto emphasis = make_emphasis<Char>(ts.emph());
+  buf.append(emphasis.begin(), emphasis.end());
+  auto foreground = make_foreground_color<Char>(ts.fg());
+  buf.append(foreground.begin(), foreground.end());
+  auto background = make_background_color<Char>(ts.bg());
+  buf.append(background.begin(), background.end());
+  buf.data()[buf.size()-1] = static_cast<Char>('m');
+} // append_sgr
+
+#else
+
+template<typename Char>
+FMT_CONSTEXPR20
+void append_sgr(buffer<Char>& buf, const ansi_color_escape<Char>& sgr) {
+  if (sgr.empty()) return;
+  buf.push_back(static_cast<Char>('\x1b'));
+  buf.push_back(static_cast<Char>('['));
+  buf.append(sgr.begin(), sgr.end());
+  buf.data()[buf.size()-1] = static_cast<Char>('m');
+} // append_sgr
+
+template<typename Char>
+FMT_CONSTEXPR20 void append_sgr(buffer<Char>& buf, text_style ts) {
+  if (ts.empty()) return;
+  auto emphasis = make_emphasis<Char>(ts.emph());
+  append_sgr(buf, emphasis);
+  auto foreground = make_foreground_color<Char>(ts.fg());
+  append_sgr(buf, foreground);
+  auto background = make_background_color<Char>(ts.bg());
+  append_sgr(buf, background);
+} // append_sgr
+
+#endif
+
 template<typename Char>
 void vformat_to(buffer<Char>& buf, text_style ts, basic_string_view<Char> fmt,
                 basic_format_args<buffered_context<Char>> args) {
-  auto emphasis = make_emphasis<Char>(ts.get_emphasis());
-  buf.append(emphasis.begin(), emphasis.end());
-  auto foreground = make_foreground_color<Char>(ts.get_foreground());
-  buf.append(foreground.begin(), foreground.end());
-  auto background = make_background_color<Char>(ts.get_background());
-  buf.append(background.begin(), background.end());
+  append_sgr(buf, ts);
   vformat_to(buf, fmt, args);
   if (ts != text_style()) reset_color<Char>(buf);
 } // vformat_to
 
 }  // detail
+
+/**
+ * Returns the ANSI SGR escape sequences for the specified foreground,
+ * background, and emphasis in `ts`.
+ *
+ * Returns an empty string for an empty style.
+ * Unspecified color channels emit no parameters.
+ */
+template<typename Char=char>
+FMT_NODISCARD inline auto to_sgr(const text_style& ts)
+  -> std::basic_string<Char>
+{
+  if (ts.empty()) return {};
+  auto buf = basic_memory_buffer<Char, sgr_max_length>{};
+  detail::append_sgr(buf, ts);
+  return { buf.data(), buf.size() };
+}
+
+/**
+ * Returns a copy of `sv` wrapped in the SGR sequences for `ts` and a terminal
+ * reset. Empty text returns an empty string; an empty style returns just the
+ * text. The text is copied without formatting or interpreting embedded escapes.
+ * The reset restores terminal defaults, not a previously active style.
+ */
+template<typename Char=char>
+FMT_NODISCARD inline
+auto wrap_sgr(const text_style& ts, basic_string_view<Char> sv)
+  -> std::basic_string<Char>
+{
+  if (sv.size() == 0) return {};
+  if (ts.empty()) return { sv.data(), sv.size() };
+  constexpr auto reset = sgr_reset<Char>();
+  auto result = std::basic_string<Char>{to_sgr<Char>(ts)};
+  result.reserve(sgr_max_length + sgr_reset_length + sv.size());
+  result.append(sv.data(), sv.size());
+  result.append(reset.data(), reset.size());
+  return result;
+} // wrap_sgr
+
+/// Narrow-character convenience overload of `wrap_sgr()`.
+FMT_NODISCARD inline auto wrap_sgr(const text_style& ts, string_view sv)
+  -> std::string
+{ return wrap_sgr<char>(ts, sv); }
 
 /**
  * The colored analog of
@@ -1822,28 +2093,14 @@ struct formatter<detail::styled_arg<T>, Char> : formatter<T, Char> {
 {
     const auto& ts = arg.style;
     auto out = ctx.out();
-
-    bool has_style = false;
-    if (ts.has_emphasis()) {
-      has_style = true;
-      auto emphasis = detail::make_emphasis<Char>(ts.get_emphasis());
-      out = detail::copy<Char>(emphasis.begin(), emphasis.end(), out);
-    }
-    if (ts.has_foreground()) {
-      has_style = true;
-      auto foreground =
-          detail::make_foreground_color<Char>(ts.get_foreground());
-      out = detail::copy<Char>(foreground.begin(), foreground.end(), out);
-    }
-    if (ts.has_background()) {
-      has_style = true;
-      auto background =
-          detail::make_background_color<Char>(ts.get_background());
-      out = detail::copy<Char>(background.begin(), background.end(), out);
+    auto buf = fmt::basic_memory_buffer<Char, 64>{};
+    if (!ts.empty()) {
+      detail::append_sgr(buf, ts);
+      out = detail::copy<Char>(buf.data(), buf.data() + buf.size(), out);
     }
     out = formatter<T, Char>::format(arg.value, ctx);
-    if (has_style) {
-      auto reset_color = string_view{"\x1b[0m"};
+    if (!ts.empty()) {
+      constexpr auto reset_color = sgr_reset<Char>();
       out = detail::copy<Char>(reset_color.begin(), reset_color.end(), out);
     }
     return out;

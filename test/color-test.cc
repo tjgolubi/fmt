@@ -10,13 +10,19 @@
 #include <iterator>  // std::back_inserter
 #include <limits>    // std::numeric_limits
 #include <map>       // std::map
-#include <stdexcept>  // std::out_of_range
+
 #include <type_traits>  // std::is_convertible, std::is_same
 #include <unordered_map>  // std::unordered_map
 #include <unordered_set>  // std::unordered_set
 #include <utility>  // std::declval, std::move
 
 #include "gtest-extra.h"  // EXPECT_WRITE, EXPECT_THROW_MSG
+
+#if FMT_COLOR_COMPACT_SGR == 1
+#  define FMT_SGR_EXPECTED(legacy, compact) compact
+#else
+#  define FMT_SGR_EXPECTED(legacy, compact) legacy
+#endif
 
 template<typename T>
 void check_color_comparisons(const T* values, size_t count) {
@@ -91,7 +97,7 @@ TEST(color_test, gray_color) {
                              uint8_t>::value,
                 "numeric access returns the zero-based index");
   static_assert(std::is_convertible<gray_color, fmt::rgb>::value &&
-                    !std::is_convertible<unsigned, gray_color>::value,
+                    !std::is_convertible<int, gray_color>::value,
                 "RGB conversion is implicit; index construction is explicit");
   static_assert(noexcept(static_cast<fmt::rgb>(gray_color{})),
                 "RGB conversion must be noexcept");
@@ -106,7 +112,7 @@ TEST(color_test, gray_color) {
   static_assert(middle == fmt::rgb{128, 128, 128},
                 "a temporary gray color supports C++11 RGB conversion");
   EXPECT_EQ(fmt::to_underlying(gray_color{}), 0);
-  const unsigned indices[] = {0, 1, 12, 22, 23};
+  const int indices[] = {0, 1, 12, 22, 23};
   const unsigned levels[] = {8, 18, 128, 228, 238};
   for (size_t i = 0; i != sizeof(indices) / sizeof(indices[0]); ++i) {
     SCOPED_TRACE(indices[i]);
@@ -122,12 +128,16 @@ TEST(color_test, gray_color) {
     EXPECT_EQ(copy, color);
     EXPECT_EQ(assigned, color);
   }
-  const unsigned invalid[] = {24, 255, 256,
-                             (std::numeric_limits<unsigned>::max)()};
+  static_assert(noexcept(gray_color{0}), "gray construction must be noexcept");
+#ifdef NDEBUG
+  const int invalid[] = {-1, 24, 255, 256,
+                         (std::numeric_limits<int>::min)(),
+                         (std::numeric_limits<int>::max)()};
   for (auto index : invalid) {
     SCOPED_TRACE(index);
-    EXPECT_THROW((void)gray_color{index}, std::out_of_range);
+    EXPECT_EQ(gray_color{index}, gray_color{index < 0 ? 0 : 23});
   }
+#endif
   const gray_color ordered[] = {gray_color{0}, gray_color{1}, gray_color{23}};
   check_color_comparisons(ordered, sizeof(ordered) / sizeof(ordered[0]));
 }
@@ -144,6 +154,10 @@ TEST(color_test, cube_color) {
   static_assert(std::is_convertible<cube_color, fmt::rgb>::value &&
                     !std::is_convertible<unsigned, cube_color>::value,
                 "RGB conversion is implicit; index construction is explicit");
+  static_assert(std::is_same<decltype(cube_color{}.r()), int>::value &&
+                    std::is_same<decltype(cube_color{}.g()), int>::value &&
+                    std::is_same<decltype(cube_color{}.b()), int>::value,
+                "cube channel getters return int");
   static_assert(noexcept(static_cast<fmt::rgb>(cube_color{})),
                 "RGB conversion must be noexcept");
   constexpr cube_color first{0}, last{215}, middle{1, 2, 3};
@@ -156,27 +170,39 @@ TEST(color_test, cube_color) {
                     fmt::to_underlying(middle) == 51,
                 "cube encoding and RGB conversion support C++11");
   EXPECT_EQ(fmt::to_underlying(cube_color{}), 0);
-  const unsigned invalid_indices[] = {216, 255, 256,
+  static_assert(noexcept(cube_color{0}) && noexcept(cube_color{0, 0, 0}),
+                "cube construction must be noexcept");
+  static_assert(noexcept(std::declval<cube_color&>().r(0)) &&
+                    noexcept(std::declval<cube_color&>().g(0)) &&
+                    noexcept(std::declval<cube_color&>().b(0)),
+                "cube setters must be noexcept");
+#ifdef NDEBUG
+  const unsigned invalid_indices[] = {216, 217, 251, 255, 256,
                                      (std::numeric_limits<unsigned>::max)()};
   for (auto index : invalid_indices) {
     SCOPED_TRACE(index);
-    EXPECT_THROW((void)cube_color{index}, std::out_of_range);
+    EXPECT_EQ(cube_color{index}, cube_color{215});
   }
-  const unsigned invalid_channels[] = {6, 255, 256,
-                                      (std::numeric_limits<unsigned>::max)()};
+  const int invalid_channels[] = {-1, 6, 255, 256,
+                                 (std::numeric_limits<int>::min)(),
+                                 (std::numeric_limits<int>::max)()};
   for (auto channel : invalid_channels) {
     SCOPED_TRACE(channel);
-    EXPECT_THROW((void)(cube_color{channel, 0, 0}), std::out_of_range);
-    EXPECT_THROW((void)(cube_color{0, channel, 0}), std::out_of_range);
-    EXPECT_THROW((void)(cube_color{0, 0, channel}), std::out_of_range);
+    const int clamped = channel < 0 ? 0 : 5;
+    EXPECT_EQ((cube_color{channel, 2, 3}), (cube_color{clamped, 2, 3}));
+    EXPECT_EQ((cube_color{1, channel, 3}), (cube_color{1, clamped, 3}));
+    EXPECT_EQ((cube_color{1, 2, channel}), (cube_color{1, 2, clamped}));
     auto color = middle;
-    EXPECT_THROW(color.r(channel), std::out_of_range);
-    EXPECT_EQ(color, middle);
-    EXPECT_THROW(color.g(channel), std::out_of_range);
-    EXPECT_EQ(color, middle);
-    EXPECT_THROW(color.b(channel), std::out_of_range);
-    EXPECT_EQ(color, middle);
+    EXPECT_EQ(&color.r(channel), &color);
+    EXPECT_EQ(color, (cube_color{clamped, 2, 3}));
+    color = middle;
+    EXPECT_EQ(&color.g(channel), &color);
+    EXPECT_EQ(color, (cube_color{1, clamped, 3}));
+    color = middle;
+    EXPECT_EQ(&color.b(channel), &color);
+    EXPECT_EQ(color, (cube_color{1, 2, clamped}));
   }
+#endif
   auto color = middle;
   EXPECT_EQ(&color.r(5), &color);
   EXPECT_EQ(color, (cube_color{5, 2, 3}));
@@ -198,10 +224,10 @@ TEST(color_test, cube_color_xterm_rgb) {
   // https://invisible-island.net/xterm/xterm.faq.html#color_by_number
   // Use its arithmetic formula, never the implementation's cube_levels table.
   // Our zero-based index omits the SGR palette's offset of 16.
-  for (unsigned red = 0; red != 6; ++red) {
-    for (unsigned green = 0; green != 6; ++green) {
-      for (unsigned blue = 0; blue != 6; ++blue) {
-        unsigned index = 36 * red + 6 * green + blue;
+  for (int red = 0; red != 6; ++red) {
+    for (int green = 0; green != 6; ++green) {
+      for (int blue = 0; blue != 6; ++blue) {
+        unsigned index = static_cast<unsigned>(36 * red + 6 * green + blue);
         SCOPED_TRACE(index);
         fmt::cube_color color{index};
         EXPECT_EQ(color.r(), red);
@@ -235,6 +261,11 @@ TEST(color_test, terminal_color_xterm_rgb) {
       fmt::color::term_bright_cyan, fmt::color::term_bright_white};
   static_assert(std::is_convertible<fmt::term_color, fmt::rgb>::value,
                 "terminal-to-RGB conversion must be implicit");
+  static_assert(std::is_same<std::underlying_type<fmt::term_color>::type,
+                             int8_t>::value,
+                "terminal enum storage must be signed");
+  static_assert(fmt::to_underlying(static_cast<fmt::term_color>(-1)) == -1,
+                "underlying conversion must preserve signed enum values");
   constexpr fmt::rgb black = fmt::term_color::black;
   constexpr fmt::rgb bright = fmt::term_color::bright_white;
   static_assert(black == fmt::rgb{} && bright == fmt::rgb{255, 255, 255},
@@ -340,9 +371,50 @@ TEST(color_test, text_style_hash) {
   check_color_hashes(values, sizeof(values) / sizeof(values[0]));
 }
 
+TEST(color_test, emphasis_or_assign) {
+  using fmt::emphasis;
+  static_assert(std::is_same<decltype(std::declval<emphasis&>() |=
+                                     emphasis::bold), emphasis&>::value,
+                "compound assignment must return an emphasis reference");
+  static_assert(noexcept(std::declval<emphasis&>() |= emphasis::bold),
+                "compound assignment must be noexcept");
+  for (unsigned lhs = 0; lhs < 256; ++lhs) {
+    for (unsigned rhs = 0; rhs < 256; ++rhs) {
+      auto value = static_cast<emphasis>(lhs);
+      const auto other = static_cast<emphasis>(rhs);
+      auto& result = (value |= other);
+      EXPECT_EQ(fmt::to_underlying(value), lhs | rhs);
+      EXPECT_EQ(&result, &value);
+      EXPECT_EQ(fmt::to_underlying(other), rhs);
+    }
+  }
+  auto value = emphasis::bold;
+  (value |= emphasis::underline) |= emphasis::strike;
+  EXPECT_EQ(value, emphasis::bold | emphasis::underline | emphasis::strike);
+  fmt::operator|=(value, value);
+  EXPECT_EQ(value, emphasis::bold | emphasis::underline | emphasis::strike);
+}
+
+#if FMT_USE_CONSTEXPR
+constexpr auto check_emphasis_or_assign() -> bool {
+  auto value = fmt::emphasis::bold;
+  auto& result = (value |= fmt::emphasis::underline);
+  (result |= fmt::emphasis::strike) |= fmt::emphasis{};
+  fmt::operator|=(value, value);
+  return &result == &value &&
+         value == (fmt::emphasis::bold | fmt::emphasis::underline |
+                   fmt::emphasis::strike);
+}
+
+TEST(color_test, emphasis_or_assign_constexpr) {
+  static_assert(check_emphasis_or_assign(),
+                "compound assignment must support constant evaluation");
+}
+#endif
+
 TEST(color_test, underlying) {
   static_assert(std::is_same<fmt::underlying_type<fmt::term_color>::type,
-                             uint8_t>::value, "terminal color underlying type");
+                             int8_t>::value, "terminal color underlying type");
   static_assert(std::is_same<fmt::underlying_type<fmt::emphasis>::type,
                              uint8_t>::value, "emphasis underlying type");
   static_assert(std::is_same<fmt::underlying_type<fmt::rgb>::type,
@@ -352,7 +424,7 @@ TEST(color_test, underlying) {
 
   static_assert(std::is_same<decltype(fmt::to_underlying(
                                  fmt::term_color::black)),
-                             uint8_t>::value, "terminal color return type");
+                             int8_t>::value, "terminal color return type");
   static_assert(std::is_same<decltype(fmt::to_underlying(fmt::emphasis::bold)),
                              uint8_t>::value, "emphasis return type");
   static_assert(std::is_same<decltype(fmt::to_underlying(fmt::rgb{})),
@@ -548,6 +620,113 @@ TEST(color_test, text_style_empty_and_clear) {
   }
 }
 
+TEST(color_test, text_style_overlay) {
+  using fmt::emphasis;
+  using fmt::text_style;
+  static_assert(noexcept(std::declval<text_style&>().overlay(
+                    std::declval<const text_style&>())),
+                "overlay must be noexcept");
+  static_assert(std::is_same<decltype(std::declval<text_style&>().overlay(
+                                std::declval<const text_style&>())),
+                             text_style&>::value,
+                "overlay must return a style reference");
+  static_assert(noexcept(fmt::overlay(text_style{}, text_style{})),
+                "free overlay must be noexcept");
+  static_assert(std::is_same<decltype(fmt::overlay(text_style{}, text_style{})),
+                             text_style>::value,
+                "free overlay must return a style value");
+
+  const fmt::color_t base_colors[] = {
+      fmt::no_color, fmt::rgb{200, 10, 30}, fmt::term_color::red,
+      fmt::cube_color{5, 4, 3}, fmt::gray_color{23}};
+  const fmt::color_t overlay_colors[] = {
+      fmt::no_color, fmt::rgb{}, fmt::term_color::black,
+      fmt::cube_color{0}, fmt::gray_color{0}};
+  for (auto base_fg : base_colors) {
+    for (auto base_bg : base_colors) {
+      const auto base = text_style{base_fg, base_bg, emphasis::bold};
+      for (size_t fg = 0; fg < 5; ++fg) {
+        for (size_t bg = 0; bg < 5; ++bg) {
+          const auto other = text_style{overlay_colors[fg], overlay_colors[bg],
+                                       emphasis::faint};
+          const auto saved = other;
+          auto input = base;
+          const auto combined = fmt::overlay(input, other);
+          EXPECT_EQ(combined,
+                    (text_style{fg == 0 ? base_fg : overlay_colors[fg],
+                                bg == 0 ? base_bg : overlay_colors[bg],
+                                emphasis::bold | emphasis::faint}));
+          EXPECT_EQ(input, base);
+          EXPECT_EQ(other, saved);
+          auto style = base;
+          EXPECT_EQ(&style.overlay(other), &style);
+          EXPECT_EQ(style, (text_style{fg == 0 ? base_fg : overlay_colors[fg],
+                                      bg == 0 ? base_bg : overlay_colors[bg],
+                                      emphasis::bold | emphasis::faint}));
+          EXPECT_EQ(other, saved);
+        }
+      }
+      auto style = base;
+      EXPECT_EQ(fmt::overlay(base, text_style{}), base);
+      EXPECT_EQ(fmt::overlay(text_style{}, base), base);
+      EXPECT_EQ(fmt::overlay(base, base), base);
+      EXPECT_EQ(&style.overlay(text_style{}), &style);
+      EXPECT_EQ(style, base);
+      EXPECT_EQ(&style.overlay(style), &style);
+      EXPECT_EQ(style, base);
+      EXPECT_EQ(&style.overlay(base), &style);
+      EXPECT_EQ(style, base);
+      auto empty = text_style{};
+      EXPECT_EQ(&empty.overlay(base), &empty);
+      EXPECT_EQ(empty, base);
+    }
+  }
+  auto empty = text_style{};
+  EXPECT_EQ(fmt::overlay(empty, empty), empty);
+  EXPECT_EQ(&empty.overlay(empty), &empty);
+  EXPECT_TRUE(empty.empty());
+  auto style = text_style{fmt::term_color::red, fmt::gray_color{12},
+                          emphasis::bold};
+  style.overlay(text_style{fmt::rgb{}}).underline();
+  EXPECT_EQ(style, (text_style{fmt::rgb{}, fmt::gray_color{12},
+                              emphasis::bold | emphasis::underline}));
+  const auto first = text_style{fmt::term_color::red};
+  const auto second = text_style{fmt::term_color::blue};
+  EXPECT_EQ(fmt::overlay(first, second), second);
+  EXPECT_EQ(fmt::overlay(second, first), first);
+}
+
+#if FMT_USE_CONSTEXPR
+TEST(color_test, text_style_overlay_constexpr) {
+  constexpr auto base = fmt::text_style{fmt::term_color::red,
+                                       fmt::gray_color{12}, fmt::emphasis::bold};
+  constexpr auto overlaid = fmt::text_style{base}.overlay(
+      fmt::text_style{fmt::rgb{}, fmt::no_color, fmt::emphasis::faint});
+  static_assert(overlaid == fmt::text_style{
+                                fmt::rgb{}, fmt::gray_color{12},
+                                fmt::emphasis::bold | fmt::emphasis::faint},
+                "overlay must support constant evaluation");
+  constexpr auto unchanged = fmt::text_style{base}.overlay(fmt::text_style{});
+  static_assert(unchanged == base, "an empty overlay must preserve the style");
+  constexpr auto copied = fmt::text_style{}.overlay(base);
+  static_assert(copied == base, "overlay must replace an empty base");
+  constexpr auto equal = fmt::text_style{base}.overlay(base);
+  static_assert(equal == base, "an equal overlay must preserve the style");
+  constexpr auto overrides = fmt::text_style{fmt::rgb{}, fmt::no_color,
+                                            fmt::emphasis::faint};
+  constexpr auto combined = fmt::overlay(base, overrides);
+  static_assert(combined == overlaid,
+                "free overlay must support constant evaluation");
+  static_assert(fmt::overlay(base, fmt::text_style{}) == base &&
+                    fmt::overlay(fmt::text_style{}, base) == base &&
+                    fmt::overlay(base, base) == base,
+                "free overlay must preserve empty and equal cases");
+  static_assert(base.fg() == fmt::term_color::red &&
+                    overrides.fg() == fmt::rgb{},
+                "free overlay must preserve its inputs");
+}
+#endif
+
 TEST(color_test, text_style_color_composition) {
   static_assert(noexcept(fmt::text_style{} | fmt::text_style{}) &&
                     noexcept(std::declval<fmt::text_style&>() |=
@@ -607,6 +786,23 @@ TEST(color_test, palette_style_replacement) {
 }
 
 namespace {
+void check_to_sgr(const fmt::text_style& style, const std::string& expected) {
+  static_assert(std::is_same<decltype(fmt::to_sgr(style)), std::string>::value,
+                "the default character type must be char");
+  static_assert(std::is_same<decltype(fmt::to_sgr<char>(style)),
+                             std::string>::value,
+                "explicit char rendering must return std::string");
+  static_assert(std::is_same<decltype(fmt::to_sgr<wchar_t>(style)),
+                             std::wstring>::value,
+                "wide rendering must return std::wstring");
+  const auto original = style;
+  EXPECT_EQ(fmt::to_sgr(style), expected);
+  EXPECT_EQ(fmt::to_sgr<char>(style), expected);
+  EXPECT_EQ(fmt::to_sgr<wchar_t>(style),
+            (std::wstring{expected.begin(), expected.end()}));
+  EXPECT_EQ(style, original);
+}
+
 template<typename Char>
 std::basic_string<Char> color_escape(fmt::color_t color, bool background) {
   const auto escape = fmt::detail::ansi_color_escape<Char>{color, background};
@@ -621,13 +817,17 @@ TEST(color_test, palette_ansi_escape) {
     const char* background;
   } samples[] = {
       {fmt::no_color, "", ""},
-      {fmt::rgb{1, 2, 3}, "\x1b[38;2;001;002;003m", "\x1b[48;2;001;002;003m"},
-      {fmt::term_color::red, "\x1b[31m", "\x1b[41m"},
-      {fmt::term_color::bright_white, "\x1b[97m", "\x1b[107m"},
-      {fmt::cube_color{0}, "\x1b[38;5;016m", "\x1b[48;5;016m"},
-      {fmt::cube_color{215}, "\x1b[38;5;231m", "\x1b[48;5;231m"},
-      {fmt::gray_color{0}, "\x1b[38;5;232m", "\x1b[48;5;232m"},
-      {fmt::gray_color{23}, "\x1b[38;5;255m", "\x1b[48;5;255m"}};
+      {fmt::rgb{1, 2, 3},
+       FMT_SGR_EXPECTED("38;2;001;002;003;", "38;2;1;2;3;"),
+       FMT_SGR_EXPECTED("48;2;001;002;003;", "48;2;1;2;3;")},
+      {fmt::term_color::red, "31;", "41;"},
+      {fmt::term_color::bright_white, "97;", "107;"},
+      {fmt::cube_color{0},
+       FMT_SGR_EXPECTED("38;5;016;", "38;5;16;"),
+       FMT_SGR_EXPECTED("48;5;016;", "48;5;16;")},
+      {fmt::cube_color{215}, "38;5;231;", "48;5;231;"},
+      {fmt::gray_color{0}, "38;5;232;", "48;5;232;"},
+      {fmt::gray_color{23}, "38;5;255;", "48;5;255;"}};
   for (const auto& sample : samples) {
     for (bool background : {false, true}) {
       const auto expected = std::string{background ? sample.background
@@ -637,8 +837,12 @@ TEST(color_test, palette_ansi_escape) {
                 (std::wstring{expected.begin(), expected.end()}));
       const auto style =
           background ? fmt::bg(sample.color) : fmt::fg(sample.color);
+      const auto sgr = expected.empty()
+                           ? std::string{}
+                           : "\x1b[" + expected.substr(0, expected.size() - 1) + "m";
+      check_to_sgr(style, sgr);
       EXPECT_EQ(fmt::format(style, "value"),
-                expected + "value" + (expected.empty() ? "" : "\x1b[0m"));
+                sgr + "value" + (sgr.empty() ? "" : "\x1b[0m"));
     }
   }
 }
@@ -991,7 +1195,38 @@ TEST(color_test, color_variant_style_values) {
   EXPECT_EQ(copy, (fmt::rgb{1, 255, 3}));
   EXPECT_EQ(fmt::get<1>(style.fg()).g, 2);
   EXPECT_EQ(fmt::format(style, "value"),
-            "\x1b[9m\x1b[38;2;001;002;003m\x1b[40mvalue\x1b[0m");
+            FMT_SGR_EXPECTED(
+                "\x1b[9m\x1b[38;2;001;002;003m\x1b[40mvalue\x1b[0m",
+                "\x1b[9;38;2;1;2;3;40mvalue\x1b[0m"));
+}
+
+TEST(color_test, rgb_checked_channels) {
+  constexpr uint8_t byte_channel = 128;
+  static_assert(fmt::rgb{byte_channel, 0, 255} == fmt::rgb{128, 0, 255} &&
+                    fmt::rgb{0, byte_channel, 255} == fmt::rgb{0, 128, 255} &&
+                    fmt::rgb{0, 255, byte_channel} == fmt::rgb{0, 255, 128},
+                "mixed byte and int inputs must resolve to the checked constructor");
+  static_assert(fmt::rgb{0, 255, 128} == fmt::rgb{0x00FF80},
+                "signed channel inputs must support C++11 constant evaluation");
+  static_assert(noexcept(fmt::rgb{0, 0, 0}),
+                "RGB channel construction must be noexcept");
+  for (int channel = 0; channel <= 255; ++channel) {
+    auto color = fmt::rgb{channel, channel, channel};
+    EXPECT_EQ(color.r, channel);
+    EXPECT_EQ(color.g, channel);
+    EXPECT_EQ(color.b, channel);
+  }
+#ifdef NDEBUG
+  const int invalid[] = {-1, 256, (std::numeric_limits<int>::min)(),
+                        (std::numeric_limits<int>::max)()};
+  for (auto channel : invalid) {
+    SCOPED_TRACE(channel);
+    const int clamped = channel < 0 ? 0 : 255;
+    EXPECT_EQ((fmt::rgb{channel, 128, 64}), (fmt::rgb{clamped, 128, 64}));
+    EXPECT_EQ((fmt::rgb{128, channel, 64}), (fmt::rgb{128, clamped, 64}));
+    EXPECT_EQ((fmt::rgb{128, 64, channel}), (fmt::rgb{128, 64, clamped}));
+  }
+#endif
 }
 
 TEST(color_test, rgb) {
@@ -1404,6 +1639,77 @@ void check_fluent_emphasis(fmt::emphasis attribute,
   }
 }
 
+void check_free_emphasis(fmt::emphasis attribute,
+                        fmt::text_style (*set)(fmt::text_style, bool)) {
+  for (unsigned bits = 0; bits < 256; ++bits) {
+    SCOPED_TRACE(bits);
+    auto original = fmt::text_style{static_cast<fmt::emphasis>(bits),
+                                    fmt::cube_color{1, 2, 3},
+                                    fmt::gray_color{12}};
+    const auto saved = original;
+    const auto mask = static_cast<unsigned>(attribute);
+    for (bool enabled : {false, true}) {
+      SCOPED_TRACE(enabled);
+      const auto result = set(original, enabled);
+      EXPECT_EQ(result, (fmt::text_style{
+                            static_cast<fmt::emphasis>(
+                                enabled ? bits | mask : bits & ~mask),
+                            fmt::cube_color{1, 2, 3}, fmt::gray_color{12}}));
+      EXPECT_EQ(original, saved);
+      EXPECT_EQ(set(result, enabled), result);
+    }
+  }
+}
+
+TEST(color_test, free_emphasis) {
+#define CHECK_FREE_EMPHASIS(name)                                            \
+  static_assert(noexcept(fmt::name(fmt::text_style{})) &&                    \
+                    noexcept(fmt::name(fmt::text_style{}, false)),          \
+                "free attribute functions must be noexcept");               \
+  static_assert(std::is_same<decltype(fmt::name(fmt::text_style{})),          \
+                             fmt::text_style>::value,                      \
+                "free attribute functions must return a style value");      \
+  EXPECT_EQ(fmt::name(fmt::text_style{}),                                    \
+            (fmt::text_style{fmt::emphasis::name}));                         \
+  EXPECT_EQ(fmt::name(fmt::text_style{}),                                    \
+            fmt::name(fmt::text_style{}, true));                            \
+  check_free_emphasis(fmt::emphasis::name, &fmt::name)
+  CHECK_FREE_EMPHASIS(bold);
+  CHECK_FREE_EMPHASIS(faint);
+  CHECK_FREE_EMPHASIS(italic);
+  CHECK_FREE_EMPHASIS(underline);
+  CHECK_FREE_EMPHASIS(blink);
+  CHECK_FREE_EMPHASIS(reverse);
+  CHECK_FREE_EMPHASIS(conceal);
+  CHECK_FREE_EMPHASIS(strike);
+#undef CHECK_FREE_EMPHASIS
+}
+
+#if FMT_USE_CONSTEXPR
+TEST(color_test, free_emphasis_constexpr) {
+  constexpr auto base = fmt::text_style{fmt::cube_color{1, 2, 3},
+                                       fmt::gray_color{12}};
+#define CHECK_FREE_CONSTEXPR(name)                                          \
+  constexpr auto name##_style = fmt::name(base);                            \
+  static_assert(name##_style.is_##name(), "default must enable attribute"); \
+  static_assert(fmt::name(name##_style, false) == base,                     \
+                "disabling must restore the original style");              \
+  static_assert(name##_style.fg() == base.fg() &&                           \
+                    name##_style.bg() == base.bg(),                        \
+                "free attribute functions must preserve colors")
+  CHECK_FREE_CONSTEXPR(bold);
+  CHECK_FREE_CONSTEXPR(faint);
+  CHECK_FREE_CONSTEXPR(italic);
+  CHECK_FREE_CONSTEXPR(underline);
+  CHECK_FREE_CONSTEXPR(blink);
+  CHECK_FREE_CONSTEXPR(reverse);
+  CHECK_FREE_CONSTEXPR(conceal);
+  CHECK_FREE_CONSTEXPR(strike);
+#undef CHECK_FREE_CONSTEXPR
+  static_assert(!base.has_emph(), "the original style must remain unchanged");
+}
+#endif
+
 TEST(color_test, fluent_emphasis) {
   using fmt::text_style;
 #define CHECK_EMPHASIS(name)                                                 \
@@ -1686,7 +1992,9 @@ TEST(color_test, short_names_compatibility) {
   EXPECT_EQ(&style.strike(), &style);
   EXPECT_TRUE(style.is_strikethrough());
   EXPECT_EQ(fmt::format(style, "mixed"),
-            "\x1b[1;9m\x1b[31m\x1b[40mmixed\x1b[0m");
+            FMT_SGR_EXPECTED(
+                "\x1b[1;9m\x1b[31m\x1b[40mmixed\x1b[0m",
+                "\x1b[1;9;31;40mmixed\x1b[0m"));
   EXPECT_EQ(&style.strikethrough(false), &style);
   EXPECT_FALSE(style.is_strike());
   style.strikethrough().strike(false);
@@ -1733,18 +2041,28 @@ TEST(color_test, term_color_boundaries) {
 TEST(color_test, format) {
   EXPECT_EQ(fmt::format(fmt::text_style(), "no style"), "no style");
   EXPECT_EQ(fmt::format(fg(fmt::rgb(255, 20, 30)), "rgb(255,20,30)"),
-            "\x1b[38;2;255;020;030mrgb(255,20,30)\x1b[0m");
+            FMT_SGR_EXPECTED(
+                "\x1b[38;2;255;020;030mrgb(255,20,30)\x1b[0m",
+                "\x1b[38;2;255;20;30mrgb(255,20,30)\x1b[0m"));
   EXPECT_EQ(fmt::format(fg(fmt::rgb(255, 0, 0)) | fg(fmt::rgb(0, 20, 30)),
                         "rgb(255,20,30)"),
-            "\x1b[38;2;255;020;030mrgb(255,20,30)\x1b[0m");
+            FMT_SGR_EXPECTED(
+                "\x1b[38;2;255;020;030mrgb(255,20,30)\x1b[0m",
+                "\x1b[38;2;255;20;30mrgb(255,20,30)\x1b[0m"));
   EXPECT_EQ(
       fmt::format(fg(fmt::rgb(0, 0, 0)) | fg(fmt::rgb(0, 0, 0)), "rgb(0,0,0)"),
-      "\x1b[38;2;000;000;000mrgb(0,0,0)\x1b[0m");
+      FMT_SGR_EXPECTED(
+          "\x1b[38;2;000;000;000mrgb(0,0,0)\x1b[0m",
+          "\x1b[38;2;0;0;0mrgb(0,0,0)\x1b[0m"));
   EXPECT_EQ(fmt::format(fg(fmt::color::blue), "blue"),
-            "\x1b[38;2;000;000;255mblue\x1b[0m");
+            FMT_SGR_EXPECTED(
+                "\x1b[38;2;000;000;255mblue\x1b[0m",
+                "\x1b[38;2;0;0;255mblue\x1b[0m"));
   EXPECT_EQ(
       fmt::format(fg(fmt::color::blue) | bg(fmt::color::red), "two color"),
-      "\x1b[38;2;000;000;255m\x1b[48;2;255;000;000mtwo color\x1b[0m");
+      FMT_SGR_EXPECTED(
+          "\x1b[38;2;000;000;255m\x1b[48;2;255;000;000mtwo color\x1b[0m",
+          "\x1b[38;2;0;0;255;48;2;255;0;0mtwo color\x1b[0m"));
   EXPECT_EQ(fmt::format(fmt::emphasis::bold, "bold"), "\x1b[1mbold\x1b[0m");
   EXPECT_EQ(fmt::format(fmt::emphasis::faint, "faint"), "\x1b[2mfaint\x1b[0m");
   EXPECT_EQ(fmt::format(fmt::emphasis::italic, "italic"),
@@ -1760,11 +2078,15 @@ TEST(color_test, format) {
             "\x1b[9mstrikethrough\x1b[0m");
   EXPECT_EQ(
       fmt::format(fg(fmt::color::blue) | fmt::emphasis::bold, "blue/bold"),
-      "\x1b[1m\x1b[38;2;000;000;255mblue/bold\x1b[0m");
+      FMT_SGR_EXPECTED(
+          "\x1b[1m\x1b[38;2;000;000;255mblue/bold\x1b[0m",
+          "\x1b[1;38;2;0;0;255mblue/bold\x1b[0m"));
   EXPECT_EQ(fmt::format(fmt::emphasis::bold, "bold error"),
             "\x1b[1mbold error\x1b[0m");
   EXPECT_EQ(fmt::format(fg(fmt::color::blue), "blue log"),
-            "\x1b[38;2;000;000;255mblue log\x1b[0m");
+            FMT_SGR_EXPECTED(
+                "\x1b[38;2;000;000;255mblue log\x1b[0m",
+                "\x1b[38;2;0;0;255mblue log\x1b[0m"));
   EXPECT_EQ(fmt::format(fmt::text_style(), "hi"), "hi");
   EXPECT_EQ(fmt::format(fg(fmt::terminal_color::red), "tred"),
             "\x1b[31mtred\x1b[0m");
@@ -1778,10 +2100,14 @@ TEST(color_test, format) {
             "\x1b[31mfoo\x1b[0m");
   EXPECT_EQ(fmt::format("{}{}", fmt::styled("red", fg(fmt::color::red)),
                         fmt::styled("bold", fmt::emphasis::bold)),
-            "\x1b[38;2;255;000;000mred\x1b[0m\x1b[1mbold\x1b[0m");
+            FMT_SGR_EXPECTED(
+                "\x1b[38;2;255;000;000mred\x1b[0m\x1b[1mbold\x1b[0m",
+                "\x1b[38;2;255;0;0mred\x1b[0m\x1b[1mbold\x1b[0m"));
   EXPECT_EQ(fmt::format("{}", fmt::styled("bar", fg(fmt::color::blue) |
                                                      fmt::emphasis::underline)),
-            "\x1b[4m\x1b[38;2;000;000;255mbar\x1b[0m");
+            FMT_SGR_EXPECTED(
+                "\x1b[4m\x1b[38;2;000;000;255mbar\x1b[0m",
+                "\x1b[4;38;2;0;0;255mbar\x1b[0m"));
   EXPECT_EQ(
       fmt::format(
           "{}", fmt::styled(
@@ -1798,22 +2124,158 @@ TEST(color_test, format_to) {
   fmt::format_to(std::back_inserter(out), fg(fmt::rgb(255, 20, 30)),
                  "rgb(255,20,30){}{}{}", 1, 2, 3);
   EXPECT_EQ(fmt::to_string(out),
-            "\x1b[38;2;255;020;030mrgb(255,20,30)123\x1b[0m");
+            FMT_SGR_EXPECTED(
+                "\x1b[38;2;255;020;030mrgb(255,20,30)123\x1b[0m",
+                "\x1b[38;2;255;20;30mrgb(255,20,30)123\x1b[0m"));
 }
 
 TEST(color_test, print) {
   EXPECT_WRITE(stdout, fmt::print(fg(fmt::rgb(255, 20, 30)), "rgb(255,20,30)"),
-               "\x1b[38;2;255;020;030mrgb(255,20,30)\x1b[0m");
+               FMT_SGR_EXPECTED(
+                   "\x1b[38;2;255;020;030mrgb(255,20,30)\x1b[0m",
+                   "\x1b[38;2;255;20;30mrgb(255,20,30)\x1b[0m"));
 }
 
 TEST(color_test, println) {
   EXPECT_WRITE(stdout,
                fmt::println(fg(fmt::rgb(255, 20, 30)), "rgb(255,20,30)"),
-               "\x1b[38;2;255;020;030mrgb(255,20,30)\x1b[0m\n");
+               FMT_SGR_EXPECTED(
+                   "\x1b[38;2;255;020;030mrgb(255,20,30)\x1b[0m\n",
+                   "\x1b[38;2;255;20;30mrgb(255,20,30)\x1b[0m\n"));
   EXPECT_WRITE(stdout, fmt::println(fmt::emphasis::bold, "bold"),
                "\x1b[1mbold\x1b[0m\n");
   EXPECT_WRITE(
       stdout,
       fmt::println(fg(fmt::color::blue) | fmt::emphasis::bold, "blue/bold"),
-      "\x1b[1m\x1b[38;2;000;000;255mblue/bold\x1b[0m\n");
+      FMT_SGR_EXPECTED(
+          "\x1b[1m\x1b[38;2;000;000;255mblue/bold\x1b[0m\n",
+          "\x1b[1;38;2;0;0;255mblue/bold\x1b[0m\n"));
 }
+
+#if FMT_COLOR_COMPACT_SGR == 1
+TEST(color_test, compact_sgr_combined_style) {
+  const auto style = fmt::text_style{static_cast<fmt::emphasis>(0xff),
+                                    fmt::rgb{0, 9, 255}, fmt::cube_color{0}};
+  const auto sgr = std::string{
+      "\x1b[1;2;3;4;5;7;8;9;38;2;0;9;255;48;5;16m"};
+  check_to_sgr(style, sgr);
+  EXPECT_EQ(fmt::format(style, "value"), sgr + "value\x1b[0m");
+  EXPECT_EQ(fmt::format("{:>5}", fmt::styled(42, style)),
+            sgr + "   42\x1b[0m");
+  EXPECT_EQ(fmt::format("{}plain", fmt::styled("value", style)),
+            sgr + "value\x1b[0mplain");
+
+  // Appending a style must preserve existing buffer contents.
+  auto buf = fmt::memory_buffer();
+  const auto prefix = std::string{"prefix"};
+  buf.append(prefix.data(), prefix.data() + prefix.size());
+  fmt::detail::append_sgr(buf, style);
+  EXPECT_EQ(fmt::to_string(buf), prefix + sgr);
+}
+
+TEST(color_test, compact_sgr_empty_and_single_components) {
+  check_to_sgr(fmt::text_style{}, "");
+  EXPECT_EQ(fmt::format(fmt::text_style{}, "plain"), "plain");
+  EXPECT_EQ(fmt::format("{:>5}", fmt::styled(42, fmt::text_style{})), "   42");
+  check_to_sgr(fmt::text_style{fmt::emphasis::bold}, "\x1b[1m");
+  check_to_sgr(fmt::fg(fmt::term_color::black), "\x1b[30m");
+  check_to_sgr(fmt::bg(fmt::term_color::bright_white), "\x1b[107m");
+  check_to_sgr(fmt::fg(fmt::gray_color{0}), "\x1b[38;5;232m");
+  check_to_sgr(fmt::bg(fmt::gray_color{23}), "\x1b[48;5;255m");
+}
+
+TEST(color_test, compact_sgr_decimal_channels) {
+  for (unsigned n = 0; n < 256; ++n) {
+    const auto channel = static_cast<uint8_t>(n);
+    const auto rgb = fmt::rgb{channel, channel, channel};
+    const auto value = std::to_string(n);
+    const auto parameters = value + ";" + value + ";" + value;
+    check_to_sgr(fmt::fg(rgb), "\x1b[38;2;" + parameters + "m");
+    check_to_sgr(fmt::bg(rgb), "\x1b[48;2;" + parameters + "m");
+  }
+}
+#endif
+
+namespace {
+void check_wrap_sgr(const fmt::text_style& style, const std::string& text,
+                   const std::string& expected) {
+  const auto original_style = style;
+  const auto original_text = text;
+  EXPECT_EQ(fmt::wrap_sgr(style, text), expected);
+  EXPECT_EQ(fmt::wrap_sgr<char>(style, fmt::string_view{text.data(), text.size()}),
+            expected);
+  const auto wide_text = std::wstring{text.begin(), text.end()};
+  EXPECT_EQ(fmt::wrap_sgr<wchar_t>(
+                style, fmt::basic_string_view<wchar_t>{wide_text.data(),
+                                                     wide_text.size()}),
+            (std::wstring{expected.begin(), expected.end()}));
+  EXPECT_EQ(style, original_style);
+  EXPECT_EQ(text, original_text);
+}
+}  // namespace
+
+TEST(color_test, wrap_sgr) {
+  static_assert(std::is_same<decltype(fmt::wrap_sgr(fmt::text_style{}, "text")),
+                             std::string>::value,
+                "the convenience overload must return std::string");
+  static_assert(std::is_same<decltype(fmt::wrap_sgr<wchar_t>(
+                                fmt::text_style{},
+                                fmt::basic_string_view<wchar_t>{L"text"})),
+                             std::wstring>::value,
+                "wide wrapping must return std::wstring");
+  EXPECT_EQ(fmt::wrap_sgr(fmt::text_style{fmt::emphasis::bold}, "literal"),
+            "\x1b[1mliteral\x1b[0m");
+  check_wrap_sgr(fmt::text_style{}, "value", "value");
+  check_wrap_sgr(fmt::text_style{fmt::emphasis::bold}, "value",
+                 "\x1b[1mvalue\x1b[0m");
+  check_wrap_sgr(fmt::text_style{fmt::rgb{1, 2, 3}}, "value",
+                 FMT_SGR_EXPECTED("\x1b[38;2;001;002;003mvalue\x1b[0m",
+                                  "\x1b[38;2;1;2;3mvalue\x1b[0m"));
+  check_wrap_sgr(fmt::text_style{fmt::term_color::black,
+                                 fmt::term_color::bright_white},
+                 "value", FMT_SGR_EXPECTED("\x1b[30m\x1b[107mvalue\x1b[0m",
+                                            "\x1b[30;107mvalue\x1b[0m"));
+  check_wrap_sgr(fmt::text_style{fmt::cube_color{0}, fmt::gray_color{23}},
+                 "value", FMT_SGR_EXPECTED(
+                              "\x1b[38;5;016m\x1b[48;5;255mvalue\x1b[0m",
+                              "\x1b[38;5;16;48;5;255mvalue\x1b[0m"));
+  check_wrap_sgr(fmt::text_style{static_cast<fmt::emphasis>(0xff),
+                                 fmt::rgb{255, 255, 255},
+                                 fmt::rgb{255, 255, 255}},
+                 "value", FMT_SGR_EXPECTED(
+                              "\x1b[1;2;3;4;5;7;8;9m\x1b[38;2;255;255;255m"
+                              "\x1b[48;2;255;255;255mvalue\x1b[0m",
+                              "\x1b[1;2;3;4;5;7;8;9;38;2;255;255;255;"
+                              "48;2;255;255;255mvalue\x1b[0m"));
+}
+
+TEST(color_test, wrap_sgr_empty) {
+  const fmt::text_style styles[] = {fmt::text_style{},
+                                    fmt::text_style{fmt::emphasis::bold}};
+  for (const auto& style : styles) {
+    EXPECT_EQ(fmt::wrap_sgr(style, fmt::string_view{}), "");
+    EXPECT_EQ(fmt::wrap_sgr(style, ""), "");
+    EXPECT_EQ(fmt::wrap_sgr<wchar_t>(style, fmt::basic_string_view<wchar_t>{}),
+              L"");
+    EXPECT_EQ(fmt::wrap_sgr<wchar_t>(style, L""), L"");
+  }
+}
+
+TEST(color_test, wrap_sgr_literal_payload) {
+  const auto style = fmt::text_style{fmt::emphasis::bold};
+  const char bytes[] = "before\0{}\x1b[31mafter";
+  const auto text = std::string{bytes, sizeof(bytes) - 1};
+  check_wrap_sgr(style, text, "\x1b[1m" + text + "\x1b[0m");
+  check_wrap_sgr(fmt::text_style{}, text, text);
+  const auto long_text = std::string(4096, 'x');
+  check_wrap_sgr(style, long_text, "\x1b[1m" + long_text + "\x1b[0m");
+  EXPECT_EQ(fmt::wrap_sgr<wchar_t>(style, L"wide \u03a9"),
+            L"\x1b[1mwide \u03a9\x1b[0m");
+
+  auto source = std::string{"owned"};
+  const auto wrapped = fmt::wrap_sgr(style, source);
+  source.assign("changed");
+  EXPECT_EQ(wrapped, "\x1b[1mowned\x1b[0m");
+}
+
+#undef FMT_SGR_EXPECTED

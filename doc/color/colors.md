@@ -35,23 +35,23 @@ SGR codes emitted for foreground and background colors. The rightmost
 column gives the fixed Xterm-default RGB equivalent, which may differ from
 a customized terminal theme:
 
-| Color            | Value | FG SGR | BG SGR | RGB equivalent |
-| -----            | ----: | -----: | -----: | -------------- |
-| `black`          |   0   |   30   |   40   | `{0, 0, 0}` |
-| `red`            |   1   |   31   |   41   | `{205, 0, 0}` |
-| `green`          |   2   |   32   |   42   | `{0, 205, 0}` |
-| `yellow`         |   3   |   33   |   43   | `{205, 205, 0}` |
-| `blue`           |   4   |   34   |   44   | `{0, 0, 238}` |
-| `magenta`        |   5   |   35   |   45   | `{205, 0, 205}` |
-| `cyan`           |   6   |   36   |   46   | `{0, 205, 205}` |
+| Color            | Value | FG SGR | BG SGR | RGB equivalent    |
+| -----            | ----: | -----: | -----: | ----------------- |
+| `black`          |   0   |   30   |   40   | `{  0,   0,   0}` |
+| `red`            |   1   |   31   |   41   | `{205,   0,   0}` |
+| `green`          |   2   |   32   |   42   | `{  0, 205,   0}` |
+| `yellow`         |   3   |   33   |   43   | `{205, 205,   0}` |
+| `blue`           |   4   |   34   |   44   | `{  0,   0, 238}` |
+| `magenta`        |   5   |   35   |   45   | `{205,   0, 205}` |
+| `cyan`           |   6   |   36   |   46   | `{  0, 205, 205}` |
 | `white`          |   7   |   37   |   47   | `{229, 229, 229}` |
 | `bright_black`   |   8   |   90   |  100   | `{127, 127, 127}` |
-| `bright_red`     |   9   |   91   |  101   | `{255, 0, 0}` |
-| `bright_green`   |  10   |   92   |  102   | `{0, 255, 0}` |
-| `bright_yellow`  |  11   |   93   |  103   | `{255, 255, 0}` |
-| `bright_blue`    |  12   |   94   |  104   | `{92, 92, 255}` |
-| `bright_magenta` |  13   |   95   |  105   | `{255, 0, 255}` |
-| `bright_cyan`    |  14   |   96   |  106   | `{0, 255, 255}` |
+| `bright_red`     |   9   |   91   |  101   | `{255,   0,   0}` |
+| `bright_green`   |  10   |   92   |  102   | `{  0, 255,   0}` |
+| `bright_yellow`  |  11   |   93   |  103   | `{255, 255,   0}` |
+| `bright_blue`    |  12   |   94   |  104   | `{ 92,  92, 255}` |
+| `bright_magenta` |  13   |   95   |  105   | `{255,   0, 255}` |
+| `bright_cyan`    |  14   |   96   |  106   | `{  0, 255, 255}` |
 | `bright_white`   |  15   |   97   |  107   | `{255, 255, 255}` |
 
 ```cpp
@@ -68,6 +68,13 @@ bool specified = style.has_fg(); // true
 
 Use symbolic terminal-color names in styling code. Their numeric values and
 the packed style encoding are not stable serialization formats.
+
+`term_color` has the signed underlying type `int8_t`.
+`fmt::underlying_type<fmt::term_color>::type` and
+`fmt::to_underlying(term_color)` also use `int8_t`. The named values remain
+indices `0..15`; the signed type does not introduce additional palette colors.
+Conversion to RGB asserts that the index is within that range before accessing
+the fixed palette. Prefer the named values rather than casting arbitrary integers.
 
 ### Converting terminal colors to RGB
 
@@ -91,6 +98,23 @@ appearance can differ from its fixed RGB counterpart.
 ::: rgb
     options:
       color_reference: true
+
+The three-channel constructor accepts `int` arguments and checks each against
+`0..255` before storing it as `uint8_t`. Invalid channels trigger `FMT_ASSERT`.
+When assertions are disabled, negative channels clamp to 0 and channels above
+255 clamp to 255. This constructor is `noexcept`; valid inputs remain usable
+in C++11 constant expressions. Byte-valued arguments can be mixed with `int`
+arguments; all three use the same checked constructor. The public `r`, `g`,
+and `b` members and `chan_type` remain `uint8_t`.
+The packed `rgb(uint32_t)` constructor still treats its argument as a bit
+pattern and uses its low 24 bits; it remains `noexcept`.
+
+```cpp
+int red = 30;
+uint8_t green = 144;
+auto accent = fmt::rgb{red, green, 255};
+// With assertions disabled, fmt::rgb{-1, 144, 300} becomes {0, 144, 255}.
+```
 
 ### Converting colors to RGB
 
@@ -258,9 +282,11 @@ See the [gray palette swatches](named-colors.md#gray-palette-colors) for all
       color_reference: true
 
 `gray_color` selects one of the terminal's 24 gray levels. Its explicit
-constructor accepts a zero-based index in the range 0–23; default
-construction selects index zero. Invalid indices report `std::out_of_range`
-when exceptions are enabled; with exceptions disabled, the library terminates.
+constructor accepts an `int` zero-based index in the range 0–23; default
+construction selects index zero. Invalid indices trigger `FMT_ASSERT`. When
+assertions are disabled, negative indices clamp to 0 and indices above 23
+clamp to 23. The index constructor is `noexcept`; valid inputs support
+constant evaluation in C++11 and later.
 
 ```cpp
 auto shade = fmt::gray_color{12};
@@ -285,9 +311,11 @@ See the [cube palette table](named-colors.md#cube-palette-colors) for all
       color_reference: true
 
 `cube_color` selects one of the 216 colors in the terminal's 6×6×6 color cube.
-Construct it from three channel indices in the range 0–5, or explicitly from
-a single zero-based index in the range 0–215. The single index is
-`36 * r + 6 * g + b`. Default construction selects index zero.
+Construct it from three `int` channel indices in the range 0–5, or explicitly
+from a single `unsigned` zero-based index in the range 0–215. Invalid inputs
+trigger `FMT_ASSERT`. When assertions are disabled, each channel clamps to
+`0..5`, and a single index above 215 clamps to 215 before channel decomposition.
+The single index is `36 * r + 6 * g + b`. Default construction selects index zero.
 
 ```cpp
 auto accent = fmt::cube_color{1, 2, 3};
@@ -296,10 +324,18 @@ auto style = fmt::fg(accent);
 accent.r(5).g(0).b(4); // Channel setters return cube_color&.
 ```
 
-The `r()`, `g()`, and `b()` getters return channel indices. Their setters
-validate the new index before changing the channel. Invalid constructor or
-setter arguments report `std::out_of_range` when exceptions are enabled;
-with exceptions disabled, the library terminates.
+The `r()`, `g()`, and `b()` getters return channel indices as `int`. Their
+setters accept `int`, assert that the input is in `0..5`, and return
+`cube_color&` for chaining. With assertions disabled, an out-of-range value
+sets that channel to the nearest endpoint while preserving the other channels.
+Constructors and setters are `noexcept`. Valid construction supports constant
+evaluation in C++11 and later; setters support it in C++14 and later on
+supported compilers.
+
+The default assertion handler terminates on invalid input in assertion-enabled
+builds. Defining `NDEBUG` disables these assertions and enables the clamping
+fallback. This behavior is independent of exception support: these range checks
+never throw, including in builds with exceptions disabled.
 
 Implicit conversion to `rgb` maps channel indices 0–5 to the fixed levels
 `{0, 95, 135, 175, 215, 255}`:
@@ -308,8 +344,9 @@ Implicit conversion to `rgb` maps channel indices 0–5 to the fixed levels
 fmt::rgb converted = fmt::cube_color{1, 2, 3}; // {95, 135, 175}
 ```
 
-`value_type`, `chan_type`, and `underlying_type<cube_color>::type` are
-`uint8_t`. `to_underlying(color)` returns the zero-based cube index.
+`value_type` and `underlying_type<cube_color>::type` remain `uint8_t`.
+`to_underlying(color)` returns the zero-based cube index as `uint8_t`.
+Channel storage and its `chan_type` alias are private implementation details.
 For terminal output, the library adds 16 to select palette entries 16–231.
 Foreground uses SGR `38;5;n`; background uses `48;5;n`.
 
@@ -319,9 +356,10 @@ C++11, as does terminal-to-RGB conversion.
 
 Palette rendering uses the terminal's palette entries. RGB conversion uses
 fixed values, so a customized terminal palette can produce a different
-appearance. Palette indices in escape sequences currently use three decimal
-digits, including leading zeroes: cube index zero emits `38;5;016` for a
-foreground color.
+appearance. With `FMT_COLOR_COMPACT_SGR` undefined or `0`, palette indices in
+escape sequences use three decimal digits, including leading zeroes: cube
+index zero emits `38;5;016` for a foreground color. With the definition set to
+`1`, it emits `38;5;16`. See [SGR output modes](format.md#to_sgr).
 
 ## Unspecified color
 

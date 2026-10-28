@@ -40,6 +40,49 @@ auto underlined_background = fmt::text_style{
 auto palette = fmt::text_style{fmt::cube_color{1, 2, 3}, fmt::gray_color{12}};
 ```
 
+### Overlaying styles
+
+`overlay(other)` updates a style with another style's specified colors and
+returns `text_style&` for chaining. The incoming foreground and background
+replace their matching channels independently, preserving each color's kind.
+An incoming `no_color` leaves the existing channel unchanged; a specified black
+color replaces it. Emphasis bits combine by OR, so an overlay can add attributes
+but cannot remove them. An empty overlay leaves the style unchanged.
+
+```cpp
+auto style = fmt::text_style{fmt::term_color::red, fmt::gray_color{12},
+                             fmt::emphasis::bold};
+const auto other = fmt::text_style{fmt::cube_color{0}, fmt::no_color,
+                                   fmt::emphasis::underline};
+style.overlay(other);
+// Foreground: cube_color{0}; background: gray_color{12}.
+// Emphasis: bold and underline. The value of other is unchanged.
+```
+
+The operation is `noexcept` and supports constant evaluation in C++14 and later
+on supported compilers. It changes the style value without emitting ANSI output.
+Use component setters to clear a color or remove attributes.
+
+The free function `fmt::overlay(base, overrides)` returns a new `text_style`
+with the same precedence rules, leaving both inputs unchanged. The second
+argument supplies the overriding colors; reversing the arguments can change
+the result. Like the member, it is `noexcept` and supports constant evaluation
+in C++14 and later on supported compilers, with runtime use available in C++11.
+
+```cpp
+const auto base = fmt::text_style{fmt::term_color::red, fmt::gray_color{12},
+                                  fmt::emphasis::bold};
+const auto overrides = fmt::text_style{fmt::cube_color{0}, fmt::no_color,
+                                       fmt::emphasis::underline};
+auto combined = fmt::overlay(base, overrides);
+// combined has cube foreground, gray background, bold, and underline.
+// base and overrides retain their original values.
+```
+
+::: overlay(text_style, text_style)
+    options:
+      color_reference: true
+
 ### Combining styles
 
 `|` returns a combined style and leaves both operands unchanged. `|=` updates
@@ -249,6 +292,61 @@ style.blink(false).underline();     // Bold, underline, strike.
 In older language modes, qualify names with `fmt::emphasis::` or use a type
 alias such as `using em = fmt::emphasis;` and write `em::bold`.
 
+### Attribute functions returning a new style
+
+The free functions `bold()`, `faint()`, `italic()`, `underline()`, `blink()`,
+`reverse()`, `conceal()`, and `strike()` take a style by value and return a
+modified copy. The original style is unchanged. Each function enables its
+attribute by default; pass `false` as the second argument to disable it.
+All other attributes and both color channels retain their values and kinds.
+Bold and faint remain independent.
+
+```cpp
+const auto theme = fmt::text_style{fmt::color::coral, fmt::term_color::black};
+auto underlined = fmt::underline(theme);
+auto bold_underlined = fmt::bold(underlined);
+auto bold_only = fmt::underline(bold_underlined, false);
+// theme still has no emphasis attributes.
+```
+
+Use these functions when deriving a style from a reusable base. The member
+call `style.underline()` modifies `style`; `fmt::underline(style)` returns a
+new value. Every free attribute function returns `text_style`, is `noexcept`,
+and supports constant evaluation in C++14 and later on supported compilers.
+They are available for runtime use in C++11.
+
+::: bold(text_style, bool)
+    options:
+      color_reference: true
+
+::: faint(text_style, bool)
+    options:
+      color_reference: true
+
+::: italic(text_style, bool)
+    options:
+      color_reference: true
+
+::: underline(text_style, bool)
+    options:
+      color_reference: true
+
+::: blink(text_style, bool)
+    options:
+      color_reference: true
+
+::: reverse(text_style, bool)
+    options:
+      color_reference: true
+
+::: conceal(text_style, bool)
+    options:
+      color_reference: true
+
+::: strike(text_style, bool)
+    options:
+      color_reference: true
+
 ### Comparisons
 
 `text_style` values support equality and ordering by their packed `uint64_t`
@@ -276,6 +374,25 @@ auto packed = fmt::to_underlying(style);  // uint64_t
 ```
 
 The packed encoding is not a stable serialization format.
+
+## Combining emphasis attributes
+
+`fmt::emphasis` values are independent bit masks. `operator|` returns their
+union without modifying either operand. `operator|=` adds the right operand's
+attributes to the left operand and returns `emphasis&` referring to that left
+operand, allowing chaining. Existing attributes remain set; combining with
+`emphasis{}` leaves the value unchanged.
+
+```cpp
+auto attributes = fmt::emphasis::bold;
+attributes |= fmt::emphasis::underline;
+(attributes |= fmt::emphasis::italic) |= fmt::emphasis::strike;
+auto style = fmt::text_style{attributes};
+```
+
+Both operators are `noexcept`. `operator|` supports constant evaluation in
+C++11 and later; the mutating `operator|=` supports it in C++14 and later on
+supported compilers, with runtime use available in C++11.
 
 ## Foreground and background
 
