@@ -1,3 +1,41 @@
+# FmtColor
+
+FmtColor extends [{fmt}](https://github.com/fmtlib/fmt) with color and text-style
+values, palette conversion and blending, fluent style controls, and styled
+output. This fork retains {fmt}'s formatting engine and supports C++11 and later.
+Development is on the `FmtColorDev` branch; these extensions have not been
+accepted into upstream {fmt}.
+
+[![Linux CI](https://github.com/tjgolubi/fmt/actions/workflows/linux.yml/badge.svg?branch=FmtColorDev)](https://github.com/tjgolubi/fmt/actions/workflows/linux.yml?query=branch%3AFmtColorDev)
+[![Windows CI](https://github.com/tjgolubi/fmt/actions/workflows/windows.yml/badge.svg?branch=FmtColorDev)](https://github.com/tjgolubi/fmt/actions/workflows/windows.yml?query=branch%3AFmtColorDev)
+[![macOS CI](https://github.com/tjgolubi/fmt/actions/workflows/macos.yml/badge.svg?branch=FmtColorDev)](https://github.com/tjgolubi/fmt/actions/workflows/macos.yml?query=branch%3AFmtColorDev)
+[![Documentation CI](https://github.com/tjgolubi/fmt/actions/workflows/doc.yml/badge.svg?branch=FmtColorDev)](https://github.com/tjgolubi/fmt/actions/workflows/doc.yml?query=branch%3AFmtColorDev)
+
+- [User guide](https://tjgolubi.github.io/fmt/color/index.html)
+- [Project website and design rationale](https://fmtcolor.ardentokapi66.chatgpt.site)
+- [Change log](FmtColorChangeLog.md)
+- [Build, installation, and application integration](FmtColorIntegration.md)
+
+The styling extensions include:
+
+- Named RGB constants, terminal colors, and the 216-color cube and 24-level gray palettes.
+- Public color variants, RGB conversion, color/style blending, comparisons, and hashing.
+- Fluent component and attribute controls, style overlays, and value-returning attribute functions.
+- Optional compact ANSI SGR output, style-to-SGR conversion, reset views, and literal text wrapping.
+- Styled formatting and printing, plus narrow and wide ostream output and styled stream insertion through `<fmt/color-ostream.h>`.
+
+Include `<fmt/color.h>` for styling. The generated user guide documents the API,
+behavior changes, and examples; the integration instructions cover Make, CMake,
+header-only use, and selecting the SGR output mode. Structured nested styled text
+remains future work.
+
+---
+
+# Upstream {fmt} README
+
+The upstream project description follows. Its badges, documentation links, and
+performance results refer to upstream {fmt}.
+
 <img src="https://user-images.githubusercontent.com/576385/156254208-f5b743a9-88cf-439d-b0c0-923d53e8d551.png" alt="{fmt}" width="25%"/>
 
 [![image](https://github.com/fmtlib/fmt/actions/workflows/linux.yml/badge.svg?branch=master)](

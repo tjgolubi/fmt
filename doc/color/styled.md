@@ -1,0 +1,43 @@
+# Styled Arguments
+
+Style an individual replacement field with `styled`. Its format
+specifications still apply to the underlying value.
+
+::: styled(const T&, text_style)
+    options:
+      color_reference: true
+
+Expected output for the example above (without a trailing newline):
+
+<pre class="color-output">Elapsed time: <span style="color: #008000; background-color: #191970">1.23</span> seconds</pre>
+
+```cpp
+fmt::println("Amount: {:>8.2f}",
+             fmt::styled(1.23, fmt::fg(fmt::color::green)));
+```
+
+Expected output (followed by a newline):
+
+<pre class="color-output">Amount: <span style="color: #008000">    1.23</span></pre>
+
+The width and precision apply to the number, including padding inside the styled
+span. For interaction with enclosing styles, see
+[Text style rendering](index.md#TextStyleRendering).
+
+To insert a styled value directly into an ostream, include
+`<fmt/color-ostream.h>` and use `os << fmt::styled(value, style)`.
+[Styled stream insertion](print.md#styled-stream-insertion) describes stream
+formatting, wide streams, and the wrapper's reference lifetime.
+
+```cpp
+auto style = fmt::fg(fmt::color::green).bold();
+std::cout << "Amount: " << std::fixed << std::setprecision(2)
+          << fmt::styled(1.23, style) << '\n';
+```
+
+Expected output (followed by a newline):
+
+<pre class="color-output">Amount: <span style="color: #008000; font-weight: bold">1.23</span></pre>
+
+Only `1.23` is styled in bold green. The value uses the ostream's formatting
+settings.
