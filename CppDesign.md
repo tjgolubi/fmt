@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated October 27, 2026. Implemented behavior is separated below from future
+Updated October 28, 2026. Implemented behavior is separated below from future
 design. A proposal is not permission to implement it.
 
 ## Goals and boundaries
@@ -11,6 +11,10 @@ Provide useful color and style values, nested styled text, terminal rendering,
 and textual/binary style serialization. User themes and future Taskwarrior
 integration motivate the design; application-specific restrictions belong in
 applications.
+
+Convenience is a major library design goal. Constructors, fluent members, and
+free functions deliberately overlap so callers can choose a concise form that
+fits their expression or configuration-driven code. Document those choices.
 
 The two sequential deliverables are described in [README.md](README.md). The
 first release extends {fmt} and must support C++11, including the public color
@@ -33,9 +37,9 @@ naming and API conventions.
 
 ## Implemented foundation
 
-`FmtColorDev` at `25bcc4f7` includes the foundation, Fluent, ShortNames,
-VarColor, Palette, Ostream, and the integrated styling helpers described below.
-Exact history and baseline are in [README.md](README.md#current-baseline).
+`dev` at `2c456778` contains the complete C++11 styling API described below
+as one contribution above upstream `f87a75e1`. The accepted baseline is in
+[README.md](README.md#current-baseline).
 Current source and tests establish behavior; private numeric representations
 are not stable contracts.
 
@@ -105,8 +109,19 @@ Free variadic `blend()` supports:
 All channels are summed before division; fractional results round down. Inputs
 are unchanged. Overloads reject non-colors and mixed raw-color/style arguments.
 They are `noexcept` and constexpr in C++11 via recursive helpers; gated C++23
-implementations use concepts and loops. The mutating `rgb::blend()` member is
-removed. No alpha compositing or nearest-palette demotion is implemented.
+implementations use concepts and loops. No alpha compositing or nearest-palette demotion is implemented.
+
+For example, terminal red converts to `rgb{205, 0, 0}` and `gray_color{12}`
+to `rgb{128, 128, 128}`. Blending a bold terminal-red foreground with
+`fmt::underline(fmt::fg(fmt::gray_color{12}))` yields foreground RGB
+`{166, 64, 64}`, unspecified background, bold, and underline. This style-copy
+factory expression is constexpr in C++14 and later; use `const auto` for the
+second and combined values in a C++11 example.
+
+{fmt}'s existing `underlying` converts enums through `std::underlying_type`.
+Our `to_underlying` overloads have a different name and also handle color/style
+classes, so there is no declaration conflict. C++23 `std::to_underlying` is an
+enum-only facility in `<utility>`.
 
 ### Styles, composition, and containers
 
@@ -130,7 +145,7 @@ other kind. Two specified colors promote to RGB and OR corresponding channel
 bits, even for identical palette values; terminal overlaps do not throw.
 Style channels are handled independently and emphasis bits are ORed. Operators
 are `noexcept`; mutating style/color operations are constexpr in supported
-C++14+ paths. The earlier strict-rejection proposal is superseded.
+C++14+ paths. Strict rejection is not the chosen policy.
 
 Prefer constructors and fluent setters to choose colors, and free `blend()`
 to average them. OR is cheaper arithmetic but retains bright channel bits.
@@ -173,7 +188,7 @@ where supported. Older component/presence names remain forwarding aliases.
 `color_t` uses a discriminator and union in every supported mode, including
 C++11. Its alternatives/kinds are `no_color_t`/`none` (0), `rgb`/`rgb` (1),
 `term_color`/`term` (2), `cube_color`/`cube` (3), and `gray_color`/`gray` (4).
-`rsvd_color` is removed. Default construction is unspecified. Construction and
+Default construction is unspecified. Construction and
 assignment from alternatives are implicit and `noexcept`.
 
 Type/index `get` preserves all four const/reference categories and reports
@@ -190,8 +205,7 @@ reference access is distinct from returning a reference to a temporary copy.
 
 Styles pack each color as 24 payload bits plus three discriminator bits:
 foreground bits 0–26, background 27–53, emphasis 54–61. Bits 62–63 are unused.
-The old addition/overflow composition trick is gone. `to_underlying` and
-internal `detail::unpack_color` reflect these changed representations; object
+`to_underlying` and internal `detail::unpack_color` reflect this encoding; object
 size does not establish ABI or persisted-data compatibility.
 
 ### Compiler constraints
@@ -240,7 +254,7 @@ variant API, automatic terminal promotion, and changed packed representations.
 The guide records behavior changes without treating every one as a defect.
 
 `test/UpstreamCompatibility` at `21eba01b` verifies the earlier Palette-era
-header from `d9d64d36`, not the current `25bcc4f7` header, with upstream tests
+header from `d9d64d36`, not the current `dev` header, with upstream tests
 and workflows. Six terminal-overlap exception assertions become exact
 RGB-result checks, four discarded nodiscard results are explicit, and two
 documentation signatures use `color_t`. All other upstream tests are unchanged.
@@ -271,16 +285,14 @@ stream formatting and preserves field width while writing SGR. Detailed lifetime
 and exception-recovery rules are recorded below.
 
 The bridge supports C++11, header-only use, installation, and C++20 module
-export. All 43 final `FmtColorDev` jobs passed at `25bcc4f7`, including guide
-publication. The separate 42-job compatibility result at `21eba01b` covers
-neither the bridge nor the later changes to `color.h`.
+export. All 41 `dev` push jobs passed at `2c456778`, including documentation
+build, but not guide publication. The separate historical compatibility result
+at `21eba01b` does not validate the current header or bridge.
 
 ## Integrated styling helpers
 
-The reviewed `TaskWarrior` candidate `d248d1bda83bb6bc977c9b6adcca68de8fc67bcb` was
-squash-integrated as accepted `FmtColorDev` commit `25bcc4f7f5db75c6ed3971311bd676add543089b`.
-The following features have tests and deployed guide documentation; they are
-implemented behavior, rather than proposals.
+The following features are implemented in the consolidated `dev` contribution,
+with regression tests and guide documentation. They are not proposals.
 
 - `FMT_COLOR_COMPACT_SGR=1` selects one combined SGR sequence per style with
   unpadded decimal parameters. Undefined or `0` preserves legacy output.
@@ -359,14 +371,37 @@ C++17; and avoid copying the empty union member in the SGR visitor during MSVC
 constant evaluation. Tests explicitly initialize const stream-only values and
 avoid shadowing and self-assignment warnings.
 
-The final 43-job result validates the accepted commit. Compact mode has separate
-local full-suite and strict C++11 evidence; GitHub CI uses the default SGR mode.
-The guide deployment and public Site version 29 include these features.
+The 41-job `dev` result validates the accepted contribution in default SGR
+mode. Compact mode has historical local evidence, but no current full compact
+matrix is claimed. See [BuildAndTest.md](BuildAndTest.md#integrated-styling-helpers).
+The public website is version 36; the `dev` guide is built locally but has not
+been published by the branch-filtered guide workflow.
+
+### Conditional attribute factories
+
+The free factories `bold`, `faint`, `italic`, `underline`,
+`blink`, `reverse`, `conceal`, and `strike` take `bool enable = true`. Each
+returns a `text_style` with only its attribute set
+and both colors unspecified; false returns an empty style. They are nodiscard,
+noexcept, and constexpr in C++11. Use `styled(value, fmt::bold())` or
+`fmt::bold(userWantsBold)` for concise unconditional or conditional styling.
+
+The existing `bold(text_style, bool = true)` and equivalent overloads still
+derive a copy, preserving colors and unrelated attributes. Their mutating
+implementation supports constant evaluation in supported C++14+ paths and
+runtime use in C++11. Doxygen and the guide distinguish the two overload sets.
+Tests cover all eight factories with default, true, and false arguments,
+unspecified colors, return types, noexcept, C++11 constexpr, and styled output.
+
+Terry reported that the TaskWarrior team liked the factories, used them where
+beneficial, and retained passing application tests. This is reported evidence,
+not a freshly executed application test for `dev`. The guide explains
+convenience as a major design goal.
 
 ## Planned work
 
-Palette, RGB conversion, color/style blending, Fluent, ShortNames, and public
-variants are implemented. They are not pending ConvertColors or Blend branches.
+Palette colors, RGB conversion, color/style blending, fluent operations,
+short names, public variants, and conditional factories are implemented.
 `feat/StyledText` remains a proposal for nested text, absolute boundaries, and
 lazy blending. Its ownership, rendering, and first increment still need review.
 Parsing, display width, and serialization remain separate design work.
@@ -378,17 +413,7 @@ Do not restore a C++17 variant gate or the superseded strict style-OR policy.
 Experimental branches such as `refactor/Crazy` need explicit approval for
 implementation or website inclusion.
 
-### Conditional attribute factories
-
-TODO: Consider overloads `bold(bool enable = true)` and equivalents for all
-eight emphasis attributes, returning a `text_style` containing only that
-attribute when enabled, or an empty style otherwise. Keep the existing
-`bold(text_style, bool = true)` forms for deriving a copy from a base style.
-This would support `styled(value, fmt::bold())` and configuration-driven calls
-such as `fmt::bold(userWantsBold)`. No implementation is authorized yet.
-
-After implementing these factories, notify the TaskWarrior team and have them
-try the new functions before attempting to merge the feature onto `FmtColorDev`.
+### Attribute-factory design for the independent library
 
 Revisit the convenience and naming of these factories for the independent
 C++23-and-later library. `using enum fmt::emphasis` (available since C++20)

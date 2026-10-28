@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated October 27, 2026.
+Updated October 28, 2026.
 
 ## Authorization and scope
 
@@ -47,7 +47,7 @@ assuming a checkout follows those settings.
 
 | Repository                        | Role                                                                                                                                |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `tjgolubi/fmt`                    | Library source, tests, user documentation, and fork changelog. Current development branch: `FmtColorDev`.                           |
+| `tjgolubi/fmt`                    | Library source, tests, and user documentation. Current development branch: `dev`.                                                   |
 | `coord/` worktree on `docs/Coord` | Current coordination handoff documents, separate from library development. Earlier history is in `tjgolubi/FmtColorGpt` (`master`). |
 | Sites source repository           | Separate website implementation, managed by the Sites helper.                                                                       |
 
@@ -84,7 +84,7 @@ prefixes are allowed. A name or design entry neither creates a branch nor grants
 approval to implement it or include it on the website.
 
 Each accepted feature integration is one squash commit containing applicable
-source, tests, documentation, and changelog changes. Do not substitute a
+source, tests, and documentation changes. Do not substitute a
 fast-forward or ordinary merge. Accepted feature commits and publication fixes are recorded in the current
 baseline; this policy does not authorize rewriting them.
 
@@ -109,17 +109,15 @@ baseline; this policy does not authorize rewriting them.
    `git diff` shows only unstaged changes. `git commit -C <candidate>` reuses
    the candidate's message and authorship without an editor; lowercase `-c`
    opens the configured editor to revise that message.
-6. Terry commits the squash. Run git-cliff over the accepted history, starting
-   at `main` and ending at that actual commit, inspect the generated changelog,
-   and leave it for review.  Terry stages it and uses
-   `git commit --amend --no-edit` to include it in the same squash commit.
-   If the message needs editing, amend it first, regenerate the changelog, then
-   amend again with the generated file.
-7. Terry pushes the final amended commit, or explicitly authorizes the assistant
-   to push. Verify the intended commit structure, matching local/GitHub full
-   SHAs, and every applicable CI job for that final SHA, including guide
-   publication on `FmtColorDev`. Candidate results do not replace final
-   integration checks.
+6. Terry commits the squash. Prepare a commit message or additional artifacts
+   only within the authorized scope. `FmtColorChangeLog.md` is intentionally
+   absent from `dev`; do not recreate it automatically.
+7. Terry pushes the final commit, or explicitly authorizes the assistant to
+   push. Verify the intended commit structure, matching local/GitHub full SHAs,
+   and every applicable CI job for that SHA. The guide-publication workflow
+   now targets `dev` in the local configuration; verify publication separately
+   after those changes are committed and pushed. Candidate results do
+   not replace final integration checks.
 8. Publish an authorized website update before recording its confirmed
    publication in coordination documents. Update or close an issue only when
    instructed; a successful fix does not by itself authorize closure.
@@ -146,29 +144,17 @@ Use Conventional Commits compatible with `cliff.toml`, for example
 Mark deliberate breaks with `!` and a `BREAKING CHANGE:` footer. Describe actual
 effects without promising stable numeric or binary representations.
 
-Maintain `FmtColorChangeLog.md` separately from upstream `ChangeLog.md`.
-Keep entries concise; detailed rationale belongs on the website. Coordination
-revisions are not library release entries. Preserve explicit decisions to omit
-an entry for a particular fix rather than adding one later without instruction.
+`FmtColorChangeLog.md` was intentionally removed from the consolidated `dev`
+commit. Its deletion, amendment, and force-with-lease push preceded verification
+of `2c456778`; the verified CI applies to the amended commit. Do not regenerate
+or re-add this file unless Terry instructs us to. Do not edit upstream
+`ChangeLog.md` as an automatic substitute.
 
-Use git-cliff **2.14.2** and an explicit accepted-history range after the
-upstream branch-off point. Exclude upstream history and intermediate feature commits.
-After Terry commits the squash on `FmtColorDev`, generate the changelog with:
-
-```bash
-git-cliff --offline --no-exec --output FmtColorChangeLog.md main..HEAD
-```
-
-The baseline is excluded. `main..HEAD` is a convenient equivalent only while
-`main` still points to that exact upstream baseline. `cliff.toml` is discovered
-automatically; its baseline comment can lag the current branch, so verify the
-range. `--offline` prevents network metadata requests and `--no-exec` disables
-external processing commands. Use the generated file, review its diff, and let
-Terry stage and amend it into the squash before pushing. Do not manually rewrite
-entries: adjust the template or relevant commit message when needed, then
-regenerate. Do not include intermediate feature commits or invent a prospective
-hash. This commit/generate/amend/push sequence was verified with VarColor,
-Palette, and Ostream.
+If changelog generation is explicitly requested, use git-cliff **2.14.2** with
+`--offline --no-exec` and an explicit accepted-history range after the upstream
+baseline. Exclude upstream and intermediate feature commits. `main..HEAD` is
+appropriate only while `main` points to the intended baseline. Inspect the
+result and leave staging/amending/pushing to Terry unless separately authorized.
 
 The current template groups entries by commit type and orders them oldest first
 within each group. It uses the subject, scope, breaking marker, and
@@ -205,10 +191,10 @@ branch; rebasing or refreshing its header requires authorization and fresh CI.
 
 Keeping production changes in `color.h` reduces rebase conflicts, but changes
 to supporting APIs, tests, documentation, or tooling can still require fixes.
-The original upstream baseline remains `0fc31633`; Terry reported upstream/main
-had not advanced at this handoff. Inspect current refs before any later rebase.
-Eventual consolidation of the complete contribution is a future upstream
-submission step, not permission to rewrite current refs.
+The current `dev` baseline is upstream `f87a75e1`, recorded in README.md.
+The compatibility branch still uses its historical `0fc31633` baseline. Inspect
+current refs before any later rebase; consolidation has already been performed
+on `dev` and grants no permission to rewrite other refs.
 
 Continue on the agreed upstream baseline. Inspect upstream changes before
 incorporating them. Update the development baseline when a relevant upstream
@@ -238,7 +224,7 @@ after an authorized rewrite.
 ## Coordination worktree
 
 The library root and `coord/` are separate working trees of the same repository.
-The root currently uses `FmtColorDev`; `coord/` uses `docs/Coord`. Entering the
+The root currently uses `dev`; `coord/` uses `docs/Coord`. Entering the
 directory changes which checkout Git sees; it does not switch either worktree's
 branch. Use `git -C coord status` and `git -C coord diff` from the library root.
 Do not switch the library checkout to `docs/Coord` while that branch is checked

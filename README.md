@@ -1,6 +1,6 @@
 # FmtColor coordination
 
-Updated October 27, 2026.
+Updated October 28, 2026.
 
 FmtColor develops color and text-style extensions for C++. We plan two
 sequential deliverables:
@@ -40,91 +40,76 @@ records remain available in Git history.
 
 ## Current baseline
 
-The development branch is
-[`FmtColorDev`](https://github.com/tjgolubi/fmt/tree/FmtColorDev). Its chosen
-upstream baseline is
-[`0fc31633`](https://github.com/fmtlib/fmt/commit/0fc31633e7d53ac895ae0a688b83b7d44f0b0c1f).
-The fork's `main` tracks upstream; styling development belongs on `FmtColorDev`.
+The development branch is [`dev`](https://github.com/tjgolubi/fmt/tree/dev), at
+[`2c456778`](https://github.com/tjgolubi/fmt/commit/2c456778d9ff63cdf284a7d85c8dc8eb384cf3d3).
+It contains the complete styling contribution as one squash commit directly
+above upstream [`f87a75e1`](https://github.com/fmtlib/fmt/commit/f87a75e15262614ce8aa0e6a0664df9d0823fb92),
+which is also the local `main` tip. Terry created `Phase1` from `FmtColorDev`,
+rebased it onto freshly updated `main`, and squash-merged it onto `dev`.
+Continue from `dev`, not the superseded development or compatibility branches.
+No release tag or fork version has been assigned; the contribution has not
+been accepted into fmtlib/fmt.
 
-| Commit                                                                                        | Purpose                                                                                                                                                                                                                                |
-| --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`0c7dad5c`](https://github.com/tjgolubi/fmt/commit/0c7dad5c53635c474761f933a4bab5508f9bfa53) | One consolidated feature commit directly above the upstream baseline: named RGB constants, style construction, comparisons, hashing, RGB averaging, documentation, tests, and tooling.                                                 |
-| [`60eed619`](https://github.com/tjgolubi/fmt/commit/60eed6190eb5fb8c8f2d79036e78442da93a57eb) | Publish the generated user guide from `FmtColorDev`, with matching edit links and instructions.                                                                                                                                        |
-| [`b5b14ed2`](https://github.com/tjgolubi/fmt/commit/b5b14ed27bdd2d968649385fc4e9ec4dc5ae6ff2) | Fluent component getters/setters, presence aliases, all eight attribute controls, regression tests, and guide documentation.                                                                                                           |
-| [`8e8b8132`](https://github.com/tjgolubi/fmt/commit/8e8b8132191068db7c1e2d95221aba54c05768a6) | Shorter terminal-color and strike names, backward-compatible aliases and methods, regression tests, and updated guide.                                                                                                                 |
-| [`1aaba9b5`](https://github.com/tjgolubi/fmt/commit/1aaba9b5945dbf269a6a6b3f199e8f77e793be4f) | Public C++11 `color_t`, reference/pointer access, visitation (extended by Palette below), regression tests, guide documentation, and generated changelog.                                                                              |
-| [`d9d64d36`](https://github.com/tjgolubi/fmt/commit/d9d64d361591311901e06c662c24879128c63724) | Palette colors, fixed RGB conversion, color/style blending, C++11 constexpr improvements, style clearing, tests, guide, and generated changelog.                                                                                       |
-| [`257cdac1`](https://github.com/tjgolubi/fmt/commit/257cdac170506770ef3c807abc3ddd9928ef8191) | Styled ostream bridge, regression tests, installation registration, C++20 module export, user guide, and generated changelog.                                                                                                          |
-| [`25bcc4f7`](https://github.com/tjgolubi/fmt/commit/25bcc4f7f5db75c6ed3971311bd676add543089b) | Compact SGR, SGR conversion/reset/wrapping, overlays, free attribute functions, emphasis compound assignment, checked signed numeric inputs, styled stream insertion, wide output, tests, guide, generated changelog, and fork README. |
+Terry removed `FmtColorChangeLog.md`, amended the contribution, and pushed
+with `--force-with-lease` before the CI verification below. The verified SHA
+already includes that removal. Do not regenerate the file without instruction.
 
-The current tip is `25bcc4f7f5db75c6ed3971311bd676add543089b`. The branch has
-seven feature commits and one documentation-publication fix above upstream
-`0fc31633`. No release tag or fork version has been assigned. Integration on
-`FmtColorDev` is distinct from a numbered release or acceptance into `fmtlib/fmt`.
-Terry intends eventual consolidation of the complete contribution for upstream;
-that does not authorize changing `main` or rewriting the accepted history now.
+All **41 jobs** passed for this exact `dev` commit: Linux 18, Windows 13,
+macOS 9, and documentation build 1. Local, GitHub branch, and workflow SHAs
+matched; every job was inspected. There were no failed, cancelled, or pending
+jobs. See [BuildAndTest.md](BuildAndTest.md#integrated-styling-helpers).
+Matrix fail-fast remains disabled. GCC 16/C++26 reflection remains excluded,
+tracked in [issue #2](https://github.com/tjgolubi/fmt/issues/2).
 
-All **43 jobs** passed for the final amended `FmtColorDev` commit, including
-guide deployment. Matrix fail-fast is permanently disabled across Linux,
-Windows, and macOS, by Terry’s explicit decision. GCC 16/C++26 reflection remains
-excluded from that branch's workflow, tracked in
-[issue #2](https://github.com/tjgolubi/fmt/issues/2).
+The guide-publication workflow and edit links have been changed locally to
+`dev`, with matching publication instructions. These edits are not yet committed
+or pushed, and no deployment from them has been verified. The 41-job result
+above predates this configuration change. The root library README still names
+`FmtColorDev` in text/badges and links the deleted changelog; that cleanup remains
+a separate follow-up.
 
 ## Upstream compatibility
 
-[`test/UpstreamCompatibility`](https://github.com/tjgolubi/fmt/tree/test/UpstreamCompatibility)
-at [`21eba01b`](https://github.com/tjgolubi/fmt/commit/21eba01b33becd9f94cd34a1a8758f64ecbc53c3) applies the earlier
-Palette-era header from `d9d64d36` (also unchanged at `257cdac1`) to upstream
-`0fc31633`, using upstream tests, CMake, and CI.
-All **42 jobs** passed, including GCC 16/C++26 reflection. Required adjustments
-are six intentional terminal-overlap result expectations, four explicit
-nodiscard result discards, and two documentation-reference updates. Do not
-claim that all upstream tests pass unchanged. This check has not been refreshed
-for the later SGR, overlay, attribute, signed-input, or stream additions; current
-fork CI does not establish an updated upstream-compatibility result.
-
-See [BuildAndTest.md](BuildAndTest.md#upstream-compatibility-branch) for exact
-evidence, scope, and the branch's compatibility report. This branch is a
-separate compatibility check, not the feature-development baseline. Terry
-plans to rebase it periodically; each rebase requires fresh verification.
+The separate `test/UpstreamCompatibility` result at `21eba01b` is historical:
+it tests an older header on upstream `0fc31633`, not the consolidated `dev`
+contribution. Its 42 passing jobs are not current `dev` compatibility evidence.
+The required upstream adjustments and exact scope remain in
+[BuildAndTest.md](BuildAndTest.md#upstream-compatibility-branch).
+Do not claim that all original upstream tests pass unchanged.
 
 ## Public documentation and next work
 
 - [Project website](https://fmtcolor.ardentokapi66.chatgpt.site): public version
-  **29**, including the integrated helpers, final CI, and explicitly scoped
-  historical upstream-compatibility evidence.
-- [Generated user guide](https://tjgolubi.github.io/fmt/color/index.html): API
-  references, examples, behavior notes, and RGB/terminal/gray/cube swatches.
+  **36**, describing the complete `dev` contribution and its 41 passing jobs.
+  It contains no intermediate development history.
+- [Generated user guide](https://tjgolubi.github.io/fmt/color/index.html):
+  existing public guide; the updated `dev` guide is available locally at
+  [localhost](http://localhost:8000/color/index.html) while its server runs.
 - [Issues](https://github.com/tjgolubi/fmt/issues): bugs and follow-up work.
 
-Fluent, ShortNames, VarColor, Palette, and Ostream are integrated. The public variant has
-five alternatives: unspecified, RGB, terminal, cube, and gray. `rsvd_color` and
-the mutating `rgb::blend()` member are removed. Free `to_rgb()` and variadic
-color/style `blend()` are implemented, as are `text_style::empty()` and fluent
-`clear()`. OR composition promotes overlapping specified colors to RGB;
-strict rejection is not the chosen policy.
+The complete C++11 API includes named RGB constants, terminal/cube/gray colors,
+public five-alternative `color_t` access and visitation, comparisons and hashing,
+RGB conversion and color/style blending, fluent components and attributes,
+style clearing and overlays, conditional emphasis factories, SGR helpers and
+compact output, and styled narrow/wide ostream formatting and insertion.
+Include `<fmt/color-ostream.h>` for the stream bridge; it includes `color.h`,
+`ostream.h`, and `xchar.h` while the original headers remain independent.
 
-Compact SGR, `to_sgr`, `sgr_reset`, `wrap_sgr`, overlays, free attribute
-functions, emphasis compound assignment, assertion/clamping numeric inputs,
-styled stream insertion, and wide-stream output are integrated in `25bcc4f7`.
-Include `<fmt/color-ostream.h>` for styled narrow/wide printing and insertion.
-The color and ostream headers remain independent; the bridge also includes
-`xchar.h`. The deployed guide and website describe these accepted features.
+Use factories and fluent operations in ordinary examples. Keep `|` for examples
+specifically explaining that operator, and preserve the class-comment examples
+Terry explicitly accepted. Use function names without `()` in prose, retaining
+parentheses for calls, examples, and signatures. Readers are moving directly
+from the original upstream header to these APIs; omit intermediate API history
+and ABI/rebuild reminders. The ABI change is accepted.
 
-`TaskWarrior` remains at reviewed candidate `d248d1bda83bb6bc977c9b6adcca68de8fc67bcb`.
-It was squash-integrated onto `FmtColorDev`; do not continue feature work from
-that older candidate. Final local/GitHub/CI SHAs matched and the library checkout
-was clean. All 43 final integration jobs passed, including guide deployment.
-See [BuildAndTest.md](BuildAndTest.md#integrated-styling-helpers) for exact evidence.
-
-Conditional attribute factories such as `bold(bool enable = true)` remain a
-TODO, not an implemented API. Revisit them for the later independent C++23
-library. After implementation, the TaskWarrior team must try the functions
-before an attempted merge onto `FmtColorDev`; see
-[CppDesign.md](CppDesign.md#conditional-attribute-factories).
+The guide has aligned Markdown tables, links from introductory identifiers to
+their sections, and expected output for all three Styled Arguments examples.
+The API Reference header list includes `fmt/color-ostream.h`, linking to its
+existing guide section; it has no separate new API Reference section.
 
 Structured styled text, absolute boundaries, lazy nested blending, parsing,
-display-width handling, and serialization remain design work. Begin new feature
-work from the current `FmtColorDev` tip, not an older candidate or compatibility
-branch. The complete {fmt} release requires C++11; the later independent library
-requires C++23 and will use `std::variant`.
+display-width handling, and serialization remain design work. The later
+independent library requires C++23 and uses `std::variant`; the complete
+{fmt} release continues to support C++11. Revisit attribute-factory naming
+for the independent library as described in
+[CppDesign.md](CppDesign.md#attribute-factory-design-for-the-independent-library).

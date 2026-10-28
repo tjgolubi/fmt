@@ -2,16 +2,16 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Website](Website.md)
 
-Updated October 27, 2026. Commands run from the library checkout root unless
-stated otherwise. Use `FmtColorDev` or the relevant candidate branch, not the
+Updated October 28, 2026. Commands run from the library checkout root unless
+stated otherwise. Use `dev` or an authorized feature branch, not the
 `coord/` documentation worktree on `docs/Coord`. Run library commands from
 `..` when starting in `coord/`. `/doc/` means repository-relative.
 
 ## Platforms and tools
 
 Primary development platforms are Windows/MSYS2 and Android/Termux; GitHub CI
-adds Linux, Windows, and macOS coverage. New work targets C++23 while retaining
-{fmt}'s supported older-language paths. C++26 is a future target, not a current
+adds Linux, Windows, and macOS coverage. Local development uses C++23; the
+complete {fmt} contribution must retain C++11 support. C++26 is a future target, not a current
 local-build prerequisite.
 
 On the PC use MSYS `/usr/bin` GCC, CMake, Python, and Doxygen. UCRT64 was removed
@@ -105,6 +105,10 @@ an interpreter/toolchain change makes it incompatible; preserve unrelated files.
 `build.bash` uses this environment and installs its pinned dependencies when
 creating it. Reinstall from the requirements if dependency inputs change.
 MSYS and Termux environments use `bin/`; native Windows Python may differ.
+From PowerShell, a nonlogin `bash --noprofile --norc -c` preserves the selected
+checkout and avoids user startup commands changing directory. Put MSYS tools
+and `build/venv/bin` on that process's PATH; do not use unrelated native Python
+for the MSYS documentation environment.
 `-U MKDOCS` clears an old cached launcher path. A stale Python launcher after an
 upgrade may require recreating the environment, not replacing the whole toolchain.
 Do not mix native Windows path conventions with incompatible MSYS tools.
@@ -139,8 +143,10 @@ Markdown in `doc/color/` supplies organization and examples. The C++ handler at
 the reference, named RGB constants, explicit conversions, and swatches.
 Public members need Doxygen comments or the handler omits their entries.
 The text-style reference uses `exclude_members` to hide the six longer
-component/presence accessors and the two former strike methods. Compatibility
-notes describe the retained names. Check that `term_color`, `strike()`,
+component/presence accessors and the two strike aliases. Compatibility notes
+describe the original retained names; strike member aliases are described
+without implying that they existed in the original upstream header. Check that
+`term_color`, `strike()`,
 `is_strike()`, and the short getters, setters, and presence queries remain
 rendered. The emphasis reference retains the documented enum alias.
 
@@ -154,9 +160,16 @@ colors. Cube rows vary red, columns green, and the six three-character fields
 inside each cell vary blue. Check values and indexed-palette offsets against
 independent expectations.
 
-`.github/workflows/fmtcolor-pages.yml` builds and publishes after pushes to
-`FmtColorDev`. The `github-pages` environment permits that branch. The separate
-`doc` workflow verifies the build; it does not itself publish this guide.
+`.github/workflows/fmtcolor-pages.yml` now targets pushes to `dev` in the local
+configuration, and `support/mkdocs-pages.yml` uses `edit/dev/doc/`. The matching
+publication instructions also name `dev`. These configuration changes are not
+yet committed or pushed; deployment from them has not been verified. The
+separate `doc` workflow verifies the build and does not publish the guide.
+The `github-pages` environment must permit `dev` for deployment. Its rule
+could not be inspected or changed in this session: the GitHub connector does
+not expose this endpoint, and the available browser was signed out. The guide
+rebuilt successfully and its configured edit URI targets `dev`. Confirm the
+remote environment rule before expecting publication to succeed.
 See [Website.md](Website.md#user-guide) and `support/fmtcolor-pages.md` for setup.
 
 ## Compatibility checks
@@ -186,7 +199,7 @@ testing a rejection path and verify scoped warning suppression does not leak.
 
 ### Regression coverage
 
-`FmtColorDev` color tests cover construction, all 216 cube RGB conversions
+`dev` color tests cover construction, all 216 cube RGB conversions
 against independent Xterm values, terminal mappings, gray/cube boundaries,
 range failures, type/index access and assignment, all five visitor alternatives,
 reference lifetimes, mixed-kind OR promotion, ANSI output, comparisons, hashes,
@@ -209,12 +222,12 @@ existing `ostream-test` and `color-test` when checking bridge changes.
 
 ### Compact SGR build mode
 
-On `FmtColorDev`, `./build.bash taskwarrior` configures
+On `dev`, `./build.bash taskwarrior` configures
 `build/taskwarrior` with compiler definition `FMT_COLOR_COMPACT_SGR=1`, builds
 the library and tests, then runs CTest. It passes `FMT_DOC=OFF` and skips the
 documentation target; it still prepares the documentation virtual environment
 if missing. The no-argument script uses `build` with documentation enabled.
-The mode and compact-SGR API are part of the accepted baseline at `25bcc4f7`.
+The mode and compact-SGR API are part of the accepted `dev` contribution.
 
 The setting must also be defined when compiling an application: SGR generation
 is in the header. A CMake cache argument named `FMT_COLOR_COMPACT_SGR` alone
@@ -227,53 +240,53 @@ The same installed compiled library supports either header-selected mode.
 
 ### Integrated styling helpers
 
-Verified October 27, 2026 for final amended `FmtColorDev` commit
-[`25bcc4f7f5db75c6ed3971311bd676add543089b`](https://github.com/tjgolubi/fmt/commit/25bcc4f7f5db75c6ed3971311bd676add543089b):
+Verified October 28, 2026 for the consolidated `dev` commit
+[`2c456778d9ff63cdf284a7d85c8dc8eb384cf3d3`](https://github.com/tjgolubi/fmt/commit/2c456778d9ff63cdf284a7d85c8dc8eb384cf3d3),
+whose parent and upstream baseline is `f87a75e15262614ce8aa0e6a0664df9d0823fb92`:
 
-| Workflow            | Successful jobs | Evidence                                                         |
-| ------------------- | --------------: | ---------------------------------------------------------------- |
-| Linux               | 18              | [Run](https://github.com/tjgolubi/fmt/actions/runs/40630449451)  |
-| Windows             | 13              | [Run](https://github.com/tjgolubi/fmt/actions/runs/40630449423)  |
-| macOS               | 9               | [Run](https://github.com/tjgolubi/fmt/actions/runs/40630449368)  |
-| Documentation build | 1               | [Run](https://github.com/tjgolubi/fmt/actions/runs/40630449418)  |
-| Guide publication   | 2               | [Run](https://github.com/tjgolubi/fmt/actions/runs/40630449794)  |
+| Workflow            | Successful jobs | Evidence                                                        |
+| ------------------- | --------------: | --------------------------------------------------------------- |
+| Linux               |              18 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40670919249) |
+| Windows             |              13 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40670919152) |
+| macOS               |               9 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40670919144) |
+| Documentation build |               1 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40670919387) |
 
-All **43 jobs** passed; every job was inspected, with no failed or cancelled
-jobs. Local, GitHub, and run full SHAs matched; guide build, upload, and deployment
-succeeded. This supersedes candidate results for final integration acceptance.
-The deployed guide includes the new APIs, updated overload references, range
-policies, and generated changelog. The root README introduces the fork and links
-to its guide, website, integration instructions, changelog, and CI.
+All **41 jobs** completed successfully, with none failed, cancelled, or pending.
+The local commit, GitHub `dev` branch, and run SHAs matched. Every job was
+inspected. This SHA already includes Terry's deletion of `FmtColorChangeLog.md`
+and amended force-with-lease push; no post-verification amendment is implied.
+The four push workflows cover the complete contribution. The guide-publication
+workflow did not run for that commit because its branch filter was still
+`FmtColorDev`. The local filter is now `dev`; this does not retroactively add
+a publication run to the verified commit.
 
-The reviewed candidate `d248d1bda83bb6bc977c9b6adcca68de8fc67bcb` passed all 41 push jobs
-before squash preparation. The initial staged squash matched it exactly. Guide
-table edits, the fork README, and the generated changelog were included in the
-final amended integration commit. The changelog was generated with git-cliff
-2.14.2 over `main..HEAD` after the feature commit, then amended by Terry.
+The current user-guide documents built successfully with the pinned MkDocs
+configuration and were served from `build/doc-html` at
+`http://localhost:8000/color/index.html`. The server was running at the handoff;
+check availability before restarting it. Firefox can use this URL directly.
+Rendered checks covered API Reference entries, the requested section links,
+factory/fluent examples, and expected output. The known upstream `syntax.md`
+missing-anchor notice and Material future-version notice remain nonfatal.
+A local build and successful `doc` CI do not establish publication of this
+guide to GitHub Pages.
 
-Local review validation used MSYS GCC 16.2.0 and CMake 4.4.4:
+A focused MSYS2 GCC probe verified the website's style-copy factory example
+with `-std=c++14` and `-std=c++23`, `-pedantic-errors -Wall -Wextra -Werror`,
+`-Iinclude`, and `-fsyntax-only`. Static assertions verify that
+`constexpr auto second = fmt::underline(fmt::fg(fmt::gray_color{12}));`
+blends with the bold terminal-red foreground to RGB `{166, 64, 64}`, with
+unspecified background, bold, and underline. The `const auto` form was also
+checked in C++11; the style-copy overload is not C++11 constexpr. This is a
+focused syntax/constant-evaluation check, not an additional runtime-suite pass.
+`build/website-blend-probe.cc` is disposable ignored build output.
 
-- Compact Release/C++23 build: all **23/23 CTest targets** passed in
-  `build/taskwarrior`, with `FMT_COLOR_COMPACT_SGR=1` and `FMT_DOC=OFF`.
-  The candidate headers/tests reviewed here are the source integrated into
-  `25bcc4f7`; no fresh final-SHA compact GitHub matrix is claimed.
-- Strict C++11 syntax checks passed for `color-test.cc` and
-  `color-ostream-test.cc` in both SGR modes, with `-D_GNU_SOURCE`,
-  `-pedantic-errors -Wall -Wextra -Wshadow -Wsign-conversion -Wundef -Werror`,
-  `-Iinclude -Itest -isystem test/gtest`.
-- C++11 header-only executables with `-DNDEBUG -fno-exceptions` passed both
-  modes, covering numeric clamping, overlays, maximum SGR lengths, and
-  narrow/wide formatted output. `build/candidate-review.exe` is ignored build
-  output, not a source artifact to commit.
-- After squash preparation, `color-test`, `color-ostream-test`, and
-  `compile-test` all passed; the guide built. Its pre-existing `syntax.md`
-  missing-anchor warning remains unrelated.
-
-Earlier pre-integration checks also passed both full Release/C++23 modes and
-focused Debug/C++11 assertion-enabled tests, including the range death test.
-Those are historical local results, not fresh final-SHA runs. GitHub CI exercises
-the default SGR mode; compact-mode cross-platform CI remains a coverage gap.
-No new tablet run, ABI verification, or performance benchmark is claimed.
+Historical local checks covered both SGR modes, assertion-enabled boundaries,
+header-only exceptions-disabled paths, and a 23-target compact C++23 suite.
+Those checks predate the rebased contribution and are not fresh full-suite
+results for `dev`. GitHub CI uses default SGR output; compact-mode
+cross-platform CI remains a coverage gap. Terry's reported TaskWarrior tests
+are application-team evidence, not a freshly executed application run here.
+No new tablet run or performance benchmark is claimed.
 
 `color-test` covers exhaustive emphasis OR-assignment masks, returned reference,
 chaining and constexpr behavior; signed palette/RGB inputs; mixed byte/int RGB
@@ -304,8 +317,8 @@ ctest --test-dir build/clamp-debug -R '^(assert|color)-test$' --output-on-failur
 Verified October 23, 2026 for `test/UpstreamCompatibility` commit
 [`21eba01b33becd9f94cd34a1a8758f64ecbc53c3`](https://github.com/tjgolubi/fmt/commit/21eba01b33becd9f94cd34a1a8758f64ecbc53c3). It is based on
 upstream `0fc31633`, with `color.h` identical to `FmtColorDev` at both
-`d9d64d36` and `257cdac1`. It does not verify the current `25bcc4f7`
-header or the ostream bridge. A header refresh and fresh compatibility CI are
+`d9d64d36` and `257cdac1`. It does not verify the current consolidated `dev`
+header, its rebased upstream baseline, or the ostream bridge. A header refresh and fresh compatibility CI are
 needed before extending that evidence to the later features.
 
 | Workflow              | Successful jobs | Evidence                                                        |
@@ -336,7 +349,7 @@ No other upstream tests required changes; do not say all tests pass unchanged.
 Locally, all **22 configured C++23 CTest tests** passed with no compiler warnings
 or reported individual skips, all **five color tests** passed strict C++11 with
 `-pedantic-errors -Wall -Wextra -Werror`, and upstream documentation built.
-This is separate from testing the complete FmtColorDev regression suite.
+This is historical evidence separate from the current `dev` regression suite.
 
 For a fresh isolated local compatibility build:
 
@@ -358,9 +371,9 @@ inspect its cache and source branch before interpreting a result.
 ### Coverage limits and follow-up
 
 Matrix fail-fast is permanently disabled across Linux, Windows, and macOS.
-GCC 16/C++26 reflection is still commented out on FmtColorDev. The upstream compatibility matrix includes and passed that
+GCC 16/C++26 reflection is still commented out on `dev`. The upstream compatibility matrix includes and passed that
 job. [Issue #2](https://github.com/tjgolubi/fmt/issues/2) tracks the workflow
-exclusion; do not claim it is restored on FmtColorDev or close the issue without
+exclusion; do not claim it is restored on `dev` or close the issue without
 authorization. Upstream package caching remains dependent on downloads.
 
 Push results do not establish passes for separate PR-only lint/fuzz workflows.
@@ -371,15 +384,17 @@ and every applicable job; never cite a baseline-only run for uncommitted work.
 
 ### Website validation
 
-Website version **29** covers the integrated helpers and the exact five final
-CI links for `25bcc4f7`. The earlier 42-job upstream-compatibility evidence is
-prominent and explicitly limited to its Palette-era header. All three pages,
-41 local links/anchors, unique IDs, and the five final CI links were checked.
-The demo, design, deliverable descriptions, downloads, and assets were preserved;
-completed branch material moved from Future work to the contribution page.
-The updated pages were inspected in the local browser, and the published helper
-section was checked live after native Sites deployment returned `succeeded`.
-See [Website.md](Website.md#current-publication) for exact provenance.
+Website version **36** presents `dev` at `2c456778` as one contribution and
+links the four exact 41-job CI runs. It omits intermediate development history,
+obsolete compatibility claims, and links to the removed changelog. Validation
+of the revised three-page site covered 40 local links/anchors and unique IDs;
+the overview and contribution layout were inspected in the browser. Subsequent
+small example corrections were checked against the source, and each native
+publication returned `succeeded`. The final foreground-blend expression and
+result were compiler-checked as described above. Downloads were preserved.
+The site preview server on port 8875 was stopped; the separate guide server on
+8000 was left running. See [Website.md](Website.md#current-publication) for
+final source, version, archive, and deployment identifiers.
 
 For new test results, record branch/full SHA, toolchain, mode, CMake options,
 commands, results, and skips. Distinguish observed checks from Terry reports.
