@@ -37,8 +37,9 @@ naming and API conventions.
 
 ## Implemented foundation
 
-`dev` at `2c456778` contains the complete C++11 styling API described below
-as one contribution above upstream `f87a75e1`. The accepted baseline is in
+The styling commit `2c456778` on `color-dev` contains the complete C++11 API below
+as one contribution above upstream `f87a75e1`. The current branch tip
+`a18689e1` adds documentation-publication configuration. The accepted baseline is in
 [README.md](README.md#current-baseline).
 Current source and tests establish behavior; private numeric representations
 are not stable contracts.
@@ -254,7 +255,7 @@ variant API, automatic terminal promotion, and changed packed representations.
 The guide records behavior changes without treating every one as a defect.
 
 `test/UpstreamCompatibility` at `21eba01b` verifies the earlier Palette-era
-header from `d9d64d36`, not the current `dev` header, with upstream tests
+header from `d9d64d36`, not the current `color-dev` header, with upstream tests
 and workflows. Six terminal-overlap exception assertions become exact
 RGB-result checks, four discarded nodiscard results are explicit, and two
 documentation signatures use `color_t`. All other upstream tests are unchanged.
@@ -285,13 +286,13 @@ stream formatting and preserves field width while writing SGR. Detailed lifetime
 and exception-recovery rules are recorded below.
 
 The bridge supports C++11, header-only use, installation, and C++20 module
-export. All 41 `dev` push jobs passed at `2c456778`, including documentation
+export. All 41 `color-dev` push jobs passed at `2c456778`, including documentation
 build, but not guide publication. The separate historical compatibility result
 at `21eba01b` does not validate the current header or bridge.
 
 ## Integrated styling helpers
 
-The following features are implemented in the consolidated `dev` contribution,
+The following features are implemented in the consolidated `color-dev` contribution,
 with regression tests and guide documentation. They are not proposals.
 
 - `FMT_COLOR_COMPACT_SGR=1` selects one combined SGR sequence per style with
@@ -371,11 +372,13 @@ C++17; and avoid copying the empty union member in the SGR visitor during MSVC
 constant evaluation. Tests explicitly initialize const stream-only values and
 avoid shadowing and self-assignment warnings.
 
-The 41-job `dev` result validates the accepted contribution in default SGR
+The 41-job `color-dev` result validates the accepted contribution in default SGR
 mode. Compact mode has historical local evidence, but no current full compact
 matrix is claimed. See [BuildAndTest.md](BuildAndTest.md#integrated-styling-helpers).
-The public website is version 36; the `dev` guide is built locally but has not
-been published by the branch-filtered guide workflow.
+The public website is version 36. The last verified guide publication used
+the former `dev` branch at `a18689e1`, whose documentation build and deployment passed. Platform CI for
+that configuration commit was still running when checked; the complete 41-job
+result above remains specific to the styling commit.
 
 ### Conditional attribute factories
 
@@ -395,7 +398,7 @@ unspecified colors, return types, noexcept, C++11 constexpr, and styled output.
 
 Terry reported that the TaskWarrior team liked the factories, used them where
 beneficial, and retained passing application tests. This is reported evidence,
-not a freshly executed application test for `dev`. The guide explains
+not a freshly executed application test for `color-dev`. The guide explains
 convenience as a major design goal.
 
 ## Planned work

@@ -12,7 +12,7 @@ Its audience, in priority order, is Terry and collaborating assistants, the
 {fmt} developers, technical friends, and nontechnical family. Use brief
 plain-language introductions followed by useful technical detail.
 
-Present the complete `dev` contribution as one coherent change. The website
+Present the complete `color-dev` contribution as one coherent change. The website
 must contain no intermediate development history: omit feature-branch
 integration records, superseded commits, old API alternatives, and historical
 compatibility-run narratives. Source links refer to the current contribution
@@ -30,7 +30,8 @@ Current pages:
   structured styled text, absolute boundaries, lazy blending, parsing,
   display width, and serialization. These remain proposals.
 
-The contribution is `dev` at `2c456778d9ff63cdf284a7d85c8dc8eb384cf3d3`,
+The styling contribution is commit `2c456778d9ff63cdf284a7d85c8dc8eb384cf3d3`
+on `color-dev`,
 directly above upstream `f87a75e15262614ce8aa0e6a0664df9d0823fb92`.
 It supports C++11 throughout and has not been accepted into fmtlib/fmt.
 All 41 push jobs passed: Linux 18, Windows 13, macOS 9, documentation build 1.
@@ -92,18 +93,24 @@ styled-ostream guide. It has no separate added API Reference section.
 
 ### Guide build versus publication
 
-The current `dev` guide builds locally into `build/doc-html` and is served at
+The current `color-dev` guide builds locally into `build/doc-html` and is served at
 `http://localhost:8000/color/index.html` while its server runs. The server was
 left running for Firefox. The `doc` CI workflow also passed for `2c456778`.
 The known upstream syntax-anchor and Material future-version notices remain
 nonfatal. See BuildAndTest.md for commands and validation scope.
 
-The guide-publication workflow now targets `dev` locally, and its edit links
-use `edit/dev/doc/`. Publication instructions match. These changes are not yet
-committed or pushed, so the existing public guide must not be claimed to serve
-the latest `dev` documents. The verified 41-job commit used the old publication
-filter and did not deploy the guide. Verify the `github-pages` environment
-permits `dev`, then verify the actual publication after commit and push.
+The guide-publication workflow targets `color-dev`, with edit URI
+`edit/color-dev/doc/` and matching publication instructions in local uncommitted
+changes. The preceding configuration targeted `dev` and was committed and
+pushed at `a18689e1`.
+Its Node.js 24 action pins are `configure-pages` v6.0.0 and `deploy-pages`
+v5.0.1; BuildAndTest.md records the exact SHAs. The [guide publication run](https://github.com/tjgolubi/fmt/actions/runs/40680365434)
+passed both build and deploy jobs for `a18689e1`, including Configure Pages
+and Publish documentation. Deployment permissions allowed that `dev` run;
+they have not been verified for `color-dev`. Check the selected-branch rule and the next publication run.
+The exact environment policy was not inspected. The separate
+ordinary documentation workflow also passed; platform CI was still running
+when checked. The website's 41-job result remains scoped to `2c456778`.
 The library README still has old branch text/badges and a link to the
 intentionally removed `FmtColorChangeLog.md`; do not recreate that file.
 
@@ -184,10 +191,14 @@ and exact archive returned for the selected site.
 
 ## Current publication
 
+The repository branch is now `color-dev`. Site version 36 still displays and
+links `dev`; updating the public website for the rename requires a separate
+website instruction. The current task changes repository documentation only.
+
 **Public Site version 36** is live at
 [fmtcolor.ardentokapi66.chatgpt.site](https://fmtcolor.ardentokapi66.chatgpt.site).
-Native deployment returned `succeeded`. The site presents the complete `dev`
-contribution and its four exact CI runs, with no intermediate development
+Native deployment returned `succeeded`. The site presents the complete
+contribution using the former `dev` branch name and its four exact CI runs, with no intermediate development
 history. The final blend example preserves the original foreground-averaging
 semantics and uses the compiler-checked expression above.
 

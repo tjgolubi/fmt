@@ -47,7 +47,7 @@ assuming a checkout follows those settings.
 
 | Repository                        | Role                                                                                                                                |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `tjgolubi/fmt`                    | Library source, tests, and user documentation. Current development branch: `dev`.                                                   |
+| `tjgolubi/fmt`                    | Library source, tests, and user documentation. Current development branch: `color-dev`.                                                   |
 | `coord/` worktree on `docs/Coord` | Current coordination handoff documents, separate from library development. Earlier history is in `tjgolubi/FmtColorGpt` (`master`). |
 | Sites source repository           | Separate website implementation, managed by the Sites helper.                                                                       |
 
@@ -111,12 +111,13 @@ baseline; this policy does not authorize rewriting them.
    opens the configured editor to revise that message.
 6. Terry commits the squash. Prepare a commit message or additional artifacts
    only within the authorized scope. `FmtColorChangeLog.md` is intentionally
-   absent from `dev`; do not recreate it automatically.
+   absent from `color-dev`; do not recreate it automatically.
 7. Terry pushes the final commit, or explicitly authorizes the assistant to
    push. Verify the intended commit structure, matching local/GitHub full SHAs,
    and every applicable CI job for that SHA. The guide-publication workflow
-   now targets `dev` in the local configuration; verify publication separately
-   after those changes are committed and pushed. Candidate results do
+   targets `color-dev` in local changes. Publication passed at `a18689e1` under
+   the former `dev` name; verify environment permission and publication after
+   pushing the renamed branch configuration. Candidate results do
    not replace final integration checks.
 8. Publish an authorized website update before recording its confirmed
    publication in coordination documents. Update or close an issue only when
@@ -144,7 +145,7 @@ Use Conventional Commits compatible with `cliff.toml`, for example
 Mark deliberate breaks with `!` and a `BREAKING CHANGE:` footer. Describe actual
 effects without promising stable numeric or binary representations.
 
-`FmtColorChangeLog.md` was intentionally removed from the consolidated `dev`
+`FmtColorChangeLog.md` was intentionally removed from the consolidated `color-dev`
 commit. Its deletion, amendment, and force-with-lease push preceded verification
 of `2c456778`; the verified CI applies to the amended commit. Do not regenerate
 or re-add this file unless Terry instructs us to. Do not edit upstream
@@ -191,10 +192,10 @@ branch; rebasing or refreshing its header requires authorization and fresh CI.
 
 Keeping production changes in `color.h` reduces rebase conflicts, but changes
 to supporting APIs, tests, documentation, or tooling can still require fixes.
-The current `dev` baseline is upstream `f87a75e1`, recorded in README.md.
+The current `color-dev` baseline is upstream `f87a75e1`, recorded in README.md.
 The compatibility branch still uses its historical `0fc31633` baseline. Inspect
 current refs before any later rebase; consolidation has already been performed
-on `dev` and grants no permission to rewrite other refs.
+on `color-dev` and grants no permission to rewrite other refs.
 
 Continue on the agreed upstream baseline. Inspect upstream changes before
 incorporating them. Update the development baseline when a relevant upstream
@@ -224,7 +225,7 @@ after an authorized rewrite.
 ## Coordination worktree
 
 The library root and `coord/` are separate working trees of the same repository.
-The root currently uses `dev`; `coord/` uses `docs/Coord`. Entering the
+The root currently uses `color-dev`; `coord/` uses `docs/Coord`. Entering the
 directory changes which checkout Git sees; it does not switch either worktree's
 branch. Use `git -C coord status` and `git -C coord diff` from the library root.
 Do not switch the library checkout to `docs/Coord` while that branch is checked

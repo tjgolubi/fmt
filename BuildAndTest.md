@@ -3,7 +3,7 @@
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Website](Website.md)
 
 Updated October 28, 2026. Commands run from the library checkout root unless
-stated otherwise. Use `dev` or an authorized feature branch, not the
+stated otherwise. Use `color-dev` or an authorized feature branch, not the
 `coord/` documentation worktree on `docs/Coord`. Run library commands from
 `..` when starting in `coord/`. `/doc/` means repository-relative.
 
@@ -160,16 +160,39 @@ colors. Cube rows vary red, columns green, and the six three-character fields
 inside each cell vary blue. Check values and indexed-palette offsets against
 independent expectations.
 
-`.github/workflows/fmtcolor-pages.yml` now targets pushes to `dev` in the local
-configuration, and `support/mkdocs-pages.yml` uses `edit/dev/doc/`. The matching
-publication instructions also name `dev`. These configuration changes are not
-yet committed or pushed; deployment from them has not been verified. The
-separate `doc` workflow verifies the build and does not publish the guide.
-The `github-pages` environment must permit `dev` for deployment. Its rule
-could not be inspected or changed in this session: the GitHub connector does
-not expose this endpoint, and the available browser was signed out. The guide
-rebuilt successfully and its configured edit URI targets `dev`. Confirm the
-remote environment rule before expecting publication to succeed.
+`.github/workflows/fmtcolor-pages.yml` targets pushes to `color-dev`, and
+`support/mkdocs-pages.yml` uses `edit/color-dev/doc/`. The instructions match.
+The `color-dev` name changes are local and uncommitted. The preceding `dev`
+configuration was committed and pushed at
+`a18689e1a0aced47e96db18b02aab577a853168a`, with these unchanged full-SHA pins:
+
+| Action                    | Release | Commit SHA                                 | Runtime    |
+| ------------------------- | ------- | ------------------------------------------ | ---------- |
+| `actions/configure-pages` | v6.0.0  | `45bfe0192ca1faeb007ade9deae92b16b8254a0d` | Node.js 24 |
+| `actions/deploy-pages`    | v5.0.1  | `368f82528645a54fb793d4d04e342629a3f51346` | Node.js 24 |
+
+The release tags were resolved through GitHub and both exact `action.yml`
+files verified to declare `runs.using: node24`. This replaces the Node.js 20
+pins that caused runner deprecation warnings. Workflow YAML parsing, the
+renamed `color-dev` filter, both pins, and whitespace checks passed locally.
+The guide rebuilt successfully; commit/push and publication verification for
+the renamed filter remain pending.
+
+For `a18689e1`, [FmtColor documentation](https://github.com/tjgolubi/fmt/actions/runs/40680365434)
+completed successfully: both `build` and `deploy` jobs passed, including
+Configure Pages and Publish documentation. The [ordinary doc workflow](https://github.com/tjgolubi/fmt/actions/runs/40680365328)
+also passed. The platform runs were still in progress when checked:
+[Linux](https://github.com/tjgolubi/fmt/actions/runs/40680365266),
+[Windows](https://github.com/tjgolubi/fmt/actions/runs/40680365275), and
+[macOS](https://github.com/tjgolubi/fmt/actions/runs/40680365376).
+Do not claim a full green matrix for this new SHA from the earlier 41-job result.
+
+Publication from the former `dev` branch succeeded, establishing that the
+environment permitted that deployment. Verify that its selected-branch rule
+also permits `color-dev`; the rename does not establish that permission.
+Its exact branch-policy setting was not inspected: the connector does not expose the endpoint and the available browser was signed
+out. The guide was also rebuilt locally with the new edit URI. The ordinary
+`doc` workflow builds documentation without deploying it.
 See [Website.md](Website.md#user-guide) and `support/fmtcolor-pages.md` for setup.
 
 ## Compatibility checks
@@ -199,7 +222,7 @@ testing a rejection path and verify scoped warning suppression does not leak.
 
 ### Regression coverage
 
-`dev` color tests cover construction, all 216 cube RGB conversions
+`color-dev` color tests cover construction, all 216 cube RGB conversions
 against independent Xterm values, terminal mappings, gray/cube boundaries,
 range failures, type/index access and assignment, all five visitor alternatives,
 reference lifetimes, mixed-kind OR promotion, ANSI output, comparisons, hashes,
@@ -222,12 +245,12 @@ existing `ostream-test` and `color-test` when checking bridge changes.
 
 ### Compact SGR build mode
 
-On `dev`, `./build.bash taskwarrior` configures
+On `color-dev`, `./build.bash taskwarrior` configures
 `build/taskwarrior` with compiler definition `FMT_COLOR_COMPACT_SGR=1`, builds
 the library and tests, then runs CTest. It passes `FMT_DOC=OFF` and skips the
 documentation target; it still prepares the documentation virtual environment
 if missing. The no-argument script uses `build` with documentation enabled.
-The mode and compact-SGR API are part of the accepted `dev` contribution.
+The mode and compact-SGR API are part of the accepted `color-dev` contribution.
 
 The setting must also be defined when compiling an application: SGR generation
 is in the header. A CMake cache argument named `FMT_COLOR_COMPACT_SGR` alone
@@ -240,7 +263,7 @@ The same installed compiled library supports either header-selected mode.
 
 ### Integrated styling helpers
 
-Verified October 28, 2026 for the consolidated `dev` commit
+Verified October 28, 2026 for the consolidated `color-dev` commit
 [`2c456778d9ff63cdf284a7d85c8dc8eb384cf3d3`](https://github.com/tjgolubi/fmt/commit/2c456778d9ff63cdf284a7d85c8dc8eb384cf3d3),
 whose parent and upstream baseline is `f87a75e15262614ce8aa0e6a0664df9d0823fb92`:
 
@@ -252,13 +275,13 @@ whose parent and upstream baseline is `f87a75e15262614ce8aa0e6a0664df9d0823fb92`
 | Documentation build |               1 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40670919387) |
 
 All **41 jobs** completed successfully, with none failed, cancelled, or pending.
-The local commit, GitHub `dev` branch, and run SHAs matched. Every job was
+The local commit, GitHub branch (then named `dev`), and run SHAs matched. Every job was
 inspected. This SHA already includes Terry's deletion of `FmtColorChangeLog.md`
 and amended force-with-lease push; no post-verification amendment is implied.
 The four push workflows cover the complete contribution. The guide-publication
 workflow did not run for that commit because its branch filter was still
-`FmtColorDev`. The local filter is now `dev`; this does not retroactively add
-a publication run to the verified commit.
+`FmtColorDev`. The filter switched to `dev` in `a18689e1`, whose successful publication is
+recorded above; this does not retroactively add a run to `2c456778`.
 
 The current user-guide documents built successfully with the pinned MkDocs
 configuration and were served from `build/doc-html` at
@@ -267,8 +290,8 @@ check availability before restarting it. Firefox can use this URL directly.
 Rendered checks covered API Reference entries, the requested section links,
 factory/fluent examples, and expected output. The known upstream `syntax.md`
 missing-anchor notice and Material future-version notice remain nonfatal.
-A local build and successful `doc` CI do not establish publication of this
-guide to GitHub Pages.
+A local build and successful `doc` CI alone do not establish publication; the
+separate successful Pages run at `a18689e1` is recorded above.
 
 A focused MSYS2 GCC probe verified the website's style-copy factory example
 with `-std=c++14` and `-std=c++23`, `-pedantic-errors -Wall -Wextra -Werror`,
@@ -283,7 +306,7 @@ focused syntax/constant-evaluation check, not an additional runtime-suite pass.
 Historical local checks covered both SGR modes, assertion-enabled boundaries,
 header-only exceptions-disabled paths, and a 23-target compact C++23 suite.
 Those checks predate the rebased contribution and are not fresh full-suite
-results for `dev`. GitHub CI uses default SGR output; compact-mode
+results for `color-dev`. GitHub CI uses default SGR output; compact-mode
 cross-platform CI remains a coverage gap. Terry's reported TaskWarrior tests
 are application-team evidence, not a freshly executed application run here.
 No new tablet run or performance benchmark is claimed.
@@ -317,7 +340,7 @@ ctest --test-dir build/clamp-debug -R '^(assert|color)-test$' --output-on-failur
 Verified October 23, 2026 for `test/UpstreamCompatibility` commit
 [`21eba01b33becd9f94cd34a1a8758f64ecbc53c3`](https://github.com/tjgolubi/fmt/commit/21eba01b33becd9f94cd34a1a8758f64ecbc53c3). It is based on
 upstream `0fc31633`, with `color.h` identical to `FmtColorDev` at both
-`d9d64d36` and `257cdac1`. It does not verify the current consolidated `dev`
+`d9d64d36` and `257cdac1`. It does not verify the current consolidated `color-dev`
 header, its rebased upstream baseline, or the ostream bridge. A header refresh and fresh compatibility CI are
 needed before extending that evidence to the later features.
 
@@ -349,7 +372,7 @@ No other upstream tests required changes; do not say all tests pass unchanged.
 Locally, all **22 configured C++23 CTest tests** passed with no compiler warnings
 or reported individual skips, all **five color tests** passed strict C++11 with
 `-pedantic-errors -Wall -Wextra -Werror`, and upstream documentation built.
-This is historical evidence separate from the current `dev` regression suite.
+This is historical evidence separate from the current `color-dev` regression suite.
 
 For a fresh isolated local compatibility build:
 
@@ -371,9 +394,9 @@ inspect its cache and source branch before interpreting a result.
 ### Coverage limits and follow-up
 
 Matrix fail-fast is permanently disabled across Linux, Windows, and macOS.
-GCC 16/C++26 reflection is still commented out on `dev`. The upstream compatibility matrix includes and passed that
+GCC 16/C++26 reflection is still commented out on `color-dev`. The upstream compatibility matrix includes and passed that
 job. [Issue #2](https://github.com/tjgolubi/fmt/issues/2) tracks the workflow
-exclusion; do not claim it is restored on `dev` or close the issue without
+exclusion; do not claim it is restored on `color-dev` or close the issue without
 authorization. Upstream package caching remains dependent on downloads.
 
 Push results do not establish passes for separate PR-only lint/fuzz workflows.
@@ -384,7 +407,7 @@ and every applicable job; never cite a baseline-only run for uncommitted work.
 
 ### Website validation
 
-Website version **36** presents `dev` at `2c456778` as one contribution and
+Website version **36** presents the contribution under its former `dev` name at `2c456778` as one contribution and
 links the four exact 41-job CI runs. It omits intermediate development history,
 obsolete compatibility claims, and links to the removed changelog. Validation
 of the revised three-page site covered 40 local links/anchors and unique IDs;

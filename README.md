@@ -40,13 +40,18 @@ records remain available in Git history.
 
 ## Current baseline
 
-The development branch is [`dev`](https://github.com/tjgolubi/fmt/tree/dev), at
-[`2c456778`](https://github.com/tjgolubi/fmt/commit/2c456778d9ff63cdf284a7d85c8dc8eb384cf3d3).
-It contains the complete styling contribution as one squash commit directly
+The development branch is [`color-dev`](https://github.com/tjgolubi/fmt/tree/color-dev), at
+[`a18689e1`](https://github.com/tjgolubi/fmt/commit/a18689e1a0aced47e96db18b02aab577a853168a).
+Its documentation-publication configuration follows the complete styling
+contribution at `2c456778`, which is one squash commit directly
 above upstream [`f87a75e1`](https://github.com/fmtlib/fmt/commit/f87a75e15262614ce8aa0e6a0664df9d0823fb92),
 which is also the local `main` tip. Terry created `Phase1` from `FmtColorDev`,
 rebased it onto freshly updated `main`, and squash-merged it onto `dev`.
-Continue from `dev`, not the superseded development or compatibility branches.
+Terry renamed the GitHub branch to `color-dev`; the local checkout and tracking
+branch now also use `color-dev`. The workflow filter, guide edit URI, and
+publication instructions have been updated locally to the new name. Those
+rename-related configuration edits are not yet committed or pushed.
+Continue from `color-dev`, not the superseded development or compatibility branches.
 No release tag or fork version has been assigned; the contribution has not
 been accepted into fmtlib/fmt.
 
@@ -54,25 +59,30 @@ Terry removed `FmtColorChangeLog.md`, amended the contribution, and pushed
 with `--force-with-lease` before the CI verification below. The verified SHA
 already includes that removal. Do not regenerate the file without instruction.
 
-All **41 jobs** passed for this exact `dev` commit: Linux 18, Windows 13,
+All **41 jobs** passed for styling commit `2c456778`: Linux 18, Windows 13,
 macOS 9, and documentation build 1. Local, GitHub branch, and workflow SHAs
 matched; every job was inspected. There were no failed, cancelled, or pending
 jobs. See [BuildAndTest.md](BuildAndTest.md#integrated-styling-helpers).
 Matrix fail-fast remains disabled. GCC 16/C++26 reflection remains excluded,
 tracked in [issue #2](https://github.com/tjgolubi/fmt/issues/2).
 
-The guide-publication workflow and edit links have been changed locally to
-`dev`, with matching publication instructions. These edits are not yet committed
-or pushed, and no deployment from them has been verified. The 41-job result
-above predates this configuration change. The root library README still names
-`FmtColorDev` in text/badges and links the deleted changelog; that cleanup remains
-a separate follow-up.
+Documentation commit `a18689e1a0aced47e96db18b02aab577a853168a` is committed
+and pushed. It targeted the former `dev` branch for publication and edit links
+and pins Node.js 24 actions: `configure-pages` v6.0.0 and `deploy-pages` v5.0.1.
+The [guide build and deployment](https://github.com/tjgolubi/fmt/actions/runs/40680365434)
+both passed for that exact SHA, as did ordinary documentation CI. Platform CI
+was still running when checked; the earlier 41-job result applies specifically
+to `2c456778`. Publication succeeded from `dev`; this does not establish
+that the environment allows the renamed `color-dev` branch. Verify its deployment rule and the next
+publication run. The exact policy setting was not inspected. The root
+library README still names `FmtColorDev` in text/badges and links the deleted
+changelog; that cleanup remains a separate follow-up.
 
 ## Upstream compatibility
 
 The separate `test/UpstreamCompatibility` result at `21eba01b` is historical:
-it tests an older header on upstream `0fc31633`, not the consolidated `dev`
-contribution. Its 42 passing jobs are not current `dev` compatibility evidence.
+it tests an older header on upstream `0fc31633`, not the consolidated `color-dev`
+contribution. Its 42 passing jobs are not current `color-dev` compatibility evidence.
 The required upstream adjustments and exact scope remain in
 [BuildAndTest.md](BuildAndTest.md#upstream-compatibility-branch).
 Do not claim that all original upstream tests pass unchanged.
@@ -80,10 +90,12 @@ Do not claim that all original upstream tests pass unchanged.
 ## Public documentation and next work
 
 - [Project website](https://fmtcolor.ardentokapi66.chatgpt.site): public version
-  **36**, describing the complete `dev` contribution and its 41 passing jobs.
+  **36**, describing the complete contribution and its 41 passing jobs.
+  Its displayed branch name is still `dev`; a website rename update has not
+  been requested.
   It contains no intermediate development history.
 - [Generated user guide](https://tjgolubi.github.io/fmt/color/index.html):
-  existing public guide; the updated `dev` guide is available locally at
+  last verified publication from the former `dev` branch at `a18689e1`. Also available locally at
   [localhost](http://localhost:8000/color/index.html) while its server runs.
 - [Issues](https://github.com/tjgolubi/fmt/issues): bugs and follow-up work.
 
