@@ -280,6 +280,7 @@ foreach (
   chrono.h
   color-ostream.h
   color.h
+  styled-text.h
   compile.h
   core.h
   enum.h
