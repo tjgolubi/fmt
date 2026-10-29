@@ -1949,6 +1949,90 @@ FMT_NODISCARD inline auto to_sgr(const text_style& ts)
   return { buf.data(), buf.size() };
 }
 
+namespace detail {
+
+// Escape fragments end each parameter with ';'. Remove legacy decimal padding
+// so transition lengths compare the shortest spelling in either SGR mode.
+template<typename Char>
+void append_transition_fragment(buffer<Char>& buf,
+                                const ansi_color_escape<Char>& fragment) {
+  auto p = fragment.begin();
+  while (p != fragment.end()) {
+    while (*p == Char('0') && p + 1 != fragment.end() &&
+           p[1] != Char(';'))
+      ++p;
+    do {
+      buf.push_back(*p);
+    } while (*p++ != Char(';'));
+  }
+}
+
+template<typename Char>
+void append_transition_code(buffer<Char>& buf, unsigned code) {
+  if (code >= 10) buf.push_back(static_cast<Char>('0' + code / 10));
+  buf.push_back(static_cast<Char>('0' + code % 10));
+  buf.push_back(Char(';'));
+}
+
+template<typename Char>
+void append_transition(buffer<Char>& buf, text_style target,
+                       text_style initial, bool reset) {
+  auto before = static_cast<unsigned>(to_underlying(initial.emph()));
+  auto after = static_cast<unsigned>(to_underlying(target.emph()));
+  if (reset) {
+    append_transition_code(buf, 0);
+    before = 0;
+  } else {
+    auto removed = before & ~after;
+    // SGR 22 clears both intensity attributes; reapply any surviving bit.
+    if (removed & 3u) {
+      append_transition_code(buf, 22);
+      before &= ~3u;
+    }
+    constexpr unsigned off[] = {23, 24, 25, 27, 28, 29};
+    for (unsigned i = 0; i < 6; ++i)
+      if (removed & (4u << i)) append_transition_code(buf, off[i]);
+  }
+  auto added = static_cast<emphasis>(after & ~before);
+  append_transition_fragment(buf, make_emphasis<Char>(added));
+  if (target.has_fg() && (reset || target.fg() != initial.fg()))
+    append_transition_fragment(buf, make_foreground_color<Char>(target.fg()));
+  if (target.has_bg() && (reset || target.bg() != initial.bg()))
+    append_transition_fragment(buf, make_background_color<Char>(target.bg()));
+}
+
+} // detail
+
+/**
+ * Returns the ANSI SGR transition from `initial` to `ts`, without a trailing
+ * reset. Unspecified target colors retain their initial values; target emphasis
+ * replaces initial emphasis. Unspecified initial colors mean terminal defaults.
+ * Returns an empty string when no changes are needed.
+ *
+ * Uses one unpadded sequence, independently of `FMT_COLOR_COMPACT_SGR`, choosing
+ * the shorter of selective changes and reset followed by the effective target.
+ * Equal lengths prefer selective changes. `Char` defaults to `char`.
+ */
+template<typename Char=char>
+FMT_NODISCARD inline auto to_sgr(const text_style& ts,
+                               const text_style& initial)
+  -> std::basic_string<Char>
+{
+  auto target = ts;
+  if (!target.has_fg()) target.fg(initial.fg());
+  if (!target.has_bg()) target.bg(initial.bg());
+  auto relative = basic_memory_buffer<Char, sgr_max_length>{};
+  detail::append_transition(relative, target, initial, false);
+  if (relative.size() == 0) return {};
+  auto absolute = basic_memory_buffer<Char, sgr_max_length>{};
+  detail::append_transition(absolute, target, initial, true);
+  const auto& parameters = absolute.size() < relative.size() ? absolute : relative;
+  auto result = std::basic_string<Char>{Char('\x1b'), Char('[')};
+  result.append(parameters.data(), parameters.size());
+  result.back() = Char('m');
+  return result;
+}
+
 /**
  * Returns a copy of `sv` wrapped in the SGR sequences for `ts` and a terminal
  * reset. Empty text returns an empty string; an empty style returns just the

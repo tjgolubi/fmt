@@ -40,6 +40,33 @@ and later. The function can allocate and is not `noexcept`.
 Use `to_sgr` when managing terminal state yourself. Use the styled formatting
 or printing functions to wrap text in styling followed by a terminal reset.
 
+### Transitions from a known style
+
+`fmt::to_sgr(final_style, initial_style)` returns the SGR needed to change from
+the known initial style to the final style, without a trailing reset. The
+second argument is required. Unspecified final foreground and background
+inherit their respective initial colors. Final emphasis replaces initial
+emphasis, so attributes can be turned off as well as on. Unspecified initial
+colors represent terminal defaults. Neither input is modified.
+
+```cpp
+const auto initial = fmt::bold(fmt::fg(fmt::term_color::red));
+const auto final_style = fmt::underline(fmt::fg(fmt::term_color::red));
+auto transition = fmt::to_sgr(final_style, initial);
+// "\x1b[22;4m": clear intensity, enable underline, retain red.
+```
+
+The overload compares selective changes with reset-and-rebuild and chooses
+the shorter encoding; ties favor selective changes. Reset-and-rebuild restores
+inherited colors. Bold and faint share SGR 22 for removal, so a surviving
+intensity attribute is reapplied when necessary. Identical states emit nothing.
+Colors are compared by kind and value, preserving terminal palette semantics.
+
+To minimize output, transitions always use one combined sequence and unpadded
+parameters, independently of `FMT_COLOR_COMPACT_SGR`. The one-argument overload
+retains its existing output modes. Both overloads support C++11 and wide
+characters; transitions can allocate and are not `noexcept`.
+
 ## `sgr_reset`
 
 ::: sgr_reset

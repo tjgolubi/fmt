@@ -810,6 +810,96 @@ std::basic_string<Char> color_escape(fmt::color_t color, bool background) {
 }
 }  // namespace
 
+namespace {
+void check_sgr_transition(const fmt::text_style& target,
+                          const fmt::text_style& initial,
+                          const std::string& expected) {
+  const auto target_copy = target;
+  const auto initial_copy = initial;
+  EXPECT_EQ(fmt::to_sgr(target, initial), expected);
+  EXPECT_EQ(fmt::to_sgr<char>(target, initial), expected);
+  EXPECT_EQ(fmt::to_sgr<wchar_t>(target, initial),
+            (std::wstring{expected.begin(), expected.end()}));
+  EXPECT_EQ(target, target_copy);
+  EXPECT_EQ(initial, initial_copy);
+}
+} // namespace
+
+TEST(color_test, sgr_transition) {
+  check_sgr_transition({}, {}, "");
+  const auto red = fmt::fg(fmt::term_color::red);
+  check_sgr_transition(red, red, "");
+  check_sgr_transition({}, red, "");
+  check_sgr_transition(fmt::bold(red), red, "\x1b[1m");
+  check_sgr_transition(fmt::fg(fmt::term_color::blue), red, "\x1b[34m");
+  check_sgr_transition(fmt::fg(fmt::rgb{1, 2, 3}), red,
+                       "\x1b[38;2;1;2;3m");
+  check_sgr_transition(fmt::bg(fmt::cube_color{0}), red, "\x1b[48;5;16m");
+  check_sgr_transition(fmt::fg(fmt::gray_color{0}), {}, "\x1b[38;5;232m");
+  // Identical RGB appearance does not erase a palette-kind transition.
+  check_sgr_transition(fmt::fg(fmt::color::black),
+                       fmt::fg(fmt::term_color::black), "\x1b[38;2;0;0;0m");
+  check_sgr_transition(fmt::bold(), fmt::faint(), "\x1b[0;1m");
+  check_sgr_transition({}, fmt::bold(), "\x1b[0m");
+
+  const auto all = static_cast<fmt::emphasis>(0xff);
+  // A reset must restore inherited colors even when the target omits them.
+  const auto initial = fmt::text_style{all, fmt::term_color::red,
+                                      fmt::term_color::blue};
+  check_sgr_transition({}, initial, "\x1b[0;31;44m");
+  // Selective intensity removal must restore faint, without losing colors or
+  // unrelated attributes. Here reset-and-rebuild would be longer.
+  const auto target = fmt::text_style{static_cast<fmt::emphasis>(0xfe)};
+  check_sgr_transition(target, initial, "\x1b[22;2m");
+  // Clearing faint likewise restores bold after the shared intensity reset.
+  check_sgr_transition(fmt::text_style{static_cast<fmt::emphasis>(0xfd)},
+                       initial, "\x1b[22;1m");
+}
+
+TEST(color_test, sgr_transition_all_emphasis_pairs) {
+  // Interpret the emitted ANSI independently of the transition algorithm.
+  const unsigned on[] = {1, 2, 3, 4, 5, 7, 8, 9};
+  const unsigned off[] = {22, 22, 23, 24, 25, 27, 28, 29};
+  for (unsigned before = 0; before < 256; ++before) {
+    for (unsigned after = 0; after < 256; ++after) {
+      const auto initial = fmt::text_style{static_cast<fmt::emphasis>(before)};
+      const auto target = fmt::text_style{static_cast<fmt::emphasis>(after)};
+      const auto sgr = fmt::to_sgr(target, initial);
+      if (before == after) {
+        EXPECT_TRUE(sgr.empty());
+        continue;
+      }
+      ASSERT_GE(sgr.size(), size_t{4});
+      ASSERT_EQ(sgr.substr(0, 2), "\x1b[");
+      ASSERT_EQ(sgr.back(), 'm');
+      unsigned state = before;
+      unsigned code = 0;
+      for (size_t i = 2; i < sgr.size(); ++i) {
+        const auto c = sgr[i];
+        if (c >= '0' && c <= '9') {
+          code = code * 10 + static_cast<unsigned>(c - '0');
+          continue;
+        }
+        ASSERT_TRUE(c == ';' || c == 'm');
+        bool recognized = code == 0;
+        if (code == 0) state = 0;
+        for (unsigned bit = 0; bit < 8; ++bit) {
+          if (code == on[bit]) { state |= 1u << bit; recognized = true; }
+          if (code == off[bit]) { state &= ~(1u << bit); recognized = true; }
+        }
+        ASSERT_TRUE(recognized);
+        code = 0;
+      }
+      EXPECT_EQ(state, after) << "initial=" << before << " target=" << after;
+      // Reset-and-rebuild is always an available upper bound.
+      size_t absolute_size = 4; // ESC [ 0 m
+      for (unsigned bit = 0; bit < 8; ++bit)
+        if (after & (1u << bit)) absolute_size += 2;
+      EXPECT_LE(sgr.size(), absolute_size);
+    }
+  }
+}
+
 TEST(color_test, palette_ansi_escape) {
   const struct {
     fmt::color_t color;
