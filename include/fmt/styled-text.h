@@ -53,12 +53,30 @@ class styled_text {
   auto as_branch() -> branch&;
   auto as_branch() const -> const branch&;
 
+  auto empty() const noexcept -> bool
+  { return !is_branch_ && data_.leaf.empty(); }
+
+  auto operator+=(styled_text rhs) -> styled_text& {
+    if (rhs.empty()) return *this;
+    if (empty()) return *this = std::move(rhs);
+    if (!is_branch_) {
+      auto v = std::vector<>{};
+      v.emplace_back(style_, std::move(data_.leaf));
+      is_branch_ = true;
+      data_.branch = v;
+      style_ = text_style{};
+    }
+    data_.branch.push_back(std::move(rhs));
+    return *this;
+  }
+
   friend bool operator==(const styled_text& lhs, const styled_text& rhs);
   friend bool operator!=(const styled_text& lhs, const styled_text& rhs) {
     return !(lhs == rhs);
   }
-  friend auto operator+(styled_text lhs, styled_text rhs) -> styled_text;
-};
+  friend auto operator+(styled_text lhs, styled_text rhs) -> styled_text
+  { return lhs += rhs; }
+}; // styled_text
 
 inline styled_text::styled_text() : styled_text(leaf{}) {}
 inline styled_text::styled_text(leaf text, text_style style)
@@ -130,13 +148,6 @@ inline bool operator==(const styled_text& lhs, const styled_text& rhs) {
   if (lhs.style_ != rhs.style_ || lhs.is_branch_ != rhs.is_branch_) return false;
   return lhs.is_branch_ ? lhs.data_.children == rhs.data_.children
                         : lhs.data_.text == rhs.data_.text;
-}
-inline auto operator+(styled_text lhs, styled_text rhs) -> styled_text {
-  auto children = styled_text::branch{};
-  children.reserve(2);
-  children.push_back(std::move(lhs));
-  children.push_back(std::move(rhs));
-  return styled_text(std::move(children));
 }
 
 template<typename T>
