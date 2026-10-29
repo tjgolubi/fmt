@@ -35,6 +35,14 @@ class basic_styled_text {
 
   void destroy() noexcept;
 
+  void append_plain_text(string_type& result) const {
+    if (_is_branch) {
+      for (const auto& child : _data._children) child.append_plain_text(result);
+    } else if (_data._text) {
+      result.append(*_data._text);
+    }
+  }
+
  public:
   basic_styled_text();
   basic_styled_text(string_type text, text_style style = {});
@@ -53,6 +61,17 @@ class basic_styled_text {
   // Empty leaves are concatenation identities.
   auto empty() const noexcept -> bool
   { return !_is_branch && !_data._text; }
+
+  /**
+   * Returns an independent string containing all leaf text in order, without
+   * applying styles. Preserves embedded nulls and escapes without interpreting
+   * them. Does not modify this value. Allocation can throw.
+   */
+  FMT_NODISCARD auto plain_text() const -> string_type {
+    auto result = string_type{};
+    append_plain_text(result);
+    return result;
+  }
 
   auto operator+=(basic_styled_text rhs) -> basic_styled_text& {
     if (rhs.empty()) return *this;
