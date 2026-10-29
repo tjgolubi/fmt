@@ -1,6 +1,10 @@
 name: linux
 
-on: [push, pull_request]
+on:
+  push:
+    branches-ignore:
+      - 'feat/StyledText'
+  pull_request:
 
 permissions:
   contents: read
