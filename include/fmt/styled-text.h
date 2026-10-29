@@ -23,15 +23,15 @@ class basic_styled_text {
   using leaf = std::shared_ptr<const string_type>;
   using branch = std::vector<basic_styled_text>;
   friend struct formatter<basic_styled_text<Char>, Char>;
-  text_style style_;
+  text_style _style;
   // A branch is created only by concatenating nonempty values.
-  bool is_branch_;
+  bool _is_branch;
   union storage {
-    leaf text;
-    branch children;
+    leaf _text;
+    branch _children;
     storage() {}
     ~storage() {}
-  } data_;
+  } _data;
 
   void destroy() noexcept;
 
@@ -45,41 +45,41 @@ class basic_styled_text {
   auto operator=(const basic_styled_text& other) -> basic_styled_text&;
   auto operator=(basic_styled_text&& other) noexcept -> basic_styled_text&;
 
-  auto style() const noexcept -> text_style { return style_; }
+  auto style() const noexcept -> text_style { return _style; }
   auto style(text_style value) noexcept -> basic_styled_text& {
-    style_ = value;
+    _style = value;
     return *this;
   }
   // Empty leaves are concatenation identities.
   auto empty() const noexcept -> bool
-  { return !is_branch_ && !data_.text; }
+  { return !_is_branch && !_data._text; }
 
   auto operator+=(basic_styled_text rhs) -> basic_styled_text& {
     if (rhs.empty()) return *this;
     if (empty()) return *this = std::move(rhs);
-    if (!is_branch_) {
+    if (!_is_branch) {
       auto children = branch{};
       // Allocate before moving either operand. The following moves cannot throw.
       children.reserve(2);
       children.push_back(std::move(*this));
       children.push_back(std::move(rhs));
       destroy();
-      new (&data_.children) branch(std::move(children));
-      is_branch_ = true;
-      style_ = text_style{};
+      new (&_data._children) branch{std::move(children)};
+      _is_branch = true;
+      _style = text_style{};
       return *this;
     }
-    data_.children.push_back(std::move(rhs));
+    _data._children.push_back(std::move(rhs));
     return *this;
   }
 
   friend bool operator==(const basic_styled_text& lhs,
                          const basic_styled_text& rhs) {
-    if (lhs.style_ != rhs.style_ || lhs.is_branch_ != rhs.is_branch_) return false;
-    if (lhs.is_branch_) return lhs.data_.children == rhs.data_.children;
-    return lhs.data_.text == rhs.data_.text ||
-           (lhs.data_.text && rhs.data_.text &&
-            *lhs.data_.text == *rhs.data_.text);
+    if (lhs._style != rhs._style || lhs._is_branch != rhs._is_branch) return false;
+    if (lhs._is_branch) return lhs._data._children == rhs._data._children;
+    return lhs._data._text == rhs._data._text ||
+           (lhs._data._text && rhs._data._text &&
+            *lhs._data._text == *rhs._data._text);
   }
   friend bool operator!=(const basic_styled_text& lhs,
                          const basic_styled_text& rhs) {
@@ -94,44 +94,44 @@ class basic_styled_text {
 
 template<typename Char>
 inline basic_styled_text<Char>::basic_styled_text()
-    : style_(), is_branch_(false) {
-  new (&data_.text) leaf();
+    : _style{}, _is_branch{false} {
+  new (&_data._text) leaf{};
 }
 template<typename Char>
 inline basic_styled_text<Char>::basic_styled_text(string_type text, text_style style)
-    : style_(style), is_branch_(false) {
-  new (&data_.text) leaf(text.empty() ? leaf{} :
-      std::make_shared<const string_type>(std::move(text)));
+    : _style{style}, _is_branch{false} {
+  new (&_data._text) leaf{text.empty() ? leaf{} :
+      std::make_shared<const string_type>(std::move(text))};
 }
 template<typename Char>
 inline basic_styled_text<Char>::basic_styled_text(const Char* text, text_style style)
-    : basic_styled_text(string_type(text), style) {}
+    : basic_styled_text{string_type{text}, style} {}
 template<typename Char>
 inline basic_styled_text<Char>::basic_styled_text(const basic_styled_text& other)
-    : style_(other.style_), is_branch_(other.is_branch_) {
-  if (is_branch_)
-    new (&data_.children) branch(other.data_.children);
+    : _style{other._style}, _is_branch{other._is_branch} {
+  if (_is_branch)
+    new (&_data._children) branch{other._data._children};
   else
-    new (&data_.text) leaf(other.data_.text);
+    new (&_data._text) leaf{other._data._text};
 }
 template<typename Char>
 inline basic_styled_text<Char>::basic_styled_text(basic_styled_text&& other) noexcept
-    : style_(other.style_), is_branch_(other.is_branch_) {
-  if (is_branch_)
-    new (&data_.children) branch(std::move(other.data_.children));
+    : _style{other._style}, _is_branch{other._is_branch} {
+  if (_is_branch)
+    new (&_data._children) branch{std::move(other._data._children)};
   else
-    new (&data_.text) leaf(std::move(other.data_.text));
+    new (&_data._text) leaf{std::move(other._data._text)};
   other.destroy();
-  new (&other.data_.text) leaf();
-  other.is_branch_ = false;
-  other.style_ = text_style{};
+  new (&other._data._text) leaf{};
+  other._is_branch = false;
+  other._style = text_style{};
 }
 template<typename Char>
 inline void basic_styled_text<Char>::destroy() noexcept {
-  if (is_branch_)
-    data_.children.~branch();
+  if (_is_branch)
+    _data._children.~branch();
   else
-    data_.text.~leaf();
+    _data._text.~leaf();
 }
 template<typename Char>
 inline basic_styled_text<Char>::~basic_styled_text() { destroy(); }
@@ -139,7 +139,7 @@ template<typename Char>
 inline auto basic_styled_text<Char>::operator=(const basic_styled_text& other)
     -> basic_styled_text& {
   if (this == &other) return *this;
-  auto copy = basic_styled_text(other);
+  auto copy = basic_styled_text{other};
   return *this = std::move(copy);
 }
 template<typename Char>
@@ -147,9 +147,9 @@ inline auto basic_styled_text<Char>::operator=(basic_styled_text&& other) noexce
     -> basic_styled_text& {
   if (this == &other) return *this;
   // Preserve the value before replacing the active union alternative.
-  auto moved = basic_styled_text(std::move(other));
+  auto moved = basic_styled_text{std::move(other)};
   this->~basic_styled_text();
-  new (this) basic_styled_text(std::move(moved));
+  new (this) basic_styled_text{std::move(moved)};
   return *this;
 }
 
