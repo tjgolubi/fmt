@@ -2,10 +2,54 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Website](Website.md)
 
-Updated October 28, 2026. Commands run from the library checkout root unless
+Updated October 29, 2026. Commands run from the library checkout root unless
 stated otherwise. Use `color-dev` or an authorized feature branch, not the
 `coord/` documentation worktree on `docs/Coord`. Run library commands from
 `..` when starting in `coord/`. `/doc/` means repository-relative.
+
+## Cloud StyledText validation
+
+The cloud experiment runs on Debian 13 x86-64 with native GCC 14.2.0 and
+CMake 4.4.4. Terry explicitly authorized native Linux tools; no MSYS2 emulation
+is used. All 23 original CTest targets passed in a Release/C++23/default-SGR
+build at the original `5b3f49ff` baseline, with documentation disabled.
+
+The SGR transition change at `cff2fc5fa0793fb476b94441aa2241c895423a2b`
+passed `color-test` in C++23/default, C++23/compact, and C++11/compact builds,
+including all 65,536 emphasis-state pairs checked with an independent interpreter.
+Strict C++11 header and color-test syntax checks passed. This commit is pushed;
+GitHub CI results have not been checked, and no green remote matrix is claimed.
+
+The `styled-text.h` foundation at pushed commit `7b0e07ce` passes its new
+`styled-text-test` target in Release/C++23 and Release/C++11, both with
+`FMT_COLOR_COMPACT_SGR=1`. Tests cover default/string/vector construction,
+implicit literals and strings, alternative access and wrong-kind errors,
+concatenation/nesting, exact equality, independent copies, moves, alternative
+changes, self-assignment, and assignment from a descendant. Strict C++11 test
+compilation with `-pedantic-errors -Wall -Wextra -Werror` passed.
+An additional C++11/header-only probe ran 1,000 ownership/copy/move/descendant-
+assignment cycles under AddressSanitizer and UndefinedBehaviorSanitizer with
+no reported errors. LeakSanitizer cannot run under this environment's tracing;
+`ASAN_OPTIONS=detect_leaks=0` was required, so leak detection is not established.
+
+The current experimental build is `build/taskwarrior`, Release/C++23, with
+compact SGR enabled through the compiler flags, not merely a named CMake option.
+The C++11 compact build is `build/transition-cxx11-compact`. Reproduce after
+restoring the source using a locally available CMake:
+
+```bash
+cmake -S . -B build/taskwarrior -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_STANDARD=23 -DFMT_TEST=ON -DFMT_DOC=OFF \
+  -DFMTCOLOR_SKIP=OFF -DCMAKE_CXX_FLAGS=-DFMT_COLOR_COMPACT_SGR=1
+cmake --build build/taskwarrior --target styled-text-test color-test --parallel 8
+ctest --test-dir build/taskwarrior -R '^(styled-text|color)-test$' --output-on-failure
+```
+
+Use a separate build directory with `CMAKE_CXX_STANDARD=11` for the fallback.
+No full-suite result is claimed for the styled-text foundation, and no guide
+build, module export, old-compiler CI, or website publication was performed.
+The backup includes source snapshots and Git history, not platform build caches.
+See [StyledText.md](StyledText.md) for design, scope, and current local status.
 
 ## Platforms and tools
 

@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated October 28, 2026. Implemented behavior is separated below from future
+Updated October 29, 2026. Implemented behavior is separated below from future
 design. A proposal is not permission to implement it.
 
 ## Goals and boundaries
@@ -405,13 +405,14 @@ convenience as a major design goal.
 
 Palette colors, RGB conversion, color/style blending, fluent operations,
 short names, public variants, and conditional factories are implemented.
-`feat/StyledText` remains a proposal for nested text, absolute boundaries, and
-lazy blending. Its ownership, rendering, and first increment still need review.
+The owned leaf/branch foundation is committed and pushed at `7b0e07ce` on `feat/StyledText`,
+with the agreed model in [StyledText.md](StyledText.md). Rendering, absolute
+boundaries, and lazy blending remain design work.
 Parsing, display width, and serialization remain separate design work.
 
 The later independent library requires C++23 and `std::variant`; migration
-details remain open. The {fmt} release retains C++11 throughout. Proposed
-StyledText representations below do not settle a C++11 implementation path.
+details remain open. The {fmt} release retains C++11 throughout. The current
+StyledText foundation uses a custom C++11 union in all language modes.
 Do not restore a C++17 variant gate or the superseded strict style-OR policy.
 Experimental branches such as `refactor/Crazy` need explicit approval for
 implementation or website inclusion.
@@ -425,44 +426,33 @@ conflict with unqualified factory names. Qualified `fmt::bold()` remains clear.
 
 ## Structured styled text
 
-StyledText is future work. Its proposed representation is a `text_style` plus:
+The current authorized model is fully owned. Each `styled_text` has a
+`text_style` and a custom discriminated union containing either:
 
 ```cpp
-std::variant<std::string_view, const styled_text*, std::vector<styled_text>>
+using leaf = std::string;
+using branch = std::vector<styled_text>;
 ```
 
-Views borrow characters, pointers borrow subtrees, and vectors own child nodes.
-Copying owned vectors copies nodes recursively, but views and pointers still
-borrow their targets. Moving should transfer owned storage. If subtree
-borrowing proves impractical, fall back to a view-or-owned-vector representation;
-that fallback copies an lvalue's nodes when wrapping it.
+The separate header is `<fmt/styled-text.h>`. The latest explicit filename
+supersedes the earlier tentative `text-style.h`. A private Boolean selects the
+active union member. Other flags and representation compaction can be revisited.
+Do not use `std::variant`, string views, or borrowed subtree pointers in this
+increment. String views may be considered later, with a new lifetime design.
 
-### Lifetimes and construction
+Default construction gives an empty leaf and empty style. String, literal, and
+child-vector constructors take an optional style defaulting to empty. Strings
+and literals implicitly convert to nodes. Copying owns a recursive copy;
+moving transfers storage. `operator+` creates an empty-style parent with both
+operands as children, preserving styles and nesting. No `operator+=` is added.
+Equality compares exact styles, alternative, strings, child order, and structure;
+render-equivalent trees need not be equal. The type-based `holds_alternative`
+and `get` overloads expose alternatives. See [StyledText.md](StyledText.md) for
+signatures, limitations, and the working-copy status.
 
-Characters must outlive all uses even when nodes are owned. Borrowed subtrees
-must outlive wrappers and stay at stable addresses; moving or destroying a
-target can invalidate the pointer. Const borrowing does not provide ownership
-or prevent mutation elsewhere. Borrowed relationships must not form cycles.
-
-Plan default/copy/move construction, an explicit plain `string_view` constructor
-with optional style, and wrapping constructors taking an lvalue or rvalue child
-with a required style. Lvalue wrapping borrows the child's address; rvalue
-wrapping owns and moves the child. Never retain a pointer to a temporary or
-constructor parameter that will be destroyed. Exact overloads and exception
-specifications remain subject to review. Keep ordinary `styled()` formatting
-support for a `styled_text` value.
-
-Appending is the primary use case. Appending to a view turns the root into an
-owned vector containing the original fragment and the new fragment; later
-appends extend that sequence while retaining fragment styles. Move temporary
-nodes efficiently rather than eagerly rewriting children or embedding SGR as
-the normal representation. Parser-created nodes are owned; character views may
-borrow the input without SGR sequences. Transformed character storage, if needed,
-requires a separate lifetime solution.
-
-Plain-text construction does not scan for or reject SGR. Call the explicit
-parser when input can contain escapes; no separate unchecked constructor is
-needed merely to bypass a validation scan.
+Plain strings are stored as supplied, without interpreting embedded escapes.
+Rendering, inheritance resolution, formatting, and parsing are not implemented
+by these constructors or comparisons. The rules below remain proposals.
 
 ### Absolute and lazy styles
 

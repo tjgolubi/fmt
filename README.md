@@ -1,6 +1,6 @@
 # FmtColor coordination
 
-Updated October 28, 2026.
+Updated October 29, 2026.
 
 FmtColor develops color and text-style extensions for C++. We plan two
 sequential deliverables:
@@ -23,12 +23,13 @@ fmtlib-specific application code or identical binary representations.
 | [CppDesign.md](CppDesign.md)       | Implemented foundation, future design, and open decisions.    |
 | [BuildAndTest.md](BuildAndTest.md) | Build commands, compatibility checks, and current validation. |
 | [Website.md](Website.md)           | Website content, publication, and maintenance.                |
+| [StyledText.md](StyledText.md)       | Owned styled-text design and current experimental work.       |
 
 Maintain these files in the `coord/` Git worktree on `docs/Coord`, separate
 from the library checkout. `cd coord` enters the documentation worktree;
 `cd ..` returns to the library branch. `/coord/` is excluded locally through
 `.git/info/exclude`; this setup is local Git metadata, not a library commit.
-The five documents live at the root of the documentation branch. Earlier
+The coordination documents live at the root of the documentation branch. Earlier
 coordination history is in the
 [FmtColorGpt repository](https://github.com/tjgolubi/FmtColorGpt). These are
 handoff documents for the next task conversation: current
@@ -41,16 +42,16 @@ records remain available in Git history.
 ## Current baseline
 
 The development branch is [`color-dev`](https://github.com/tjgolubi/fmt/tree/color-dev), at
-[`a18689e1`](https://github.com/tjgolubi/fmt/commit/a18689e1a0aced47e96db18b02aab577a853168a).
+[`5b3f49ff`](https://github.com/tjgolubi/fmt/commit/5b3f49ff7599df5beb651c3ccc8a403d7a7386a1).
 Its documentation-publication configuration follows the complete styling
 contribution at `2c456778`, which is one squash commit directly
 above upstream [`f87a75e1`](https://github.com/fmtlib/fmt/commit/f87a75e15262614ce8aa0e6a0664df9d0823fb92),
 which is also the local `main` tip. Terry created `Phase1` from `FmtColorDev`,
 rebased it onto freshly updated `main`, and squash-merged it onto `dev`.
 Terry renamed the GitHub branch to `color-dev`; the local checkout and tracking
-branch now also use `color-dev`. The workflow filter, guide edit URI, and
-publication instructions have been updated locally to the new name. Those
-rename-related configuration edits are not yet committed or pushed.
+branch now also use `color-dev`. The workflow filter, guide edit URI, and publication instructions now follow
+`color-dev`, committed and pushed at `5b3f49ff`. Publication and platform CI
+for that SHA were not inspected in this cloud session.
 Continue from `color-dev`, not the superseded development or compatibility branches.
 No release tag or fork version has been assigned; the contribution has not
 been accepted into fmtlib/fmt.
@@ -77,6 +78,23 @@ that the environment allows the renamed `color-dev` branch. Verify its deploymen
 publication run. The exact policy setting was not inspected. The root
 library README still names `FmtColorDev` in text/badges and links the deleted
 changelog; that cleanup remains a separate follow-up.
+
+## Current experimental work
+
+Use `feat/StyledText` for the authorized styled-text experiment. It starts at
+`color-dev` commit `5b3f49ff`. Commit `cff2fc5fa0793fb476b94441aa2241c895423a2b`
+adds the two-argument SGR transition overload and is pushed; local and GitHub
+SHAs matched after the push. Its remote CI has not been inspected.
+The owned `styled_text` header, tests, and CMake registration are committed and
+pushed as `7b0e07ce` on `feat/StyledText`. These coordination updates are prepared
+for the separately authorized save on `docs/Coord`; verify its remote ref before
+claiming the handoff is available from GitHub. Remote CI has not been inspected.
+
+Use compact SGR for these experiments. Keep changes local and batch pushes to
+conserve GitHub Actions compute; commits and pushes still require authorization.
+A downloadable source/archive backup can preserve uncommitted changes without
+pushing. Do not assume a cloud workspace survives a later session. Native Linux
+tools are authorized here; Windows/MSYS2 requirements apply on Terry's PC.
 
 ## Upstream compatibility
 
@@ -119,8 +137,9 @@ their sections, and expected output for all three Styled Arguments examples.
 The API Reference header list includes `fmt/color-ostream.h`, linking to its
 existing guide section; it has no separate new API Reference section.
 
-Structured styled text, absolute boundaries, lazy nested blending, parsing,
-display-width handling, and serialization remain design work. The later
+The owned structured-text foundation is committed and pushed on `feat/StyledText`;
+see [StyledText.md](StyledText.md). Rendering, absolute boundaries, lazy nested
+blending, parsing, display-width handling, and serialization remain design work. The later
 independent library requires C++23 and uses `std::variant`; the complete
 {fmt} release continues to support C++11. Revisit attribute-factory naming
 for the independent library as described in

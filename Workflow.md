@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated October 28, 2026.
+Updated October 29, 2026.
 
 ## Authorization and scope
 
@@ -42,6 +42,16 @@ cleanup, declaration changes, or broad toolchain changes. Preserve each existing
 file's line endings; create new text files with LF. Git uses
 `core.autocrlf=false` and `core.eol=lf`; inspect attributes or overrides before
 assuming a checkout follows those settings.
+
+### Cloud experiment and preservation
+
+Terry authorized native Linux tools in the cloud; MSYS2 Git and PATH rules
+below apply to his Windows/MSYS2 checkouts. Use compact SGR for the StyledText
+experiments. Batch changes before pushes to conserve GitHub Actions compute.
+Do not push solely to preserve a workspace: provide a downloadable backup of
+source, uncommitted changes, and coordination documents when requested.
+A local commit alone does not establish durable cloud-workspace retention.
+Keep library and coordination working-tree statuses explicit in handoffs.
 
 ## Repositories and tools
 
