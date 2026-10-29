@@ -193,6 +193,58 @@ TEST(styled_text_test, wide_shared_text_lifetime) {
   check_shared_text_lifetime_and_equality<wchar_t>();
 }
 
+namespace {
+template<typename Char>
+void check_plain_text() {
+  using node = fmt::basic_styled_text<Char>;
+  using string_type = typename node::string_type;
+  static_assert(std::is_same<decltype(std::declval<const node&>().plain_text()),
+                             string_type>::value, "returns an owning string");
+  EXPECT_EQ(node{}.plain_text(), string_type{});
+  EXPECT_EQ((node{string_type{}, fmt::bold()}.plain_text()), string_type{});
+  const auto a = node{text<Char>(" a "), fmt::bold()};
+  auto nested = a + (node{text<Char>("b"), fmt::underline()} + text<Char>("\tc\n"));
+  nested.style(fmt::italic());
+  const auto snapshot = nested;
+  const auto shared_copy = nested;
+  const auto& read_only = nested;
+  auto result = read_only.plain_text();
+  EXPECT_EQ(result, text<Char>(" a b\tc\n"));
+  EXPECT_EQ(nested, snapshot);
+  EXPECT_EQ(nested.style(), fmt::italic());
+  result[0] = static_cast<Char>('z');
+  EXPECT_EQ(nested.plain_text(), text<Char>(" a b\tc\n"));
+  EXPECT_EQ(shared_copy.plain_text(), text<Char>(" a b\tc\n"));
+  const auto nulls = string_type(3, Char{});
+  EXPECT_EQ((a + node{nulls} + text<Char>("tail")).plain_text(),
+            text<Char>(" a ") + nulls + text<Char>("tail"));
+  const auto escapes = text<Char>("\x1b[31mred\x1b[0m");
+  EXPECT_EQ((node{escapes, fmt::bold()}.plain_text()), escapes);
+  const auto large = string_type(100000, static_cast<Char>('x'));
+  EXPECT_EQ(node{large}.plain_text(), large);
+  auto many = node{};
+  for (int i = 0; i < 100; ++i) many += a;
+  auto expected = string_type{};
+  for (int i = 0; i < 100; ++i) expected.append(text<Char>(" a "));
+  EXPECT_EQ(many.plain_text(), expected);
+  auto moved = node{std::move(nested)};
+  EXPECT_EQ(nested.plain_text(), string_type{});
+  EXPECT_EQ(moved.plain_text(), text<Char>(" a b\tc\n"));
+  nested = std::move(moved);
+  EXPECT_EQ(moved.plain_text(), string_type{});
+  EXPECT_EQ(nested.plain_text(), text<Char>(" a b\tc\n"));
+  auto survivor = node{};
+  {
+    const auto source = node{large} + a;
+    survivor = source;
+  }
+  EXPECT_EQ(survivor.plain_text(), large + text<Char>(" a "));
+}
+} // namespace
+
+TEST(styled_text_test, narrow_plain_text) { check_plain_text<char>(); }
+TEST(styled_text_test, wide_plain_text) { check_plain_text<wchar_t>(); }
+
 TEST(styled_text_test, aliases_and_literals) {
   static_assert(std::is_same<fmt::styled_text, fmt::basic_styled_text<char>>::value,
                 "narrow alias");
@@ -204,4 +256,5 @@ TEST(styled_text_test, aliases_and_literals) {
   fmt::wstyled_text wide = L"\u03b1";
   EXPECT_EQ("a" + narrow, fmt::styled_text("a") + narrow);
   EXPECT_EQ(wide + L"\u03b2", wide + std::wstring(L"\u03b2"));
+  EXPECT_EQ((wide + L"\u03b2").plain_text(), std::wstring{L"\u03b1\u03b2"});
 }
