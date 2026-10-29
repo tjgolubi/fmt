@@ -149,6 +149,50 @@ TEST(styled_text_test, narrow_composition) { check_construction_and_composition<
 TEST(styled_text_test, wide_composition) { check_construction_and_composition<wchar_t>(); }
 TEST(styled_text_test, narrow_copy_move_reuse) { check_copy_move_and_reuse<char>(); }
 TEST(styled_text_test, wide_copy_move_reuse) { check_copy_move_and_reuse<wchar_t>(); }
+
+namespace {
+template<typename Char>
+void check_shared_text_lifetime_and_equality() {
+  using node = fmt::basic_styled_text<Char>;
+  const auto large = std::basic_string<Char>(100000, static_cast<Char>('x'));
+  auto surviving_leaf = node{};
+  auto surviving_branch = node{};
+  {
+    auto source = node(large, fmt::bold());
+    surviving_leaf = source;
+    surviving_branch = source + text<Char>("tail");
+    source.style(fmt::underline());
+    source += text<Char>("different");
+    EXPECT_EQ(surviving_leaf.style(), fmt::bold());
+  }
+  // Independently allocated strings compare by content, not pointer identity.
+  const auto separate = node(large, fmt::bold());
+  EXPECT_EQ(surviving_leaf, separate);
+  EXPECT_EQ(surviving_branch, separate + text<Char>("tail"));
+  auto different = large;
+  different.back() = static_cast<Char>('y');
+  EXPECT_NE(surviving_leaf, node(different, fmt::bold()));
+  auto copy = surviving_branch;
+  copy.style(fmt::italic());
+  copy += text<Char>("more");
+  EXPECT_EQ(surviving_branch, separate + text<Char>("tail"));
+  const auto empty_string = node(std::basic_string<Char>{});
+  EXPECT_EQ(empty_string, node{});
+  EXPECT_NE(empty_string, separate);
+  EXPECT_NE(separate, empty_string);
+  const auto nulls = std::basic_string<Char>(3, Char{});
+  EXPECT_EQ(node(nulls), node(nulls));
+  EXPECT_FALSE(node(nulls).empty());
+}
+} // namespace
+
+TEST(styled_text_test, narrow_shared_text_lifetime) {
+  check_shared_text_lifetime_and_equality<char>();
+}
+TEST(styled_text_test, wide_shared_text_lifetime) {
+  check_shared_text_lifetime_and_equality<wchar_t>();
+}
+
 TEST(styled_text_test, aliases_and_literals) {
   static_assert(std::is_same<fmt::styled_text, fmt::basic_styled_text<char>>::value,
                 "narrow alias");

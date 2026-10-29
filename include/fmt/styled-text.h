@@ -4,6 +4,7 @@
 
 #include "color.h"
 
+#include <memory>
 #include <new>
 #include <string>
 #include <utility>
@@ -19,7 +20,7 @@ class basic_styled_text {
   using string_type = std::basic_string<Char>;
 
  private:
-  using leaf = string_type;
+  using leaf = std::shared_ptr<const string_type>;
   using branch = std::vector<basic_styled_text>;
   friend struct formatter<basic_styled_text<Char>, Char>;
   text_style style_;
@@ -51,7 +52,7 @@ class basic_styled_text {
   }
   // Empty leaves are concatenation identities.
   auto empty() const noexcept -> bool
-  { return !is_branch_ && data_.text.empty(); }
+  { return !is_branch_ && !data_.text; }
 
   auto operator+=(basic_styled_text rhs) -> basic_styled_text& {
     if (rhs.empty()) return *this;
@@ -75,8 +76,10 @@ class basic_styled_text {
   friend bool operator==(const basic_styled_text& lhs,
                          const basic_styled_text& rhs) {
     if (lhs.style_ != rhs.style_ || lhs.is_branch_ != rhs.is_branch_) return false;
-    return lhs.is_branch_ ? lhs.data_.children == rhs.data_.children
-                          : lhs.data_.text == rhs.data_.text;
+    if (lhs.is_branch_) return lhs.data_.children == rhs.data_.children;
+    return lhs.data_.text == rhs.data_.text ||
+           (lhs.data_.text && rhs.data_.text &&
+            *lhs.data_.text == *rhs.data_.text);
   }
   friend bool operator!=(const basic_styled_text& lhs,
                          const basic_styled_text& rhs) {
@@ -90,15 +93,19 @@ class basic_styled_text {
 }; // basic_styled_text
 
 template<typename Char>
-inline basic_styled_text<Char>::basic_styled_text() : basic_styled_text(leaf{}) {}
+inline basic_styled_text<Char>::basic_styled_text()
+    : style_(), is_branch_(false) {
+  new (&data_.text) leaf();
+}
 template<typename Char>
-inline basic_styled_text<Char>::basic_styled_text(leaf text, text_style style)
+inline basic_styled_text<Char>::basic_styled_text(string_type text, text_style style)
     : style_(style), is_branch_(false) {
-  new (&data_.text) leaf(std::move(text));
+  new (&data_.text) leaf(text.empty() ? leaf{} :
+      std::make_shared<const string_type>(std::move(text)));
 }
 template<typename Char>
 inline basic_styled_text<Char>::basic_styled_text(const Char* text, text_style style)
-    : basic_styled_text(leaf(text), style) {}
+    : basic_styled_text(string_type(text), style) {}
 template<typename Char>
 inline basic_styled_text<Char>::basic_styled_text(const basic_styled_text& other)
     : style_(other.style_), is_branch_(other.is_branch_) {
