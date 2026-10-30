@@ -54,9 +54,13 @@ void check_construction_and_composition() {
   const auto empty = node{};
   EXPECT_TRUE(empty.empty());
   EXPECT_TRUE(empty.style().empty());
-  const auto a = node(text<Char>("a"), fmt::bold());
-  const auto b = node(text<Char>("b"), fmt::underline());
-  const auto c = node(text<Char>("c"));
+  const auto a_text = text<Char>("a");
+  const auto b_text = text<Char>("b");
+  const auto c_text = text<Char>("c");
+  const auto empty_text = text<Char>("");
+  const auto a = node(a_text, fmt::bold());
+  const auto b = node(b_text, fmt::underline());
+  const auto c = node(c_text);
   auto joined = a + b;
   EXPECT_FALSE(joined.empty());
   EXPECT_TRUE(joined.style().empty());
@@ -76,7 +80,7 @@ void check_construction_and_composition() {
   EXPECT_EQ(empty + a, a);
   EXPECT_EQ(a + empty, a);
   EXPECT_EQ(empty + empty, empty);
-  auto styled_empty = node(text<Char>(""), fmt::bold());
+  auto styled_empty = node(empty_text, fmt::bold());
   styled_empty += a;
   EXPECT_EQ(styled_empty, a);
   auto repeated = joined;
@@ -94,11 +98,14 @@ template<typename Char>
 void check_copy_move_and_reuse() {
   using node = fmt::basic_styled_text<Char>;
   auto input = std::basic_string<Char>(200, static_cast<Char>('x'));
+  const auto tail = text<Char>("tail");
+  const auto reused = text<Char>("reused");
+  const auto again = text<Char>("again");
+  const auto extra = text<Char>("extra");
   const auto leaf = node(input, fmt::bold());
   input[0] = static_cast<Char>('y');
-  EXPECT_EQ(leaf, node(std::basic_string<Char>(200, static_cast<Char>('x')),
-                       fmt::bold()));
-  const auto branch = leaf + text<Char>("tail");
+  EXPECT_EQ(leaf.plain_text(), input);
+  const auto branch = leaf + tail;
   for (int alternative = 0; alternative != 2; ++alternative) {
     const auto expected = alternative == 0 ? leaf : branch;
     auto source = expected;
@@ -106,7 +113,7 @@ void check_copy_move_and_reuse() {
     EXPECT_EQ(moved, expected);
     EXPECT_TRUE(source.empty());
     EXPECT_EQ(source, node{});
-    source += text<Char>("reused");
+    source += reused;
     EXPECT_EQ(source, node(text<Char>("reused")));
     // Exercise both target alternatives for both source alternatives.
     for (int target = 0; target != 2; ++target) {
@@ -115,7 +122,7 @@ void check_copy_move_and_reuse() {
       assigned = std::move(rhs);
       EXPECT_EQ(assigned, expected);
       EXPECT_EQ(rhs, node{});
-      rhs += text<Char>("again");
+      rhs += again;
       EXPECT_EQ(rhs, node(text<Char>("again")));
       auto& self = assigned;
       assigned = self;
@@ -130,7 +137,7 @@ void check_copy_move_and_reuse() {
   }
   auto copy = branch;
   copy.style(fmt::italic());
-  copy += text<Char>("extra");
+  copy += extra;
   EXPECT_EQ(branch, leaf + text<Char>("tail"));
   auto many = node{};
   for (int i = 0; i < 100; ++i) many += leaf;
@@ -152,17 +159,21 @@ TEST(styled_text_test, wide_copy_move_reuse) { check_copy_move_and_reuse<wchar_t
 
 namespace {
 template<typename Char>
-void check_shared_text_lifetime_and_equality() {
+void check_borrowed_text_lifetime_and_equality() {
   using node = fmt::basic_styled_text<Char>;
   const auto large = std::basic_string<Char>(100000, static_cast<Char>('x'));
+  const auto tail = text<Char>("tail");
+  const auto different_text = text<Char>("different");
+  const auto more = text<Char>("more");
+  const auto empty_text = std::basic_string<Char>{};
   auto surviving_leaf = node{};
   auto surviving_branch = node{};
   {
     auto source = node(large, fmt::bold());
     surviving_leaf = source;
-    surviving_branch = source + text<Char>("tail");
+    surviving_branch = source + tail;
     source.style(fmt::underline());
-    source += text<Char>("different");
+    source += different_text;
     EXPECT_EQ(surviving_leaf.style(), fmt::bold());
   }
   // Independently allocated strings compare by content, not pointer identity.
@@ -174,9 +185,9 @@ void check_shared_text_lifetime_and_equality() {
   EXPECT_NE(surviving_leaf, node(different, fmt::bold()));
   auto copy = surviving_branch;
   copy.style(fmt::italic());
-  copy += text<Char>("more");
+  copy += more;
   EXPECT_EQ(surviving_branch, separate + text<Char>("tail"));
-  const auto empty_string = node(std::basic_string<Char>{});
+  const auto empty_string = node(empty_text);
   EXPECT_EQ(empty_string, node{});
   EXPECT_NE(empty_string, separate);
   EXPECT_NE(separate, empty_string);
@@ -186,11 +197,11 @@ void check_shared_text_lifetime_and_equality() {
 }
 } // namespace
 
-TEST(styled_text_test, narrow_shared_text_lifetime) {
-  check_shared_text_lifetime_and_equality<char>();
+TEST(styled_text_test, narrow_borrowed_text_lifetime) {
+  check_borrowed_text_lifetime_and_equality<char>();
 }
-TEST(styled_text_test, wide_shared_text_lifetime) {
-  check_shared_text_lifetime_and_equality<wchar_t>();
+TEST(styled_text_test, wide_borrowed_text_lifetime) {
+  check_borrowed_text_lifetime_and_equality<wchar_t>();
 }
 
 namespace {
@@ -202,8 +213,12 @@ void check_plain_text() {
                              string_type>::value, "returns an owning string");
   EXPECT_EQ(node{}.plain_text(), string_type{});
   EXPECT_EQ((node{string_type{}, fmt::bold()}.plain_text()), string_type{});
-  const auto a = node{text<Char>(" a "), fmt::bold()};
-  auto nested = a + (node{text<Char>("b"), fmt::underline()} + text<Char>("\tc\n"));
+  const auto a_text = text<Char>(" a ");
+  const auto b_text = text<Char>("b");
+  const auto c_text = text<Char>("\tc\n");
+  const auto tail = text<Char>("tail");
+  const auto a = node{a_text, fmt::bold()};
+  auto nested = a + (node{b_text, fmt::underline()} + c_text);
   nested.style(fmt::italic());
   const auto snapshot = nested;
   const auto shared_copy = nested;
@@ -216,7 +231,7 @@ void check_plain_text() {
   EXPECT_EQ(nested.plain_text(), text<Char>(" a b\tc\n"));
   EXPECT_EQ(shared_copy.plain_text(), text<Char>(" a b\tc\n"));
   const auto nulls = string_type(3, Char{});
-  EXPECT_EQ((a + node{nulls} + text<Char>("tail")).plain_text(),
+  EXPECT_EQ((a + node{nulls} + tail).plain_text(),
             text<Char>(" a ") + nulls + text<Char>("tail"));
   const auto escapes = text<Char>("\x1b[31mred\x1b[0m");
   EXPECT_EQ((node{escapes, fmt::bold()}.plain_text()), escapes);
@@ -244,6 +259,76 @@ void check_plain_text() {
 
 TEST(styled_text_test, narrow_plain_text) { check_plain_text<char>(); }
 TEST(styled_text_test, wide_plain_text) { check_plain_text<wchar_t>(); }
+
+namespace {
+template<typename Char>
+void check_empty_view_comparisons() {
+  using view = fmt::basic_string_view<Char>;
+  constexpr auto null_view = view{};
+  static_assert(null_view.empty(), "default view is empty");
+  const auto storage = text<Char>("abc");
+  const auto backed_empty = view{storage.data(), 0};
+  const auto nonempty = view{storage};
+  EXPECT_EQ(null_view, view{});
+  EXPECT_EQ(null_view, backed_empty);
+  EXPECT_EQ(backed_empty, null_view);
+  EXPECT_EQ(null_view.compare(backed_empty), 0);
+  EXPECT_LT(null_view.compare(nonempty), 0);
+  EXPECT_GT(nonempty.compare(null_view), 0);
+  EXPECT_LT(null_view, nonempty);
+  EXPECT_GT(nonempty, null_view);
+  EXPECT_TRUE(null_view.starts_with(backed_empty));
+  EXPECT_TRUE(nonempty.starts_with(null_view));
+  EXPECT_NE(view(storage.data(), 1), nonempty);
+  const auto separate = text<Char>("abd");
+  EXPECT_LT(nonempty.compare(view{separate}), 0);
+  EXPECT_GT(view{separate}.compare(nonempty), 0);
+#if defined(__cpp_constexpr) && __cpp_constexpr >= 201304L
+  constexpr Char literal[] = {static_cast<Char>('x'), Char{}};
+  static_assert(view{}.compare(view{literal, 0}) == 0,
+                "different empty pointers compare in constant evaluation");
+#endif
+}
+
+template<typename Char>
+void check_string_concatenation() {
+  using node = fmt::basic_styled_text<Char>;
+  using string = typename node::string_type;
+  static_assert(std::is_convertible<const string&, node>::value,
+                "strings convert directly to borrowing nodes");
+  auto backing = string(200, static_cast<Char>('a'));
+  const auto prefix = text<Char>("prefix ");
+  const auto suffix = text<Char>(" suffix");
+  node value = backing;
+  const auto copy = value;
+  const auto paragraph = prefix + value + suffix;
+  EXPECT_EQ(paragraph.plain_text(), prefix + backing + suffix);
+  EXPECT_EQ((value + suffix).plain_text(), backing + suffix);
+  value += suffix;
+  EXPECT_EQ(value.plain_text(), backing + suffix);
+  // Changing a character does not invalidate storage: both views observe it.
+  backing[0] = static_cast<Char>('z');
+  EXPECT_EQ(copy.plain_text(), backing);
+  EXPECT_EQ(value.plain_text(), backing + suffix);
+  EXPECT_EQ(paragraph.plain_text(), prefix + backing + suffix);
+  // A temporary string is safe when the entire tree is consumed immediately.
+  EXPECT_EQ((node{prefix} + string(200, static_cast<Char>('b'))).plain_text(),
+            prefix + string(200, static_cast<Char>('b')));
+}
+} // namespace
+
+TEST(styled_text_test, narrow_empty_view_comparisons) {
+  check_empty_view_comparisons<char>();
+}
+TEST(styled_text_test, wide_empty_view_comparisons) {
+  check_empty_view_comparisons<wchar_t>();
+}
+TEST(styled_text_test, narrow_string_concatenation) {
+  check_string_concatenation<char>();
+}
+TEST(styled_text_test, wide_string_concatenation) {
+  check_string_concatenation<wchar_t>();
+}
 
 TEST(styled_text_test, aliases_and_literals) {
   static_assert(std::is_same<fmt::styled_text, fmt::basic_styled_text<char>>::value,

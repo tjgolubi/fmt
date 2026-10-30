@@ -54,6 +54,10 @@ class basic_styled_text {
     : _style{style}, _is_branch{false}
   { new (&_data.text) leaf{text}; }
 
+  // Borrows the string's characters; does not extend its lifetime.
+  basic_styled_text(const string_type& text, text_style style = {})
+    : basic_styled_text{view_type{text}, style} {}
+
   basic_styled_text(const Char* text, text_style style = {})
     : basic_styled_text{view_type{text}, style} {}
 
