@@ -36,10 +36,11 @@ class basic_styled_text {
     leaf text;
     branch children;
     storage() {}
-    ~storage() {}
+    constexpr storage(leaf value) noexcept : text{value} {}
+    FMT_CONSTEXPR20 ~storage() {}
   } _data;
 
-  void destroy() noexcept {
+  FMT_CONSTEXPR20 void destroy() noexcept {
     if (_is_branch)
       _data.children.~branch();
     else
@@ -47,18 +48,17 @@ class basic_styled_text {
   }
 
  public:
-  basic_styled_text() : _style{}, _is_branch{false}
-  { new (&_data.text) leaf{}; }
+  FMT_CONSTEXPR20 basic_styled_text() : basic_styled_text{view_type{}} {}
 
-  basic_styled_text(view_type text, text_style style = {})
-    : _style{style}, _is_branch{false}
-  { new (&_data.text) leaf{text}; }
+  FMT_CONSTEXPR20 basic_styled_text(view_type text, text_style style = {})
+    : _style{style}, _is_branch{false}, _data{text} {}
 
   // Borrows the string's characters; does not extend its lifetime.
-  basic_styled_text(const string_type& text, text_style style = {})
+  FMT_CONSTEXPR_STRING basic_styled_text(const string_type& text,
+                                       text_style style = {})
     : basic_styled_text{view_type{text}, style} {}
 
-  basic_styled_text(const Char* text, text_style style = {})
+  FMT_CONSTEXPR20 basic_styled_text(const Char* text, text_style style = {})
     : basic_styled_text{view_type{text}, style} {}
 
   basic_styled_text(const basic_styled_text& other)
@@ -83,7 +83,7 @@ class basic_styled_text {
     other._style = text_style{};
   }
 
-  ~basic_styled_text() { destroy(); }
+  FMT_CONSTEXPR20 ~basic_styled_text() { destroy(); }
 
   auto operator=(const basic_styled_text& other) -> basic_styled_text& {
     if (this == &other) return *this;
@@ -99,19 +99,19 @@ class basic_styled_text {
     return *this;
   }
 
-  auto style() const noexcept -> text_style { return _style; }
-  auto style(text_style value) noexcept -> basic_styled_text& {
+  FMT_CONSTEXPR auto style() const noexcept -> text_style { return _style; }
+  FMT_CONSTEXPR auto style(text_style value) noexcept -> basic_styled_text& {
     _style = value;
     return *this;
   }
 
   // Empty leaves are concatenation identities.
-  auto empty() const noexcept -> bool
+  FMT_CONSTEXPR auto empty() const noexcept -> bool
   { return !_is_branch && _data.text.empty(); }
 
 private:
 
-  void append_plain_text(string_type& result) const {
+  FMT_CONSTEXPR_STRING void append_plain_text(string_type& result) const {
     if (_is_branch) {
       for (const auto& child : _data.children)
         child.append_plain_text(result);
@@ -127,7 +127,7 @@ public:
    * applying styles. Preserves embedded nulls and escapes without interpreting
    * them. Does not modify this value. Allocation can throw.
    */
-  FMT_NODISCARD auto plain_text() const -> string_type {
+  FMT_NODISCARD FMT_CONSTEXPR_STRING auto plain_text() const -> string_type {
     auto result = string_type{};
     append_plain_text(result);
     return result;
@@ -154,7 +154,8 @@ public:
   } // +=
 
   friend
-  bool operator==(const basic_styled_text& lhs, const basic_styled_text& rhs) {
+  FMT_CONSTEXPR bool operator==(const basic_styled_text& lhs,
+                                const basic_styled_text& rhs) {
     if (lhs._style != rhs._style || lhs._is_branch != rhs._is_branch)
       return false;
     if (lhs._is_branch)
@@ -163,7 +164,8 @@ public:
   }
 
   friend
-  bool operator!=(const basic_styled_text& lhs, const basic_styled_text& rhs)
+  FMT_CONSTEXPR bool operator!=(const basic_styled_text& lhs,
+                                const basic_styled_text& rhs)
   { return !(lhs == rhs); }
 
   friend auto operator+(basic_styled_text lhs, basic_styled_text rhs)

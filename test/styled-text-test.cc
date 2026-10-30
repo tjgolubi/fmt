@@ -343,3 +343,81 @@ TEST(styled_text_test, aliases_and_literals) {
   EXPECT_EQ(wide + L"\u03b2", wide + std::wstring(L"\u03b2"));
   EXPECT_EQ((wide + L"\u03b2").plain_text(), std::wstring{L"\u03b1\u03b2"});
 }
+
+#if FMT_USE_CONSTEVAL && FMT_CPLUSPLUS >= 202002L
+namespace {
+template<typename Char>
+struct constexpr_text {
+  static constexpr Char value[] = {Char{'a'}, Char{}, Char{'b'}, Char{}};
+};
+template<typename Char> constexpr Char constexpr_text<Char>::value[];
+
+template<typename Char>
+constexpr auto check_constexpr_leaf() -> bool {
+  using node = fmt::basic_styled_text<Char>;
+  using view = typename node::view_type;
+  using data = constexpr_text<Char>;
+  const Char value[] = {Char{'a'}, Char{}, Char{'b'}, Char{}};
+  const Char same[] = {Char{'a'}, Char{}, Char{'b'}, Char{}};
+  const Char different[] = {Char{'a'}, Char{}, Char{'c'}, Char{}};
+  constexpr auto empty = node{};
+  constexpr auto literal = node{data::value, fmt::bold()};
+  const auto backed_empty = node{view{value, 0}};
+  const auto binary = node{view{value, 3}, fmt::underline()};
+  const auto equal = node{view{same, 3}, fmt::underline()};
+  const auto other_text = node{view{different, 3}, fmt::underline()};
+  const auto other_style = node{view{value, 3}, fmt::italic()};
+  const auto shorter = node{view{value, 1}, fmt::underline()};
+  auto mutable_leaf = node{view{value, 3}};
+  const auto& styled = mutable_leaf.style(fmt::italic());
+  return empty.empty() && empty.style().empty() && backed_empty.empty() &&
+         empty == backed_empty && backed_empty == empty && !literal.empty() &&
+         literal.style() == fmt::bold() && binary.style() == fmt::underline() &&
+         binary == equal && !(binary != equal) && binary != other_text &&
+         binary != other_style && binary != shorter && binary != empty &&
+         empty != binary && &styled == &mutable_leaf &&
+         mutable_leaf.style() == fmt::italic() && mutable_leaf == other_style;
+}
+
+#if FMT_USE_CONSTEXPR_STRING
+template<typename Char>
+constexpr auto check_constexpr_plain_text() -> bool {
+  using node = fmt::basic_styled_text<Char>;
+  using view = typename node::view_type;
+  using string = typename node::string_type;
+  using data = constexpr_text<Char>;
+  auto input = string(200, Char{'x'});
+  input[1] = Char{};
+  const auto borrowed = node{input, fmt::bold()};
+  auto result = borrowed.plain_text();
+  if (result != input) return false;
+  result[0] = Char{'y'};
+  const auto binary = node{view{data::value, 3}}.plain_text();
+  return node{}.plain_text().empty() && input[0] == Char{'x'} &&
+         borrowed.style() == fmt::bold() && binary.size() == 3 &&
+         binary[0] == Char{'a'} && binary[1] == Char{} && binary[2] == Char{'b'};
+}
+#endif
+} // namespace
+
+TEST(styled_text_test, narrow_constexpr_leaf) {
+  static_assert(check_constexpr_leaf<char>(), "narrow leaves are constexpr");
+  EXPECT_TRUE(check_constexpr_leaf<char>());
+}
+TEST(styled_text_test, wide_constexpr_leaf) {
+  static_assert(check_constexpr_leaf<wchar_t>(), "wide leaves are constexpr");
+  EXPECT_TRUE(check_constexpr_leaf<wchar_t>());
+}
+#if FMT_USE_CONSTEXPR_STRING
+TEST(styled_text_test, narrow_constexpr_plain_text) {
+  static_assert(check_constexpr_plain_text<char>(),
+                "narrow plain text is constexpr");
+  EXPECT_TRUE(check_constexpr_plain_text<char>());
+}
+TEST(styled_text_test, wide_constexpr_plain_text) {
+  static_assert(check_constexpr_plain_text<wchar_t>(),
+                "wide plain text is constexpr");
+  EXPECT_TRUE(check_constexpr_plain_text<wchar_t>());
+}
+#endif
+#endif
