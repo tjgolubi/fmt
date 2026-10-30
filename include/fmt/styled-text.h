@@ -1,12 +1,11 @@
-// Owned structured styled text.
+// Structured styled text with borrowed character storage.
 #ifndef FMT_STYLED_TEXT_H_
 #define FMT_STYLED_TEXT_H_
 
 #include "color.h"
 
-#include "string_view.h"
+#include "core.h"
 
-#include <memory>
 #include <new>
 #include <string>
 #include <utility>
@@ -14,15 +13,20 @@
 
 FMT_BEGIN_NAMESPACE
 
-/** An owned string or sequence of styled children, with a style for this node. */
+/**
+ * A borrowed text view or owned sequence of styled children.
+ * Referenced characters must outlive this value and every copy that uses them.
+ * Copies own their child nodes but continue to borrow the same characters.
+ */
 template<typename Char>
 class basic_styled_text {
  public:
   using char_type   = Char;
-  using string_type = basic_string_view<Char>;
+  using string_type = std::basic_string<Char>;
+  using view_type   = basic_string_view<Char>;
 
  private:
-  using leaf   = string_type;
+  using leaf   = view_type;
   using branch = std::vector<basic_styled_text>;
   friend struct formatter<basic_styled_text<Char>, Char>;
   text_style _style{};
@@ -46,12 +50,12 @@ class basic_styled_text {
   basic_styled_text() : _style{}, _is_branch{false}
   { new (&_data.text) leaf{}; }
 
-  basic_styled_text(string_type text, text_style style = {})
+  basic_styled_text(view_type text, text_style style = {})
     : _style{style}, _is_branch{false}
   { new (&_data.text) leaf{text}; }
 
   basic_styled_text(const Char* text, text_style style = {})
-    : basic_styled_text{string_type{text}, style} {}
+    : basic_styled_text{view_type{text}, style} {}
 
   basic_styled_text(const basic_styled_text& other)
     : _style{other._style}, _is_branch{other._is_branch}
@@ -62,12 +66,32 @@ class basic_styled_text {
       new (&_data.text) leaf{other._data.text};
   }
 
+  basic_styled_text(basic_styled_text&& other) noexcept
+    : _style{other._style}, _is_branch{other._is_branch}
+  {
+    if (_is_branch)
+      new (&_data.children) branch{std::move(other._data.children)};
+    else
+      new (&_data.text) leaf{other._data.text};
+    other.destroy();
+    new (&other._data.text) leaf{};
+    other._is_branch = false;
+    other._style = text_style{};
+  }
+
   ~basic_styled_text() { destroy(); }
 
   auto operator=(const basic_styled_text& other) -> basic_styled_text& {
     if (this == &other) return *this;
-    _style = other._style;
-    _data  = other._data;
+    auto copy = basic_styled_text{other};
+    return *this = std::move(copy);
+  }
+
+  auto operator=(basic_styled_text&& other) noexcept -> basic_styled_text& {
+    if (this == &other) return *this;
+    auto moved = basic_styled_text{std::move(other)};
+    this->~basic_styled_text();
+    new (this) basic_styled_text{std::move(moved)};
     return *this;
   }
 
@@ -87,8 +111,8 @@ private:
     if (_is_branch) {
       for (const auto& child : _data.children)
         child.append_plain_text(result);
-    } else {
-      result.append(_data.text);
+    } else if (!_data.text.empty()) {
+      result.append(_data.text.data(), _data.text.size());
     }
   }
 
@@ -105,18 +129,18 @@ public:
     return result;
   }
 
-  auto operator+=(const basic_styled_text& rhs) -> basic_styled_text& {
+  auto operator+=(basic_styled_text rhs) -> basic_styled_text& {
     if (rhs.empty()) return *this;
-    if (empty()) return *this = rhs;
+    if (empty()) return *this = std::move(rhs);
     if (_is_branch) {
-      _data.children.push_back(rhs);
+      _data.children.push_back(std::move(rhs));
     }
     else {
       auto children = branch{};
       // Allocate before moving either operand. The following moves cannot throw.
       children.reserve(2);
-      children.push_back(*this);
-      children.push_back(rhs);
+      children.push_back(std::move(*this));
+      children.push_back(std::move(rhs));
       destroy();
       new (&_data.children) branch{std::move(children)};
       _is_branch = true;
@@ -138,9 +162,12 @@ public:
   bool operator!=(const basic_styled_text& lhs, const basic_styled_text& rhs)
   { return !(lhs == rhs); }
 
-  friend auto operator+(basic_styled_text lhs, const basic_styled_text& rhs)
+  friend auto operator+(basic_styled_text lhs, basic_styled_text rhs)
       -> basic_styled_text
-  { return lhs += rhs; }
+  {
+    lhs += std::move(rhs);
+    return lhs;
+  }
 }; // basic_styled_text
 
 using styled_text  = basic_styled_text<char>;

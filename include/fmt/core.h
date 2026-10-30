@@ -462,6 +462,7 @@ constexpr FMT_ALWAYS_INLINE auto narrow(const char* s) -> const char* {
 
 template <typename Char>
 FMT_CONSTEXPR auto compare(const Char* s1, const Char* s2, size_t n) -> int {
+  if (s1 == s2) return 0;
   if (!is_constant_evaluated() && sizeof(Char) == 1) return memcmp(s1, s2, n);
   for (; n != 0; ++s1, ++s2, --n) {
     if (*s1 < *s2) return -1;
@@ -555,6 +556,8 @@ template <typename Char> class basic_string_view {
 
   constexpr auto data() const noexcept -> const Char* { return data_; }
   constexpr auto size() const noexcept -> size_t { return size_; }
+
+  constexpr auto empty() const noexcept -> bool { return (size_ == 0); }
 
   constexpr auto begin() const noexcept -> iterator { return data_; }
   constexpr auto end() const noexcept -> iterator { return data_ + size_; }
