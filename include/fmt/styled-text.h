@@ -30,6 +30,7 @@ class basic_styled_text {
     leaf text;
     branch children;
     storage() {}
+    storage(leaf value) noexcept : text{std::move(value)} {}
     ~storage() {}
   } _data;
 
@@ -50,15 +51,12 @@ class basic_styled_text {
   }
 
  public:
-  basic_styled_text() : _style{}, _is_branch{false}
-  { new (&_data.text) leaf{}; }
+  basic_styled_text() : _style{}, _is_branch{false}, _data{leaf{}} {}
 
   basic_styled_text(string_type text, text_style style = {})
-    : _style{style}, _is_branch{false}
-  {
-    new (&_data.text) leaf{text.empty() ? leaf{} :
-        std::make_shared<const string_type>(std::move(text))};
-  }
+    : _style{style}, _is_branch{false},
+      _data{text.empty() ? leaf{} :
+          std::make_shared<const string_type>(std::move(text))} {}
 
   basic_styled_text(const Char* text, text_style style = {})
     : basic_styled_text{string_type{text}, style} {}
