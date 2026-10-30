@@ -959,7 +959,7 @@ constexpr auto blend_accumulate(blend_state state, First first,
 } // detail
 
 /**
- * Returns the component-wise arithmetic mean of one or more plain colors.
+ * Returns the component-wise arithmetic mean of two or more plain colors.
  * Accepts rgb, term_color, cube_color, and gray_color, converting each to RGB.
  * Each argument has equal weight. Fractional channels are rounded down after
  * summing all arguments. The arguments are unchanged.
@@ -967,27 +967,31 @@ constexpr auto blend_accumulate(blend_state state, First first,
  */
 #if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
     __cpp_concepts >= 201907L
-template<Color First, Color... Colors>
+template<Color First, Color Second, Color... Colors>
 #else
-template<typename First, typename... Colors,
+template<typename First, typename Second, typename... Colors,
          typename std::enable_if<
-             detail::all_colors<First, Colors...>::value, int>::type = 0>
+             detail::all_colors<First, Second, Colors...>::value,
+             int>::type = 0>
 #endif
 FMT_NODISCARD
-constexpr auto blend(First first, Colors... rest) noexcept -> rgb {
+constexpr auto blend(First first, Second second, Colors... rest) noexcept
+    -> rgb {
 #if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
     __cpp_concepts >= 201907L
   detail::blend_state state;
-  const rgb colors[] = {rgb(first), rgb(rest)...};
+  const rgb colors[] = {rgb(first), rgb(second), rgb(rest)...};
   for (auto color : colors) state = state.add(color, color_t{color});
   return state.average();
 #else
-  return detail::blend_accumulate(detail::blend_state{}, first, rest...).average();
+  return detail::blend_accumulate(
+      detail::blend_state{}, first, second, rest...).average();
 #endif
 }
 
 /**
- * Returns the equal-weight RGB average of specified colors, ignoring no_color.
+ * Blends two or more colors, returning the equal-weight RGB average of
+ * specified colors and ignoring no_color.
  * Accepts color_t and plain colors. No specified colors produce no_color;
  * one specified color retains its kind and value; two or more produce RGB.
  * Fractional channels are rounded down after summing all specified colors.
@@ -995,23 +999,26 @@ constexpr auto blend(First first, Colors... rest) noexcept -> rgb {
  */
 #if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
     __cpp_concepts >= 201907L
-template<typename... Colors>
-  requires (detail::is_blend_color<Colors>::value && ...)
+template<typename Second, typename... Colors>
+  requires (detail::is_blend_color<Second>::value &&
+            (detail::is_blend_color<Colors>::value && ...))
 #else
-template<typename... Colors,
+template<typename Second, typename... Colors,
          typename std::enable_if<
-             detail::all_blend_colors<Colors...>::value, int>::type = 0>
+             detail::all_blend_colors<Second, Colors...>::value, int>::type = 0>
 #endif
 FMT_NODISCARD
-constexpr auto blend(color_t first, Colors... rest) noexcept -> color_t {
+constexpr auto blend(color_t first, Second second, Colors... rest) noexcept
+    -> color_t {
 #if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
     __cpp_concepts >= 201907L
   detail::blend_state state;
-  const color_t colors[] = {first, color_t{rest}...};
+  const color_t colors[] = {first, color_t{second}, color_t{rest}...};
   for (auto color : colors) state = state.add(color);
   return state.result();
 #else
-  return detail::blend_accumulate(detail::blend_state{}, first, rest...).result();
+  return detail::blend_accumulate(
+      detail::blend_state{}, first, second, rest...).result();
 #endif
 }
 
@@ -1565,7 +1572,7 @@ constexpr auto blend_styles_accumulate(style_blend_state state, First first,
 } // detail
 
 /**
- * Blends one or more text styles, averaging each color channel independently
+ * Blends two or more text styles, averaging each color channel independently
  * and combining emphasis bits by OR. Unspecified colors do not contribute.
  * Each channel preserves its kind with one specified color, holds RGB with
  * two or more, and remains unspecified with none. The arguments are unchanged.
@@ -1573,25 +1580,28 @@ constexpr auto blend_styles_accumulate(style_blend_state state, First first,
  */
 #if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
     __cpp_concepts >= 201907L
-template<typename First, typename... Styles>
+template<typename First, typename Second, typename... Styles>
   requires (detail::is_text_style<First>::value &&
+            detail::is_text_style<Second>::value &&
             (detail::is_text_style<Styles>::value && ...))
 #else
-template<typename First, typename... Styles,
+template<typename First, typename Second, typename... Styles,
          typename std::enable_if<
-             detail::all_text_styles<First, Styles...>::value, int>::type = 0>
+             detail::all_text_styles<First, Second, Styles...>::value,
+             int>::type = 0>
 #endif
 FMT_NODISCARD
-constexpr auto blend(First first, Styles... rest) noexcept -> text_style {
+constexpr auto blend(First first, Second second, Styles... rest) noexcept
+    -> text_style {
 #if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
     __cpp_concepts >= 201907L
   detail::style_blend_state state;
-  const text_style styles[] = {first, rest...};
+  const text_style styles[] = {first, second, rest...};
   for (auto style : styles) state = state.add(style);
   return state.result();
 #else
   return detail::blend_styles_accumulate(
-      detail::style_blend_state{}, first, rest...).result();
+      detail::style_blend_state{}, first, second, rest...).result();
 #endif
 }
 

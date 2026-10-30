@@ -110,11 +110,11 @@ Use a component setter to replace a color rather than combine its bits.
 
 ### Blending styles
 
-::: blend(First, Styles...)
+::: blend(First, Second, Styles...)
     options:
       color_reference: true
 
-Pass one or more `text_style` values to `fmt::blend` to return a new style.
+Pass two or more `text_style` values to `fmt::blend` to return a new style.
 Foreground colors are averaged independently of background colors, using
 [color blending](colors.md#blending-color-variants). Unspecified colors are
 ignored separately in each channel. Emphasis bits from every input are ORed.
@@ -138,9 +138,9 @@ constexpr auto mixed = fmt::blend(first, second, third);
 ```
 
 The function leaves its inputs unchanged, is `noexcept`, and supports constant
-evaluation in C++11 and later. A single style is returned unchanged; blending
-only empty styles returns an empty style. All arguments must be styles; use a
-`text_style` constructor to combine colors and emphasis before blending.
+evaluation in C++11 and later. Blending only empty styles returns an empty
+style. All arguments must be styles; use a `text_style` constructor to combine
+colors and emphasis before blending.
 
 ### Empty styles and clearing
 

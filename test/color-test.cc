@@ -1265,14 +1265,15 @@ TEST(color_test, rgb_or) {
 }
 
 TEST(color_test, rgb_blend) {
-  static_assert(std::is_same<decltype(fmt::blend(fmt::rgb{})), fmt::rgb>::value,
+  static_assert(std::is_same<decltype(fmt::blend(fmt::rgb{}, fmt::rgb{})),
+                             fmt::rgb>::value,
                 "blend must return an RGB value");
   static_assert(noexcept(fmt::blend(fmt::rgb{}, fmt::rgb{})),
                 "blend must be noexcept");
   auto black = fmt::rgb{};
   auto white = fmt::rgb{255, 255, 255};
-  EXPECT_EQ(fmt::blend(black), black);
-  EXPECT_EQ(fmt::blend(white), white);
+  EXPECT_EQ(fmt::blend(black, black), black);
+  EXPECT_EQ(fmt::blend(white, white), white);
   EXPECT_EQ(fmt::blend(black, black, black), black);
   EXPECT_EQ(fmt::blend(white, white, white, white), white);
   EXPECT_EQ(fmt::blend(black, white), (fmt::rgb{127, 127, 127}));
@@ -1295,11 +1296,11 @@ TEST(color_test, rgb_blend) {
   EXPECT_EQ(fmt::blend(third, second, first), (fmt::rgb{0, 2, 254}));
   EXPECT_EQ(fmt::blend(fmt::color::red, fmt::color::green, fmt::color::blue),
             (fmt::rgb{85, 42, 85}));
-  constexpr auto single  = fmt::blend(fmt::rgb{1, 2, 3});
+  constexpr auto same = fmt::blend(fmt::rgb{1, 2, 3}, fmt::rgb{1, 2, 3});
   constexpr auto average = fmt::blend(fmt::rgb{255, 0, 0}, fmt::rgb{0, 255, 0},
                                      fmt::rgb{0, 0, 255});
-  static_assert(single.r == 1 && single.g == 2 && single.b == 3,
-                "one-argument blending must preserve all channels");
+  static_assert(same.r == 1 && same.g == 2 && same.b == 3,
+                "equal RGB colors preserve all channels");
   static_assert(average.r == 85 && average.g == 85 && average.b == 85,
                 "blend must support constant evaluation");
 }
@@ -1374,7 +1375,8 @@ TEST(color_test, to_rgb) {
 }
 
 TEST(color_test, blend_overloads) {
-  static_assert(std::is_same<decltype(fmt::blend(fmt::term_color::red)),
+  static_assert(std::is_same<decltype(fmt::blend(fmt::term_color::red,
+                                                fmt::term_color::red)),
                              fmt::rgb>::value &&
                     std::is_same<decltype(fmt::blend(fmt::cube_color{0},
                                                      fmt::gray_color{0})),
@@ -1392,7 +1394,7 @@ TEST(color_test, blend_overloads) {
                     !decltype(can_blend<fmt::rgb, int>(0))::value &&
                     !decltype(can_blend<int, fmt::rgb>(0))::value &&
                     !decltype(can_blend<fmt::color_t, const char*>(0))::value,
-                "blending requires one or more color arguments");
+                "blending requires valid color arguments");
   static_assert(noexcept(fmt::blend(fmt::term_color::red,
                                     std::declval<fmt::gray_color>())) &&
                     noexcept(fmt::blend(fmt::color_t{}, fmt::rgb{})),
@@ -1410,9 +1412,30 @@ TEST(color_test, blend_overloads) {
                                     fmt::gray_color{12});
   static_assert(mixed == fmt::rgb{142, 87, 101},
                 "plain palette promotion and averaging must be constexpr");
-  constexpr auto terminal = fmt::blend(fmt::term_color::red);
+  constexpr auto terminal = fmt::blend(fmt::term_color::red,
+                                       fmt::term_color::red);
   static_assert(terminal == fmt::rgb{205, 0, 0},
-                "a single plain terminal color returns its RGB equivalent");
+                "equal plain terminal colors return their RGB equivalent");
+}
+
+TEST(color_test, blend_minimum_arity) {
+  static_assert(!decltype(can_blend<>(0))::value &&
+                    !decltype(can_blend<fmt::rgb>(0))::value &&
+                    !decltype(can_blend<fmt::term_color>(0))::value &&
+                    !decltype(can_blend<fmt::cube_color>(0))::value &&
+                    !decltype(can_blend<fmt::gray_color>(0))::value &&
+                    !decltype(can_blend<fmt::color_t>(0))::value &&
+                    !decltype(can_blend<fmt::no_color_t>(0))::value &&
+                    !decltype(can_blend<fmt::text_style>(0))::value,
+                "public blend requires at least two arguments");
+  static_assert(decltype(can_blend<fmt::rgb, fmt::rgb>(0))::value &&
+                    decltype(can_blend<fmt::rgb, fmt::color_t>(0))::value &&
+                    decltype(can_blend<fmt::color_t, fmt::rgb>(0))::value &&
+                    decltype(can_blend<fmt::no_color_t,
+                                       fmt::no_color_t>(0))::value &&
+                    decltype(can_blend<fmt::text_style,
+                                       fmt::text_style>(0))::value,
+                "two-argument color and style blends remain available");
 }
 
 TEST(color_test, color_variant_blend) {
@@ -1450,7 +1473,7 @@ TEST(color_test, color_variant_blend) {
       EXPECT_EQ(fmt::blend(lhs, rhs), expected);
       EXPECT_EQ(fmt::blend(fmt::no_color, lhs, fmt::no_color, rhs,
                            fmt::no_color), expected);
-      EXPECT_EQ(fmt::blend(lhs), lhs);
+      EXPECT_EQ(fmt::blend(lhs, fmt::no_color), lhs);
       EXPECT_EQ(lhs, composition_samples[i].color);
       EXPECT_EQ(rhs, composition_samples[j].color);
     }
@@ -1458,7 +1481,8 @@ TEST(color_test, color_variant_blend) {
 }
 
 TEST(color_test, text_style_blend) {
-  static_assert(std::is_same<decltype(fmt::blend(fmt::text_style{})),
+  static_assert(std::is_same<decltype(fmt::blend(fmt::text_style{},
+                                                fmt::text_style{})),
                              fmt::text_style>::value &&
                     decltype(can_blend<const fmt::text_style&,
                                        fmt::text_style>(0))::value,
@@ -1475,7 +1499,7 @@ TEST(color_test, text_style_blend) {
   constexpr auto single = fmt::text_style{fmt::cube_color{1, 2, 3},
                                          fmt::gray_color{12},
                                          fmt::emphasis::bold};
-  static_assert(fmt::blend(single) == single &&
+  static_assert(fmt::blend(fmt::text_style{}, single) == single &&
                     fmt::blend(fmt::text_style{}, single, fmt::text_style{}) == single,
                 "one specified color per channel retains its kind");
   constexpr auto first = fmt::text_style{fmt::term_color::red, fmt::no_color,

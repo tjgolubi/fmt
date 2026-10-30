@@ -177,7 +177,7 @@ When every argument is a plain color (`rgb`, `term_color`, `cube_color`, or
 `gray_color`), `fmt::blend` returns a new `rgb` containing their equally
 weighted channel averages. Palette arguments convert to their fixed RGB
 equivalents first. Fractional channel values are rounded down after all
-arguments are summed. A single argument returns its RGB equivalent.
+arguments are summed. At least two arguments are required.
 This averages the stored RGB components without gamma correction or alpha
 compositing.
 
@@ -194,7 +194,7 @@ auto mixed = fmt::blend(fmt::term_color::red, fmt::cube_color{1, 2, 3},
                         fmt::gray_color{12}); // rgb{142, 87, 101}
 ```
 
-Blending requires at least one argument and rejects non-color arguments during
+Blending requires at least two arguments and rejects non-color arguments during
 overload resolution. It is `noexcept` and supports constant evaluation in
 C++11 and later. In the C++23 implementation, the `fmt::Color` concept
 identifies the four plain color types, including const and reference forms;
@@ -537,12 +537,13 @@ Visitation supports C++11 constant evaluation when the visitor and color access 
 
 ### Blending color variants
 
-::: blend(color_t, Colors...)
+::: blend(color_t, Second, Colors...)
     options:
       color_reference: true
 
 If any argument is a `color_t` or `no_color`, `fmt::blend` returns a
-`color_t`. Plain colors and variants can appear in any argument position.
+`color_t`. At least two arguments are required. Plain colors and variants can
+appear in any argument position.
 Unspecified colors are ignored: they contribute neither RGB components nor
 weight to the average.
 
