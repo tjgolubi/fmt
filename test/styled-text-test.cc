@@ -245,6 +245,59 @@ void check_plain_text() {
 TEST(styled_text_test, narrow_plain_text) { check_plain_text<char>(); }
 TEST(styled_text_test, wide_plain_text) { check_plain_text<wchar_t>(); }
 
+namespace {
+template<typename Char>
+void check_string_concatenation() {
+  using node = fmt::basic_styled_text<Char>;
+  using string = typename node::string_type;
+  static_assert(std::is_convertible<const string&, node>::value,
+                "strings convert directly to owning nodes");
+  auto backing = string(200, static_cast<Char>('a'));
+  const auto original = backing;
+  const auto prefix = text<Char>("prefix ");
+  const auto suffix = text<Char>(" suffix");
+  node value = backing;
+  const auto copy = value;
+  const auto paragraph = prefix + value + suffix;
+  EXPECT_EQ(paragraph.plain_text(), prefix + original + suffix);
+  EXPECT_EQ((value + suffix).plain_text(), original + suffix);
+  value += suffix;
+  EXPECT_EQ(value.plain_text(), original + suffix);
+  backing[0] = static_cast<Char>('z');
+  EXPECT_EQ(copy.plain_text(), original);
+  EXPECT_EQ(value.plain_text(), original + suffix);
+  EXPECT_EQ(paragraph.plain_text(), prefix + original + suffix);
+  backing.clear();
+  backing.shrink_to_fit();
+  EXPECT_EQ(copy.plain_text(), original);
+  EXPECT_EQ(value.plain_text(), original + suffix);
+  EXPECT_EQ(paragraph.plain_text(), prefix + original + suffix);
+
+  // Temporary string operands can be destroyed before the resulting tree.
+  const auto temporary_text = string(200, static_cast<Char>('b'));
+  const auto temporary_rhs = node{prefix} + string(200, static_cast<Char>('b'));
+  const auto temporary_lhs = string(200, static_cast<Char>('b')) + node{suffix};
+  auto temporary_append = node{prefix};
+  temporary_append += string(200, static_cast<Char>('b'));
+  EXPECT_EQ(temporary_rhs.plain_text(), prefix + temporary_text);
+  EXPECT_EQ(temporary_lhs.plain_text(), temporary_text + suffix);
+  EXPECT_EQ(temporary_append.plain_text(), prefix + temporary_text);
+
+  EXPECT_EQ(string{} + copy, copy);
+  EXPECT_EQ(copy + string{}, copy);
+  auto appended_empty = copy;
+  appended_empty += string{};
+  EXPECT_EQ(appended_empty, copy);
+}
+} // namespace
+
+TEST(styled_text_test, narrow_string_concatenation) {
+  check_string_concatenation<char>();
+}
+TEST(styled_text_test, wide_string_concatenation) {
+  check_string_concatenation<wchar_t>();
+}
+
 TEST(styled_text_test, aliases_and_literals) {
   static_assert(std::is_same<fmt::styled_text, fmt::basic_styled_text<char>>::value,
                 "narrow alias");
