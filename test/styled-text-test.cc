@@ -298,6 +298,151 @@ TEST(styled_text_test, wide_string_concatenation) {
   check_string_concatenation<wchar_t>();
 }
 
+namespace {
+template<typename Char>
+void check_overlay() {
+  using node = fmt::basic_styled_text<Char>;
+  using string = typename node::string_type;
+  static_assert(noexcept(std::declval<node&>().overlay(fmt::text_style{})),
+                "member overlay does not throw");
+  static_assert(std::is_same<decltype(std::declval<node&>().overlay(
+                                fmt::text_style{})), node&>::value,
+                "member overlay returns the same node");
+  const auto left = node{text<Char>("left"), fmt::italic()};
+  const auto right = node{text<Char>("right"), fmt::faint()};
+  auto source = left + right;
+  source.style(fmt::fg(fmt::color::blue) | fmt::bg(fmt::gray_color{5}) |
+               fmt::underline());
+  const auto snapshot = source;
+  const auto overrides = fmt::fg(fmt::term_color::red) | fmt::bold();
+  auto expected = left + right;
+  expected.style(fmt::fg(fmt::term_color::red) | fmt::bg(fmt::gray_color{5}) |
+                 fmt::underline() | fmt::bold());
+  auto member = source;
+  EXPECT_EQ(&member.overlay(overrides), &member);
+  EXPECT_EQ(member, expected);
+  EXPECT_EQ(member.style().fg().index(),
+            fmt::to_underlying(fmt::color_t::kind::term));
+  EXPECT_EQ(member.plain_text(), text<Char>("leftright"));
+  member.overlay(fmt::text_style{}).overlay(member.style());
+  EXPECT_EQ(member, expected);
+  EXPECT_EQ(fmt::overlay(overrides, source), expected);
+  EXPECT_EQ(source, snapshot);
+  auto argument = source;
+  EXPECT_EQ(fmt::overlay(overrides, std::move(argument)), expected);
+  EXPECT_EQ(argument, node{});
+
+  auto empty = node{};
+  empty.overlay(overrides);
+  EXPECT_TRUE(empty.empty());
+  EXPECT_EQ(empty.style(), overrides);
+  EXPECT_EQ(empty, (node{string{}, overrides}));
+  EXPECT_EQ(fmt::overlay(overrides, string{}), empty);
+  auto input = string(200, static_cast<Char>('x'));
+  input[1] = Char{};
+  const auto original = input;
+  const auto owned = fmt::overlay(overrides, input);
+  input.assign(400, static_cast<Char>('y'));
+  EXPECT_EQ(owned.plain_text(), original);
+  EXPECT_EQ(owned.style(), overrides);
+  const auto temporary = fmt::overlay(overrides, string(200, Char{}));
+  EXPECT_EQ(temporary.plain_text(), string(200, Char{}));
+}
+
+template<typename Char>
+void check_emphasis_modifiers() {
+  using node = fmt::basic_styled_text<Char>;
+  using string = typename node::string_type;
+  struct modifier {
+    fmt::emphasis bit;
+    node (*on_node)(node&&);
+    node (*on_string)(const string&);
+    fmt::text_style (*factory)(bool);
+  };
+  const modifier modifiers[] = {
+      {fmt::emphasis::bold, fmt::bold<node>,
+       fmt::bold<const string&>, fmt::bold},
+      {fmt::emphasis::faint, fmt::faint<node>,
+       fmt::faint<const string&>, fmt::faint},
+      {fmt::emphasis::italic, fmt::italic<node>,
+       fmt::italic<const string&>, fmt::italic},
+      {fmt::emphasis::underline, fmt::underline<node>,
+       fmt::underline<const string&>, fmt::underline},
+      {fmt::emphasis::blink, fmt::blink<node>,
+       fmt::blink<const string&>, fmt::blink},
+      {fmt::emphasis::reverse, fmt::reverse<node>,
+       fmt::reverse<const string&>, fmt::reverse},
+      {fmt::emphasis::conceal, fmt::conceal<node>,
+       fmt::conceal<const string&>, fmt::conceal},
+      {fmt::emphasis::strike, fmt::strike<node>,
+       fmt::strike<const string&>, fmt::strike}};
+  const auto leaf = node{text<Char>("left"), fmt::underline()};
+  const auto sibling = node{text<Char>("right"), fmt::faint()};
+  auto source = leaf + sibling;
+  const auto base_style = fmt::fg(fmt::color::blue) |
+                          fmt::bg(fmt::term_color::black) | fmt::italic();
+  source.style(base_style);
+  const auto snapshot = source;
+  for (const auto& item : modifiers) {
+    auto expected = source;
+    expected.style(fmt::text_style{base_style.fg(), base_style.bg(),
+                                  base_style.emph() | item.bit});
+    auto argument = source;
+    EXPECT_EQ(item.on_node(std::move(argument)), expected);
+    EXPECT_EQ(argument, node{});
+    EXPECT_EQ(source, snapshot);
+    auto input = string(200, static_cast<Char>('x'));
+    input[1] = Char{};
+    const auto original = input;
+    const auto result = item.on_string(input);
+    input.assign(400, static_cast<Char>('y'));
+    EXPECT_EQ(result.plain_text(), original);
+    EXPECT_EQ(result.style(), fmt::text_style{item.bit});
+    EXPECT_EQ(item.factory(true), fmt::text_style{item.bit});
+    EXPECT_TRUE(item.factory(false).empty());
+  }
+}
+} // namespace
+
+TEST(styled_text_test, narrow_overlay) { check_overlay<char>(); }
+TEST(styled_text_test, wide_overlay) { check_overlay<wchar_t>(); }
+TEST(styled_text_test, narrow_emphasis_modifiers) {
+  check_emphasis_modifiers<char>();
+}
+TEST(styled_text_test, wide_emphasis_modifiers) {
+  check_emphasis_modifiers<wchar_t>();
+}
+TEST(styled_text_test, modifier_literals_and_composition) {
+  static_assert(std::is_same<decltype(fmt::bold()), fmt::text_style>::value,
+                "the no-argument style factory is unchanged");
+  static_assert(std::is_same<decltype(fmt::bold(fmt::text_style{})),
+                             fmt::text_style>::value,
+                "the style modifier overload is unchanged");
+  static_assert(std::is_same<decltype(fmt::bold("text")),
+                             fmt::styled_text>::value,
+                "literals select the text modifier");
+  static_assert(std::is_same<decltype(fmt::bold(L"text")),
+                             fmt::wstyled_text>::value,
+                "wide literals produce wide styled text");
+  const auto inner = fmt::styled_text{"nested bold", fmt::bold()};
+  auto expected = fmt::styled_text{"red text with "} + inner + " still red";
+  expected.style(fmt::fg(fmt::color::red));
+  const auto line = fmt::overlay(fmt::fg(fmt::color::red),
+      "red text with " + fmt::bold("nested bold") + " still red");
+  EXPECT_EQ(line, expected);
+  EXPECT_EQ(line.plain_text(), "red text with nested bold still red");
+  EXPECT_EQ(fmt::underline(fmt::bold("text")),
+            (fmt::styled_text{"text", fmt::bold() | fmt::underline()}));
+  EXPECT_EQ(fmt::overlay(fmt::italic(), L"wide"),
+            (fmt::wstyled_text{L"wide", fmt::italic()}));
+  const auto wide = fmt::overlay(fmt::bg(fmt::gray_color{12}),
+      L"prefix " + fmt::bold(L"bold") + L" suffix");
+  EXPECT_EQ(wide.plain_text(), L"prefix bold suffix");
+  EXPECT_EQ(wide.style(), fmt::bg(fmt::gray_color{12}));
+  EXPECT_TRUE(fmt::bold("").empty());
+  EXPECT_EQ(fmt::bold("").style(), fmt::bold());
+}
+
 TEST(styled_text_test, aliases_and_literals) {
   static_assert(std::is_same<fmt::styled_text, fmt::basic_styled_text<char>>::value,
                 "narrow alias");

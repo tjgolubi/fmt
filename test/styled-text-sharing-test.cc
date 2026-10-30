@@ -61,8 +61,32 @@ bool check_sharing() {
   start_counting();
   auto branch_copy = branch;
   count_allocations = false;
+  const auto branch_copy_allocations = allocation_count;
   // Structure may allocate; copying either large character buffer must not.
   if (allocated_bytes >= large.size() * sizeof(Char) || branch_copy != branch)
+    return false;
+
+  const auto root_style = fmt::fg(fmt::color::red);
+  auto expected = branch;
+  expected.style(root_style);
+  start_counting();
+  branch_copy.overlay(root_style);
+  count_allocations = false;
+  if (allocation_count != 0 || branch_copy != expected) return false;
+
+  start_counting();
+  auto styled_copy = fmt::overlay(root_style, branch);
+  count_allocations = false;
+  if (allocation_count != branch_copy_allocations || styled_copy != expected ||
+      !branch.style().empty())
+    return false;
+
+  start_counting();
+  auto styled_move = fmt::strike(fmt::bold(
+      fmt::overlay(root_style, std::move(branch_copy))));
+  count_allocations = false;
+  expected.style(root_style | fmt::bold() | fmt::strike());
+  if (allocation_count != 0 || !branch_copy.empty() || styled_move != expected)
     return false;
 
   start_counting();
