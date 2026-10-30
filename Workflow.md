@@ -43,11 +43,19 @@ file's line endings; create new text files with LF. Git uses
 `core.autocrlf=false` and `core.eol=lf`; inspect attributes or overrides before
 assuming a checkout follows those settings.
 
+For authored styling code, Terry prefers leading underscores on private member
+variables and brace initialization. Retain parentheses when narrowing rules,
+initializer-list overload selection, or compiler compatibility require them.
+Otherwise follow the {fmt} foundation's source style. The authorized style pass
+changed `styled-text.h` only; do not mechanically restyle unrelated headers.
+
 ### Cloud experiment and preservation
 
 Terry authorized native Linux tools in the cloud; MSYS2 Git and PATH rules
 below apply to his Windows/MSYS2 checkouts. Use compact SGR for the StyledText
-experiments. Batch changes before pushes to conserve GitHub Actions compute.
+experiments. Push CI is explicitly disabled for `feat/StyledText` by `54f06693`;
+PR triggers remain enabled. Do not restore push execution without instruction. Batch changes
+before authorized pushes to conserve GitHub Actions compute.
 Do not push solely to preserve a workspace: provide a downloadable backup of
 source, uncommitted changes, and coordination documents when requested.
 A local commit alone does not establish durable cloud-workspace retention.

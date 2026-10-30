@@ -9,47 +9,86 @@ stated otherwise. Use `color-dev` or an authorized feature branch, not the
 
 ## Cloud StyledText validation
 
-The cloud experiment runs on Debian 13 x86-64 with native GCC 14.2.0 and
-CMake 4.4.4. Terry explicitly authorized native Linux tools; no MSYS2 emulation
-is used. All 23 original CTest targets passed in a Release/C++23/default-SGR
-build at the original `5b3f49ff` baseline, with documentation disabled.
+Current local library commit: `9306441b406c743df39d865dcd41f22ee0f4e86c`
+on `feat/StyledText`. This session uses Ubuntu 24.04.3 x86-64, native GCC
+13.3.0. CMake was not available on PATH. Checks below were compiled directly,
+header-only, with `FMT_COLOR_COMPACT_SGR=1`; they are not CMake/CTest results.
+The source is committed locally but not pushed. The verified remote head remains
+`54f06693`. Automatic push CI is disabled for this branch; no remote result is
+claimed for the four local commits. See [StyledText.md](StyledText.md).
 
-The SGR transition change at `cff2fc5fa0793fb476b94441aa2241c895423a2b`
-passed `color-test` in C++23/default, C++23/compact, and C++11/compact builds,
-including all 65,536 emphasis-state pairs checked with an independent interpreter.
-Strict C++11 header and color-test syntax checks passed. This commit is pushed;
-GitHub CI results have not been checked, and no green remote matrix is claimed.
+Eleven Google Test cases pass in C++11 and C++23. Coverage includes compile-time public
+surface checks, rejection of vector/variant access, narrow/wide construction and
+composition, exact equality, shared-text lifetime and copy independence,
+self-assignment/concatenation, moved-from reset/reuse, and plain-text extraction.
+Extraction covers nesting, whitespace, long strings, non-ASCII wide characters,
+embedded nulls/escapes, returned-string independence, and const access.
 
-The `styled-text.h` foundation at pushed commit `7b0e07ce` passes its new
-`styled-text-test` target in Release/C++23 and Release/C++11, both with
-`FMT_COLOR_COMPACT_SGR=1`. Tests cover default/string/vector construction,
-implicit literals and strings, alternative access and wrong-kind errors,
-concatenation/nesting, exact equality, independent copies, moves, alternative
-changes, self-assignment, and assignment from a descendant. Strict C++11 test
-compilation with `-pedantic-errors -Wall -Wextra -Werror` passed.
-An additional C++11/header-only probe ran 1,000 ownership/copy/move/descendant-
-assignment cycles under AddressSanitizer and UndefinedBehaviorSanitizer with
-no reported errors. LeakSanitizer cannot run under this environment's tracing;
-`ASAN_OPTIONS=detect_leaks=0` was required, so leak detection is not established.
-
-The current experimental build is `build/taskwarrior`, Release/C++23, with
-compact SGR enabled through the compiler flags, not merely a named CMake option.
-The C++11 compact build is `build/transition-cxx11-compact`. Reproduce after
-restoring the source using a locally available CMake:
+Reproduce the focused suite from the library root:
 
 ```bash
-cmake -S . -B build/taskwarrior -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_STANDARD=23 -DFMT_TEST=ON -DFMT_DOC=OFF \
-  -DFMTCOLOR_SKIP=OFF -DCMAKE_CXX_FLAGS=-DFMT_COLOR_COMPACT_SGR=1
-cmake --build build/taskwarrior --target styled-text-test color-test --parallel 8
-ctest --test-dir build/taskwarrior -R '^(styled-text|color)-test$' --output-on-failure
+g++ -std=c++11 -DFMT_HEADER_ONLY=1 -DFMT_COLOR_COMPACT_SGR=1 \
+  -Iinclude -Itest -Itest/gtest test/styled-text-test.cc \
+  test/test-main.cc test/gtest/gmock-gtest-all.cc -pthread \
+  -o /tmp/styled-text-cxx11
+/tmp/styled-text-cxx11
 ```
 
-Use a separate build directory with `CMAKE_CXX_STANDARD=11` for the fallback.
-No full-suite result is claimed for the styled-text foundation, and no guide
-build, module export, old-compiler CI, or website publication was performed.
-The backup includes source snapshots and Git history, not platform build caches.
-See [StyledText.md](StyledText.md) for design, scope, and current local status.
+Repeat with `-std=c++23`. The same eleven tests passed under C++11 with
+`-fsanitize=address,undefined -fno-omit-frame-pointer -g`. Run with
+`ASAN_OPTIONS=detect_leaks=0`; leak detection is not established. Strict C++11
+compilation also passed:
+
+```bash
+g++ -std=c++11 -DFMT_HEADER_ONLY=1 -DFMT_COLOR_COMPACT_SGR=1 \
+  -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Werror \
+  -Iinclude -Itest -isystem test/gtest -c test/styled-text-test.cc \
+  -o /tmp/styled-text-strict.o
+```
+
+`test/styled-text-sharing-test.cc` is an isolated executable replacing global
+new/delete. It checks zero allocations for large-leaf copy/assignment, small
+structural allocations rather than duplicate large character storage for branch
+copies, and allocation-free empty construction/moves, for char and wchar_t.
+It passed C++11/C++23 with strict warnings and C++11 with exceptions disabled.
+It was rerun in C++11/C++23 after the brace-initialization style pass. CMake
+registration exists, but was not executed locally.
+
+```bash
+g++ -std=c++11 -DFMT_HEADER_ONLY=1 -DFMT_COLOR_COMPACT_SGR=1 \
+  -Iinclude test/styled-text-sharing-test.cc -o /tmp/styled-text-sharing
+/tmp/styled-text-sharing
+```
+
+The exceptions-disabled allocation check adds `-DFMT_EXCEPTIONS=0 -fno-exceptions`. A separate C++11/header-only smoke check with the same flags
+confirmed narrow/wide `plain_text` returns `"ab"`/`L"ab"` for styled `a` plus `b`.
+No tests were intentionally skipped in the focused suite. No fresh full suite,
+old compiler matrix, module export, guide build, or website publication is claimed.
+
+Earlier cloud validation used Debian 13, GCC 14.2.0, and CMake 4.4.4. Its 23-target
+Release/C++23/default-SGR baseline result applies to `5b3f49ff`, not this workspace
+or current source. The SGR transition commit `cff2fc5f` passed color-test in
+C++23/default, C++23/compact, and C++11/compact, including all 65,536 emphasis-state
+pairs checked with an independent interpreter. The original `7b0e07ce` foundation
+had focused C++11/C++23 compact and sanitizer checks, now superseded by the local
+API and tests above. These historical results do not validate the new full tree.
+
+When CMake is available, proposed reproduction is:
+
+```bash
+cmake -S . -B build/styled-text-compact -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_STANDARD=23 -DFMT_TEST=ON -DFMT_DOC=OFF \
+  -DFMTCOLOR_SKIP=OFF -DCMAKE_CXX_FLAGS=-DFMT_COLOR_COMPACT_SGR=1
+cmake --build build/styled-text-compact \
+  --target styled-text-test styled-text-sharing-test --parallel 8
+ctest --test-dir build/styled-text-compact \
+  -R '^styled-text(-sharing)?-test$' --output-on-failure
+```
+
+Use a separate C++11 build directory for that mode. These CMake commands have not
+been run for the current source. `StyledTextProgress.bundle` preserves the exact
+four local commits with prerequisite `54f06693`; it does not include uncommitted
+coordination edits. See StyledText.md for import and push-blocker details.
 
 ## Platforms and tools
 

@@ -405,10 +405,12 @@ convenience as a major design goal.
 
 Palette colors, RGB conversion, color/style blending, fluent operations,
 short names, public variants, and conditional factories are implemented.
-The owned leaf/branch foundation is committed and pushed at `7b0e07ce` on `feat/StyledText`,
-with the agreed model in [StyledText.md](StyledText.md). Rendering, absolute
-boundaries, and lazy blending remain design work.
-Parsing, display width, and serialization remain separate design work.
+The current `basic_styled_text<Char>` implementation is committed locally through
+`9306441b` on `feat/StyledText` and is not pushed. It provides shared immutable
+leaf text, privately owned child vectors, concatenation, and plain-text extraction.
+See [StyledText.md](StyledText.md) for exact state and invariants. Root-style
+forwarding and nested formatting are the next proposed increments; absolute
+boundaries, lazy blending, parsing, display width, and serialization remain open.
 
 The later independent library requires C++23 and `std::variant`; migration
 details remain open. The {fmt} release retains C++11 throughout. The current
@@ -426,33 +428,26 @@ conflict with unqualified factory names. Qualified `fmt::bold()` remains clear.
 
 ## Structured styled text
 
-The current authorized model is fully owned. Each `styled_text` has a
-`text_style` and a custom discriminated union containing either:
+The authoritative current design is in [StyledText.md](StyledText.md).
+`basic_styled_text<Char>` owns a node-local style and either shares immutable
+`basic_string<Char>` storage or owns a vector of same-character nodes. The narrow
+and wide aliases are `styled_text` and `wstyled_text`. Empty leaves use null
+shared pointers. Shared ownership is limited to strings, with no copy-on-write,
+borrowed subtrees, or shared vectors. A custom union supports C++11 throughout.
 
-```cpp
-using leaf = std::string;
-using branch = std::vector<styled_text>;
-```
+Construction from child vectors and public alternative/child access are removed.
+Concatenation alone creates branches; empty branches are prohibited. Moves reset
+the source to an empty, unstyled leaf. `+=` extends a left branch while preserving
+its root style; promoting a leaf creates an unstyled parent with both operands.
+Right-hand groups remain nested. Equality compares structure/styles and text
+contents, independently of shared-pointer identity. `plain_text` returns all text
+in order without applying styles or interpreting escapes.
 
-The separate header is `<fmt/styled-text.h>`. The latest explicit filename
-supersedes the earlier tentative `text-style.h`. A private Boolean selects the
-active union member. Other flags and representation compaction can be revisited.
-Do not use `std::variant`, string views, or borrowed subtree pointers in this
-increment. String views may be considered later, with a new lifetime design.
-
-Default construction gives an empty leaf and empty style. String, literal, and
-child-vector constructors take an optional style defaulting to empty. Strings
-and literals implicitly convert to nodes. Copying owns a recursive copy;
-moving transfers storage. `operator+` creates an empty-style parent with both
-operands as children, preserving styles and nesting. No `operator+=` is added.
-Equality compares exact styles, alternative, strings, child order, and structure;
-render-equivalent trees need not be equal. The type-based `holds_alternative`
-and `get` overloads expose alternatives. See [StyledText.md](StyledText.md) for
-signatures, limitations, and the working-copy status.
-
-Plain strings are stored as supplied, without interpreting embedded escapes.
-Rendering, inheritance resolution, formatting, and parsing are not implemented
-by these constructors or comparisons. The rules below remain proposals.
+Public iteration is deferred. The matching formatter is a friend so nested
+rendering needs no public structural API. Root-style forwarding members and free
+functions are discussed but not implemented; ambiguous clearing/composition
+operations remain separate decisions. Newer instructions in the conversation
+supersede earlier ownership and public-access proposals.
 
 ### Absolute and lazy styles
 

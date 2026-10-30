@@ -1,71 +1,103 @@
-# Owned styled text experiment
+# Structured styled text experiment
 
 Updated October 29, 2026.
 
 ## Scope and state
 
-Library branch: `feat/StyledText`, based on `color-dev` at
-`5b3f49ff7599df5beb651c3ccc8a403d7a7386a1`. The SGR transition contribution is
-committed and pushed as `cff2fc5fa0793fb476b94441aa2241c895423a2b`.
-The owned structured-text foundation is committed and pushed as `7b0e07ce` on
-`feat/StyledText`. Terry explicitly authorized committing and pushing both this
-implementation and the coordination handoff. The handoff is maintained on the
-separate `docs/Coord` branch; verify its remote ref after the save.
-Use compact SGR and focused local checks; avoid unnecessary CI-triggering pushes.
+Library branch: `feat/StyledText`. Local HEAD is
+`9306441b406c743df39d865dcd41f22ee0f4e86c`, with a clean library working tree.
+The verified GitHub head is `54f06693bea6735b16f6ad4a8e131d8d850bc8de`.
+Four local commits are not pushed:
 
-## Agreed representation
+| Commit     | Scope                                                     |
+| ---------- | --------------------------------------------------------- |
+| `17a87964` | Character-generic nodes, append fixes, private structure. |
+| `ca36b9d1` | Shared immutable leaf strings and allocation regression.  |
+| `afe46c0c` | Leading underscores and brace initialization.             |
+| `9306441b` | Plain-text extraction and regression tests.               |
 
-`<fmt/styled-text.h>` defines `fmt::styled_text`: a node-local `text_style`,
-a private `bool is_branch_`, and a manually managed union. The alternatives are
-`styled_text::leaf` (`std::string`) and `styled_text::branch`
-(`std::vector<styled_text>`). Every string and child is owned. Do not introduce
-string views or borrowed subtrees in this increment. The implementation supports
-C++11 in every language mode and does not depend on `std::variant`.
-Develop with the eventual C++23 target in mind, using compiler/feature gates
-when modern and older implementations differ; this foundation shares one path.
+Push was authorized but failed: HTTPS had no Git credentials, and SSH could not
+resolve `github.com`. The configured SSH remote was preserved. The GitHub
+connector supports object/ref creation but was not used to recreate these
+commits with different hashes. Do not claim this progress is on GitHub.
+`StyledTextProgress.bundle` preserves all four exact commits and requires
+`54f06693` as its existing base. Import it in a checkout containing that base:
 
-## Construction and access
-
-```cpp
-styled_text();
-styled_text(leaf text, text_style style = {});
-styled_text(const char* text, text_style style = {});
-styled_text(branch children, text_style style = {});
-styled_text(const styled_text&);
-styled_text(styled_text&&) noexcept;
+```bash
+git bundle verify /path/to/StyledTextProgress.bundle
+git fetch /path/to/StyledTextProgress.bundle refs/heads/feat/StyledText
+git log --oneline HEAD..FETCH_HEAD
 ```
 
-The default is an empty leaf with an empty style. Strings and literals convert
-implicitly. By-value strings/vectors copy lvalues and move rvalues into storage.
-Literal pointers must refer to valid null-terminated text; use `std::string`
-for embedded nulls. The rule of five manages destruction and copy/move assignment;
-copying recursively owns its contents. Assignment from a descendant is preserved
-before destroying the parent. Allocation can throw; copy operations are not
-`noexcept`.
+Inspect local branch ancestry and work before integrating; these commands do not
+switch, merge, reset, or push. The requested push remains authorized but blocked
+by transport/authentication.
 
-`style` gets or replaces the node-local style. `is_branch`, `as_leaf`, and
-`as_branch` provide direct access; wrong-alternative access throws `format_error`
-(or follows the existing no-exception failure policy). Type-based `fmt::get`
-preserves all four reference/const categories. `fmt::holds_alternative` accepts
-`styled_text::leaf` and `styled_text::branch`. Index-based access, visitation,
-and `get_if` are not added in this increment.
+Commit `54f06693` excludes `feat/StyledText` from push triggers in linux, windows,
+macos, and doc workflows. Pull-request triggers and other branches are unchanged;
+the other push workflows already exclude this branch. Do not restore automatic
+push CI without instruction. Use compact SGR and focused local checks.
+Coordination updates are local and uncommitted on `docs/Coord`; they are not yet
+available from GitHub. This conversation's decisions supersede older guidance.
 
-## Concatenation and equality
+## Representation and public API
 
-`operator+` returns an empty-style branch with two children, preserving both
-operand nodes and their styles. Operands are passed by value so lvalues copy
-and temporaries move. Plain strings and literals work on either side when
-at least one operand is `styled_text`; adding two plain strings does not gain
-an unrelated new overload. Repeated concatenation preserves nesting; it does
-not flatten existing branches. No `operator+=` is included.
+`<fmt/styled-text.h>` defines `basic_styled_text<Char>`, with aliases
+`styled_text` for `char` and `wstyled_text` for `wchar_t`. Public `char_type`
+and `string_type` aliases describe the character and owning-string types.
+The implementation supports C++11 in every language mode, using a manually
+managed union, not `std::variant`.
 
-An empty parent style is the default, and a group can later be assigned a
-style. Actual rendering/inheritance rules are future work.
+Each node owns its `_style` and a private discriminator. A leaf holds
+`std::shared_ptr<const string_type>`; a branch owns a vector of nodes of the
+same character type. Nonempty text is constructed with `make_shared`; a null
+pointer represents empty text. Strings are immutable after construction.
+Copies recursively copy vectors and node styles but share the character storage.
+There is no copy-on-write or shared ownership of nodes/vectors, so the storage
+cannot form ownership cycles. No borrowed strings/subtrees are introduced.
 
-`==` requires identical styles, the same alternative, and exactly matching
-strings or ordered recursive child structures. `!=` negates equality.
-A leaf `"ab"` differs from a branch with leaves `"a"` and `"b"`.
-No ordering or hashing is introduced.
+Public construction supports default, owning-string, null-terminated literal,
+copy, and move forms. String and literal conversion remains implicit. Embedded
+nulls require owning-string input. Mixed-character conversion/concatenation is
+not provided. Copying a branch can allocate and throw; node moves are noexcept.
+Moves leave the source as an empty, unstyled leaf. Self-assignment is valid and
+self-move assignment is a no-op.
+
+The vector constructor and structural APIs are removed. Leaf/branch aliases and
+storage are private. There is no public `get`, `holds_alternative`, `is_branch`,
+`as_leaf`, `as_branch`, child mutation, or iteration. Do not restore iteration
+without a concrete use case and authorization. The matching formatter
+specialization is a friend; the formatter itself is not implemented yet.
+`style` queries or replaces only the current node's style.
+
+## Concatenation and invariants
+
+Only concatenation creates branches. A new branch contains two nonempty nodes;
+there must never be an empty branch. `empty` describes text, independently of
+style. Empty leaves are concatenation identities, including styled empty leaves.
+Appending to an empty left operand replaces it with the right operand and its
+style. Appending an empty right operand does nothing.
+
+`operator+=` takes its right operand by value: lvalues copy structure/share text,
+temporaries move, and self-concatenation is safe. Appending to a nonempty leaf
+creates an unstyled parent holding both original styled nodes. Appending to a
+branch extends its vector and retains the branch's root style. A right-hand
+branch remains a nested child. `operator+` delegates to `+=`, so left-associated
+concatenation extends the left sequence. No text is flattened during composition.
+
+Equality requires identical root styles, alternatives, string contents, child
+order, and recursive structure. Shared-pointer identity is only a fast path;
+separately allocated equal strings compare equal. A leaf `"ab"` differs from
+`styled_text{"a"} + "b"`. Ordering and hashing are not introduced.
+
+## Plain-text extraction
+
+`plain_text() const -> string_type` returns an independent owning string by
+appending leaves in order in one traversal. It does not modify the tree or
+styles. It preserves whitespace, character code units, embedded nulls, and
+embedded ANSI escapes verbatim; it does not parse or strip escapes. Empty and
+moved-from nodes return empty strings. Allocation can throw. There is no
+preliminary sizing pass or public structural traversal.
 
 ## SGR transition foundation
 
@@ -83,20 +115,29 @@ Unlike the new function, it mutates stored state and treats unspecified target
 colors as defaults via SGR 39/49. A future count-first optimization is discussion,
 not implemented work.
 
-## Remaining work
+## Next work and agreed design
 
-Review the public API and owned union foundation before extending it. Nested
-rendering, fmt formatters, C++20 module export, absolute boundaries, lazy blending,
-parsing, visible width, serialization, and wide structured strings are not
-implemented. CMake registers the header for installation and adds a focused
-`styled-text-test` target. No website update is requested.
+The next proposed increment is root-style forwarding: component and emphasis
+members operate only on `_style`, and free functions such as `underline(node)`
+return an independently styled value. Lvalue branches copy structure/share text;
+rvalues move. Copying can allocate, so free value-returning overloads must not
+promise unconditional noexcept. This increment has been discussed, not authorized
+or implemented. Review ambiguous `clear`, style composition operators, and blend
+operations separately; `empty` and equality retain their text/value meanings.
 
-## Validation and backup
+The primary purpose is a formatter that renders nested styles and restores the
+enclosing style after children. It may access the private tree directly.
+Rendering, absolute boundaries, lazy blending, parsing, visible width,
+serialization, and module export remain unimplemented. Public iteration is
+explicitly deferred. No website update is requested.
 
-Focused styled-text tests pass in C++23 and C++11 compact-SGR builds. Strict
-C++11 compilation and the ASan/UBSan ownership probe pass; leak detection is
-unavailable in this environment. See [BuildAndTest.md](BuildAndTest.md) for
-commands and limits. The downloadable backup includes both working-tree
-snapshots, a Git bundle, patches, validation logs, and restore instructions.
-It excludes build caches and credentials. The archive preserves the earlier uncommitted snapshot; the implementation is
-now also saved on GitHub at `7b0e07ce`.
+## Validation and preservation
+
+See [BuildAndTest.md](BuildAndTest.md#cloud-styledtext-validation) for exact
+current scope and commands. Eleven public-API tests pass in C++11 and C++23,
+including plain-text extraction; the same suite passes C++11 ASan/UBSan with
+leak detection disabled. The separate allocation test confirms allocation-free
+large-leaf copies and structural rather than character allocation for branch
+copies. Do not turn these focused results into a full-suite or remote-CI claim.
+The Git bundle above preserves committed library progress; coordination edits
+require separate preservation and commit/push authorization.

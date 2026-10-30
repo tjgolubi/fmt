@@ -81,20 +81,25 @@ changelog; that cleanup remains a separate follow-up.
 
 ## Current experimental work
 
-Use `feat/StyledText` for the authorized styled-text experiment. It starts at
-`color-dev` commit `5b3f49ff`. Commit `cff2fc5fa0793fb476b94441aa2241c895423a2b`
-adds the two-argument SGR transition overload and is pushed; local and GitHub
-SHAs matched after the push. Its remote CI has not been inspected.
-The owned `styled_text` header, tests, and CMake registration are committed and
-pushed as `7b0e07ce` on `feat/StyledText`. These coordination updates are prepared
-for the separately authorized save on `docs/Coord`; verify its remote ref before
-claiming the handoff is available from GitHub. Remote CI has not been inspected.
+Library branch: `feat/StyledText`. Local HEAD is
+`9306441b406c743df39d865dcd41f22ee0f4e86c`, with a clean library working tree.
+The verified GitHub head is `54f06693bea6735b16f6ad4a8e131d8d850bc8de`.
+Four local commits are not pushed:
 
-Use compact SGR for these experiments. Keep changes local and batch pushes to
-conserve GitHub Actions compute; commits and pushes still require authorization.
-A downloadable source/archive backup can preserve uncommitted changes without
-pushing. Do not assume a cloud workspace survives a later session. Native Linux
-tools are authorized here; Windows/MSYS2 requirements apply on Terry's PC.
+| Commit     | Scope                                                     |
+| ---------- | --------------------------------------------------------- |
+| `17a87964` | Character-generic nodes, append fixes, private structure. |
+| `ca36b9d1` | Shared immutable leaf strings and allocation regression.  |
+| `afe46c0c` | Leading underscores and brace initialization.             |
+| `9306441b` | Plain-text extraction and regression tests.               |
+
+The push was authorized but blocked: HTTPS lacked Git credentials and SSH DNS
+resolution failed. `StyledTextProgress.bundle` preserves the four exact commits
+above the required `54f06693` base. The SSH remote configuration is unchanged.
+Push CI is disabled for this branch, with PR triggers preserved. Coordination
+edits are local and uncommitted; newer conversation decisions take precedence.
+
+See [StyledText.md](StyledText.md) for the current API, invariants, and next work.
 
 ## Upstream compatibility
 
@@ -137,10 +142,10 @@ their sections, and expected output for all three Styled Arguments examples.
 The API Reference header list includes `fmt/color-ostream.h`, linking to its
 existing guide section; it has no separate new API Reference section.
 
-The owned structured-text foundation is committed and pushed on `feat/StyledText`;
-see [StyledText.md](StyledText.md). Rendering, absolute boundaries, lazy nested
-blending, parsing, display-width handling, and serialization remain design work. The later
-independent library requires C++23 and uses `std::variant`; the complete
-{fmt} release continues to support C++11. Revisit attribute-factory naming
-for the independent library as described in
-[CppDesign.md](CppDesign.md#attribute-factory-design-for-the-independent-library).
+The character-generic structured-text implementation is committed locally through
+`9306441b`, with shared immutable leaf strings, private structure, concatenation,
+and plain-text extraction. It has not been pushed. See [StyledText.md](StyledText.md).
+Root-style forwarding and nested formatting are the next proposed work; absolute
+boundaries, lazy blending, parsing, display width, and serialization remain open.
+The independent library requires C++23 and uses `std::variant`; the {fmt} release
+retains C++11 support.
