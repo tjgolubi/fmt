@@ -1076,8 +1076,9 @@ class text_style {
   // │..│ ├── emphases
   // │61│─┘
   // ├──┤
-  // │62│─┬── unused
-  // │63│─┘
+  // │62│──── absolute (reset before applying this style)
+  // ├──┤
+  // │63│──── unused
   // └──┘
 
 public:
@@ -1092,11 +1093,13 @@ private:
   static constexpr auto fg_shift   =  0;
   static constexpr auto bg_shift   = 27;
   static constexpr auto emph_shift = 54;
+  static constexpr auto abs_shift  = emph_shift + emph_bits;
 
   static constexpr auto color_mask = (color_t::value_type{1} << color_bits) - 1;
   static constexpr auto disc_mask  = (1U  << disc_bits ) - 1;
   static constexpr auto value_bits = color_bits + disc_bits;
   static constexpr auto value_mask = (color_t::value_type{1} << value_bits) - 1;
+  static constexpr auto abs_mask   = value_type{1} << abs_shift;
 
   static constexpr auto fg_mask = value_type{value_mask} << fg_shift;
   static constexpr auto bg_mask = value_type{value_mask} << bg_shift;
@@ -1136,12 +1139,12 @@ private:
            | (value_type{to_underlying(emp)} << emph_shift)}
            {}
 
-  /// Returns true if both colors are unspecified and no emphasis is set.
+  /// Returns true if no colors, emphasis, or absolute flag are set.
   FMT_NODISCARD constexpr auto empty() const noexcept -> bool
   { return style_ == 0; }
 
   /**
-   * Clears both colors and all emphasis attributes, restoring an empty style.
+   * Clears both colors, all emphasis, and absolute, restoring an empty style.
    * Returns a reference to this style for chaining.
    */
   FMT_CONSTEXPR auto clear() noexcept -> text_style& {
@@ -1150,11 +1153,30 @@ private:
   }
 
   /**
+   * Enables absolute if `enable` is true, or disables it otherwise.
+   * An absolute style resets the terminal before applying its attributes.
+   * Unspecified colors select terminal defaults and unset emphasis is cleared.
+   * Absolute does not prevent explicit modification of this style.
+   */
+  FMT_CONSTEXPR auto absolute(bool enable = true) noexcept -> text_style& {
+    if (enable)
+      style_ |= abs_mask;
+    else
+      style_ &= ~abs_mask;
+    return *this;
+  }
+
+  /// Returns true if this style resets the terminal before applying attributes.
+  FMT_NODISCARD constexpr auto is_absolute() const noexcept -> bool
+  { return ((style_ & abs_mask) != 0); }
+
+  /**
    * Applies `other` over this style.
    *
    * Specified foreground and background colors in `other` replace the matching
    * channels, preserving their color kinds. Unspecified channels leave this
-   * style's colors unchanged. Emphasis bits are combined by OR.
+   * style's colors unchanged. Emphasis bits are combined by OR. The result is
+   * absolute if either input is absolute; explicit overlays remain allowed.
    */
   FMT_CONSTEXPR auto overlay(const text_style& other) noexcept -> text_style& {
     if (other == *this || other.empty())
@@ -1162,6 +1184,7 @@ private:
 
     if (empty()) return *this = other;
 
+    absolute(is_absolute() || other.is_absolute());
     emph(emph() | other.emph());
     if (other.has_fg()) fg(other.fg());
     if (other.has_bg()) bg(other.bg());
@@ -1176,6 +1199,7 @@ private:
    * in the same channel, they are converted to RGB and their corresponding
    * component bits are ORed, without averaging or alpha compositing.
    *
+   * The result is absolute if either input is absolute.
    * Terminal colors are converted using the fixed Xterm-default RGB palette,
    * which may differ from the user's terminal theme.
    */
@@ -1191,6 +1215,7 @@ private:
     fg  (fg()   | rhs.fg());
     bg  (bg()   | rhs.bg());
     emph(emph() | rhs.emph());
+    absolute(is_absolute() || rhs.is_absolute());
     return *this;
   }
 
@@ -1517,7 +1542,7 @@ auto strike(text_style style, bool enable = true) noexcept -> text_style
  * Returns a copy of `base` with `overrides` applied, leaving both inputs
  * unchanged. Specified colors in `overrides` replace matching channels and
  * preserve their kinds; unspecified channels retain the base colors.
- * Emphasis bits are combined by OR.
+ * Emphasis bits are combined by OR. The result is absolute if either input is.
  */
 FMT_NODISCARD FMT_CONSTEXPR inline
 auto overlay(text_style base, text_style overrides) noexcept -> text_style
@@ -1541,6 +1566,16 @@ template<typename First, typename... Rest>
 struct all_text_styles<First, Rest...> : std::integral_constant<bool,
     is_text_style<First>::value && all_text_styles<Rest...>::value> {};
 
+constexpr auto checked_blend_style(const text_style& style) noexcept
+    -> const text_style& {
+  return !style.is_absolute() || (style.has_fg() && style.has_bg())
+      ? style
+      : (FMT_ASSERT(false,
+                    "cannot blend an absolute style with "
+                    "terminal-default colors"),
+         style);
+}
+
 struct style_blend_state {
   blend_state foreground, background;
   emphasis attributes;
@@ -1550,11 +1585,16 @@ struct style_blend_state {
                              emphasis em = emphasis{}) noexcept
     : foreground{fg}, background{bg}, attributes{em} {}
 
-  constexpr auto add(const text_style& style) const noexcept -> style_blend_state {
+  constexpr auto add_checked(const text_style& style) const noexcept
+      -> style_blend_state {
     return style_blend_state{foreground.add(style.fg()),
                              background.add(style.bg()),
                              attributes | style.emph()};
   }
+
+  constexpr auto add(const text_style& style) const noexcept
+      -> style_blend_state
+  { return add_checked(checked_blend_style(style)); }
 
   constexpr auto result() const noexcept -> text_style
   { return text_style{foreground.result(), background.result(), attributes}; }
@@ -1576,6 +1616,12 @@ constexpr auto blend_styles_accumulate(style_blend_state state, First first,
  * and combining emphasis bits by OR. Unspecified colors do not contribute.
  * Each channel preserves its kind with one specified color, holds RGB with
  * two or more, and remains unspecified with none. The arguments are unchanged.
+ * The result is relative, even when an input is absolute.
+ *
+ * Precondition: each absolute input specifies both foreground and background;
+ * terminal-default colors have unknown RGB values. Violations assert. When
+ * assertions are disabled, unspecified channels contribute nothing and the
+ * absolute flag is still discarded.
  * Supports constant evaluation in C++11 and later.
  */
 #if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
@@ -1628,7 +1674,7 @@ constexpr inline auto bg(color_t background) noexcept -> text_style {
 }
 
 /// Upper bound on style SGR output length.
-constexpr auto sgr_max_length   = std::size_t{56};
+constexpr auto sgr_max_length   = std::size_t{60};
 
 /// Length of the terminal-reset SGR sequence.
 constexpr auto sgr_reset_length = std::size_t{ 4};
@@ -1898,6 +1944,10 @@ FMT_CONSTEXPR20 void append_sgr(buffer<Char>& buf, text_style ts) {
   if (ts.empty()) return;
   buf.push_back(static_cast<Char>('\x1b'));
   buf.push_back(static_cast<Char>('['));
+  if (ts.is_absolute()) {
+    buf.push_back(static_cast<Char>('0'));
+    buf.push_back(static_cast<Char>(';'));
+  }
   auto emphasis = make_emphasis<Char>(ts.emph());
   buf.append(emphasis.begin(), emphasis.end());
   auto foreground = make_foreground_color<Char>(ts.fg());
@@ -1922,6 +1972,10 @@ void append_sgr(buffer<Char>& buf, const ansi_color_escape<Char>& sgr) {
 template<typename Char>
 FMT_CONSTEXPR20 void append_sgr(buffer<Char>& buf, text_style ts) {
   if (ts.empty()) return;
+  if (ts.is_absolute()) {
+    constexpr auto reset = sgr_reset<Char>();
+    buf.append(reset.begin(), reset.end());
+  }
   auto emphasis = make_emphasis<Char>(ts.emph());
   append_sgr(buf, emphasis);
   auto foreground = make_foreground_color<Char>(ts.fg());
@@ -1944,10 +1998,13 @@ void vformat_to(buffer<Char>& buf, text_style ts, basic_string_view<Char> fmt,
 
 /**
  * Returns the ANSI SGR escape sequences for the specified foreground,
- * background, and emphasis in `ts`.
+ * background, and emphasis in `ts`. Absolute styles begin with a terminal
+ * reset: compact mode includes `0;` in the sequence, while noncompact mode
+ * emits a separate reset sequence first. An absolute-only style emits a reset.
  *
  * Returns an empty string for an empty style.
- * Unspecified color channels emit no parameters.
+ * Unspecified color channels emit no color parameters. For absolute styles,
+ * the leading reset selects terminal defaults for those channels.
  */
 template<typename Char=char>
 FMT_NODISCARD inline auto to_sgr(const text_style& ts)

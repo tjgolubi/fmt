@@ -40,6 +40,31 @@ auto underlined_background = fmt::text_style{
 auto palette = fmt::text_style{fmt::cube_color{1, 2, 3}, fmt::gray_color{12}};
 ```
 
+### Absolute styles
+
+Styles are relative by default: unspecified colors and unset emphasis leave
+the terminal's existing attributes unchanged when emitted. Call `absolute()`
+to reset the terminal before applying a style. Unspecified colors then select
+terminal defaults, and unset emphasis means normal text.
+
+```cpp
+auto reset = fmt::text_style{}.absolute();
+auto underlined = fmt::underline().absolute();
+auto red = fmt::fg(fmt::color::red).absolute();
+red.absolute(false); // Return to relative styling, retaining the foreground.
+```
+
+`absolute(bool enable = true)` returns `text_style&`; `is_absolute()` queries
+the flag. The setter is `noexcept` and supports constant evaluation in C++14
+and later on supported compilers; the query is `constexpr` in C++11 and later.
+The flag uses bit 62 without increasing the style's size. Absolute styles can
+still be explicitly modified using setters, overlays, and composition.
+
+An absolute-only style is nonempty and emits `"\x1b[0m"`. Compact SGR output
+combines the reset and attributes, such as `"\x1b[0;4m"`; noncompact output
+emits the reset separately before the attribute sequences. Neither form
+depends on a previously active terminal style.
+
 ### Overlaying styles
 
 `overlay(other)` updates a style with another style's specified colors and
@@ -48,6 +73,9 @@ replace their matching channels independently, preserving each color's kind.
 An incoming `no_color` leaves the existing channel unchanged; a specified black
 color replaces it. Emphasis bits combine by OR, so an overlay can add attributes
 but cannot remove them. An empty overlay leaves the style unchanged.
+
+The result is absolute if either input is absolute. This preserves the reset
+requirement while allowing explicit changes to an absolute style's attributes.
 
 ```cpp
 auto style = fmt::text_style{fmt::term_color::red, fmt::gray_color{12},
@@ -87,6 +115,7 @@ auto combined = fmt::overlay(base, overrides);
 
 `|` returns a combined style and leaves both operands unchanged. `|=` updates
 the left operand and returns `text_style&`. Both operations are `noexcept`.
+The result is absolute if either operand is absolute.
 Emphasis bits combine by OR; foreground and background combine independently:
 
 - If a color channel is unspecified in one operand, it takes the other
@@ -138,17 +167,23 @@ constexpr auto mixed = fmt::blend(first, second, third);
 ```
 
 The function leaves its inputs unchanged, is `noexcept`, and supports constant
-evaluation in C++11 and later. Blending only empty styles returns an empty
-style. All arguments must be styles; use a `text_style` constructor to combine
-colors and emphasis before blending.
+evaluation in C++11 and later. The result is always relative. Blending only
+empty styles returns an empty style. All arguments must be styles; use a
+`text_style` constructor to combine colors and emphasis before blending.
+
+Each absolute input must specify both foreground and background colors: a
+terminal-default color has an unknown RGB value. `FMT_ASSERT` checks this
+precondition for every input. With assertions disabled, unspecified channels
+contribute nothing and the result still discards the absolute flag.
 
 ### Empty styles and clearing
 
-`empty` returns `true` when both colors are unspecified and no emphasis
-attributes are set. A specified black color still makes a style nonempty.
+`empty` returns `true` when both colors are unspecified, no emphasis is set,
+and absolute is disabled. A specified black color or an absolute-only reset
+makes a style nonempty.
 The query is `const`, `noexcept`, and `constexpr` in C++11 and later.
 
-`clear` removes both colors and all emphasis attributes, restoring the
+`clear` removes both colors, all emphasis, and the absolute flag, restoring the
 default-constructed state. It is `noexcept` and returns `text_style&` for
 chaining. It supports constant evaluation in C++14 and later on supported
 compilers. Clearing a style changes the value; it does not emit an ANSI reset.

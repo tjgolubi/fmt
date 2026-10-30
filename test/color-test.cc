@@ -24,6 +24,139 @@
 #  define FMT_SGR_EXPECTED(legacy, compact) legacy
 #endif
 
+TEST(color_test, absolute_style_flag) {
+  static_assert(sizeof(fmt::text_style) == sizeof(uint64_t),
+                "absolute does not increase style size");
+  static_assert(!fmt::text_style{}.is_absolute(), "styles default to relative");
+  static_assert(noexcept(std::declval<fmt::text_style&>().absolute()) &&
+                    noexcept(fmt::text_style{}.is_absolute()),
+                "absolute accessors do not throw");
+  auto style = fmt::fg(fmt::term_color::red) | fmt::bg(fmt::gray_color{12}) |
+               fmt::underline();
+  const auto original = style;
+  EXPECT_EQ(&style.absolute(), &style);
+  EXPECT_TRUE(style.is_absolute());
+  EXPECT_EQ(fmt::to_underlying(style),
+            fmt::to_underlying(original) | (uint64_t{1} << 62));
+  EXPECT_NE(style, original);
+  EXPECT_EQ(style.fg(), original.fg());
+  EXPECT_EQ(style.bg(), original.bg());
+  EXPECT_EQ(style.emph(), original.emph());
+  EXPECT_EQ(&style.absolute(false), &style);
+  EXPECT_EQ(style, original);
+  style.absolute().fg(fmt::no_color).bg(fmt::no_color).emph(fmt::emphasis{});
+  EXPECT_FALSE(style.empty());
+  EXPECT_FALSE(style.has_fg());
+  EXPECT_FALSE(style.has_bg());
+  EXPECT_FALSE(style.has_emph());
+  EXPECT_EQ(&style.clear(), &style);
+  EXPECT_EQ(style, fmt::text_style{});
+  EXPECT_FALSE(style.is_absolute());
+}
+
+TEST(color_test, absolute_style_composition) {
+  const fmt::color_t colors[] = {fmt::no_color, fmt::rgb{1, 2, 3},
+      fmt::term_color::red, fmt::cube_color{1, 2, 3}, fmt::gray_color{12}};
+  for (auto foreground : colors) {
+    for (auto background : colors) {
+      const auto base = fmt::text_style{foreground, background,
+                                       fmt::emphasis::underline};
+      const auto other = fmt::text_style{background, foreground,
+                                        fmt::emphasis::bold};
+      for (unsigned flags = 0; flags != 4; ++flags) {
+        auto lhs = base;
+        auto rhs = other;
+        lhs.absolute((flags & 1u) != 0);
+        rhs.absolute((flags & 2u) != 0);
+        auto expected_overlay = fmt::overlay(base, other);
+        auto expected_or = base | other;
+        expected_overlay.absolute(flags != 0);
+        expected_or.absolute(flags != 0);
+        EXPECT_EQ(fmt::overlay(lhs, rhs), expected_overlay);
+        EXPECT_EQ(lhs | rhs, expected_or);
+        EXPECT_EQ(rhs | lhs, expected_or);
+        auto assigned = lhs;
+        assigned |= rhs;
+        EXPECT_EQ(assigned, expected_or);
+      }
+    }
+  }
+  const auto absolute_only = fmt::text_style{}.absolute();
+  EXPECT_EQ(fmt::overlay(fmt::text_style{}, absolute_only), absolute_only);
+  EXPECT_EQ(fmt::overlay(absolute_only, fmt::text_style{}), absolute_only);
+  auto style = fmt::underline().absolute();
+  style.overlay(fmt::bold());
+  EXPECT_TRUE(style.is_absolute());
+  EXPECT_TRUE(style.is_bold());
+  EXPECT_TRUE(style.is_underline());
+  style |= fmt::italic();
+  EXPECT_TRUE(style.is_italic());
+  EXPECT_TRUE(style.is_absolute());
+}
+
+TEST(color_test, absolute_style_blend) {
+  const auto full = fmt::text_style{fmt::rgb{10, 20, 30}, fmt::gray_color{12},
+                                   fmt::emphasis::bold}.absolute();
+  auto relative = full;
+  relative.absolute(false);
+  const auto other = fmt::text_style{fmt::term_color::blue, fmt::no_color,
+                                    fmt::emphasis::underline};
+  const auto expected = fmt::blend(relative, other);
+  EXPECT_EQ(fmt::blend(full, other), expected);
+  EXPECT_EQ(fmt::blend(other, full), expected);
+  EXPECT_EQ(fmt::blend(other, relative, full),
+            fmt::blend(other, relative, relative));
+  EXPECT_FALSE(fmt::blend(full, other).is_absolute());
+  EXPECT_TRUE(full.is_absolute());
+  static_assert(noexcept(fmt::blend(full, other)), "blend remains noexcept");
+  const fmt::text_style invalid[] = {
+      fmt::text_style{}.absolute(),
+      fmt::fg(fmt::color::red).absolute(),
+      fmt::bg(fmt::color::blue).absolute()};
+  for (auto input : invalid) {
+#ifdef NDEBUG
+    auto cleared = input;
+    cleared.absolute(false);
+    EXPECT_EQ(fmt::blend(input, other), fmt::blend(cleared, other));
+    EXPECT_EQ(fmt::blend(other, input), fmt::blend(other, cleared));
+    EXPECT_EQ(fmt::blend(other, full, input),
+              fmt::blend(other, relative, cleared));
+    EXPECT_FALSE(fmt::blend(input, other).is_absolute());
+#elif !defined(FMTCOLOR_SKIP)
+    EXPECT_DEATH_IF_SUPPORTED((void)fmt::blend(input, other),
+                              "terminal-default colors");
+    EXPECT_DEATH_IF_SUPPORTED((void)fmt::blend(other, input),
+                              "terminal-default colors");
+    EXPECT_DEATH_IF_SUPPORTED((void)fmt::blend(other, full, input),
+                              "terminal-default colors");
+#else
+    (void)input;
+#endif
+  }
+}
+
+#if FMT_USE_CONSTEXPR
+TEST(color_test, absolute_style_constexpr) {
+  constexpr auto reset = fmt::text_style{}.absolute();
+  static_assert(reset.is_absolute() && !reset.empty(),
+                "a reset-only style is absolute and nonempty");
+  constexpr auto full = fmt::text_style{fmt::rgb{10, 20, 30},
+                                       fmt::gray_color{12}}.absolute();
+  constexpr auto modified = fmt::text_style{full}.overlay(fmt::bold());
+  static_assert(modified.is_absolute() && modified.is_bold(),
+                "explicit overlays preserve absolute during evaluation");
+  constexpr auto combined = fmt::fg(fmt::term_color::red) | full;
+  static_assert(combined.is_absolute(), "promoted OR preserves absolute");
+  constexpr auto result = fmt::blend(full, fmt::text_style{});
+  static_assert(!result.is_absolute() && result.fg() == full.fg() &&
+                    result.bg() == full.bg(),
+                "valid absolute blends remain constant-evaluable and relative");
+  constexpr auto cleared = fmt::text_style{full}.clear();
+  static_assert(cleared.empty() && !cleared.is_absolute(),
+                "clear removes absolute during evaluation");
+}
+#endif
+
 template<typename T>
 void check_color_comparisons(const T* values, size_t count) {
   static_assert(noexcept(T{} == T{}), "equality must be noexcept");
@@ -2334,6 +2467,30 @@ TEST(color_test, wrap_sgr_literal_payload) {
   const auto wrapped = fmt::wrap_sgr(style, source);
   source.assign("changed");
   EXPECT_EQ(wrapped, "\x1b[1mowned\x1b[0m");
+}
+
+TEST(color_test, absolute_style_sgr) {
+  const auto reset = fmt::text_style{}.absolute();
+  check_to_sgr(reset, "\x1b[0m");
+  const auto style = fmt::underline().absolute();
+  const auto prefix = std::string{FMT_SGR_EXPECTED("\x1b[0m\x1b[4m",
+                                                  "\x1b[0;4m")};
+  check_to_sgr(style, prefix);
+  EXPECT_EQ(fmt::format(style, "text"), prefix + "text\x1b[0m");
+  EXPECT_EQ(fmt::format("{}", fmt::styled("text", style)),
+            prefix + "text\x1b[0m");
+  EXPECT_EQ(fmt::wrap_sgr(reset, "text"), "\x1b[0mtext\x1b[0m");
+  EXPECT_EQ(fmt::wrap_sgr<wchar_t>(reset, L"text"),
+            L"\x1b[0mtext\x1b[0m");
+  const auto maximal = fmt::text_style{fmt::rgb{255, 255, 255},
+      fmt::rgb{255, 255, 255}, static_cast<fmt::emphasis>(0xFF)}.absolute();
+  const auto expected = std::string{FMT_SGR_EXPECTED(
+      "\x1b[0m\x1b[1;2;3;4;5;7;8;9m"
+      "\x1b[38;2;255;255;255m\x1b[48;2;255;255;255m",
+      "\x1b[0;1;2;3;4;5;7;8;9;38;2;255;255;255;48;2;255;255;255m")};
+  check_to_sgr(maximal, expected);
+  EXPECT_EQ(expected.size(), FMT_SGR_EXPECTED(size_t{60}, size_t{54}));
+  EXPECT_LE(expected.size(), fmt::sgr_max_length);
 }
 
 #undef FMT_SGR_EXPECTED
