@@ -1,6 +1,6 @@
 # FmtColor coordination
 
-Updated October 29, 2026.
+Updated October 30, 2026.
 
 FmtColor develops color and text-style extensions for C++. We plan two
 sequential deliverables:
@@ -52,7 +52,9 @@ Terry renamed the GitHub branch to `color-dev`; the local checkout and tracking
 branch now also use `color-dev`. The workflow filter, guide edit URI, and publication instructions now follow
 `color-dev`, committed and pushed at `5b3f49ff`. Publication and platform CI
 for that SHA were not inspected in this cloud session.
-Continue from `color-dev`, not the superseded development or compatibility branches.
+Use `color-dev` for new independent feature baselines, not superseded development
+or compatibility branches. Continue the active experiment identified below on
+`feat/StyledText2`.
 No release tag or fork version has been assigned; the contribution has not
 been accepted into fmtlib/fmt.
 
@@ -81,25 +83,37 @@ changelog; that cleanup remains a separate follow-up.
 
 ## Current experimental work
 
-Library branch: `feat/StyledText`. Local HEAD is
-`9306441b406c743df39d865dcd41f22ee0f4e86c`, with a clean library working tree.
-The verified GitHub head is `54f06693bea6735b16f6ad4a8e131d8d850bc8de`.
-Four local commits are not pushed:
+Active library branch: `feat/StyledText2`, verified on GitHub at
+`08a9d3b7a828392e1d64281a6bcc4a6e0212b73d`. The local `fix/SgrTransition`
+worktree has the same commit and a clean working tree. This is experimental
+work above `color-dev`, not an accepted squash integration into it.
 
-| Commit     | Scope                                                     |
-| ---------- | --------------------------------------------------------- |
-| `17a87964` | Character-generic nodes, append fixes, private structure. |
-| `ca36b9d1` | Shared immutable leaf strings and allocation regression.  |
-| `afe46c0c` | Leading underscores and brace initialization.             |
-| `9306441b` | Plain-text extraction and regression tests.               |
+The dependency order is `color-dev` (`5b3f49ff`), minimum blend arity
+(`ae726b28`), absolute text styles (`d29412bb`), rebased owning styled-text
+work, and the complete-state SGR transition fix (`08a9d3b7`). Terry rebased
+`feat/StyledText` onto `feat/Absolute` as `feat/StyledText2`; the original
+styled-text patches were preserved. The final branch spelling matches its
+push-CI exclusion.
 
-The push was authorized but blocked: HTTPS lacked Git credentials and SSH DNS
-resolution failed. `StyledTextProgress.bundle` preserves the four exact commits
-above the required `54f06693` base. The SSH remote configuration is unchanged.
-Push CI is disabled for this branch, with PR triggers preserved. Coordination
-edits are local and uncommitted; newer conversation decisions take precedence.
+Implemented experimental work includes shared immutable leaf strings,
+value-owned child vectors, private character-generic structure, concatenation,
+plain-text extraction, direct leaf initialization, member/free overlay, and
+all eight free emphasis modifiers. Public color/style blend overloads require
+at least two arguments. Absolute is implemented on `text_style`; its nested
+rendering integration remains pending. `to_sgr(final, initial)` now compares
+complete terminal states, including default-color resets and absolute targets.
 
-See [StyledText.md](StyledText.md) for the current API, invariants, and next work.
+The transition fix, tests, and guide were committed as `08a9d3b7`, exported in
+`SgrTransitionFix.bundle`, imported by Terry, and verified pushed at the exact
+same SHA. The bundle requires base `a8fcd97b`. Current focused local checks
+passed; no full-suite, current remote-CI, or guide-publication result is claimed.
+Push CI remains intentionally excluded for `feat/StyledText2`.
+
+The changes have been committed and pushed but Terry's review remains pending;
+tests and publication of commits do not establish acceptance. Next work is
+nested formatting with inheritance resolution and absolute boundaries, followed
+by a separately agreed deferred-blending design. See [StyledText.md](StyledText.md)
+and [BuildAndTest.md](BuildAndTest.md#cloud-styledtext-validation).
 
 ## Upstream compatibility
 
@@ -142,10 +156,10 @@ their sections, and expected output for all three Styled Arguments examples.
 The API Reference header list includes `fmt/color-ostream.h`, linking to its
 existing guide section; it has no separate new API Reference section.
 
-The character-generic structured-text implementation is committed locally through
-`9306441b`, with shared immutable leaf strings, private structure, concatenation,
-and plain-text extraction. It has not been pushed. See [StyledText.md](StyledText.md).
-Root-style forwarding and nested formatting are the next proposed work; absolute
-boundaries, lazy blending, parsing, display width, and serialization remain open.
+The current owning structured-text implementation and its root overlay helpers
+are on `feat/StyledText2` at `08a9d3b7`; see [StyledText.md](StyledText.md).
+Nested formatting, deferred blending, parsing, display width, and serialization
+remain unimplemented. Absolute style values and transition semantics are
+implemented; enforcing absolute boundaries in nested rendering remains future work.
 The independent library requires C++23 and uses `std::variant`; the {fmt} release
 retains C++11 support.

@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md)
 
-Updated October 28, 2026.
+Updated October 30, 2026.
 
 ## Purpose and content
 
@@ -28,7 +28,8 @@ Current pages:
   factories, SGR helpers, stream output, original-API changes, and exact CI links.
 - [Future work](https://fmtcolor.ardentokapi66.chatgpt.site/work-in-progress.html):
   structured styled text, absolute boundaries, lazy blending, parsing,
-  display width, and serialization. These remain proposals.
+  display width, and serialization as presented in published version 36.
+  That publication predates the current experimental implementation.
 
 The styling contribution is commit `2c456778d9ff63cdf284a7d85c8dc8eb384cf3d3`
 on `color-dev`,
@@ -100,8 +101,7 @@ The known upstream syntax-anchor and Material future-version notices remain
 nonfatal. See BuildAndTest.md for commands and validation scope.
 
 The guide-publication workflow targets `color-dev`, with edit URI
-`edit/color-dev/doc/` and matching publication instructions in local uncommitted
-changes. The preceding configuration targeted `dev` and was committed and
+`edit/color-dev/doc/` and matching instructions committed at `5b3f49ff`. The preceding configuration targeted `dev` and was committed and
 pushed at `a18689e1`.
 Its Node.js 24 action pins are `configure-pages` v6.0.0 and `deploy-pages`
 v5.0.1; BuildAndTest.md records the exact SHAs. The [guide publication run](https://github.com/tjgolubi/fmt/actions/runs/40680365434)
@@ -133,9 +133,12 @@ Keep implemented value operations distinct from proposed nested rendering:
 constructors/fluent setters replace components, `blend` averages specified
 channels, and bitwise OR composes color bits. Sequential ANSI SGR updates are
 terminal state changes. Bold/faint remain independent. The {fmt} contribution
-retains conceal; the independent design replaces it with flash. Absolute
-boundaries, borrowed-subtree lifetimes, lazy blending, parsing, display width,
-and serialization still need design decisions. Consult CppDesign.md.
+retains conceal; the independent design replaces it with flash. The owning
+`feat/StyledText2` experiment now implements structured text, root
+overlay helpers, absolute style values, and complete-state SGR transitions.
+Nested rendering and its absolute boundaries, lazy blending, parsing, display
+width, and serialization remain future work. The published site has not been
+updated for this progress. Consult CppDesign.md and StyledText.md.
 
 ## Sites maintenance and publication
 
@@ -193,7 +196,9 @@ and exact archive returned for the selected site.
 
 The repository branch is now `color-dev`. Site version 36 still displays and
 links `dev`; updating the public website for the rename requires a separate
-website instruction. The current task changes repository documentation only.
+website instruction. The current task changes coordination documentation only; it does not authorize
+a Site update or publication of the experimental user-guide changes. Version 36
+remains the last verified publication, not evidence for `feat/StyledText2`.
 
 **Public Site version 36** is live at
 [fmtcolor.ardentokapi66.chatgpt.site](https://fmtcolor.ardentokapi66.chatgpt.site).

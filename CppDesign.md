@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated October 29, 2026. Implemented behavior is separated below from future
+Updated October 30, 2026. Implemented behavior is separated below from future
 design. A proposal is not permission to implement it.
 
 ## Goals and boundaries
@@ -38,8 +38,8 @@ naming and API conventions.
 ## Implemented foundation
 
 The styling commit `2c456778` on `color-dev` contains the complete C++11 API below
-as one contribution above upstream `f87a75e1`. The current branch tip
-`a18689e1` adds documentation-publication configuration. The accepted baseline is in
+as one contribution above upstream `f87a75e1`. The `color-dev` baseline at `5b3f49ff` includes documentation-publication
+configuration for the renamed branch. The accepted baseline is in
 [README.md](README.md#current-baseline).
 Current source and tests establish behavior; private numeric representations
 are not stable contracts.
@@ -57,7 +57,8 @@ forwarders. Preserve their use in older upstream tests and compatibility checks.
 - `rgb` stores three channels. Explicit packed construction takes the low
   24 bits as `0xRRGGBB`; explicit conversion returns `0x00RRGGBB`.
 - `no_color_t`/`no_color` denote unspecified color, distinct from specified
-  black. They do not store or emit a terminal-reset instruction.
+  black. They do not themselves store a terminal-reset instruction; rendering
+  context determines whether a missing channel inherits or means terminal default.
 - `term_color` has zero-based indices 0–15. Normal foreground/background SGR
   codes are 30–37/40–47; bright codes are 90–97/100–107.
 - `gray_color` accepts an `int` index, stores it privately as a signed byte,
@@ -98,7 +99,9 @@ input and unspecified otherwise. Inputs are unchanged; all are `noexcept`
 and support C++11 constant evaluation. Implementation uses `rgb(color)` rather
 than braced conversion to satisfy old compiler paths.
 
-Free variadic `blend()` supports:
+Public `blend` overloads require at least two arguments (implemented above
+`color-dev` in `ae726b28` and present in `feat/StyledText2`). Internal recursive
+accumulators retain their base cases. Free variadic `blend` supports:
 
 - Plain colors only: return an equal-weight RGB channel average.
 - A `color_t` or `no_color` argument: return `color_t`, ignore unspecified
@@ -110,7 +113,11 @@ Free variadic `blend()` supports:
 All channels are summed before division; fractional results round down. Inputs
 are unchanged. Overloads reject non-colors and mixed raw-color/style arguments.
 They are `noexcept` and constexpr in C++11 via recursive helpers; gated C++23
-implementations use concepts and loops. No alpha compositing or nearest-palette demotion is implemented.
+implementations use concepts and loops. On `feat/StyledText2`, every absolute
+style input must specify both colors; `FMT_ASSERT` checks that precondition.
+Unknown terminal-default colors cannot be averaged. With assertions disabled,
+missing channels contribute nothing. The result is relative, clearing absolute.
+No alpha compositing or nearest-palette demotion is implemented.
 
 For example, terminal red converts to `rgb{205, 0, 0}` and `gray_color{12}`
 to `rgb{128, 128, 128}`. Blending a bold terminal-red foreground with
@@ -169,8 +176,9 @@ return unspecified, empty emphasis returns `emphasis{}`, and each returned
 Passing `no_color` clears a channel; `emphasis{}` clears all attributes.
 
 `has_fg()`, `has_bg()`, and `has_emph()` distinguish unspecified from specified
-black and detect any emphasis bit. Const `empty()` is true only when both
-colors are unspecified and all emphasis is unset. Fluent `clear()` restores
+black and detect any emphasis bit. On the experimental branch, const `empty` is true only when both
+colors are unspecified, all emphasis is unset, and absolute is disabled.
+An absolute-only style is nonempty. Fluent `clear` also removes absolute and restores
 the default style, returns `text_style&`, and supports repeated clearing and
 reuse. It does not emit ANSI output.
 
@@ -205,7 +213,8 @@ Copy an alternative extracted directly from a temporary style getter. Public
 reference access is distinct from returning a reference to a temporary copy.
 
 Styles pack each color as 24 payload bits plus three discriminator bits:
-foreground bits 0–26, background 27–53, emphasis 54–61. Bits 62–63 are unused.
+foreground bits 0–26, background 27–53, emphasis 54–61. On the experimental
+branch bit 62 is absolute; bit 63 remains unused.
 `to_underlying` and internal `detail::unpack_color` reflect this encoding; object
 size does not establish ABI or persisted-data compatibility.
 
@@ -359,11 +368,11 @@ no `empty()`. Explicit character template arguments are needed when deduction
 cannot convert a literal to `basic_string_view<Char>`. SGR conversion allocates
 and is not noexcept. Keep style values independent of their rendering.
 
-The public opening-output bound is 56 characters, excluding a null terminator.
-Legacy output can use all 56; current compact output needs at most 52, leaving
-room for a future `000;` prefix in a combined sequence. The reset length is
-separately four. Special extended-SGR semantics are not implemented by
-reserving that space.
+On `color-dev`, the opening-output bound is 56 characters. The experimental
+absolute-style implementation raises `sgr_max_length` to 60, excluding a null
+terminator, for maximal noncompact output including the leading reset. Maximal
+compact absolute output is 54 characters. The reset alone is four characters;
+extended push/pop markers are not implemented.
 
 Compatibility provisions found during candidate CI are retained: default the
 compact macro to zero; cast signed payloads explicitly; perform terminal SGR
@@ -401,72 +410,82 @@ beneficial, and retained passing application tests. This is reported evidence,
 not a freshly executed application test for `color-dev`. The guide explains
 convenience as a major design goal.
 
-## Planned work
+## Current experiment and planned work
 
-Palette colors, RGB conversion, color/style blending, fluent operations,
-short names, public variants, and conditional factories are implemented.
-The current `basic_styled_text<Char>` implementation is committed locally through
-`9306441b` on `feat/StyledText` and is not pushed. It provides shared immutable
-leaf text, privately owned child vectors, concatenation, and plain-text extraction.
-See [StyledText.md](StyledText.md) for exact state and invariants. Root-style
-forwarding and nested formatting are the next proposed increments; absolute
-boundaries, lazy blending, parsing, display width, and serialization remain open.
+The active owning experiment is `feat/StyledText2` at
+`08a9d3b7a828392e1d64281a6bcc4a6e0212b73d`, verified pushed. It rebases the
+owning styled-text work onto minimum blend arity and absolute style values.
+This experimental branch is separate from the accepted `color-dev` baseline;
+Terry's review remains pending. See [StyledText.md](StyledText.md) for exact API
+and invariants and [BuildAndTest.md](BuildAndTest.md) for validation limits.
 
-The later independent library requires C++23 and `std::variant`; migration
-details remain open. The {fmt} release retains C++11 throughout. The current
-StyledText foundation uses a custom C++11 union in all language modes.
-Do not restore a C++17 variant gate or the superseded strict style-OR policy.
-Experimental branches such as `refactor/Crazy` need explicit approval for
-implementation or website inclusion.
+The later independent library requires C++23 and `std::variant`; the {fmt}
+release retains C++11 throughout. The owning tree uses a custom union in all
+language modes. Do not restore a C++17 variant gate or strict style-OR policy.
+Experimental alternatives need explicit authorization for implementation or
+website inclusion.
 
-### Attribute-factory design for the independent library
+### Structured styled text
 
-Revisit the convenience and naming of these factories for the independent
-C++23-and-later library. `using enum fmt::emphasis` (available since C++20)
-already shortens unconditional styling; imported enum names can hide or
-conflict with unqualified factory names. Qualified `fmt::bold()` remains clear.
-
-## Structured styled text
-
-The authoritative current design is in [StyledText.md](StyledText.md).
 `basic_styled_text<Char>` owns a node-local style and either shares immutable
-`basic_string<Char>` storage or owns a vector of same-character nodes. The narrow
-and wide aliases are `styled_text` and `wstyled_text`. Empty leaves use null
-shared pointers. Shared ownership is limited to strings, with no copy-on-write,
-borrowed subtrees, or shared vectors. A custom union supports C++11 throughout.
+`basic_string<Char>` storage or owns a vector of same-character nodes. The
+aliases are `styled_text` and `wstyled_text`. Empty leaves use null shared
+pointers. Sharing is limited to strings: no copy-on-write, borrowed subtrees,
+or shared vectors. Direct union leaf initialization is implemented.
 
-Construction from child vectors and public alternative/child access are removed.
-Concatenation alone creates branches; empty branches are prohibited. Moves reset
-the source to an empty, unstyled leaf. `+=` extends a left branch while preserving
-its root style; promoting a leaf creates an unstyled parent with both operands.
-Right-hand groups remain nested. Equality compares structure/styles and text
-contents, independently of shared-pointer identity. `plain_text` returns all text
-in order without applying styles or interpreting escapes.
+Concatenation alone creates branches; empty branches are prohibited. Moves
+reset the source to an empty, unstyled leaf. `+=` extends a left branch while
+preserving its root style; promoting a leaf creates an unstyled parent with
+both operands. Right-hand groups remain nested. Equality compares exact
+structure, styles, and text, independently of shared-pointer identity.
+`plain_text` concatenates code units without interpreting escapes.
 
-Public iteration is deferred. The matching formatter is a friend so nested
-rendering needs no public structural API. Root-style forwarding members and free
-functions are discussed but not implemented; ambiguous clearing/composition
-operations remain separate decisions. Newer instructions in the conversation
-supersede earlier ownership and public-access proposals.
+Public structural access and iteration remain deferred. A matching formatter
+is a friend but is not implemented. `style` gets or replaces the root style;
+member `overlay(text_style)` overlays that root in place, returns a reference,
+and is noexcept without tree copying. Free style-first `overlay(style, text)`
+and all eight free emphasis modifiers accept owning styled text, character
+strings, and `std::basic_string`. Named styled values copy their structure;
+rvalues move. The free helpers can allocate and are not unconditionally noexcept.
+They preserve child styles. No individual fluent emphasis members were added
+to styled text. The borrowing `StringView` experiment is a separate alternative,
+not the active owning baseline or a guarantee of shared constexpr capabilities.
 
-### Absolute and lazy styles
+### Absolute style values and transitions
 
-`absolute` belongs to StyledText. At an absolute boundary, rendering starts
-from terminal defaults with `ESC[0;...m`; descendants inherit that node's style
-normally. Enclosing style changes and blending must not penetrate the boundary.
-Surrounding styling resumes after the span. No absolute flag is implemented in
-the current foundation.
+Absolute is implemented on `text_style`, not as a styled-text member. It describes
+a complete terminal style: absent colors are terminal defaults, unset emphasis
+is off. `.absolute(bool = true)` and `.is_absolute()` manipulate/query bit 62.
+Explicit setters and overlay still work. Overlay and style OR preserve absolute
+if either operand has it; clear removes it. Blend follows the assertion contract
+above and returns a relative style.
 
-Plan `styled_text& blend() noexcept` to enable the current node's lazy blending
-policy and return `*this`. It does not traverse children, allocate, or copy them.
-Rendering resolves blending later, respecting absolute boundaries. Storage in
-a private style bit or node member is an implementation choice. Do not add the
-previously rejected free `blend(styled_text, text_style)` operation.
+`to_sgr(style)` emits a leading reset for absolute styles, including absolute-only
+styles. Compact output combines reset and attributes; noncompact output emits
+the reset separately. `to_sgr(final, initial)` treats both values as complete
+terminal states, with no inheritance. The initial absolute bit is irrelevant.
+An absolute target always delegates to `to_sgr(final)`, even for equal states.
+Otherwise compare selective changes with reset-and-rebuild, choose the shorter
+encoding, and prefer selective changes on a tie. Missing target colors require
+SGR 39/49 when changing from specified colors. Equal default channels need no
+selective color code. Relative transitions use one combined unpadded sequence.
 
-The motivation is independently styled phrases wrapped in a paragraph's
-background and then an enclosing emphasis, while preserving their structure.
-Color promotion and value-level style blending are implemented. Their use
-through nested inheritance and absolute boundaries still needs agreement.
+At a future absolute tree boundary, descendants inherit from the absolute node,
+and surrounding styling resumes afterward. Resolving inheritance and enforcing
+these boundaries belong to the pending formatter, before calling the transition
+function. The existence of absolute style values does not implement tree rendering.
+
+### Deferred blending and other future work
+
+Deferred styled-text blend and absolute convenience operations remain separate
+from root overlay. Their nested semantics and interface need agreement before
+implementation. Earlier `styled_text& blend()` proposals do not authorize code;
+do not add a previously rejected free operation without a new explicit decision.
+Parsing, display width, serialization, and module export also remain future work.
+
+For the later independent library, reconsider factory names alongside
+`using enum fmt::emphasis`: imported enum names can hide unqualified factories;
+qualified `fmt::bold()` remains clear.
 
 ## Rendering, parsing, and serialization
 

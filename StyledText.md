@@ -1,44 +1,53 @@
 # Structured styled text experiment
 
-Updated October 29, 2026.
+Updated October 30, 2026.
 
 ## Scope and state
 
-Library branch: `feat/StyledText`. Local HEAD is
-`9306441b406c743df39d865dcd41f22ee0f4e86c`, with a clean library working tree.
-The verified GitHub head is `54f06693bea6735b16f6ad4a8e131d8d850bc8de`.
-Four local commits are not pushed:
+Active library branch: `feat/StyledText2`, verified on GitHub at
+`08a9d3b7a828392e1d64281a6bcc4a6e0212b73d`. The local `fix/SgrTransition`
+worktree has the same commit and a clean working tree. The experiment has not
+been squash-integrated into `color-dev`; Terry's review remains pending.
+Committed, pushed, tested, and accepted are distinct states.
+
+The dependency order above `color-dev` at `5b3f49ff` is:
 
 | Commit     | Scope                                                     |
 | ---------- | --------------------------------------------------------- |
-| `17a87964` | Character-generic nodes, append fixes, private structure. |
-| `ca36b9d1` | Shared immutable leaf strings and allocation regression.  |
-| `afe46c0c` | Leading underscores and brace initialization.             |
-| `9306441b` | Plain-text extraction and regression tests.               |
+| `ae726b28` | Require two or more public blend arguments.                |
+| `d29412bb` | Absolute text-style values, contracts, and SGR generation. |
+| `a8fcd97b` | Owning styled-text work rebased and branch configuration.  |
+| `08a9d3b7` | Complete-state SGR transitions, regression tests, guide.   |
 
-Push was authorized but failed: HTTPS had no Git credentials, and SSH could not
-resolve `github.com`. The configured SSH remote was preserved. The GitHub
-connector supports object/ref creation but was not used to recreate these
-commits with different hashes. Do not claim this progress is on GitHub.
-`StyledTextProgress.bundle` preserves all four exact commits and requires
-`54f06693` as its existing base. Import it in a checkout containing that base:
+`a8fcd97b` identifies the rebased tip, not one implementation commit. Its
+preceding series preserves the original styled-text work, including immutable
+shared leaves, private character-generic structure, append fixes, plain-text
+extraction, direct leaf initialization, owning-string regression tests, and
+member/free overlays with free emphasis modifiers. The original branch was
+`feat/StyledText`; the active owning baseline is now `feat/StyledText2`.
+The borrowing `StringView` experiment is separate. Its lifetime and constexpr
+properties are not those of the owning implementation.
+
+Push CI is deliberately excluded for `feat/StyledText2` in linux, windows, macos,
+and doc; the branch spelling now matches the exclusions. PR triggers remain
+preserved. Do not restore push CI without instruction. Use compact SGR and
+focused local checks for this experiment.
+
+The transition fix was committed locally and delivered as `SgrTransitionFix.bundle`,
+then imported and pushed by Terry. Its exact prerequisite is
+`a8fcd97b608c7b20c758883acad389380d0313bf`; its exported ref is
+`refs/heads/fix/SgrTransition`. Import into a checkout containing that base:
 
 ```bash
-git bundle verify /path/to/StyledTextProgress.bundle
-git fetch /path/to/StyledTextProgress.bundle refs/heads/feat/StyledText
+git bundle verify /path/to/SgrTransitionFix.bundle
+git fetch /path/to/SgrTransitionFix.bundle fix/SgrTransition
 git log --oneline HEAD..FETCH_HEAD
 ```
 
-Inspect local branch ancestry and work before integrating; these commands do not
-switch, merge, reset, or push. The requested push remains authorized but blocked
-by transport/authentication.
-
-Commit `54f06693` excludes `feat/StyledText` from push triggers in linux, windows,
-macos, and doc workflows. Pull-request triggers and other branches are unchanged;
-the other push workflows already exclude this branch. Do not restore automatic
-push CI without instruction. Use compact SGR and focused local checks.
-Coordination updates are local and uncommitted on `docs/Coord`; they are not yet
-available from GitHub. This conversation's decisions supersede older guidance.
+These commands inspect/import objects without switching or merging. The fix
+was fast-forwarded into the experimental branch; accepted integration into
+`color-dev` still follows the squash policy in Workflow.md. Preserve exact commits in future authorized bundle deliveries. Coordination changes are
+separate uncommitted edits, not included in the library bundle.
 
 ## Representation and public API
 
@@ -48,32 +57,33 @@ and `string_type` aliases describe the character and owning-string types.
 The implementation supports C++11 in every language mode, using a manually
 managed union, not `std::variant`.
 
-Each node owns its `_style` and a private discriminator. A leaf holds
+Each node owns `_style` and a private discriminator. A leaf holds
 `std::shared_ptr<const string_type>`; a branch owns a vector of nodes of the
-same character type. Nonempty text is constructed with `make_shared`; a null
-pointer represents empty text. Strings are immutable after construction.
-Copies recursively copy vectors and node styles but share the character storage.
-There is no copy-on-write or shared ownership of nodes/vectors, so the storage
-cannot form ownership cycles. No borrowed strings/subtrees are introduced.
+same character type. Nonempty text uses `make_shared`; a null pointer means
+empty text. Strings are immutable after construction. Copies recursively copy
+vectors and node styles but share character storage. There is no copy-on-write,
+shared node/vector ownership, or borrowed storage. Initial leaf construction
+uses the union's leaf constructor directly; alternative changes still require
+manual lifetime management.
 
-Public construction supports default, owning-string, null-terminated literal,
-copy, and move forms. String and literal conversion remains implicit. Embedded
-nulls require owning-string input. Mixed-character conversion/concatenation is
-not provided. Copying a branch can allocate and throw; node moves are noexcept.
-Moves leave the source as an empty, unstyled leaf. Self-assignment is valid and
-self-move assignment is a no-op.
+Construction supports default, owning-string, null-terminated literal, copy,
+and move forms. String/literal conversion is implicit. Embedded nulls require
+owning-string input. Mixed-character conversion/concatenation is not provided.
+Copying a branch can allocate and throw; node moves are noexcept. Moves leave
+the source an empty, unstyled leaf. Self-assignment is valid; self-move is a no-op.
+Concatenation regressions cover narrow/wide strings, empty operands, source
+mutation, and temporary-string lifetimes.
 
-The vector constructor and structural APIs are removed. Leaf/branch aliases and
-storage are private. There is no public `get`, `holds_alternative`, `is_branch`,
-`as_leaf`, `as_branch`, child mutation, or iteration. Do not restore iteration
-without a concrete use case and authorization. The matching formatter
-specialization is a friend; the formatter itself is not implemented yet.
-`style` queries or replaces only the current node's style.
+The vector constructor and structural APIs remain private or absent. There is
+no public `get`, `holds_alternative`, `is_branch`, `as_leaf`, `as_branch`, child
+mutation, or iteration. Do not add iteration without a concrete use case and
+authorization. The matching formatter is a friend but not implemented.
+`style` queries or replaces only the root style.
 
 ## Concatenation and invariants
 
 Only concatenation creates branches. A new branch contains two nonempty nodes;
-there must never be an empty branch. `empty` describes text, independently of
+there must never be an empty branch. `empty` describes text independently of
 style. Empty leaves are concatenation identities, including styled empty leaves.
 Appending to an empty left operand replaces it with the right operand and its
 style. Appending an empty right operand does nothing.
@@ -82,62 +92,107 @@ style. Appending an empty right operand does nothing.
 temporaries move, and self-concatenation is safe. Appending to a nonempty leaf
 creates an unstyled parent holding both original styled nodes. Appending to a
 branch extends its vector and retains the branch's root style. A right-hand
-branch remains a nested child. `operator+` delegates to `+=`, so left-associated
-concatenation extends the left sequence. No text is flattened during composition.
+branch remains nested. `operator+` delegates to `+=`; left-associated composition
+extends the left sequence without flattening text.
 
-Equality requires identical root styles, alternatives, string contents, child
-order, and recursive structure. Shared-pointer identity is only a fast path;
-separately allocated equal strings compare equal. A leaf `"ab"` differs from
-`styled_text{"a"} + "b"`. Ordering and hashing are not introduced.
+Equality requires identical root styles, alternatives, text contents, child
+order, and recursive structure. Pointer identity is only a fast path. A leaf
+`"ab"` differs from `styled_text{"a"} + "b"`. No ordering or hashing is added.
 
 ## Plain-text extraction
 
 `plain_text() const -> string_type` returns an independent owning string by
-appending leaves in order in one traversal. It does not modify the tree or
-styles. It preserves whitespace, character code units, embedded nulls, and
-embedded ANSI escapes verbatim; it does not parse or strip escapes. Empty and
-moved-from nodes return empty strings. Allocation can throw. There is no
-preliminary sizing pass or public structural traversal.
+appending leaves in one traversal, without modifying the tree or styles.
+It preserves whitespace, code units, embedded nulls, and ANSI escapes verbatim;
+it does not parse or strip escapes. Empty and moved-from nodes return empty
+strings. Allocation can throw. No preliminary sizing pass or public structural
+traversal is introduced.
+
+## Root styling helpers
+
+Member `overlay(text_style)` updates only `_style`, returns
+`basic_styled_text&`, and is noexcept. It does not copy or traverse the tree.
+The free style-first form `overlay(style, text)` returns an owning styled value.
+Free `bold`, `faint`, `italic`, `underline`, `blink`, `reverse`, `conceal`, and
+`strike` enable the corresponding root emphasis through overlay.
+
+The free functions accept styled text, character strings, and
+`std::basic_string` of the matching character type. Named styled inputs copy
+the tree structure while sharing leaf strings; rvalues move. String inputs
+become owned leaves. Children retain their own styles. Existing style factory
+calls such as `bold()` and `bold(false)` remain available. These helpers can
+allocate and do not promise unconditional noexcept.
+
+```cpp
+auto copy = fmt::overlay(fmt::fg(fmt::term_color::red), ts);
+ts.overlay(fmt::underline()); // In place, no tree copy.
+auto phrase = fmt::bold("nested bold");
+```
+
+No individual fluent emphasis members were added to styled text. Styled-text
+`absolute` convenience operations and deferred `blend` remain separate decisions.
+
+## Absolute styles and blend contract
+
+Absolute is a `text_style` property using bit 62. `.absolute(bool = true)` sets
+or clears it and `.is_absolute()` queries it. It specifies a complete terminal
+style: missing colors mean terminal defaults and absent emphasis means off.
+An absolute-only style is nonempty and emits a reset. `clear` removes absolute
+along with colors/emphasis. Explicit setters and overlays remain available;
+absolute does not freeze the value. Overlay and style OR preserve the flag if
+either operand has it.
+
+Every public color/style `blend` overload requires at least two arguments;
+internal accumulation base cases are unchanged. Each absolute style input must
+specify both foreground and background: terminal-default RGB values are unknown.
+`FMT_ASSERT` checks that precondition per input. Blending returns a relative
+style. With assertions disabled, unspecified channels contribute nothing and
+the absolute flag is dropped. The contract retains noexcept and valid C++11
+constant evaluation. It does not implement deferred tree blending.
 
 ## SGR transition foundation
 
-`to_sgr(final, initial)` already compares relative changes with reset-and-rebuild
-and chooses the shorter byte encoding; ties prefer relative changes. Unspecified
-final colors inherit initial colors, and a reset candidate restores them.
-Emphasis is replaced, including removals; SGR 22 clears bold and faint together,
-so any surviving intensity bit is reapplied. Output is one unpadded sequence.
-The original one-argument overload is unchanged.
+`to_sgr(final, initial)` compares complete terminal states. Empty foreground or
+background means terminal default in either value; absent emphasis means off.
+There is no inheritance in this overload. The initial absolute flag is ignored.
 
-Terry supplied `AnsiColor.hpp` as a reference. Its `transition` also constructs
-both candidates and chooses the shorter, with a comment proposing later cost
-estimation. This supplied version contains no XOR/popcount estimation formula.
-Unlike the new function, it mutates stored state and treats unspecified target
-colors as defaults via SGR 39/49. A future count-first optimization is discussion,
-not implemented work.
+An absolute final style always resets, even when the two states have equal
+attributes. It delegates to one-argument `to_sgr(final)`: compact mode combines
+reset and attributes; noncompact mode emits the reset separately. An absolute-only
+target emits `ESC[0m`.
 
-## Next work and agreed design
+For a relative final style, compare selective changes with reset-and-rebuild,
+choose the shorter encoding, and prefer selective changes on a tie. A specified
+initial color becoming default can use SGR 39 (foreground) or 49 (background).
+If both channel values are already default, no selective color change is needed.
+The reset candidate rebuilds only the final attributes. Identical complete states
+emit nothing. Relative transitions use one unpadded combined sequence regardless
+of the output-mode macro. SGR 22 clears bold/faint together, so reapply a surviving
+intensity bit when necessary. Both narrow and wide output are supported.
 
-The next proposed increment is root-style forwarding: component and emphasis
-members operate only on `_style`, and free functions such as `underline(node)`
-return an independently styled value. Lvalue branches copy structure/share text;
-rvalues move. Copying can allocate, so free value-returning overloads must not
-promise unconditional noexcept. This increment has been discussed, not authorized
-or implemented. Review ambiguous `clear`, style composition operators, and blend
-operations separately; `empty` and equality retain their text/value meanings.
+The opening-output bound is now 60 characters for maximal noncompact absolute
+output; maximal compact absolute output is 54. These are bounds for one-argument
+style emission, not an implementation of extended push/pop markers.
 
-The primary purpose is a formatter that renders nested styles and restores the
-enclosing style after children. It may access the private tree directly.
-Rendering, absolute boundaries, lazy blending, parsing, visible width,
-serialization, and module export remain unimplemented. Public iteration is
-explicitly deferred. No website update is requested.
+Terry's earlier `AnsiColor.hpp` reference also compares both candidates; its
+comment about count-first cost estimation remains an optimization proposal.
+No XOR/popcount estimator has been implemented.
 
-## Validation and preservation
+## Next work and validation limits
 
-See [BuildAndTest.md](BuildAndTest.md#cloud-styledtext-validation) for exact
-current scope and commands. Eleven public-API tests pass in C++11 and C++23,
-including plain-text extraction; the same suite passes C++11 ASan/UBSan with
-leak detection disabled. The separate allocation test confirms allocation-free
-large-leaf copies and structural rather than character allocation for branch
-copies. Do not turn these focused results into a full-suite or remote-CI claim.
-The Git bundle above preserves committed library progress; coordination edits
-require separate preservation and commit/push authorization.
+The next proposed increment is nested rendering: resolve inheritance before
+calling the complete-state transition function, respect absolute boundaries,
+and restore the enclosing state after each child. At an absolute boundary,
+start from terminal defaults; descendants can inherit from that node normally.
+Deferred blending needs a separate interface/semantics decision. Parsing,
+visible width, serialization, and module export remain unimplemented. Public
+iteration is still deferred. No website update is requested.
+
+For the current source, strict C++11/compact color tests passed (61), strict
+C++23/noncompact color tests passed (63), strict C++11/compact styled-text tests
+passed (18), and the C++11 allocation regression passed. The color suite includes
+all 65,536 emphasis-state pairs. These are direct GCC 13.3.0 executable checks,
+not CMake/CTest or current remote-CI results. No fresh sanitizer, full-suite,
+old-compiler, tablet, or guide-publication result is claimed for `08a9d3b7`.
+Earlier overlay sanitizer checks remain historical evidence. See
+[BuildAndTest.md](BuildAndTest.md#cloud-styledtext-validation) for commands.

@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated October 29, 2026.
+Updated October 30, 2026.
 
 ## Authorization and scope
 
@@ -53,12 +53,20 @@ changed `styled-text.h` only; do not mechanically restyle unrelated headers.
 
 Terry authorized native Linux tools in the cloud; MSYS2 Git and PATH rules
 below apply to his Windows/MSYS2 checkouts. Use compact SGR for the StyledText
-experiments. Push CI is explicitly disabled for `feat/StyledText` by `54f06693`;
-PR triggers remain enabled. Do not restore push execution without instruction. Batch changes
+experiments. The active experiment is `feat/StyledText2`; its linux, windows,
+macos, and doc push exclusions match that spelling. PR triggers remain enabled.
+Do not restore push execution without instruction. Batch changes
 before authorized pushes to conserve GitHub Actions compute.
 Do not push solely to preserve a workspace: provide a downloadable backup of
 source, uncommitted changes, and coordination documents when requested.
 A local commit alone does not establish durable cloud-workspace retention.
+For cross-machine delivery, Terry prefers Git bundles over patches after the
+SGR patch-transfer failure. When committing is authorized, preserve exact commits
+and prerequisites, verify bundle import in a separate repository, and give fetch
+and integration commands. This preference does not independently authorize commits
+or pushes. The SGR fix was transferred and fast-forwarded within the experimental
+branch; the squash policy below still governs accepted feature integration into
+`color-dev`.
 Keep library and coordination working-tree statuses explicit in handoffs.
 
 ## Repositories and tools
@@ -133,7 +141,7 @@ baseline; this policy does not authorize rewriting them.
 7. Terry pushes the final commit, or explicitly authorizes the assistant to
    push. Verify the intended commit structure, matching local/GitHub full SHAs,
    and every applicable CI job for that SHA. The guide-publication workflow
-   targets `color-dev` in local changes. Publication passed at `a18689e1` under
+   targets `color-dev` in committed configuration at `5b3f49ff`. Publication passed at `a18689e1` under
    the former `dev` name; verify environment permission and publication after
    pushing the renamed branch configuration. Candidate results do
    not replace final integration checks.
@@ -243,7 +251,8 @@ after an authorized rewrite.
 ## Coordination worktree
 
 The library root and `coord/` are separate working trees of the same repository.
-The root currently uses `color-dev`; `coord/` uses `docs/Coord`. Entering the
+The library root uses the selected library branch (the active experiment is
+`feat/StyledText2`); `coord/` uses `docs/Coord`. Entering the
 directory changes which checkout Git sees; it does not switch either worktree's
 branch. Use `git -C coord status` and `git -C coord diff` from the library root.
 Do not switch the library checkout to `docs/Coord` while that branch is checked

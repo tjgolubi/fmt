@@ -2,93 +2,87 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Website](Website.md)
 
-Updated October 29, 2026. Commands run from the library checkout root unless
+Updated October 30, 2026. Commands run from the library checkout root unless
 stated otherwise. Use `color-dev` or an authorized feature branch, not the
 `coord/` documentation worktree on `docs/Coord`. Run library commands from
 `..` when starting in `coord/`. `/doc/` means repository-relative.
 
 ## Cloud StyledText validation
 
-Current local library commit: `9306441b406c743df39d865dcd41f22ee0f4e86c`
-on `feat/StyledText`. This session uses Ubuntu 24.04.3 x86-64, native GCC
-13.3.0. CMake was not available on PATH. Checks below were compiled directly,
-header-only, with `FMT_COLOR_COMPACT_SGR=1`; they are not CMake/CTest results.
-The source is committed locally but not pushed. The verified remote head remains
-`54f06693`. Automatic push CI is disabled for this branch; no remote result is
-claimed for the four local commits. See [StyledText.md](StyledText.md).
+Current experimental source: `feat/StyledText2` at
+`08a9d3b7a828392e1d64281a6bcc4a6e0212b73d`, verified on GitHub after Terry
+imported and pushed `SgrTransitionFix.bundle`. Local `fix/SgrTransition` is at
+that exact commit with a clean working tree. Checks used native Ubuntu GCC
+13.3.0 and direct compilation; CMake was not available on PATH. These are
+focused executable results, not CMake/CTest, full-suite, or remote-CI results.
 
-Eleven Google Test cases pass in C++11 and C++23. Coverage includes compile-time public
-surface checks, rejection of vector/variant access, narrow/wide construction and
-composition, exact equality, shared-text lifetime and copy independence,
-self-assignment/concatenation, moved-from reset/reuse, and plain-text extraction.
-Extraction covers nesting, whitespace, long strings, non-ASCII wide characters,
-embedded nulls/escapes, returned-string independence, and const access.
+| Check                         | Mode                       | Result      |
+| ----------------------------- | -------------------------- | ----------- |
+| Color regression suite        | C++11, compact SGR          | 61 passed   |
+| Color regression suite        | C++23, noncompact SGR       | 63 passed   |
+| Styled-text regression suite  | C++11, compact SGR          | 18 passed   |
+| Styled-text allocation check  | C++11                      | Passed      |
 
-Reproduce the focused suite from the library root:
+All four builds used `-Wall -Wextra -Werror -pedantic`. No individual skips were
+reported. The color suite retains the independent interpreter covering all
+65,536 emphasis-state pairs. New regressions cover selective SGR 39/49,
+reset-and-rebuild, default-color targets, absolute targets even for equal
+states, and irrelevance of the initial absolute flag. The transition helper
+checks default/narrow/wide calls and input preservation.
 
-```bash
-g++ -std=c++11 -DFMT_HEADER_ONLY=1 -DFMT_COLOR_COMPACT_SGR=1 \
-  -Iinclude -Itest -Itest/gtest test/styled-text-test.cc \
-  test/test-main.cc test/gtest/gmock-gtest-all.cc -pthread \
-  -o /tmp/styled-text-cxx11
-/tmp/styled-text-cxx11
-```
-
-Repeat with `-std=c++23`. The same eleven tests passed under C++11 with
-`-fsanitize=address,undefined -fno-omit-frame-pointer -g`. Run with
-`ASAN_OPTIONS=detect_leaks=0`; leak detection is not established. Strict C++11
-compilation also passed:
+Reproduce the directly linked color suite from the library checkout root:
 
 ```bash
-g++ -std=c++11 -DFMT_HEADER_ONLY=1 -DFMT_COLOR_COMPACT_SGR=1 \
-  -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Werror \
-  -Iinclude -Itest -isystem test/gtest -c test/styled-text-test.cc \
-  -o /tmp/styled-text-strict.o
+g++ -std=c++11 -Wall -Wextra -Werror -pedantic \
+  -DFMT_COLOR_COMPACT_SGR=1 -Iinclude -Itest -Itest/gtest \
+  test/color-test.cc test/test-main.cc test/gtest-extra.cc test/util.cc \
+  test/gtest/gmock-gtest-all.cc src/format.cc src/os.cc -pthread \
+  -o /tmp/fmtcolor-color-test11
+/tmp/fmtcolor-color-test11
 ```
 
-`test/styled-text-sharing-test.cc` is an isolated executable replacing global
-new/delete. It checks zero allocations for large-leaf copy/assignment, small
-structural allocations rather than duplicate large character storage for branch
-copies, and allocation-free empty construction/moves, for char and wchar_t.
-It passed C++11/C++23 with strict warnings and C++11 with exceptions disabled.
-It was rerun in C++11/C++23 after the brace-initialization style pass. CMake
-registration exists, but was not executed locally.
+For the other observed color configuration, replace `-std=c++11` with
+`-std=c++23`, set `FMT_COLOR_COMPACT_SGR=0`, and choose a separate output path.
+For the observed styled-text suite, use the C++11 compact command with
+`test/styled-text-test.cc` in place of `test/color-test.cc`.
+
+The isolated allocation executable replaces global new/delete. It covers shared
+large-leaf copies, branch structural copying, moves, and overlay helper chains.
+Reproduce its current C++11 build with:
 
 ```bash
-g++ -std=c++11 -DFMT_HEADER_ONLY=1 -DFMT_COLOR_COMPACT_SGR=1 \
-  -Iinclude test/styled-text-sharing-test.cc -o /tmp/styled-text-sharing
-/tmp/styled-text-sharing
+g++ -std=c++11 -Wall -Wextra -Werror -pedantic -Iinclude \
+  test/styled-text-sharing-test.cc src/format.cc src/os.cc -pthread \
+  -o /tmp/fmtcolor-sharing-test11
+/tmp/fmtcolor-sharing-test11
 ```
 
-The exceptions-disabled allocation check adds `-DFMT_EXCEPTIONS=0 -fno-exceptions`. A separate C++11/header-only smoke check with the same flags
-confirmed narrow/wide `plain_text` returns `"ab"`/`L"ab"` for styled `a` plus `b`.
-No tests were intentionally skipped in the focused suite. No fresh full suite,
-old compiler matrix, module export, guide build, or website publication is claimed.
+These checks were run while preparing the fix; committing and bundling did not
+change their source files. No fresh sanitizer, no-exceptions, older-compiler,
+module, documentation-build, tablet, or benchmark result is claimed for this
+commit. Earlier owning-overlay checks passed C++11/C++23, sanitizer, and
+allocation tests, but those historical checks do not validate every rebased
+integration path. Push CI is deliberately excluded for `feat/StyledText2`.
 
-Earlier cloud validation used Debian 13, GCC 14.2.0, and CMake 4.4.4. Its 23-target
-Release/C++23/default-SGR baseline result applies to `5b3f49ff`, not this workspace
-or current source. The SGR transition commit `cff2fc5f` passed color-test in
-C++23/default, C++23/compact, and C++11/compact, including all 65,536 emphasis-state
-pairs checked with an independent interpreter. The original `7b0e07ce` foundation
-had focused C++11/C++23 compact and sanitizer checks, now superseded by the local
-API and tests above. These historical results do not validate the new full tree.
+`SgrTransitionFix.bundle` contains exact commit `08a9d3b7`, requires
+`a8fcd97b608c7b20c758883acad389380d0313bf`, and was verified by importing it
+into a separate repository containing that base. Use the verified bundle for this handoff. Coordination
+changes are separate, uncommitted edits and are not in that library bundle.
 
-When CMake is available, proposed reproduction is:
+When CMake is available, the existing test registration permits:
 
 ```bash
 cmake -S . -B build/styled-text-compact -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_STANDARD=23 -DFMT_TEST=ON -DFMT_DOC=OFF \
   -DFMTCOLOR_SKIP=OFF -DCMAKE_CXX_FLAGS=-DFMT_COLOR_COMPACT_SGR=1
 cmake --build build/styled-text-compact \
-  --target styled-text-test styled-text-sharing-test --parallel 8
+  --target color-test styled-text-test styled-text-sharing-test --parallel 8
 ctest --test-dir build/styled-text-compact \
-  -R '^styled-text(-sharing)?-test$' --output-on-failure
+  -R '^(color|styled-text|styled-text-sharing)-test$' --output-on-failure
 ```
 
-Use a separate C++11 build directory for that mode. These CMake commands have not
-been run for the current source. `StyledTextProgress.bundle` preserves the exact
-four local commits with prerequisite `54f06693`; it does not include uncommitted
-coordination edits. See StyledText.md for import and push-blocker details.
+These CMake commands have not been run for the current source. Use separate
+build directories for other language/SGR modes.
 
 ## Platforms and tools
 
@@ -245,7 +239,7 @@ independent expectations.
 
 `.github/workflows/fmtcolor-pages.yml` targets pushes to `color-dev`, and
 `support/mkdocs-pages.yml` uses `edit/color-dev/doc/`. The instructions match.
-The `color-dev` name changes are local and uncommitted. The preceding `dev`
+The `color-dev` name changes were committed at `5b3f49ff`. The preceding `dev`
 configuration was committed and pushed at
 `a18689e1a0aced47e96db18b02aab577a853168a`, with these unchanged full-SHA pins:
 
@@ -258,8 +252,8 @@ The release tags were resolved through GitHub and both exact `action.yml`
 files verified to declare `runs.using: node24`. This replaces the Node.js 20
 pins that caused runner deprecation warnings. Workflow YAML parsing, the
 renamed `color-dev` filter, both pins, and whitespace checks passed locally.
-The guide rebuilt successfully; commit/push and publication verification for
-the renamed filter remain pending.
+The guide rebuilt successfully during that work. Publication verification for
+the renamed filter remains unestablished here.
 
 For `a18689e1`, [FmtColor documentation](https://github.com/tjgolubi/fmt/actions/runs/40680365434)
 completed successfully: both `build` and `deploy` jobs passed, including
