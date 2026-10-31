@@ -118,9 +118,10 @@ bool check_sharing() {
   const auto large = std::basic_string<Char>(100000, static_cast<Char>('x'));
   const auto source = node(large);
   // A deliberate character-buffer copy must still be detected and rejected,
-  // including when MSVC iterator-debug bookkeeping is permitted.
+  // including when MSVC iterator-debug bookkeeping is permitted. Construct
+  // from characters: older standard libraries may share a copied string.
   start_counting();
-  const auto buffer_copy = large;
+  const auto buffer_copy = std::basic_string<Char>(large.data(), large.size());
   count_allocations = false;
   if (!check<Char>("large-buffer detection control",
                    allocated_bytes >= large.size() * sizeof(Char) &&
