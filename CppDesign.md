@@ -413,13 +413,16 @@ convenience as a major design goal.
 ## Current experiment and planned work
 
 The active experiment is `feat/Formatter` at
-`eff67861708d8863e3865b7d3d573ff71fc4282e`, verified pushed with a clean library
+`9c5e303debcf54349418e27ca0aa31e6a2a2f47a`, verified pushed with a clean library
 working tree. It starts from the owning `feat/StyledText2` baseline at `08a9d3b7` and
 adds nested formatting, tests, guide documentation, and a GNU make demo. This
 experimental branch remains separate from accepted `color-dev` integration.
 See [StyledText.md](StyledText.md) for exact API and invariants and
 [BuildAndTest.md](BuildAndTest.md) for validation limits and the unresolved
-strict Release/C++11 blend warning.
+strict Release/C++11 blend warning. The candidate at `9c5e303d` has all
+41 push-CI jobs passing (18 Linux, 13 Windows, 9 macOS, 1 documentation).
+The later portability commits adjust the allocation regression only, not the
+production formatter. Acceptance and squash integration remain separate.
 
 The later independent library requires C++23 and `std::variant`; the {fmt}
 release retains C++11 throughout. The owning tree uses a custom union in all

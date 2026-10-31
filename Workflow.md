@@ -58,7 +58,8 @@ experiments. The current active branch is `feat/Formatter`, based on
 match `feat/StyledText2`, so they do not exclude `feat/Formatter`; its push
 triggered those workflows. PR triggers remain enabled. Do not change workflow
 exclusions or cancel runs without instruction. Batch changes
-before authorized pushes to conserve GitHub Actions compute.
+before authorized pushes to conserve GitHub Actions compute. CI status is
+currently checked on demand; Terry asked to stop periodic polling.
 Do not push solely to preserve a workspace: provide a downloadable backup of
 source, uncommitted changes, and coordination documents when requested.
 A local commit alone does not establish durable cloud-workspace retention.

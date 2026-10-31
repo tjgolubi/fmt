@@ -5,7 +5,7 @@ Updated October 31, 2026.
 ## Scope and state
 
 Active library branch: `feat/Formatter`, committed and pushed at
-`eff67861708d8863e3865b7d3d573ff71fc4282e`. Local and GitHub full SHAs matched; the
+`9c5e303debcf54349418e27ca0aa31e6a2a2f47a`. Local and GitHub full SHAs matched; the
 library working tree is clean. It starts from `feat/StyledText2` at
 `08a9d3b7a828392e1d64281a6bcc4a6e0212b73d`. It has not been squash-integrated
 into `color-dev`. Committed, pushed, tested, and accepted are distinct states.
@@ -13,7 +13,8 @@ Terry explicitly authorized committing and pushing the separate coordination
 handoff on `docs/Coord`.
 
 The formatter branch adds the GNU make demo (`25d9f36d`), user-guide description
-(`769891e9`), and formatter plus regression tests (`eff67861`).
+(`769891e9`), formatter plus regression tests (`eff67861`), and allocation-test
+portability corrections through `9c5e303d`.
 
 The dependency order above `color-dev` at `5b3f49ff` is:
 
@@ -238,7 +239,8 @@ repository demo is the current delivery method.
 
 ## Next work and validation limits
 
-Review and remote-CI follow-up remain. GCC 14.2 produced a Release/C++11 blend
+All 41 push-CI jobs now pass for `9c5e303d`; review remains separate from
+validation and integration acceptance. GCC 14.2 produced a Release/C++11 blend
 warning treated as an error; its cause is unconfirmed. Deferred blending needs
 a separate interface/semantics decision. Width/alignment/precision, parsing,
 visible width, serialization, module export, and public iteration remain
@@ -248,7 +250,15 @@ Current formatter tests pass for narrow/wide inheritance, absolute groups,
 equal-state absolute entry, sibling restoration, empty/binary/long/raw text,
 compiled format strings, output iterators, input preservation, rejected format
 specifications, and all 65,536 parent/child emphasis pairs. Focused builds used
-Debian GCC 14.2.0; Clang was not tested. See
+Debian GCC 14.2.0; Clang was not tested locally. Linux CI now provides Clang
+coverage. See
 [BuildAndTest.md](BuildAndTest.md#cloud-styledtext-validation) for exact modes,
-commands, the blend warning, and the remote-CI snapshot. Historical GCC 13.3
-results for `08a9d3b7` do not establish a current full-suite pass.
+commands, the blend warning, allocation-test allowances, and exact successful
+CI run links. Earlier GCC 13.3 results for `08a9d3b7` are historical; the
+current remote result belongs only to `9c5e303d`. No PR-only lint/fuzz or guide-publication pass is inferred.
+
+For proposed length/width work, distinguish summed leaf code-unit sizes from
+Unicode display width. Generated SGR contributes no width, but raw embedded
+escapes need explicit handling. Ordinary narrow-string fmt formatting estimates
+UTF-8 width using Unicode wide/fullwidth tables, without full grapheme handling.
+No new length/width API or nonempty format specification has been implemented.

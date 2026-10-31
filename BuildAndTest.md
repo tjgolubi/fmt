@@ -10,12 +10,15 @@ stated otherwise. Use `color-dev` or an authorized feature branch, not the
 ## Cloud StyledText validation
 
 Current experimental source: `feat/Formatter` at
-`eff67861708d8863e3865b7d3d573ff71fc4282e`, verified pushed with matching
+`9c5e303debcf54349418e27ca0aa31e6a2a2f47a`, verified pushed with matching
 local/GitHub full SHAs and a clean library working tree. It starts from
 `feat/StyledText2` at `08a9d3b7`. Current local checks used native Debian 13
 x86-64, GCC 14.2.0, and CMake 4.4.4. CMake is installed locally under
 `/workspace/build-tools/cmake/data/bin`; it is not necessarily on PATH.
-No Clang build was run. These are focused checks, not a full-suite pass.
+The formatter checks below were run for `eff67861`; the subsequent fixes
+changed only the allocation regression. No local Clang build was run.
+These remain focused local results; the remote matrix verification is
+recorded separately below.
 
 | Check                           | Configuration                          | Observed result                |
 | ------------------------------- | -------------------------------------- | ------------------------------ |
@@ -58,8 +61,9 @@ disabled. The absolute-blend precondition assertion is separate from this
 compiler diagnostic. Current blend overloads require two or more arguments;
 absolute inputs must specify both color channels when assertions are enabled.
 The earlier GCC 13.3 result does not establish whether the arity/assertion
-revision caused the newer warning. No lower-optimization, baseline-comparison,
-older-GCC, or Clang investigation was performed.
+revision caused the newer warning. No local lower-optimization, baseline-comparison, older-GCC, or Clang
+investigation of this warning was performed. The passing remote matrix does
+not reproduce the exact local GCC 14.2 Release/C++11 configuration.
 
 ### Reproduction
 
@@ -105,24 +109,57 @@ and strikethrough, the absolute span has only underline, and enclosing styling
 resumes after it. The GNU make build's ANSI output matched the directly linked
 build's output. The demo changes neither terminal capabilities nor the Site.
 
-### Remote CI snapshot
+### Allocation-test portability
 
-The exclusions for `feat/StyledText2` do not exclude `feat/Formatter`. The
-formatter push triggered four workflows for the exact full SHA above. Checked
-October 31, 2026 at 04:22 UTC:
+The allocation regression now labels failing stages and reports character type,
+allocation count, total bytes, largest allocation, and baseline/bookkeeping
+measurements. Leaf copying/assignment and in-place root overlay still require
+zero allocations everywhere. Only `_MSC_VER` with nonzero
+`_ITERATOR_DEBUG_LEVEL` permits extra bookkeeping allocations in helper moves
+and empty string construction. The limit is measured from empty native strings
+and vectors, without private STL types: at most 32 extra proxy-sized allocations
+and their bounded byte total. Larger allocations must match the branch-copy
+baseline, so copying child buffers cannot hide in the proxy allowance.
 
-| Workflow | Status checked       | Evidence                                                        |
-| -------- | -------------------- | --------------------------------------------------------------- |
-| doc      | Build job passed     | [Run](https://github.com/tjgolubi/fmt/actions/runs/41168191108)     |
-| windows  | Running              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41168191013)     |
-| linux    | Queued               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41168191164)     |
-| macos    | Queued               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41168191022)     |
+A large-buffer control explicitly calls the replacement `operator new` and
+verifies that the allocation is counted and rejected by the zero-baseline
+policy. A string copy was unsuitable: old libstdc++ can share copied character
+storage, and optimized libc++ can omit the measured string allocation. These
+were control-test failures, not formatter failures. The final control avoids
+both library-specific behaviors. All modes preserve value/ownership checks.
 
-The documentation run's single build job was inspected and passed for the
-matching SHA. Other workflows are not established passes; inspect every
-applicable matrix job before claiming full CI validation or preparing a squash.
-No workflows were cancelled, reconfigured, or retriggered. The doc workflow
-builds documentation; it does not publish the guide or update the website.
+The final allocation test passed locally under GCC 14.2 in Release/C++23 via
+CTest and strict optimized C++11 with libstdc++'s old copy-on-write ABI.
+Earlier checks of the MSVC policy change also passed strict C++11 with
+libstdc++ debug iterators. The native MSVC allowance is validated by the
+Windows CI matrix below, including all six previously failing Debug jobs.
+These commits changed only `test/styled-text-sharing-test.cc`.
+
+### Remote CI verification
+
+All **41 jobs passed** for
+`9c5e303debcf54349418e27ca0aa31e6a2a2f47a` on `feat/Formatter`.
+Local and GitHub full SHAs matched after the push. Every job's successful
+conclusion and exact head SHA was inspected; none were failed, cancelled,
+queued, or running.
+
+| Workflow | Successful jobs | Evidence                                                        |
+| -------- | --------------- | --------------------------------------------------------------- |
+| Linux    | 18              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41226395574) |
+| Windows  | 13              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41226395566) |
+| macOS    | 9               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41226395568) |
+| Doc      | 1               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41226395616) |
+
+The exclusions for `feat/StyledText2` do not exclude `feat/Formatter`.
+This verifies the push workflows for the current candidate, including the
+allocation control on GCC 4.9, MSVC Debug, and optimized macOS builds. Linux
+provides Clang and old-compiler coverage; local testing used GCC only.
+A successful job is distinct from individual test skips, which are not
+summarized here. No PR-only lint/fuzz result is established by these push
+runs. The separate local strict GCC 14.2/C++11 blend warning remains unresolved.
+No workflows were cancelled or reconfigured. Periodic polling was stopped at
+Terry's instruction; check status on demand. The doc workflow builds the guide
+without publishing it, and no website update was performed.
 
 ### Earlier owning baseline
 
@@ -135,8 +172,9 @@ transferred in `SgrTransitionFix.bundle`, requiring exact base
 `a8fcd97b608c7b20c758883acad389380d0313bf`; its import was verified separately.
 The bundle does not include the formatter commits or coordination documents.
 
-No current full-suite, sanitizer, old-compiler, module, tablet, performance,
-guide-publication, or complete remote-matrix result is claimed. Website version
+The passing remote push matrix is the current cross-platform evidence. No
+additional local full-suite, fresh local sanitizer, tablet, performance,
+guide-publication, or PR-only workflow result is claimed. Website version
 36 remains unchanged. Deferred blending and format specifications beyond the
 empty specification remain future work.
 

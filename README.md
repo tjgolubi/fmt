@@ -84,7 +84,7 @@ changelog; that cleanup remains a separate follow-up.
 ## Current experimental work
 
 Active library branch: `feat/Formatter`, committed and pushed at
-`eff67861708d8863e3865b7d3d573ff71fc4282e`. Local and GitHub full SHAs matched
+`9c5e303debcf54349418e27ca0aa31e6a2a2f47a`. Local and GitHub full SHAs matched
 after the push; the library working tree is clean. This branch starts from
 `feat/StyledText2` at `08a9d3b7`. It has not been squash-integrated into
 `color-dev`; committed, pushed, tested, and accepted remain distinct states.
@@ -99,7 +99,8 @@ Only `{}` and `{:}` are accepted; width, alignment, precision, and deferred
 blending remain future work. See [StyledText.md](StyledText.md).
 
 The pushed formatter work consists of the GNU make demo (`25d9f36d`), guide
-update (`769891e9`), and implementation/tests (`eff67861`). `demo/` contains
+update (`769891e9`), implementation/tests (`eff67861`), and allocation-test
+portability fixes through `9c5e303d`. `demo/` contains
 `FmtColorDemo2.cpp`, a Makefile, instructions, and executable ignore rules.
 Run `make -C demo run`; the Makefile uses this checkout's headers in C++23
 header-only mode with compact SGR, without CMake or a prebuilt library.
@@ -107,18 +108,27 @@ header-only mode with compact SGR, without CMake or a prebuilt library.
 Local formatter checks passed with GCC 14.2 in C++11/C++23 and both SGR modes.
 The strict Release/C++11 color-suite build failed on existing blend-state
 `-Wmaybe-uninitialized` diagnostics promoted by `-Werror`; this is not resolved
-or established to be a false positive. No Clang build was run. The demo built,
-ran, and passed independent character-by-character style checks. Exact scope
+or established to be a false positive. No local Clang build was run; passing
+Linux CI includes Clang. The demo built, ran, and passed independent character-by-character style checks. Exact scope
 and commands are in [BuildAndTest.md](BuildAndTest.md#cloud-styledtext-validation).
 
 Push exclusions still apply to `feat/StyledText2`, not `feat/Formatter`.
-The formatter push triggered Linux, Windows, macOS, and documentation workflows.
-At the October 31, 04:22 UTC check for `eff67861`, documentation build passed,
-Windows was running, and Linux/macOS were queued. No full green matrix is
-claimed. Do not change exclusions or cancel runs without instruction.
+All **41 push-CI jobs passed** for exact commit
+`9c5e303debcf54349418e27ca0aa31e6a2a2f47a`: Linux 18, Windows 13, macOS 9,
+and documentation build 1. Every job and its SHA was inspected; none failed,
+were cancelled, or remained pending. Windows Debug allocation checks now allow
+bounded measured iterator bookkeeping, while other builds remain strict.
+The allocation control uses an explicit allocation call, avoiding old string
+copy-on-write behavior and optimized-away string allocations. Production
+formatter code was unchanged by these test-only fixes. See BuildAndTest.md
+for exact CI links and remaining validation limits.
 
-The next work is review, CI follow-up, and investigation of the blend warning;
-further formatting specifications and deferred blending require agreed scope.
+The next work is review and investigation of the local strict C++11 blend
+warning; further formatting specifications and deferred blending require
+agreed scope. Green push CI does not constitute squash acceptance, PR-only
+lint/fuzz validation, or guide publication. Check CI on demand; Terry stopped
+periodic polling. Do not change workflow exclusions or cancel runs without
+instruction.
 Website version 36 remains unchanged. The coordination update is maintained
 separately on `docs/Coord`; Terry explicitly authorized its commit and push.
 
@@ -164,7 +174,7 @@ The API Reference header list includes `fmt/color-ostream.h`, linking to its
 existing guide section; it has no separate new API Reference section.
 
 The current owning structured-text implementation and formatter are on
-`feat/Formatter` at `eff67861`; see [StyledText.md](StyledText.md).
+`feat/Formatter` at `9c5e303d`; see [StyledText.md](StyledText.md).
 Nested inheritance and absolute rendering boundaries are implemented.
 Deferred blending, parsing, display width, format specifications beyond the
 empty specification, serialization, and module export remain unimplemented.
