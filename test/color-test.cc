@@ -953,6 +953,12 @@ void check_sgr_transition(const fmt::text_style& target,
   EXPECT_EQ(fmt::to_sgr<char>(target, initial), expected);
   EXPECT_EQ(fmt::to_sgr<wchar_t>(target, initial),
             (std::wstring{expected.begin(), expected.end()}));
+  // The initial value describes a complete state regardless of its flag.
+  auto absolute_initial = initial;
+  absolute_initial.absolute();
+  EXPECT_EQ(fmt::to_sgr(target, absolute_initial), expected);
+  EXPECT_EQ(fmt::to_sgr<wchar_t>(target, absolute_initial),
+            (std::wstring{expected.begin(), expected.end()}));
   EXPECT_EQ(target, target_copy);
   EXPECT_EQ(initial, initial_copy);
 }
@@ -962,12 +968,12 @@ TEST(color_test, sgr_transition) {
   check_sgr_transition({}, {}, "");
   const auto red = fmt::fg(fmt::term_color::red);
   check_sgr_transition(red, red, "");
-  check_sgr_transition({}, red, "");
+  check_sgr_transition({}, red, "\x1b[0m");
   check_sgr_transition(fmt::bold(red), red, "\x1b[1m");
   check_sgr_transition(fmt::fg(fmt::term_color::blue), red, "\x1b[34m");
   check_sgr_transition(fmt::fg(fmt::rgb{1, 2, 3}), red,
                        "\x1b[38;2;1;2;3m");
-  check_sgr_transition(fmt::bg(fmt::cube_color{0}), red, "\x1b[48;5;16m");
+  check_sgr_transition(fmt::bg(fmt::cube_color{0}), red, "\x1b[0;48;5;16m");
   check_sgr_transition(fmt::fg(fmt::gray_color{0}), {}, "\x1b[38;5;232m");
   // Identical RGB appearance does not erase a palette-kind transition.
   check_sgr_transition(fmt::fg(fmt::color::black),
@@ -976,17 +982,52 @@ TEST(color_test, sgr_transition) {
   check_sgr_transition({}, fmt::bold(), "\x1b[0m");
 
   const auto all = static_cast<fmt::emphasis>(0xff);
-  // A reset must restore inherited colors even when the target omits them.
+  // Missing target colors select terminal defaults after a reset.
   const auto initial = fmt::text_style{all, fmt::term_color::red,
                                       fmt::term_color::blue};
-  check_sgr_transition({}, initial, "\x1b[0;31;44m");
+  check_sgr_transition({}, initial, "\x1b[0m");
   // Selective intensity removal must restore faint, without losing colors or
   // unrelated attributes. Here reset-and-rebuild would be longer.
-  const auto target = fmt::text_style{static_cast<fmt::emphasis>(0xfe)};
+  const auto target = fmt::text_style{static_cast<fmt::emphasis>(0xfe),
+                                     initial.fg(), initial.bg()};
   check_sgr_transition(target, initial, "\x1b[22;2m");
   // Clearing faint likewise restores bold after the shared intensity reset.
-  check_sgr_transition(fmt::text_style{static_cast<fmt::emphasis>(0xfd)},
+  check_sgr_transition(fmt::text_style{static_cast<fmt::emphasis>(0xfd),
+                                      initial.fg(), initial.bg()},
                        initial, "\x1b[22;1m");
+}
+
+TEST(color_test, sgr_transition_terminal_defaults) {
+  const auto fg = fmt::rgb{12, 34, 56};
+  const auto bg = fmt::rgb{78, 90, 123};
+  const auto initial = fmt::text_style{fg, bg, fmt::emphasis::bold};
+  // Preserve the other channel and emphasis using selective default resets.
+  check_sgr_transition(fmt::text_style{fmt::no_color, bg, fmt::emphasis::bold},
+                       initial, "\x1b[39m");
+  check_sgr_transition(fmt::text_style{fg, fmt::no_color, fmt::emphasis::bold},
+                       initial, "\x1b[49m");
+  // A tie prefers selective changes; resetting and reapplying red is as long.
+  const auto palette = fmt::text_style{fmt::term_color::red,
+                                      fmt::term_color::blue};
+  check_sgr_transition(fmt::fg(fmt::term_color::red), palette, "\x1b[49m");
+  check_sgr_transition(fmt::bg(fmt::term_color::blue), palette, "\x1b[39m");
+  // When both channels and emphasis are removed, a full reset is shorter.
+  check_sgr_transition({}, initial, "\x1b[0m");
+  check_sgr_transition(fmt::bold(), initial, "\x1b[0;1m");
+}
+
+TEST(color_test, sgr_transition_absolute_target) {
+  const fmt::text_style states[] = {
+      {}, fmt::underline(), fmt::fg(fmt::term_color::red),
+      fmt::text_style{fmt::rgb{1, 2, 3}, fmt::gray_color{12},
+                      fmt::emphasis::bold}};
+  for (auto target : states) {
+    target.absolute();
+    for (const auto& initial : states)
+      check_sgr_transition(target, initial, fmt::to_sgr(target));
+    // Equal states must still emit the absolute target's reset.
+    check_sgr_transition(target, target, fmt::to_sgr(target));
+  }
 }
 
 TEST(color_test, sgr_transition_all_emphasis_pairs) {

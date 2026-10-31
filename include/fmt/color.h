@@ -2064,20 +2064,27 @@ void append_transition(buffer<Char>& buf, text_style target, text_style initial,
   append_transition_fragment(buf, make_emphasis<Char>(added));
   if (target.has_fg() && (reset || target.fg() != initial.fg()))
     append_transition_fragment(buf, make_foreground_color<Char>(target.fg()));
+  else if (!reset && !target.has_fg() && initial.has_fg())
+    append_transition_code(buf, 39);
   if (target.has_bg() && (reset || target.bg() != initial.bg()))
     append_transition_fragment(buf, make_background_color<Char>(target.bg()));
+  else if (!reset && !target.has_bg() && initial.has_bg())
+    append_transition_code(buf, 49);
 } // append_transition
 
 } // detail
 
 /**
  * Returns the ANSI SGR transition from `initial` to `ts`, without a trailing
- * reset. Unspecified target colors retain their initial values; target emphasis
- * replaces initial emphasis. Unspecified initial colors mean terminal defaults.
- * Returns an empty string when no changes are needed.
+ * reset. Both arguments describe complete terminal states: empty color channels
+ * mean terminal defaults, and absent emphasis means off. No colors are inherited.
+ * The absolute flag on `initial` is ignored. An absolute target always resets
+ * and delegates to the one-argument overload, regardless of the initial state.
+ * Otherwise returns an empty string when no changes are needed.
  *
- * Uses one unpadded sequence, independently of `FMT_COLOR_COMPACT_SGR`, choosing
- * the shorter of selective changes and reset followed by the effective target.
+ * For relative targets, uses one unpadded sequence, independently of
+ * `FMT_COLOR_COMPACT_SGR`, choosing the shorter of selective changes and reset
+ * followed by the target attributes.
  * Equal lengths prefer selective changes. `Char` defaults to `char`.
  */
 template<typename Char=char>
@@ -2085,9 +2092,8 @@ FMT_NODISCARD inline
 auto to_sgr(const text_style& ts, const text_style& initial)
   -> std::basic_string<Char>
 {
-  auto target = ts;
-  if (!target.has_fg()) target.fg(initial.fg());
-  if (!target.has_bg()) target.bg(initial.bg());
+  if (ts.is_absolute()) return to_sgr<Char>(ts);
+  const auto& target = ts;
   auto relative = basic_memory_buffer<Char, sgr_max_length>{};
   detail::append_transition(relative, target, initial, false);
   if (relative.size() == 0) return {};

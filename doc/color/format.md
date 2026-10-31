@@ -13,8 +13,10 @@ See [Text style rendering](index.md#TextStyleRendering) for the shared rules.
 containing ANSI SGR escape sequences. `Char` defaults to `char`, so
 `fmt::to_sgr(style)` returns `std::string`; `fmt::to_sgr<wchar_t>(style)`
 returns `std::wstring`. It leaves the style unchanged and includes no text or
-trailing reset. An empty style produces an empty string. Unspecified color
-channels emit no parameters; they do not reset the terminal's existing colors.
+trailing reset. An empty relative style produces an empty string. Unspecified
+color channels emit no parameters. A relative style leaves those colors
+unchanged; an absolute style begins with a reset, selecting terminal defaults
+for them. An absolute-only style emits `"\x1b[0m"`.
 
 ```cpp
 const auto style = fmt::text_style{fmt::emphasis::bold,
@@ -44,10 +46,15 @@ or printing functions to wrap text in styling followed by a terminal reset.
 
 `fmt::to_sgr(final_style, initial_style)` returns the SGR needed to change from
 the known initial style to the final style, without a trailing reset. The
-second argument is required. Unspecified final foreground and background
-inherit their respective initial colors. Final emphasis replaces initial
-emphasis, so attributes can be turned off as well as on. Unspecified initial
-colors represent terminal defaults. Neither input is modified.
+second argument is required. Both arguments describe complete terminal states:
+an empty foreground or background means the corresponding terminal-default
+color, and absent emphasis means off. No inheritance occurs here. Resolve any
+enclosing style before calling this overload. The absolute flag on the initial
+style is ignored. Neither input is modified.
+
+An absolute final style always emits a full reset followed by its own
+attributes, even when the initial state has the same attributes. This case
+delegates to `fmt::to_sgr(final_style)` and follows its SGR output mode.
 
 ```cpp
 const auto initial = fmt::bold(fmt::fg(fmt::term_color::red));
@@ -56,15 +63,21 @@ auto transition = fmt::to_sgr(final_style, initial);
 // "\x1b[22;4m": clear intensity, enable underline, retain red.
 ```
 
-The overload compares selective changes with reset-and-rebuild and chooses
-the shorter encoding; ties favor selective changes. Reset-and-rebuild restores
-inherited colors. Bold and faint share SGR 22 for removal, so a surviving
+For a relative final style, the overload compares selective changes with
+reset-and-rebuild and chooses the shorter encoding; ties favor selective
+changes. Selective changes use SGR `39` to restore the default foreground and
+`49` to restore the default background. Reset-and-rebuild applies only the
+final attributes. Bold and faint share SGR 22 for removal, so a surviving
 intensity attribute is reapplied when necessary. Identical states emit nothing.
 Colors are compared by kind and value, preserving terminal palette semantics.
 
-To minimize output, transitions always use one combined sequence and unpadded
-parameters, independently of `FMT_COLOR_COMPACT_SGR`. The one-argument overload
-retains its existing output modes. Both overloads support C++11 and wide
+For example, keeping a red foreground while removing a blue background emits
+`"\x1b[49m"`; removing all colors and emphasis can use the shorter `"\x1b[0m"`.
+
+To minimize output, transitions to relative styles use one combined sequence
+and unpadded parameters, independently of `FMT_COLOR_COMPACT_SGR`. Absolute
+targets and the one-argument overload retain their output modes.
+Both overloads support C++11 and wide
 characters; transitions can allocate and are not `noexcept`.
 
 ## `sgr_reset`
