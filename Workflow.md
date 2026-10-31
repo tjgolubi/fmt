@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated October 30, 2026.
+Updated October 31, 2026.
 
 ## Authorization and scope
 
@@ -53,9 +53,11 @@ changed `styled-text.h` only; do not mechanically restyle unrelated headers.
 
 Terry authorized native Linux tools in the cloud; MSYS2 Git and PATH rules
 below apply to his Windows/MSYS2 checkouts. Use compact SGR for the StyledText
-experiments. The active experiment is `feat/StyledText2`; its linux, windows,
-macos, and doc push exclusions match that spelling. PR triggers remain enabled.
-Do not restore push execution without instruction. Batch changes
+experiments. The current active branch is `feat/Formatter`, based on
+`feat/StyledText2`. The linux, windows, macos, and doc push exclusions still
+match `feat/StyledText2`, so they do not exclude `feat/Formatter`; its push
+triggered those workflows. PR triggers remain enabled. Do not change workflow
+exclusions or cancel runs without instruction. Batch changes
 before authorized pushes to conserve GitHub Actions compute.
 Do not push solely to preserve a workspace: provide a downloadable backup of
 source, uncommitted changes, and coordination documents when requested.
@@ -252,7 +254,7 @@ after an authorized rewrite.
 
 The library root and `coord/` are separate working trees of the same repository.
 The library root uses the selected library branch (the active experiment is
-`feat/StyledText2`); `coord/` uses `docs/Coord`. Entering the
+`feat/Formatter`); `coord/` uses `docs/Coord`. Entering the
 directory changes which checkout Git sees; it does not switch either worktree's
 branch. Use `git -C coord status` and `git -C coord diff` from the library root.
 Do not switch the library checkout to `docs/Coord` while that branch is checked

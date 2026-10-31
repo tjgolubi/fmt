@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md)
 
-Updated October 30, 2026.
+Updated October 31, 2026.
 
 ## Purpose and content
 
@@ -134,10 +134,14 @@ constructors/fluent setters replace components, `blend` averages specified
 channels, and bitwise OR composes color bits. Sequential ANSI SGR updates are
 terminal state changes. Bold/faint remain independent. The {fmt} contribution
 retains conceal; the independent design replaces it with flash. The owning
-`feat/StyledText2` experiment now implements structured text, root
-overlay helpers, absolute style values, and complete-state SGR transitions.
-Nested rendering and its absolute boundaries, lazy blending, parsing, display
-width, and serialization remain future work. The published site has not been
+`feat/Formatter` experiment now implements structured text, root overlays,
+absolute style values, complete-state SGR transitions, and nested formatting
+with inheritance and absolute boundaries. `demo/FmtColorDemo2.cpp` is a locally
+verified, current-API adaptation of Terry's newer demo. Its GNU Makefile uses
+header-only compact SGR. The downloadable Site demo is still the distinct
+future independent-library target; it was not replaced or published here.
+Deferred blending, format specifications, parsing, display width, and
+serialization remain future work. The published site has not been
 updated for this progress. Consult CppDesign.md and StyledText.md.
 
 ## Sites maintenance and publication
@@ -198,7 +202,7 @@ The repository branch is now `color-dev`. Site version 36 still displays and
 links `dev`; updating the public website for the rename requires a separate
 website instruction. The current task changes coordination documentation only; it does not authorize
 a Site update or publication of the experimental user-guide changes. Version 36
-remains the last verified publication, not evidence for `feat/StyledText2`.
+remains the last verified publication, not evidence for `feat/Formatter`.
 
 **Public Site version 36** is live at
 [fmtcolor.ardentokapi66.chatgpt.site](https://fmtcolor.ardentokapi66.chatgpt.site).

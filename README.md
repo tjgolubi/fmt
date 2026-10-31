@@ -1,6 +1,6 @@
 # FmtColor coordination
 
-Updated October 30, 2026.
+Updated October 31, 2026.
 
 FmtColor develops color and text-style extensions for C++. We plan two
 sequential deliverables:
@@ -53,8 +53,8 @@ branch now also use `color-dev`. The workflow filter, guide edit URI, and public
 `color-dev`, committed and pushed at `5b3f49ff`. Publication and platform CI
 for that SHA were not inspected in this cloud session.
 Use `color-dev` for new independent feature baselines, not superseded development
-or compatibility branches. Continue the active experiment identified below on
-`feat/StyledText2`.
+or compatibility branches. Continue the active formatter experiment identified below
+on `feat/Formatter`.
 No release tag or fork version has been assigned; the contribution has not
 been accepted into fmtlib/fmt.
 
@@ -83,37 +83,44 @@ changelog; that cleanup remains a separate follow-up.
 
 ## Current experimental work
 
-Active library branch: `feat/StyledText2`, verified on GitHub at
-`08a9d3b7a828392e1d64281a6bcc4a6e0212b73d`. The local `fix/SgrTransition`
-worktree has the same commit and a clean working tree. This is experimental
-work above `color-dev`, not an accepted squash integration into it.
+Active library branch: `feat/Formatter`, committed and pushed at
+`eff67861708d8863e3865b7d3d573ff71fc4282e`. Local and GitHub full SHAs matched
+after the push; the library working tree is clean. This branch starts from
+`feat/StyledText2` at `08a9d3b7`. It has not been squash-integrated into
+`color-dev`; committed, pushed, tested, and accepted remain distinct states.
 
-The dependency order is `color-dev` (`5b3f49ff`), minimum blend arity
-(`ae726b28`), absolute text styles (`d29412bb`), rebased owning styled-text
-work, and the complete-state SGR transition fix (`08a9d3b7`). Terry rebased
-`feat/StyledText` onto `feat/Absolute` as `feat/StyledText2`; the original
-styled-text patches were preserved. The final branch spelling matches its
-push-CI exclusion.
+The inherited owning baseline contains minimum blend arity, absolute style
+values, shared immutable leaf strings, value-owned private child vectors,
+concatenation, plain-text extraction, root overlays/emphasis helpers, and
+complete-state SGR transitions. The formatter now implements nested relative
+inheritance, absolute boundaries, and restoration of the enclosing style after
+each child and defaults after the root. Narrow and wide text are supported.
+Only `{}` and `{:}` are accepted; width, alignment, precision, and deferred
+blending remain future work. See [StyledText.md](StyledText.md).
 
-Implemented experimental work includes shared immutable leaf strings,
-value-owned child vectors, private character-generic structure, concatenation,
-plain-text extraction, direct leaf initialization, member/free overlay, and
-all eight free emphasis modifiers. Public color/style blend overloads require
-at least two arguments. Absolute is implemented on `text_style`; its nested
-rendering integration remains pending. `to_sgr(final, initial)` now compares
-complete terminal states, including default-color resets and absolute targets.
+The pushed formatter work consists of the GNU make demo (`25d9f36d`), guide
+update (`769891e9`), and implementation/tests (`eff67861`). `demo/` contains
+`FmtColorDemo2.cpp`, a Makefile, instructions, and executable ignore rules.
+Run `make -C demo run`; the Makefile uses this checkout's headers in C++23
+header-only mode with compact SGR, without CMake or a prebuilt library.
 
-The transition fix, tests, and guide were committed as `08a9d3b7`, exported in
-`SgrTransitionFix.bundle`, imported by Terry, and verified pushed at the exact
-same SHA. The bundle requires base `a8fcd97b`. Current focused local checks
-passed; no full-suite, current remote-CI, or guide-publication result is claimed.
-Push CI remains intentionally excluded for `feat/StyledText2`.
+Local formatter checks passed with GCC 14.2 in C++11/C++23 and both SGR modes.
+The strict Release/C++11 color-suite build failed on existing blend-state
+`-Wmaybe-uninitialized` diagnostics promoted by `-Werror`; this is not resolved
+or established to be a false positive. No Clang build was run. The demo built,
+ran, and passed independent character-by-character style checks. Exact scope
+and commands are in [BuildAndTest.md](BuildAndTest.md#cloud-styledtext-validation).
 
-The changes have been committed and pushed but Terry's review remains pending;
-tests and publication of commits do not establish acceptance. Next work is
-nested formatting with inheritance resolution and absolute boundaries, followed
-by a separately agreed deferred-blending design. See [StyledText.md](StyledText.md)
-and [BuildAndTest.md](BuildAndTest.md#cloud-styledtext-validation).
+Push exclusions still apply to `feat/StyledText2`, not `feat/Formatter`.
+The formatter push triggered Linux, Windows, macOS, and documentation workflows.
+At the October 31, 04:22 UTC check for `eff67861`, documentation build passed,
+Windows was running, and Linux/macOS were queued. No full green matrix is
+claimed. Do not change exclusions or cancel runs without instruction.
+
+The next work is review, CI follow-up, and investigation of the blend warning;
+further formatting specifications and deferred blending require agreed scope.
+Website version 36 remains unchanged. The coordination update is maintained
+separately on `docs/Coord`; Terry explicitly authorized its commit and push.
 
 ## Upstream compatibility
 
@@ -156,10 +163,10 @@ their sections, and expected output for all three Styled Arguments examples.
 The API Reference header list includes `fmt/color-ostream.h`, linking to its
 existing guide section; it has no separate new API Reference section.
 
-The current owning structured-text implementation and its root overlay helpers
-are on `feat/StyledText2` at `08a9d3b7`; see [StyledText.md](StyledText.md).
-Nested formatting, deferred blending, parsing, display width, and serialization
-remain unimplemented. Absolute style values and transition semantics are
-implemented; enforcing absolute boundaries in nested rendering remains future work.
-The independent library requires C++23 and uses `std::variant`; the {fmt} release
-retains C++11 support.
+The current owning structured-text implementation and formatter are on
+`feat/Formatter` at `eff67861`; see [StyledText.md](StyledText.md).
+Nested inheritance and absolute rendering boundaries are implemented.
+Deferred blending, parsing, display width, format specifications beyond the
+empty specification, serialization, and module export remain unimplemented.
+The independent library requires C++23 and uses `std::variant`; the {fmt}
+release retains C++11 support.

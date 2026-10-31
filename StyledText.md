@@ -1,14 +1,19 @@
 # Structured styled text experiment
 
-Updated October 30, 2026.
+Updated October 31, 2026.
 
 ## Scope and state
 
-Active library branch: `feat/StyledText2`, verified on GitHub at
-`08a9d3b7a828392e1d64281a6bcc4a6e0212b73d`. The local `fix/SgrTransition`
-worktree has the same commit and a clean working tree. The experiment has not
-been squash-integrated into `color-dev`; Terry's review remains pending.
-Committed, pushed, tested, and accepted are distinct states.
+Active library branch: `feat/Formatter`, committed and pushed at
+`eff67861708d8863e3865b7d3d573ff71fc4282e`. Local and GitHub full SHAs matched; the
+library working tree is clean. It starts from `feat/StyledText2` at
+`08a9d3b7a828392e1d64281a6bcc4a6e0212b73d`. It has not been squash-integrated
+into `color-dev`. Committed, pushed, tested, and accepted are distinct states.
+Terry explicitly authorized committing and pushing the separate coordination
+handoff on `docs/Coord`.
+
+The formatter branch adds the GNU make demo (`25d9f36d`), user-guide description
+(`769891e9`), and formatter plus regression tests (`eff67861`).
 
 The dependency order above `color-dev` at `5b3f49ff` is:
 
@@ -24,14 +29,16 @@ preceding series preserves the original styled-text work, including immutable
 shared leaves, private character-generic structure, append fixes, plain-text
 extraction, direct leaf initialization, owning-string regression tests, and
 member/free overlays with free emphasis modifiers. The original branch was
-`feat/StyledText`; the active owning baseline is now `feat/StyledText2`.
+`feat/StyledText`; the owning baseline for formatter work is `feat/StyledText2`.
 The borrowing `StringView` experiment is separate. Its lifetime and constexpr
 properties are not those of the owning implementation.
 
 Push CI is deliberately excluded for `feat/StyledText2` in linux, windows, macos,
 and doc; the branch spelling now matches the exclusions. PR triggers remain
 preserved. Do not restore push CI without instruction. Use compact SGR and
-focused local checks for this experiment.
+focused local checks for experiments. The new `feat/Formatter` branch does not
+match that exclusion, so its authorized push triggered all four push workflows.
+See BuildAndTest.md for the latest checked state; no exclusion was modified.
 
 The transition fix was committed locally and delivered as `SgrTransitionFix.bundle`,
 then imported and pushed by Terry. Its exact prerequisite is
@@ -46,8 +53,9 @@ git log --oneline HEAD..FETCH_HEAD
 
 These commands inspect/import objects without switching or merging. The fix
 was fast-forwarded into the experimental branch; accepted integration into
-`color-dev` still follows the squash policy in Workflow.md. Preserve exact commits in future authorized bundle deliveries. Coordination changes are
-separate uncommitted edits, not included in the library bundle.
+`color-dev` still follows the squash policy in Workflow.md. Preserve exact
+commits in future authorized bundle deliveries. Coordination documents are
+maintained on their own branch and are not included in that historical bundle.
 
 ## Representation and public API
 
@@ -77,7 +85,8 @@ mutation, and temporary-string lifetimes.
 The vector constructor and structural APIs remain private or absent. There is
 no public `get`, `holds_alternative`, `is_branch`, `as_leaf`, `as_branch`, child
 mutation, or iteration. Do not add iteration without a concrete use case and
-authorization. The matching formatter is a friend but not implemented.
+authorization. The matching formatter is implemented as a friend with private tree access;
+it does not add public iteration or structural APIs.
 `style` queries or replaces only the root style.
 
 ## Concatenation and invariants
@@ -178,21 +187,68 @@ Terry's earlier `AnsiColor.hpp` reference also compares both candidates; its
 comment about count-first cost estimation remains an optimization proposal.
 No XOR/popcount estimator has been implemented.
 
+## Nested formatter
+
+`formatter<basic_styled_text<Char>, Char>` is implemented in `styled-text.h`.
+Its parse function accepts only the empty format specification (`{}` or `{:}`)
+and reports unsupported width, alignment, precision, and other specifications
+through the normal format-string checking mechanism. It works with ordinary
+and compiled fmt format strings and with output iterators. Wide entry points
+use `<fmt/xchar.h>`. This is a fmt formatter, not a `std::formatter`.
+
+Each replacement field assumes terminal defaults on entry. Relative nodes
+inherit missing foreground/background and OR emphasis with the enclosing
+style; specified colors replace the matching channel without promotion.
+Absolute nodes use their own complete style and force a reset even when the
+attributes match the enclosing state. After entering a node, the effective
+state's absolute flag is cleared before passing it to descendants: entering
+an absolute ancestor must not force every relative child to reset.
+
+The formatter walks the private tree directly, using `to_sgr(effective,
+enclosing)` on entry and `to_sgr(enclosing, effective)` on exit. Each child
+returns to the enclosing state, and the root returns to defaults. It does not
+build an extended-SGR intermediate or use push/pop markers. Empty nodes emit
+nothing. Text, braces, embedded nulls, and raw escapes are copied verbatim.
+Raw escapes are not interpreted or tracked, so they can invalidate assumptions
+about terminal state. The formatter does not capture an external terminal
+style or restore one established by an enclosing ordinary `fmt::styled` call.
+The tree is not modified.
+
+## Demonstration
+
+`demo/FmtColorDemo2.cpp` adapts Terry's newer uploaded demo to current names:
+`styled-text.h`, `term_color`, `overlay`, and `fmt::println`. An absolute text
+span uses `overlay(text_style{}.absolute(), underline(...))`. There is no new
+free `absolute(text)` helper. The older uploaded `FmtColorDemo.cpp` is not the
+active demo and contains obsolete API spellings and syntax errors.
+
+The outer line must remain unstyled: appending to a branch retains its root
+style. The demo starts with two separately styled children so red does not
+leak into plain separators or later spans. Nested bold remains red. The second
+line carries a gray background and strikethrough except for the absolute
+underline-only span; both enclosing properties resume afterward.
+
+Run `make -C demo run` with GNU make and a C++23-capable compiler. The Makefile
+uses `FMT_DIR=..`, header-only mode, and `FMT_COLOR_COMPACT_SGR=1`; it needs no
+CMake or prebuilt library. Override `FMT_DIR` or `CXX` on the make command line.
+Executable output is ignored locally. The Makefile is tracked despite the
+repository's general Makefile ignore rule. A standalone tarball was produced,
+but the voice/task interface did not expose a usable download for Terry; the
+repository demo is the current delivery method.
+
 ## Next work and validation limits
 
-The next proposed increment is nested rendering: resolve inheritance before
-calling the complete-state transition function, respect absolute boundaries,
-and restore the enclosing state after each child. At an absolute boundary,
-start from terminal defaults; descendants can inherit from that node normally.
-Deferred blending needs a separate interface/semantics decision. Parsing,
-visible width, serialization, and module export remain unimplemented. Public
-iteration is still deferred. No website update is requested.
+Review and remote-CI follow-up remain. GCC 14.2 produced a Release/C++11 blend
+warning treated as an error; its cause is unconfirmed. Deferred blending needs
+a separate interface/semantics decision. Width/alignment/precision, parsing,
+visible width, serialization, module export, and public iteration remain
+unimplemented. No website update is requested or performed.
 
-For the current source, strict C++11/compact color tests passed (61), strict
-C++23/noncompact color tests passed (63), strict C++11/compact styled-text tests
-passed (18), and the C++11 allocation regression passed. The color suite includes
-all 65,536 emphasis-state pairs. These are direct GCC 13.3.0 executable checks,
-not CMake/CTest or current remote-CI results. No fresh sanitizer, full-suite,
-old-compiler, tablet, or guide-publication result is claimed for `08a9d3b7`.
-Earlier overlay sanitizer checks remain historical evidence. See
-[BuildAndTest.md](BuildAndTest.md#cloud-styledtext-validation) for commands.
+Current formatter tests pass for narrow/wide inheritance, absolute groups,
+equal-state absolute entry, sibling restoration, empty/binary/long/raw text,
+compiled format strings, output iterators, input preservation, rejected format
+specifications, and all 65,536 parent/child emphasis pairs. Focused builds used
+Debian GCC 14.2.0; Clang was not tested. See
+[BuildAndTest.md](BuildAndTest.md#cloud-styledtext-validation) for exact modes,
+commands, the blend warning, and the remote-CI snapshot. Historical GCC 13.3
+results for `08a9d3b7` do not establish a current full-suite pass.

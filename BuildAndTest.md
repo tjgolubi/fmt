@@ -2,87 +2,143 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Website](Website.md)
 
-Updated October 30, 2026. Commands run from the library checkout root unless
+Updated October 31, 2026. Commands run from the library checkout root unless
 stated otherwise. Use `color-dev` or an authorized feature branch, not the
 `coord/` documentation worktree on `docs/Coord`. Run library commands from
 `..` when starting in `coord/`. `/doc/` means repository-relative.
 
 ## Cloud StyledText validation
 
-Current experimental source: `feat/StyledText2` at
-`08a9d3b7a828392e1d64281a6bcc4a6e0212b73d`, verified on GitHub after Terry
-imported and pushed `SgrTransitionFix.bundle`. Local `fix/SgrTransition` is at
-that exact commit with a clean working tree. Checks used native Ubuntu GCC
-13.3.0 and direct compilation; CMake was not available on PATH. These are
-focused executable results, not CMake/CTest, full-suite, or remote-CI results.
+Current experimental source: `feat/Formatter` at
+`eff67861708d8863e3865b7d3d573ff71fc4282e`, verified pushed with matching
+local/GitHub full SHAs and a clean library working tree. It starts from
+`feat/StyledText2` at `08a9d3b7`. Current local checks used native Debian 13
+x86-64, GCC 14.2.0, and CMake 4.4.4. CMake is installed locally under
+`/workspace/build-tools/cmake/data/bin`; it is not necessarily on PATH.
+No Clang build was run. These are focused checks, not a full-suite pass.
 
-| Check                         | Mode                       | Result      |
-| ----------------------------- | -------------------------- | ----------- |
-| Color regression suite        | C++11, compact SGR          | 61 passed   |
-| Color regression suite        | C++23, noncompact SGR       | 63 passed   |
-| Styled-text regression suite  | C++11, compact SGR          | 18 passed   |
-| Styled-text allocation check  | C++11                      | Passed      |
+| Check                           | Configuration                          | Observed result                |
+| ------------------------------- | -------------------------------------- | ------------------------------ |
+| Formatter, styled-text, color    | Release/C++23, compact SGR, CTest       | All 3 targets passed           |
+| Formatter and styled-text       | Strict Release/C++11, compact, CTest    | Both targets passed            |
+| Formatter suite                 | Strict C++23, noncompact, direct link   | All 4 tests passed             |
+| Header syntax                   | Strict C++11, noncompact                | Passed                         |
+| Header-only narrow/wide probe   | Strict C++11, compact, no exceptions    | Compiled and ran successfully  |
+| Color suite                     | Strict Release/C++11, compact           | Build failed: blend warnings   |
+| GNU make demo                   | C++23, compact, header-only             | Built, ran, styles verified    |
 
-All four builds used `-Wall -Wextra -Werror -pedantic`. No individual skips were
-reported. The color suite retains the independent interpreter covering all
-65,536 emphasis-state pairs. New regressions cover selective SGR 39/49,
-reset-and-rebuild, default-color targets, absolute targets even for equal
-states, and irrelevance of the initial absolute flag. The transition helper
-checks default/narrow/wide calls and input preservation.
+Strict C++11 CMake builds used `-pedantic-errors -Wall -Wextra -Werror`.
+The header-only/no-exceptions probe used those warnings plus `-fno-exceptions`
+and `FMT_HEADER_ONLY`; the header syntax check additionally enabled
+`-Wconversion -Wshadow`. The directly linked C++23/noncompact formatter used
+`-pedantic-errors -Wall -Wextra -Werror`. Both formatter SGR modes passed
+without diagnostics after explicit discarded results were added to exception
+checks. The C++23 CMake build did not enable all strict warning flags.
 
-Reproduce the directly linked color suite from the library checkout root:
+The new `styled-text-format-test` covers ordinary and compiled format strings,
+`{}`/`{:}`, rejected specifications, narrow/wide output, nested inheritance,
+absolute boundaries (including equal-state resets), restoration after children,
+empty/binary/long text, raw escapes copied verbatim, output iterators, and input
+preservation. Its independent ANSI interpreter checks every output character's
+state across all 65,536 parent/child emphasis combinations. Those checks are
+separate from the color suite's existing 65,536 transition-state pairs.
 
-```bash
-g++ -std=c++11 -Wall -Wextra -Werror -pedantic \
-  -DFMT_COLOR_COMPACT_SGR=1 -Iinclude -Itest -Itest/gtest \
-  test/color-test.cc test/test-main.cc test/gtest-extra.cc test/util.cc \
-  test/gtest/gmock-gtest-all.cc src/format.cc src/os.cc -pthread \
-  -o /tmp/fmtcolor-color-test11
-/tmp/fmtcolor-color-test11
-```
+### Unresolved GCC blend diagnostic
 
-For the other observed color configuration, replace `-std=c++11` with
-`-std=c++23`, set `FMT_COLOR_COMPACT_SGR=0`, and choose a separate output path.
-For the observed styled-text suite, use the C++11 compact command with
-`test/styled-text-test.cc` in place of `test/color-test.cc`.
+The strict Release/C++11 `color-test` build failed because GCC 14.2 emitted
+`-Wmaybe-uninitialized`, promoted to an error by `-Werror`, while inlining the
+older recursive style-blending path. Diagnostics point to `blend_state::add`
+in `include/fmt/color.h:938`, including `state` and RGB payload bytes in the
+color union. The blend-state constructor initializes its fields, but a false
+positive has not been established. Do not suppress or claim to have fixed the
+warning. Formatter work changed neither `color.h` nor `color-test.cc`.
 
-The isolated allocation executable replaces global new/delete. It covers shared
-large-leaf copies, branch structural copying, moves, and overlay helper chains.
-Reproduce its current C++11 build with:
+This was an optimized Release build with `NDEBUG`, so debug assertions were
+disabled. The absolute-blend precondition assertion is separate from this
+compiler diagnostic. Current blend overloads require two or more arguments;
+absolute inputs must specify both color channels when assertions are enabled.
+The earlier GCC 13.3 result does not establish whether the arity/assertion
+revision caused the newer warning. No lower-optimization, baseline-comparison,
+older-GCC, or Clang investigation was performed.
 
-```bash
-g++ -std=c++11 -Wall -Wextra -Werror -pedantic -Iinclude \
-  test/styled-text-sharing-test.cc src/format.cc src/os.cc -pthread \
-  -o /tmp/fmtcolor-sharing-test11
-/tmp/fmtcolor-sharing-test11
-```
+### Reproduction
 
-These checks were run while preparing the fix; committing and bundling did not
-change their source files. No fresh sanitizer, no-exceptions, older-compiler,
-module, documentation-build, tablet, or benchmark result is claimed for this
-commit. Earlier owning-overlay checks passed C++11/C++23, sanitizer, and
-allocation tests, but those historical checks do not validate every rebased
-integration path. Push CI is deliberately excluded for `feat/StyledText2`.
-
-`SgrTransitionFix.bundle` contains exact commit `08a9d3b7`, requires
-`a8fcd97b608c7b20c758883acad389380d0313bf`, and was verified by importing it
-into a separate repository containing that base. Use the verified bundle for this handoff. Coordination
-changes are separate, uncommitted edits and are not in that library bundle.
-
-When CMake is available, the existing test registration permits:
+Use the installed CMake path above in this cloud workspace, or a normal CMake
+executable on the target platform. From the library root:
 
 ```bash
-cmake -S . -B build/styled-text-compact -DCMAKE_BUILD_TYPE=Release \
+cmake -S . -B build/formatter-compact23 -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_STANDARD=23 -DFMT_TEST=ON -DFMT_DOC=OFF \
   -DFMTCOLOR_SKIP=OFF -DCMAKE_CXX_FLAGS=-DFMT_COLOR_COMPACT_SGR=1
-cmake --build build/styled-text-compact \
-  --target color-test styled-text-test styled-text-sharing-test --parallel 8
-ctest --test-dir build/styled-text-compact \
-  -R '^(color|styled-text|styled-text-sharing)-test$' --output-on-failure
+cmake --build build/formatter-compact23 \
+  --target styled-text-format-test styled-text-test color-test --parallel 8
+ctest --test-dir build/formatter-compact23 \
+  -R '^(styled-text-format|styled-text|color)-test$' --output-on-failure
+
+cmake -S . -B build/formatter-compact11 -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_STANDARD=11 -DFMT_TEST=ON -DFMT_DOC=OFF -DFMTCOLOR_SKIP=OFF \
+  -DCMAKE_CXX_FLAGS='-DFMT_COLOR_COMPACT_SGR=1 -pedantic-errors -Wall -Wextra -Werror'
+cmake --build build/formatter-compact11 \
+  --target styled-text-format-test styled-text-test --parallel 8
+ctest --test-dir build/formatter-compact11 \
+  -R '^(styled-text-format|styled-text)-test$' --output-on-failure
 ```
 
-These CMake commands have not been run for the current source. Use separate
-build directories for other language/SGR modes.
+Adding `color-test` to the strict C++11 build reproduces the unresolved failure.
+The C++23/noncompact formatter suite was linked directly against the matching
+C++23 fmt/test-main/gtest libraries; it was not a full noncompact CTest run.
+Use separate build directories when changing standard, compiler, or SGR mode.
+
+The demo needs only GNU make and a C++23-capable compiler:
+
+```bash
+make -C demo run
+make -C demo clean
+```
+
+Its Makefile sets `FMT_DIR=..`, includes that checkout's headers, and defines
+`FMT_HEADER_ONLY` and `FMT_COLOR_COMPACT_SGR=1`. Override `FMT_DIR` or `CXX` on
+the command line. The generated executable is ignored; the Makefile is tracked.
+Both output lines were independently checked character by character: nested
+bold remains red, separators remain plain, the second line has gray background
+and strikethrough, the absolute span has only underline, and enclosing styling
+resumes after it. The GNU make build's ANSI output matched the directly linked
+build's output. The demo changes neither terminal capabilities nor the Site.
+
+### Remote CI snapshot
+
+The exclusions for `feat/StyledText2` do not exclude `feat/Formatter`. The
+formatter push triggered four workflows for the exact full SHA above. Checked
+October 31, 2026 at 04:22 UTC:
+
+| Workflow | Status checked       | Evidence                                                        |
+| -------- | -------------------- | --------------------------------------------------------------- |
+| doc      | Build job passed     | [Run](https://github.com/tjgolubi/fmt/actions/runs/41168191108)     |
+| windows  | Running              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41168191013)     |
+| linux    | Queued               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41168191164)     |
+| macos    | Queued               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41168191022)     |
+
+The documentation run's single build job was inspected and passed for the
+matching SHA. Other workflows are not established passes; inspect every
+applicable matrix job before claiming full CI validation or preparing a squash.
+No workflows were cancelled, reconfigured, or retriggered. The doc workflow
+builds documentation; it does not publish the guide or update the website.
+
+### Earlier owning baseline
+
+At `08a9d3b7`, direct Ubuntu GCC 13.3 checks passed 61 C++11/compact color tests,
+63 C++23/noncompact color tests, 18 C++11/compact styled-text tests, and the
+C++11 allocation regression. All used `-Wall -Wextra -Werror -pedantic` and
+reported no skips. These historical checks are distinct from current Release
+GCC 14.2 checks and do not cover the new formatter. The transition fix was
+transferred in `SgrTransitionFix.bundle`, requiring exact base
+`a8fcd97b608c7b20c758883acad389380d0313bf`; its import was verified separately.
+The bundle does not include the formatter commits or coordination documents.
+
+No current full-suite, sanitizer, old-compiler, module, tablet, performance,
+guide-publication, or complete remote-matrix result is claimed. Website version
+36 remains unchanged. Deferred blending and format specifications beyond the
+empty specification remain future work.
 
 ## Platforms and tools
 

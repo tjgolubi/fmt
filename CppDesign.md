@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated October 30, 2026. Implemented behavior is separated below from future
+Updated October 31, 2026. Implemented behavior is separated below from future
 design. A proposal is not permission to implement it.
 
 ## Goals and boundaries
@@ -412,12 +412,14 @@ convenience as a major design goal.
 
 ## Current experiment and planned work
 
-The active owning experiment is `feat/StyledText2` at
-`08a9d3b7a828392e1d64281a6bcc4a6e0212b73d`, verified pushed. It rebases the
-owning styled-text work onto minimum blend arity and absolute style values.
-This experimental branch is separate from the accepted `color-dev` baseline;
-Terry's review remains pending. See [StyledText.md](StyledText.md) for exact API
-and invariants and [BuildAndTest.md](BuildAndTest.md) for validation limits.
+The active experiment is `feat/Formatter` at
+`eff67861708d8863e3865b7d3d573ff71fc4282e`, verified pushed with a clean library
+working tree. It starts from the owning `feat/StyledText2` baseline at `08a9d3b7` and
+adds nested formatting, tests, guide documentation, and a GNU make demo. This
+experimental branch remains separate from accepted `color-dev` integration.
+See [StyledText.md](StyledText.md) for exact API and invariants and
+[BuildAndTest.md](BuildAndTest.md) for validation limits and the unresolved
+strict Release/C++11 blend warning.
 
 The later independent library requires C++23 and `std::variant`; the {fmt}
 release retains C++11 throughout. The owning tree uses a custom union in all
@@ -440,8 +442,9 @@ both operands. Right-hand groups remain nested. Equality compares exact
 structure, styles, and text, independently of shared-pointer identity.
 `plain_text` concatenates code units without interpreting escapes.
 
-Public structural access and iteration remain deferred. A matching formatter
-is a friend but is not implemented. `style` gets or replaces the root style;
+Public structural access and iteration remain deferred. The matching formatter
+is implemented as a friend with private access to the tree. `style` gets or
+replaces the root style;
 member `overlay(text_style)` overlays that root in place, returns a reference,
 and is noexcept without tree copying. Free style-first `overlay(style, text)`
 and all eight free emphasis modifiers accept owning styled text, character
@@ -470,10 +473,16 @@ encoding, and prefer selective changes on a tie. Missing target colors require
 SGR 39/49 when changing from specified colors. Equal default channels need no
 selective color code. Relative transitions use one combined unpadded sequence.
 
-At a future absolute tree boundary, descendants inherit from the absolute node,
-and surrounding styling resumes afterward. Resolving inheritance and enforcing
-these boundaries belong to the pending formatter, before calling the transition
-function. The existence of absolute style values does not implement tree rendering.
+The formatter now resolves relative inheritance and enforces absolute tree
+boundaries before calling the complete-state transition function. Relative
+styles inherit colors and OR emphasis; absolute styles replace the entire
+inherited state and force their reset on entry. Descendants then inherit from
+that absolute node without repeating its boundary reset. Each child restores
+its enclosing state, and the root returns to defaults. Narrow/wide `{}` and
+`{:}` formatting are implemented; other specifications are rejected. Output
+uses ordinary SGR directly and does not interpret raw escapes in leaf strings.
+No public traversal, deferred blending, or extended-SGR interchange rendering
+is introduced. See StyledText.md for external-state assumptions and the demo.
 
 ### Deferred blending and other future work
 
