@@ -176,6 +176,53 @@ class basic_styled_text {
 using styled_text  = basic_styled_text<char>;
 using wstyled_text = basic_styled_text<wchar_t>;
 
+/**
+ * Formats an owning styled-text tree using ordinary ANSI SGR sequences.
+ * Relative nodes inherit their enclosing style; absolute nodes start from
+ * terminal defaults. Each node restores its enclosing state after its text.
+ * The replacement field starts and ends at terminal defaults.
+ * Only the empty format specification is supported in this increment.
+ */
+template<typename Char>
+struct formatter<basic_styled_text<Char>, Char> {
+  FMT_CONSTEXPR auto parse(parse_context<Char>& ctx) -> const Char* {
+    auto it = ctx.begin();
+    if (it != ctx.end() && *it != Char('}'))
+      report_error("styled text does not support format specifications");
+    return it;
+  }
+
+ private:
+  template<typename OutputIt>
+  static auto write_node(const basic_styled_text<Char>& node,
+                         text_style enclosing, OutputIt out) -> OutputIt {
+    if (node.empty()) return out;
+    auto effective = node._style.is_absolute()
+        ? node._style : fmt::overlay(enclosing, node._style);
+    // Absolute controls entry to this node, not inheritance by descendants or
+    // restoration of its enclosing complete terminal state.
+    auto opening = fmt::to_sgr<Char>(effective, enclosing);
+    out = detail::copy<Char>(opening.data(), opening.data() + opening.size(), out);
+    effective.absolute(false);
+    if (node._is_branch) {
+      for (const auto& child : node._data.children)
+        out = write_node(child, effective, out);
+    } else {
+      const auto& text = *node._data.text;
+      out = detail::copy<Char>(text.data(), text.data() + text.size(), out);
+    }
+    auto closing = fmt::to_sgr<Char>(enclosing, effective);
+    return detail::copy<Char>(closing.data(), closing.data() + closing.size(), out);
+  }
+
+ public:
+  template<typename FormatContext>
+  auto format(const basic_styled_text<Char>& value, FormatContext& ctx) const
+      -> decltype(ctx.out()) {
+    return write_node(value, text_style{}, ctx.out());
+  }
+};
+
 namespace detail {
 template<typename Char>
 auto to_styled_text(basic_styled_text<Char> text) -> basic_styled_text<Char>
