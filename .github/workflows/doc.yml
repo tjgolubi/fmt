@@ -3,7 +3,7 @@ name: doc
 on:
   push:
     branches-ignore:
-      - 'feat/StyledText'
+      - 'feat/StyledText2'
   pull_request:
 
 permissions:

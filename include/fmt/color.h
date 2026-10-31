@@ -2025,8 +2025,7 @@ void append_transition_fragment(buffer<Char>& buf,
                                 const ansi_color_escape<Char>& fragment) {
   auto p = fragment.begin();
   while (p != fragment.end()) {
-    while (*p == Char('0') && p + 1 != fragment.end() &&
-           p[1] != Char(';'))
+    while (*p == Char('0') && p + 1 != fragment.end() && p[1] != Char(';'))
       ++p;
     do {
       buf.push_back(*p);
@@ -2042,10 +2041,11 @@ void append_transition_code(buffer<Char>& buf, unsigned code) {
 }
 
 template<typename Char>
-void append_transition(buffer<Char>& buf, text_style target,
-                       text_style initial, bool reset) {
+void append_transition(buffer<Char>& buf, text_style target, text_style initial,
+                       bool reset)
+{
   auto before = static_cast<unsigned>(to_underlying(initial.emph()));
-  auto after = static_cast<unsigned>(to_underlying(target.emph()));
+  auto after  = static_cast<unsigned>(to_underlying(target.emph()));
   if (reset) {
     append_transition_code(buf, 0);
     before = 0;
@@ -2066,7 +2066,7 @@ void append_transition(buffer<Char>& buf, text_style target,
     append_transition_fragment(buf, make_foreground_color<Char>(target.fg()));
   if (target.has_bg() && (reset || target.bg() != initial.bg()))
     append_transition_fragment(buf, make_background_color<Char>(target.bg()));
-}
+} // append_transition
 
 } // detail
 
@@ -2081,8 +2081,8 @@ void append_transition(buffer<Char>& buf, text_style target,
  * Equal lengths prefer selective changes. `Char` defaults to `char`.
  */
 template<typename Char=char>
-FMT_NODISCARD inline auto to_sgr(const text_style& ts,
-                               const text_style& initial)
+FMT_NODISCARD inline
+auto to_sgr(const text_style& ts, const text_style& initial)
   -> std::basic_string<Char>
 {
   auto target = ts;
