@@ -1,20 +1,20 @@
 # Structured styled text experiment
 
-Updated October 31, 2026.
+Updated November 2, 2026.
 
 ## Scope and state
 
 Active library branch: `feat/Formatter`, committed and pushed at
-`9c5e303debcf54349418e27ca0aa31e6a2a2f47a`. Local and GitHub full SHAs matched; the
+`7fe6ce14f6ae1c1eb4ce8a4fc257e674e8c521c9`. Local and GitHub full SHAs matched; the
 library working tree is clean. It starts from `feat/StyledText2` at
 `08a9d3b7a828392e1d64281a6bcc4a6e0212b73d`. It has not been squash-integrated
 into `color-dev`. Committed, pushed, tested, and accepted are distinct states.
-Terry explicitly authorized committing and pushing the separate coordination
-handoff on `docs/Coord`.
+Coordination handoffs live separately on `docs/Coord`; Terry authorized
+committing and pushing this update.
 
-The formatter branch adds the GNU make demo (`25d9f36d`), user-guide description
-(`769891e9`), formatter plus regression tests (`eff67861`), and allocation-test
-portability corrections through `9c5e303d`.
+The current candidate includes nested formatting, the GNU make demo, composition
+and header refactors, user-guide updates, allocation-test portability fixes,
+and mode-specific SGR reset de-duplication regressions.
 
 The dependency order above `color-dev` at `5b3f49ff` is:
 
@@ -60,7 +60,7 @@ maintained on their own branch and are not included in that historical bundle.
 
 ## Representation and public API
 
-`<fmt/styled-text.h>` defines `basic_styled_text<Char>`, with aliases
+`<fmt/styled_text.h>` defines `basic_styled_text<Char>`, with aliases
 `styled_text` for `char` and `wstyled_text` for `wchar_t`. Public `char_type`
 and `string_type` aliases describe the character and owning-string types.
 The implementation supports C++11 in every language mode, using a manually
@@ -99,11 +99,16 @@ Appending to an empty left operand replaces it with the right operand and its
 style. Appending an empty right operand does nothing.
 
 `operator+=` takes its right operand by value: lvalues copy structure/share text,
-temporaries move, and self-concatenation is safe. Appending to a nonempty leaf
-creates an unstyled parent holding both original styled nodes. Appending to a
-branch extends its vector and retains the branch's root style. A right-hand
-branch remains nested. `operator+` delegates to `+=`; left-associated composition
-extends the left sequence without flattening text.
+temporaries move, and self-concatenation is safe. An unstyled left branch extends
+its vector. Otherwise concatenation creates a new unstyled parent containing
+both complete operands, preserving their styles and group boundaries. A
+right-hand branch remains nested. `operator+` delegates to `+=`. Neither
+operator hoists identical styles or merges leaf strings.
+
+Use `overlay(style, lhs + rhs)` to style a group. Appending to a styled group
+preserves that group as a child; its style does not leak into the appended span.
+The formatter accepts nested trees and matching parent/child styles without
+requiring structural simplification.
 
 Equality requires identical root styles, alternatives, text contents, child
 order, and recursive structure. Pointer identity is only a fast path. A leaf
@@ -166,19 +171,24 @@ constant evaluation. It does not implement deferred tree blending.
 background means terminal default in either value; absent emphasis means off.
 There is no inheritance in this overload. The initial absolute flag is ignored.
 
-An absolute final style always resets, even when the two states have equal
-attributes. It delegates to one-argument `to_sgr(final)`: compact mode combines
-reset and attributes; noncompact mode emits the reset separately. An absolute-only
-target emits `ESC[0m`.
+Behavior depends on `FMT_COLOR_COMPACT_SGR`:
 
-For a relative final style, compare selective changes with reset-and-rebuild,
-choose the shorter encoding, and prefer selective changes on a tie. A specified
-initial color becoming default can use SGR 39 (foreground) or 49 (background).
-If both channel values are already default, no selective color change is needed.
-The reset candidate rebuilds only the final attributes. Identical complete states
-emit nothing. Relative transitions use one unpadded combined sequence regardless
-of the output-mode macro. SGR 22 clears bold/faint together, so reapply a surviving
-intensity bit when necessary. Both narrow and wide output are supported.
+- Compact (`1`): an absolute target delegates to one-argument `to_sgr` and
+  explicitly resets, including equal states. A relative target chooses the
+  shorter selective or reset-and-rebuild encoding, preferring selective changes
+  on a tie. Selective transitions can use SGR 39/49 to restore default colors.
+  Output is combined and unpadded. SGR 22 clears bold/faint together; a surviving
+  intensity bit is reapplied when needed.
+- Noncompact (`0`): equal states emit nothing unless the target is explicitly
+  absolute. Otherwise reset and emit the complete target with separate sequences
+  and padded color components. If the initial state is already defaults, omit
+  that redundant reset even for an absolute target. An absolute-only target
+  from defaults therefore emits nothing. The initial absolute flag is cleared
+  before testing whether the initial state is empty.
+
+Both narrow and wide output are supported. One-argument `to_sgr` still honors
+an explicit absolute flag by emitting a reset; the known-initial-state
+optimization belongs to the two-argument overload only.
 
 The opening-output bound is now 60 characters for maximal noncompact absolute
 output; maximal compact absolute output is 54. These are bounds for one-argument
@@ -190,7 +200,7 @@ No XOR/popcount estimator has been implemented.
 
 ## Nested formatter
 
-`formatter<basic_styled_text<Char>, Char>` is implemented in `styled-text.h`.
+`formatter<basic_styled_text<Char>, Char>` is implemented in `styled_text.h`.
 Its parse function accepts only the empty format specification (`{}` or `{:}`)
 and reports unsupported width, alignment, precision, and other specifications
 through the normal format-string checking mechanism. It works with ordinary
@@ -200,8 +210,9 @@ use `<fmt/xchar.h>`. This is a fmt formatter, not a `std::formatter`.
 Each replacement field assumes terminal defaults on entry. Relative nodes
 inherit missing foreground/background and OR emphasis with the enclosing
 style; specified colors replace the matching channel without promotion.
-Absolute nodes use their own complete style and force a reset even when the
-attributes match the enclosing state. After entering a node, the effective
+Absolute nodes use their own complete style. Compact mode emits an explicit
+reset; noncompact mode can omit it when the enclosing state is already defaults.
+After entering a node, the effective
 state's absolute flag is cleared before passing it to descendants: entering
 an absolute ancestor must not force every relative child to reset.
 
@@ -218,14 +229,14 @@ The tree is not modified.
 ## Demonstration
 
 `demo/FmtColorDemo2.cpp` adapts Terry's newer uploaded demo to current names:
-`styled-text.h`, `term_color`, `overlay`, and `fmt::println`. An absolute text
+`styled_text.h`, `term_color`, `overlay`, and `fmt::println`. An absolute text
 span uses `overlay(text_style{}.absolute(), underline(...))`. There is no new
 free `absolute(text)` helper. The older uploaded `FmtColorDemo.cpp` is not the
 active demo and contains obsolete API spellings and syntax errors.
 
-The outer line must remain unstyled: appending to a branch retains its root
-style. The demo starts with two separately styled children so red does not
-leak into plain separators or later spans. Nested bold remains red. The second
+Concatenation preserves the red group as a complete span, so red applies only
+to its initial inner phrase, including nested bold, and does not leak into
+plain separators or later spans. The second
 line carries a gray background and strikethrough except for the absolute
 underline-only span; both enclosing properties resume afterward.
 
@@ -239,9 +250,11 @@ repository demo is the current delivery method.
 
 ## Next work and validation limits
 
-All 41 push-CI jobs now pass for `9c5e303d`; review remains separate from
+All 41 push-CI jobs pass for `7fe6ce14`; review remains separate from
 validation and integration acceptance. GCC 14.2 produced a Release/C++11 blend
-warning treated as an error; its cause is unconfirmed. Deferred blending needs
+warning treated as an error; its cause is unconfirmed. Free `absolute` helpers,
+including `absolute(text_style) -> text_style`, are planned next now that CI is
+green; they are not implemented. Deferred blending needs
 a separate interface/semantics decision. Width/alignment/precision, parsing,
 visible width, serialization, module export, and public iteration remain
 unimplemented. No website update is requested or performed.
@@ -255,7 +268,7 @@ coverage. See
 [BuildAndTest.md](BuildAndTest.md#cloud-styledtext-validation) for exact modes,
 commands, the blend warning, allocation-test allowances, and exact successful
 CI run links. Earlier GCC 13.3 results for `08a9d3b7` are historical; the
-current remote result belongs only to `9c5e303d`. No PR-only lint/fuzz or guide-publication pass is inferred.
+current remote result belongs only to `7fe6ce14`. No PR-only lint/fuzz or guide-publication pass is inferred.
 
 For proposed length/width work, distinguish summed leaf code-unit sizes from
 Unicode display width. Generated SGR contributes no width, but raw embedded

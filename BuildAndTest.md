@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Website](Website.md)
 
-Updated October 31, 2026. Commands run from the library checkout root unless
+Updated November 2, 2026. Commands run from the library checkout root unless
 stated otherwise. Use `color-dev` or an authorized feature branch, not the
 `coord/` documentation worktree on `docs/Coord`. Run library commands from
 `..` when starting in `coord/`. `/doc/` means repository-relative.
@@ -10,25 +10,38 @@ stated otherwise. Use `color-dev` or an authorized feature branch, not the
 ## Cloud StyledText validation
 
 Current experimental source: `feat/Formatter` at
-`9c5e303debcf54349418e27ca0aa31e6a2a2f47a`, verified pushed with matching
+`7fe6ce14f6ae1c1eb4ce8a4fc257e674e8c521c9`, verified pushed with matching
 local/GitHub full SHAs and a clean library working tree. It starts from
 `feat/StyledText2` at `08a9d3b7`. Current local checks used native Debian 13
 x86-64, GCC 14.2.0, and CMake 4.4.4. CMake is installed locally under
 `/workspace/build-tools/cmake/data/bin`; it is not necessarily on PATH.
-The formatter checks below were run for `eff67861`; the subsequent fixes
-changed only the allocation regression. No local Clang build was run.
+Latest focused checks compiled `color-test.cc` and `styled-text-format-test.cc`
+against the current headers with GCC 14.2, strict warnings (`-pedantic-errors -Wall -Wextra -Werror`),
+and no optimization, linked with matching C++11/C++23 fmt, test-main,
+and gtest libraries. No local Clang build was run.
 These remain focused local results; the remote matrix verification is
 recorded separately below.
 
-| Check                           | Configuration                          | Observed result                |
-| ------------------------------- | -------------------------------------- | ------------------------------ |
-| Formatter, styled-text, color    | Release/C++23, compact SGR, CTest       | All 3 targets passed           |
-| Formatter and styled-text       | Strict Release/C++11, compact, CTest    | Both targets passed            |
-| Formatter suite                 | Strict C++23, noncompact, direct link   | All 4 tests passed             |
-| Header syntax                   | Strict C++11, noncompact                | Passed                         |
-| Header-only narrow/wide probe   | Strict C++11, compact, no exceptions    | Compiled and ran successfully  |
-| Color suite                     | Strict Release/C++11, compact           | Build failed: blend warnings   |
-| GNU make demo                   | C++23, compact, header-only             | Built, ran, styles verified    |
+| Current color + formatter suites | Successful tests |
+| ------------------------------- | ---------------- |
+| C++11, noncompact SGR            | 62               |
+| C++11, compact SGR               | 65               |
+| C++23, noncompact SGR            | 67               |
+| C++23, compact SGR               | 70               |
+
+Each configuration passed. These tests include narrow/wide output, reset
+omission from known defaults, initial-absolute-flag invariance, absolute roots
+and nested boundaries, compiled formatting, and independent ANSI interpretation
+of all 65,536 emphasis transitions and parent/child combinations. Compact and
+noncompact modes have distinct expected reset behavior. Binaries and logs from
+this cloud run are under `/workspace/regression-checks/cxx{11,23}-sgr{0,1}`
+(with `.log` for logs); these are local artifacts, not committed files.
+
+Earlier formatter validation also passed Release/C++23 compact CTest, strict
+Release/C++11 formatter/styled-text CTest, a strict header-only C++11 compact
+no-exceptions probe, and demo appearance checks. The following reproduction
+commands describe those earlier optimized configurations; they are not the
+commands used for the latest four direct regression runs.
 
 Strict C++11 CMake builds used `-pedantic-errors -Wall -Wextra -Werror`.
 The header-only/no-exceptions probe used those warnings plus `-fno-exceptions`
@@ -54,7 +67,8 @@ older recursive style-blending path. Diagnostics point to `blend_state::add`
 in `include/fmt/color.h:938`, including `state` and RGB payload bytes in the
 color union. The blend-state constructor initializes its fields, but a false
 positive has not been established. Do not suppress or claim to have fixed the
-warning. Formatter work changed neither `color.h` nor `color-test.cc`.
+warning. Later transition work changes `color.h` and `color-test.cc`, but does
+not change the blend implementation or establish a fix for this diagnostic.
 
 This was an optimized Release build with `NDEBUG`, so debug assertions were
 disabled. The absolute-blend precondition assertion is separate from this
@@ -86,6 +100,23 @@ cmake --build build/formatter-compact11 \
   --target styled-text-format-test styled-text-test --parallel 8
 ctest --test-dir build/formatter-compact11 \
   -R '^(styled-text-format|styled-text)-test$' --output-on-failure
+```
+
+The latest four-mode regression checks can be reproduced in this workspace
+using the existing matching support libraries (these are unoptimized builds):
+
+```bash
+for std in 11 23; do
+  for mode in 0 1; do
+    g++ -std=c++$std -DFMT_COLOR_COMPACT_SGR=$mode \
+      -pedantic-errors -Wall -Wextra -Werror -Iinclude -Itest -Itest/gtest \
+      test/color-test.cc test/styled-text-format-test.cc \
+      build/formatter-compact$std/test/libtest-main.a \
+      build/formatter-compact$std/test/gtest/libgtest.a \
+      build/formatter-compact$std/libfmt.a -pthread \
+      -o /tmp/fmt-regressions-$std-$mode && /tmp/fmt-regressions-$std-$mode
+  done
+done
 ```
 
 Adding `color-test` to the strict C++11 build reproduces the unresolved failure.
@@ -138,17 +169,18 @@ These commits changed only `test/styled-text-sharing-test.cc`.
 ### Remote CI verification
 
 All **41 jobs passed** for
-`9c5e303debcf54349418e27ca0aa31e6a2a2f47a` on `feat/Formatter`.
-Local and GitHub full SHAs matched after the push. Every job's successful
-conclusion and exact head SHA was inspected; none were failed, cancelled,
+`7fe6ce14f6ae1c1eb4ce8a4fc257e674e8c521c9` on `feat/Formatter`.
+Local and GitHub full SHAs matched after the push. All four workflow head SHAs
+matched that commit, and every job's successful
+conclusion was inspected on November 2, 2026; none were failed, cancelled,
 queued, or running.
 
 | Workflow | Successful jobs | Evidence                                                        |
 | -------- | --------------- | --------------------------------------------------------------- |
-| Linux    | 18              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41226395574) |
-| Windows  | 13              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41226395566) |
-| macOS    | 9               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41226395568) |
-| Doc      | 1               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41226395616) |
+| Linux    | 18              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41364284291) |
+| Windows  | 13              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41364284276) |
+| macOS    | 9               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41364284391) |
+| Doc      | 1               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41364284295) |
 
 The exclusions for `feat/StyledText2` do not exclude `feat/Formatter`.
 This verifies the push workflows for the current candidate, including the

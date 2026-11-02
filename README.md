@@ -1,6 +1,6 @@
 # FmtColor coordination
 
-Updated October 31, 2026.
+Updated November 2, 2026.
 
 FmtColor develops color and text-style extensions for C++. We plan two
 sequential deliverables:
@@ -84,7 +84,7 @@ changelog; that cleanup remains a separate follow-up.
 ## Current experimental work
 
 Active library branch: `feat/Formatter`, committed and pushed at
-`9c5e303debcf54349418e27ca0aa31e6a2a2f47a`. Local and GitHub full SHAs matched
+`7fe6ce14f6ae1c1eb4ce8a4fc257e674e8c521c9`. Local and GitHub full SHAs matched
 after the push; the library working tree is clean. This branch starts from
 `feat/StyledText2` at `08a9d3b7`. It has not been squash-integrated into
 `color-dev`; committed, pushed, tested, and accepted remain distinct states.
@@ -98,14 +98,27 @@ each child and defaults after the root. Narrow and wide text are supported.
 Only `{}` and `{:}` are accepted; width, alignment, precision, and deferred
 blending remain future work. See [StyledText.md](StyledText.md).
 
-The pushed formatter work consists of the GNU make demo (`25d9f36d`), guide
-update (`769891e9`), implementation/tests (`eff67861`), and allocation-test
-portability fixes through `9c5e303d`. `demo/` contains
-`FmtColorDemo2.cpp`, a Makefile, instructions, and executable ignore rules.
-Run `make -C demo run`; the Makefile uses this checkout's headers in C++23
-header-only mode with compact SGR, without CMake or a prebuilt library.
+The current candidate includes the formatter, composition refactor, header rename
+from `styled-text.h` to `styled_text.h`, matching build/demo references, and
+updated user-guide examples. `+` and `+=` concatenate complete styled spans;
+use `overlay(style, expression)` to style a group. Concatenation does not extend
+the scope of a styled left operand. The guide explains visible appearance and
+grouping rather than SGR encoding efficiency.
 
-Local formatter checks passed with GCC 14.2 in C++11/C++23 and both SGR modes.
+`demo/` contains `FmtColorDemo2.cpp`, a Makefile, instructions, and executable
+ignore rules. Run `make -C demo run`; the Makefile uses this checkout's headers
+in C++23 header-only mode with compact SGR, without CMake or a prebuilt library.
+
+Two-argument `to_sgr` compares complete terminal states. Compact mode chooses
+the shorter selective or reset-and-rebuild encoding, preferring selective on a
+tie. Noncompact mode resets and fully specifies a changed target, except that
+it omits a redundant reset when the initial state is already defaults. The
+initial absolute flag does not affect either mode. Each formatter replacement
+field assumes terminal defaults on entry; it does not probe or reset unknown
+external state automatically. See StyledText.md for absolute-target details.
+
+Latest local color and formatter checks passed with GCC 14.2 in C++11/C++23
+and both SGR modes, including exhaustive transition and inheritance checks.
 The strict Release/C++11 color-suite build failed on existing blend-state
 `-Wmaybe-uninitialized` diagnostics promoted by `-Werror`; this is not resolved
 or established to be a false positive. No local Clang build was run; passing
@@ -114,23 +127,26 @@ and commands are in [BuildAndTest.md](BuildAndTest.md#cloud-styledtext-validatio
 
 Push exclusions still apply to `feat/StyledText2`, not `feat/Formatter`.
 All **41 push-CI jobs passed** for exact commit
-`9c5e303debcf54349418e27ca0aa31e6a2a2f47a`: Linux 18, Windows 13, macOS 9,
-and documentation build 1. Every job and its SHA was inspected; none failed,
+`7fe6ce14f6ae1c1eb4ce8a4fc257e674e8c521c9`: Linux 18, Windows 13, macOS 9,
+and documentation build 1. Workflow SHAs matched and every job passed; none failed,
 were cancelled, or remained pending. Windows Debug allocation checks now allow
 bounded measured iterator bookkeeping, while other builds remain strict.
 The allocation control uses an explicit allocation call, avoiding old string
-copy-on-write behavior and optimized-away string allocations. Production
-formatter code was unchanged by these test-only fixes. See BuildAndTest.md
+copy-on-write behavior and optimized-away string allocations. The current candidate also includes reset
+de-duplication and mode-specific regression expectations. See BuildAndTest.md
 for exact CI links and remaining validation limits.
 
-The next work is review and investigation of the local strict C++11 blend
-warning; further formatting specifications and deferred blending require
-agreed scope. Green push CI does not constitute squash acceptance, PR-only
+The next planned API work is free `absolute` convenience helpers, including
+`absolute(text_style) -> text_style`; only the member `.absolute()` currently
+exists. Terry deferred implementation until CI passed; this update records the
+plan and does not implement it. The local strict C++11 blend warning remains
+open. Further formatting specifications and deferred blending require agreed
+scope. Green push CI does not constitute squash acceptance, PR-only
 lint/fuzz validation, or guide publication. Check CI on demand; Terry stopped
 periodic polling. Do not change workflow exclusions or cancel runs without
 instruction.
 Website version 36 remains unchanged. The coordination update is maintained
-separately on `docs/Coord`; Terry explicitly authorized its commit and push.
+separately on `docs/Coord`; Terry authorized committing and pushing this update.
 
 ## Upstream compatibility
 
@@ -174,7 +190,7 @@ The API Reference header list includes `fmt/color-ostream.h`, linking to its
 existing guide section; it has no separate new API Reference section.
 
 The current owning structured-text implementation and formatter are on
-`feat/Formatter` at `9c5e303d`; see [StyledText.md](StyledText.md).
+`feat/Formatter` at `7fe6ce14`; see [StyledText.md](StyledText.md).
 Nested inheritance and absolute rendering boundaries are implemented.
 Deferred blending, parsing, display width, format specifications beyond the
 empty specification, serialization, and module export remain unimplemented.

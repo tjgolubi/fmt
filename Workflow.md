@@ -47,7 +47,7 @@ For authored styling code, Terry prefers leading underscores on private member
 variables and brace initialization. Retain parentheses when narrowing rules,
 initializer-list overload selection, or compiler compatibility require them.
 Otherwise follow the {fmt} foundation's source style. The authorized style pass
-changed `styled-text.h` only; do not mechanically restyle unrelated headers.
+changed the structured-text header (now `styled_text.h`) only; do not mechanically restyle unrelated headers.
 
 ### Cloud experiment and preservation
 

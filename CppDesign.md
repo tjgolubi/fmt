@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated October 31, 2026. Implemented behavior is separated below from future
+Updated November 2, 2026. Implemented behavior is separated below from future
 design. A proposal is not permission to implement it.
 
 ## Goals and boundaries
@@ -413,16 +413,17 @@ convenience as a major design goal.
 ## Current experiment and planned work
 
 The active experiment is `feat/Formatter` at
-`9c5e303debcf54349418e27ca0aa31e6a2a2f47a`, verified pushed with a clean library
+`7fe6ce14f6ae1c1eb4ce8a4fc257e674e8c521c9`, verified pushed with a clean library
 working tree. It starts from the owning `feat/StyledText2` baseline at `08a9d3b7` and
 adds nested formatting, tests, guide documentation, and a GNU make demo. This
 experimental branch remains separate from accepted `color-dev` integration.
 See [StyledText.md](StyledText.md) for exact API and invariants and
 [BuildAndTest.md](BuildAndTest.md) for validation limits and the unresolved
-strict Release/C++11 blend warning. The candidate at `9c5e303d` has all
+strict Release/C++11 blend warning. The candidate at `7fe6ce14` has all
 41 push-CI jobs passing (18 Linux, 13 Windows, 9 macOS, 1 documentation).
-The later portability commits adjust the allocation regression only, not the
-production formatter. Acceptance and squash integration remain separate.
+The current candidate includes composition and header refactors, guide updates,
+and SGR reset de-duplication with regressions in both modes. Acceptance and
+squash integration remain separate.
 
 The later independent library requires C++23 and `std::variant`; the {fmt}
 release retains C++11 throughout. The owning tree uses a custom union in all
@@ -439,9 +440,10 @@ pointers. Sharing is limited to strings: no copy-on-write, borrowed subtrees,
 or shared vectors. Direct union leaf initialization is implemented.
 
 Concatenation alone creates branches; empty branches are prohibited. Moves
-reset the source to an empty, unstyled leaf. `+=` extends a left branch while
-preserving its root style; promoting a leaf creates an unstyled parent with
-both operands. Right-hand groups remain nested. Equality compares exact
+reset the source to an empty, unstyled leaf. `+=` extends only an unstyled left branch; otherwise it creates an unstyled
+parent holding both complete operands. Styled groups retain their scope, and
+right-hand groups remain nested. Use `overlay(style, expression)` for grouping;
+concatenation does not merge equal styles or extend a styled group. Equality compares exact
 structure, styles, and text, independently of shared-pointer identity.
 `plain_text` concatenates code units without interpreting escapes.
 
@@ -470,16 +472,20 @@ above and returns a relative style.
 styles. Compact output combines reset and attributes; noncompact output emits
 the reset separately. `to_sgr(final, initial)` treats both values as complete
 terminal states, with no inheritance. The initial absolute bit is irrelevant.
-An absolute target always delegates to `to_sgr(final)`, even for equal states.
-Otherwise compare selective changes with reset-and-rebuild, choose the shorter
-encoding, and prefer selective changes on a tie. Missing target colors require
-SGR 39/49 when changing from specified colors. Equal default channels need no
-selective color code. Relative transitions use one combined unpadded sequence.
+Compact transitions honor absolute targets with a reset; relative targets choose
+the shorter selective or reset-and-rebuild encoding, preferring selective on a
+tie. Missing target colors can require SGR 39/49. Output is combined/unpadded.
+Noncompact transitions reset and fully specify changed states with separate
+sequences/padded colors, but omit a redundant reset from known defaults,
+including for absolute targets. Equal relative states emit nothing. One-argument
+`to_sgr` continues to honor explicit absolute resets in either mode.
 
 The formatter now resolves relative inheritance and enforces absolute tree
 boundaries before calling the complete-state transition function. Relative
 styles inherit colors and OR emphasis; absolute styles replace the entire
-inherited state and force their reset on entry. Descendants then inherit from
+inherited state. Reset emission follows the mode-specific rules above. Each
+replacement field assumes terminal defaults at entry; no external state is
+queried or reset automatically. Descendants then inherit from
 that absolute node without repeating its boundary reset. Each child restores
 its enclosing state, and the root returns to defaults. Narrow/wide `{}` and
 `{:}` formatting are implemented; other specifications are rejected. Output
@@ -489,8 +495,10 @@ is introduced. See StyledText.md for external-state assumptions and the demo.
 
 ### Deferred blending and other future work
 
-Deferred styled-text blend and absolute convenience operations remain separate
-from root overlay. Their nested semantics and interface need agreement before
+Free `absolute` convenience helpers, including `absolute(text_style) ->
+text_style`, are planned next after the now-passing CI; only the member style
+operation exists today. No implementation was authorized by recording this plan.
+Deferred styled-text blend remains separate from root overlay. Their nested semantics and interface need agreement before
 implementation. Earlier `styled_text& blend()` proposals do not authorize code;
 do not add a previously rejected free operation without a new explicit decision.
 Parsing, display width, serialization, and module export also remain future work.
