@@ -5,7 +5,7 @@ Updated November 2, 2026.
 ## Scope and state
 
 Active library branch: `feat/Formatter`, committed and pushed at
-`7fe6ce14f6ae1c1eb4ce8a4fc257e674e8c521c9`. Local and GitHub full SHAs matched; the
+`0a8ad7595ece4ce976c49c6091bdeb39bbb7d86c`. Local and GitHub full SHAs matched; the
 library working tree is clean. It starts from `feat/StyledText2` at
 `08a9d3b7a828392e1d64281a6bcc4a6e0212b73d`. It has not been squash-integrated
 into `color-dev`. Committed, pushed, tested, and accepted are distinct states.
@@ -144,15 +144,21 @@ ts.overlay(fmt::underline()); // In place, no tree copy.
 auto phrase = fmt::bold("nested bold");
 ```
 
-No individual fluent emphasis members were added to styled text. Styled-text
-`absolute` convenience operations and deferred `blend` remain separate decisions.
+No individual fluent emphasis members were added to styled text.
+The free `absolute(text)` helper accepts the same text inputs and marks only the
+returned root absolute, preserving its existing colors, emphasis, and children.
+Lvalues copy; rvalues move. No styled-text member `absolute` was added.
+Deferred `blend` remains a separate decision.
 
 ## Absolute styles and blend contract
 
 Absolute is a `text_style` property using bit 62. `.absolute(bool = true)` sets
 or clears it and `.is_absolute()` queries it. It specifies a complete terminal
 style: missing colors mean terminal defaults and absent emphasis means off.
-An absolute-only style is nonempty and emits a reset. `clear` removes absolute
+The free `absolute(text_style)` helper returns an absolute copy without
+modifying its input. It is noexcept and supports constant evaluation where the
+member setter does. An absolute-only style is nonempty; one-argument SGR
+emission produces a reset. `clear` removes absolute
 along with colors/emphasis. Explicit setters and overlays remain available;
 absolute does not freeze the value. Overlay and style OR preserve the flag if
 either operand has it.
@@ -201,11 +207,12 @@ No XOR/popcount estimator has been implemented.
 ## Nested formatter
 
 `formatter<basic_styled_text<Char>, Char>` is implemented in `styled_text.h`.
-Its parse function accepts only the empty format specification (`{}` or `{:}`)
-and reports unsupported width, alignment, precision, and other specifications
-through the normal format-string checking mechanism. It works with ordinary
-and compiled fmt format strings and with output iterators. Wide entry points
-use `<fmt/xchar.h>`. This is a fmt formatter, not a `std::formatter`.
+It reuses the ordinary string specification parser for fill, left/right/center
+alignment, width, precision, optional `s`, and dynamic width/precision references.
+Debug presentation (`?`) and invalid string flags are rejected. Ordinary and
+compiled format strings, output iterators, bounded output, and counting output
+are supported. Wide entry points use `<fmt/xchar.h>`. This is a fmt formatter,
+not a `std::formatter`.
 
 Each replacement field assumes terminal defaults on entry. Relative nodes
 inherit missing foreground/background and OR emphasis with the enclosing
@@ -216,22 +223,52 @@ After entering a node, the effective
 state's absolute flag is cleared before passing it to descendants: entering
 an absolute ancestor must not force every relative child to reset.
 
-The formatter walks the private tree directly, using `to_sgr(effective,
-enclosing)` on entry and `to_sgr(enclosing, effective)` on exit. Each child
-returns to the enclosing state, and the root returns to defaults. It does not
-build an extended-SGR intermediate or use push/pop markers. Empty nodes emit
-nothing. Text, braces, embedded nulls, and raw escapes are copied verbatim.
-Raw escapes are not interpreted or tracked, so they can invalidate assumptions
-about terminal state. The formatter does not capture an external terminal
-style or restore one established by an enclosing ordinary `fmt::styled` call.
-The tree is not modified.
+The formatter walks the private tree directly. Logical enclosing styles are
+passed through recursion, while per-call state records the last emitted terminal
+style. Transitions occur only immediately before nonempty leaf output or padding.
+Returning through groups emits nothing. The field always finishes with a
+transition from its last emitted style to `text_style{}`; that transition can be
+empty. An absolute boundary is deferred until content is printed, consumed once,
+and discarded if its subtree prints nothing. No extended-SGR intermediate or
+push/pop markers are used. The tree is not modified.
+
+`format()` is const; `write_node()` remains static and receives per-call state
+by reference. State is local to each formatting invocation, not mutable formatter
+storage. Parsing options are separate from remaining precision and emitted state.
+
+### Width, padding, and precision
+
+`display_width()` sums leaf widths using fmt's own UTF-8 decoder and Unicode
+wide/fullwidth lookup for `char`, and code-unit counts for other character types,
+matching this version's ordinary string formatter. Empty and moved-from leaves
+have width zero. This is not complete grapheme or terminal measurement. UTF-8
+code points must not be split between leaves. Styles add no width; embedded raw
+escapes are counted as ordinary text, not stripped or interpreted.
+
+One shared precision budget applies across the whole tree. Narrow precision
+limits estimated display columns without splitting a code point; wide precision
+limits code units. The first code point that does not fit stops the whole text
+traversal, including later siblings; no ellipsis is added. A measurement pass
+finds the truncated width for padding, followed by direct rendering without
+flattening the tree. The ordinary no-width/no-precision case skips measurement.
+
+Padding receives the root style, including for empty text or precision zero.
+After truncation, right padding transitions directly to the root style, then
+field completion transitions to defaults. Without right padding, completion
+transitions directly to defaults without intermediate group restorations.
+
+Raw escapes can invalidate terminal-state assumptions. The formatter does not
+capture external terminal styling or restore styling established by an outer
+ordinary `fmt::styled` call. Full Unicode grapheme handling and escape parsing
+remain deferred. Shared-pointer storage prevents useful constant evaluation of
+the owning tree's `display_width()`.
 
 ## Demonstration
 
 `demo/FmtColorDemo2.cpp` adapts Terry's newer uploaded demo to current names:
 `styled_text.h`, `term_color`, `overlay`, and `fmt::println`. An absolute text
-span uses `overlay(text_style{}.absolute(), underline(...))`. There is no new
-free `absolute(text)` helper. The older uploaded `FmtColorDemo.cpp` is not the
+span currently uses `overlay(text_style{}.absolute(), underline(...))`; the new
+free `absolute(underline(...))` helper is also available. The older uploaded `FmtColorDemo.cpp` is not the
 active demo and contains obsolete API spellings and syntax errors.
 
 Concatenation preserves the red group as a complete span, so red applies only
@@ -250,28 +287,22 @@ repository demo is the current delivery method.
 
 ## Next work and validation limits
 
-All 41 push-CI jobs pass for `7fe6ce14`; review remains separate from
-validation and integration acceptance. GCC 14.2 produced a Release/C++11 blend
-warning treated as an error; its cause is unconfirmed. Free `absolute` helpers,
-including `absolute(text_style) -> text_style`, are planned next now that CI is
-green; they are not implemented. Deferred blending needs
-a separate interface/semantics decision. Width/alignment/precision, parsing,
-visible width, serialization, module export, and public iteration remain
-unimplemented. No website update is requested or performed.
+All 41 push-CI jobs pass for `0a8ad759`; review remains separate from validation
+and integration acceptance. The GCC 13/C++23 optimized shared-build failure in
+`display_width()` was reproduced with GCC 13.3 and 14. A private `FMT_NOINLINE`
+branch-width helper avoids recursive inlining into the inactive union member;
+leaf calculation stays inline. No warning was suppressed. This is distinct from
+the older unresolved strict Release/C++11 blend diagnostic.
 
-Current formatter tests pass for narrow/wide inheritance, absolute groups,
-equal-state absolute entry, sibling restoration, empty/binary/long/raw text,
-compiled format strings, output iterators, input preservation, rejected format
-specifications, and all 65,536 parent/child emphasis pairs. Focused builds used
-Debian GCC 14.2.0; Clang was not tested locally. Linux CI now provides Clang
-coverage. See
-[BuildAndTest.md](BuildAndTest.md#cloud-styledtext-validation) for exact modes,
-commands, the blend warning, allocation-test allowances, and exact successful
-CI run links. Earlier GCC 13.3 results for `08a9d3b7` are historical; the
-current remote result belongs only to `7fe6ce14`. No PR-only lint/fuzz or guide-publication pass is inferred.
+Current local styled-text/formatter suites pass all 29 tests in C++11/C++23 and
+both SGR modes, including exact truncation output, root padding, Unicode width,
+dynamic specifications, narrow/wide formatting, absolute boundaries, and all
+65,536 parent/child emphasis combinations. Optimized GCC 13.3 shared-library
+checks also passed with the workaround. See BuildAndTest.md for details and
+limits. No PR-only lint/fuzz result, guide publication, or squash acceptance is
+inferred from push CI. No website update was requested or performed.
 
-For proposed length/width work, distinguish summed leaf code-unit sizes from
-Unicode display width. Generated SGR contributes no width, but raw embedded
-escapes need explicit handling. Ordinary narrow-string fmt formatting estimates
-UTF-8 width using Unicode wide/fullwidth tables, without full grapheme handling.
-No new length/width API or nonempty format specification has been implemented.
+Debug formatting, deferred blending, parsing, full grapheme/terminal width,
+serialization, module export, and public iteration remain unimplemented.
+Appending `detail::styled_arg` was deliberately deferred pending a real request;
+`fmt::styled` keeps its existing return type and formatting behavior.

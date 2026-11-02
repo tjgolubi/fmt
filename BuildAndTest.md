@@ -10,32 +10,50 @@ stated otherwise. Use `color-dev` or an authorized feature branch, not the
 ## Cloud StyledText validation
 
 Current experimental source: `feat/Formatter` at
-`7fe6ce14f6ae1c1eb4ce8a4fc257e674e8c521c9`, verified pushed with matching
+`0a8ad7595ece4ce976c49c6091bdeb39bbb7d86c`, verified pushed with matching
 local/GitHub full SHAs and a clean library working tree. It starts from
 `feat/StyledText2` at `08a9d3b7`. Current local checks used native Debian 13
 x86-64, GCC 14.2.0, and CMake 4.4.4. CMake is installed locally under
 `/workspace/build-tools/cmake/data/bin`; it is not necessarily on PATH.
-Latest focused checks compiled `color-test.cc` and `styled-text-format-test.cc`
-against the current headers with GCC 14.2, strict warnings (`-pedantic-errors -Wall -Wextra -Werror`),
-and no optimization, linked with matching C++11/C++23 fmt, test-main,
-and gtest libraries. No local Clang build was run.
-These remain focused local results; the remote matrix verification is
-recorded separately below.
+Latest local styled-text and formatter suites pass **29 tests** in each of four
+configurations: C++11/C++23 crossed with compact/noncompact SGR. GCC 14.2 direct
+builds used `-pedantic-errors -Wall -Wextra -Werror`, without optimization.
+Coverage includes Unicode width and precision, dynamic arguments, root-styled
+padding, exact deferred-transition output, absolute boundaries, output iterators,
+and all 65,536 parent/child emphasis combinations.
 
-| Current color + formatter suites | Successful tests |
-| ------------------------------- | ---------------- |
-| C++11, noncompact SGR            | 62               |
-| C++11, compact SGR               | 65               |
-| C++23, noncompact SGR            | 67               |
-| C++23, compact SGR               | 70               |
+Header-only probes passed C++11 with exceptions disabled and C++23 with ASan/UBSan,
+including bounded and counting output. Leak detection was disabled for the
+successful sanitizer run because LeakSanitizer cannot run under this environment's
+ptrace setup; no successful leak-check result is claimed.
 
-Each configuration passed. These tests include narrow/wide output, reset
-omission from known defaults, initial-absolute-flag invariance, absolute roots
-and nested boundaries, compiled formatting, and independent ANSI interpretation
-of all 65,536 emphasis transitions and parent/child combinations. Compact and
-noncompact modes have distinct expected reset behavior. Binaries and logs from
-this cloud run are under `/workspace/regression-checks/cxx{11,23}-sgr{0,1}`
-(with `.log` for logs); these are local artifacts, not committed files.
+The GCC warning workaround additionally passed optimized GCC 13.3 shared-library
+runs in all four modes (29 tests each), using `-O3 -DNDEBUG -fPIC -DFMT_SHARED`
+and the same strict warnings. GCC 13.3 was extracted under
+`/workspace/build-tools/gcc13`, without changing the system compiler. Local
+support/gtest libraries were previously built with GCC 14, so these runs linked
+the host GCC 14 C++ runtime; they are not an exact CI image reproduction. The
+remote GCC 13 shared job below supplies the native CI validation.
+
+Earlier color/formatter four-mode checks at `7fe6ce14` passed 62/65 tests in
+C++11 noncompact/compact and 67/70 in C++23. Their binaries/logs are under
+`/workspace/regression-checks/cxx{11,23}-sgr{0,1}`. Current styled-text/formatter
+logs are `deferred-{11,23}-{0,1}.log` and optimized workaround logs are
+`width-helper13-{11,23}-{0,1}.log` in that directory. These are local artifacts.
+No local Clang build was run; Linux CI provides Clang coverage.
+
+### GCC display-width warning workaround
+
+The original `display_width()` failed the optimized GCC 13/C++23 shared CI build
+with `-Werror=maybe-uninitialized`: vector iterators for the inactive branch
+union member were reported while measuring a known leaf. The same diagnostic
+was reproduced locally with GCC 13.3 and 14 at `-O3`; constructors initialize the
+leaf and discriminator. Reversing the branch/leaf control flow helped in C++23
+but still warned in C++11, so it was not used. A small private `FMT_NOINLINE`
+branch traversal helper avoids recursive-inlining analysis of the inactive union
+member, leaving leaf width inline and all warnings enabled. The current complete
+push matrix passes, including the previously failing job. This is separate from
+the unresolved blend diagnostic below.
 
 Earlier formatter validation also passed Release/C++23 compact CTest, strict
 Release/C++11 formatter/styled-text CTest, a strict header-only C++11 compact
@@ -53,7 +71,7 @@ checks. The C++23 CMake build did not enable all strict warning flags.
 
 The new `styled-text-format-test` covers ordinary and compiled format strings,
 `{}`/`{:}`, rejected specifications, narrow/wide output, nested inheritance,
-absolute boundaries (including equal-state resets), restoration after children,
+absolute boundaries, logical style restoration and deferred transitions,
 empty/binary/long text, raw escapes copied verbatim, output iterators, and input
 preservation. Its independent ANSI interpreter checks every output character's
 state across all 65,536 parent/child emphasis combinations. Those checks are
@@ -102,7 +120,7 @@ ctest --test-dir build/formatter-compact11 \
   -R '^(styled-text-format|styled-text)-test$' --output-on-failure
 ```
 
-The latest four-mode regression checks can be reproduced in this workspace
+The earlier color/formatter four-mode regression checks can be reproduced in this workspace
 using the existing matching support libraries (these are unoptimized builds):
 
 ```bash
@@ -169,7 +187,7 @@ These commits changed only `test/styled-text-sharing-test.cc`.
 ### Remote CI verification
 
 All **41 jobs passed** for
-`7fe6ce14f6ae1c1eb4ce8a4fc257e674e8c521c9` on `feat/Formatter`.
+`0a8ad7595ece4ce976c49c6091bdeb39bbb7d86c` on `feat/Formatter`.
 Local and GitHub full SHAs matched after the push. All four workflow head SHAs
 matched that commit, and every job's successful
 conclusion was inspected on November 2, 2026; none were failed, cancelled,
@@ -177,10 +195,10 @@ queued, or running.
 
 | Workflow | Successful jobs | Evidence                                                        |
 | -------- | --------------- | --------------------------------------------------------------- |
-| Linux    | 18              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41364284291) |
-| Windows  | 13              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41364284276) |
-| macOS    | 9               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41364284391) |
-| Doc      | 1               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41364284295) |
+| Linux    | 18              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41374518722) |
+| Windows  | 13              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41374518944) |
+| macOS    | 9               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41374518661) |
+| Doc      | 1               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41374518797) |
 
 The exclusions for `feat/StyledText2` do not exclude `feat/Formatter`.
 This verifies the push workflows for the current candidate, including the
@@ -205,10 +223,11 @@ transferred in `SgrTransitionFix.bundle`, requiring exact base
 The bundle does not include the formatter commits or coordination documents.
 
 The passing remote push matrix is the current cross-platform evidence. No
-additional local full-suite, fresh local sanitizer, tablet, performance,
+additional local full-suite, tablet, performance,
 guide-publication, or PR-only workflow result is claimed. Website version
-36 remains unchanged. Deferred blending and format specifications beyond the
-empty specification remain future work.
+36 remains unchanged. Deferred blending and debug string presentation remain
+future work. The focused sanitizer scope and leak-check limitation are recorded
+above.
 
 ## Platforms and tools
 

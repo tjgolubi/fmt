@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md)
 
-Updated October 31, 2026.
+Updated November 2, 2026.
 
 ## Purpose and content
 
@@ -140,8 +140,10 @@ with inheritance and absolute boundaries. `demo/FmtColorDemo2.cpp` is a locally
 verified, current-API adaptation of Terry's newer demo. Its GNU Makefile uses
 header-only compact SGR. The downloadable Site demo is still the distinct
 future independent-library target; it was not replaced or published here.
-Deferred blending, format specifications, parsing, display width, and
-serialization remain future work. The published site has not been
+The library now also supports free absolute helpers, display-width measurement,
+and string width/precision formatting with root-styled padding. Debug formatting,
+deferred blending, parsing, full grapheme/terminal width, and serialization remain
+future work. The published site has not been
 updated for this progress. Consult CppDesign.md and StyledText.md.
 
 ## Sites maintenance and publication

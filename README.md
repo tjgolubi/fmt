@@ -84,7 +84,7 @@ changelog; that cleanup remains a separate follow-up.
 ## Current experimental work
 
 Active library branch: `feat/Formatter`, committed and pushed at
-`7fe6ce14f6ae1c1eb4ce8a4fc257e674e8c521c9`. Local and GitHub full SHAs matched
+`0a8ad7595ece4ce976c49c6091bdeb39bbb7d86c`. Local and GitHub full SHAs matched
 after the push; the library working tree is clean. This branch starts from
 `feat/StyledText2` at `08a9d3b7`. It has not been squash-integrated into
 `color-dev`; committed, pushed, tested, and accepted remain distinct states.
@@ -93,10 +93,11 @@ The inherited owning baseline contains minimum blend arity, absolute style
 values, shared immutable leaf strings, value-owned private child vectors,
 concatenation, plain-text extraction, root overlays/emphasis helpers, and
 complete-state SGR transitions. The formatter now implements nested relative
-inheritance, absolute boundaries, and restoration of the enclosing style after
-each child and defaults after the root. Narrow and wide text are supported.
-Only `{}` and `{:}` are accepted; width, alignment, precision, and deferred
-blending remain future work. See [StyledText.md](StyledText.md).
+inheritance and absolute boundaries. It emits transitions only before text or
+padding, and transitions from the last emitted state to defaults at field end.
+Narrow/wide fill, alignment, width, precision, optional `s`, and dynamic width
+and precision are implemented. Debug presentation (`?`) and deferred blending
+remain future work. See [StyledText.md](StyledText.md).
 
 The current candidate includes the formatter, composition refactor, header rename
 from `styled-text.h` to `styled_text.h`, matching build/demo references, and
@@ -127,7 +128,7 @@ and commands are in [BuildAndTest.md](BuildAndTest.md#cloud-styledtext-validatio
 
 Push exclusions still apply to `feat/StyledText2`, not `feat/Formatter`.
 All **41 push-CI jobs passed** for exact commit
-`7fe6ce14f6ae1c1eb4ce8a4fc257e674e8c521c9`: Linux 18, Windows 13, macOS 9,
+`0a8ad7595ece4ce976c49c6091bdeb39bbb7d86c`: Linux 18, Windows 13, macOS 9,
 and documentation build 1. Workflow SHAs matched and every job passed; none failed,
 were cancelled, or remained pending. Windows Debug allocation checks now allow
 bounded measured iterator bookkeeping, while other builds remain strict.
@@ -136,12 +137,24 @@ copy-on-write behavior and optimized-away string allocations. The current candid
 de-duplication and mode-specific regression expectations. See BuildAndTest.md
 for exact CI links and remaining validation limits.
 
-The next planned API work is free `absolute` convenience helpers, including
-`absolute(text_style) -> text_style`; only the member `.absolute()` currently
-exists. Terry deferred implementation until CI passed; this update records the
-plan and does not implement it. The local strict C++11 blend warning remains
-open. Further formatting specifications and deferred blending require agreed
-scope. Green push CI does not constitute squash acceptance, PR-only
+Both free `absolute(text_style)` and `absolute(styled_text)` helpers are now
+implemented. The style helper returns an absolute copy; the text helper marks
+only the returned root, preserving its style and children. String inputs are
+owned; lvalues copy and rvalues move.
+
+`display_width()` matches ordinary fmt string-width rules per leaf: UTF-8
+width estimates for narrow text, code-unit counts for wide text. Precision
+uses one budget across the tree; padding receives the root style. Unicode code
+points must remain within a leaf. Generated SGR does not count; raw escapes are
+not interpreted. A `FMT_NOINLINE` branch-width helper avoids the reproduced GCC
+13/14 recursive-inlining union warning without disabling diagnostics.
+
+Current scope is implemented; branch review and any authorized squash integration
+remain separate. The older local strict C++11 blend warning is still open.
+Debug formatting, deferred blending, parsing, serialization, and module export
+remain deferred. Support for appending `detail::styled_arg` was discussed and
+left out pending a concrete request; `fmt::styled` remains unchanged.
+Green push CI does not constitute squash acceptance, PR-only
 lint/fuzz validation, or guide publication. Check CI on demand; Terry stopped
 periodic polling. Do not change workflow exclusions or cancel runs without
 instruction.
@@ -190,9 +203,9 @@ The API Reference header list includes `fmt/color-ostream.h`, linking to its
 existing guide section; it has no separate new API Reference section.
 
 The current owning structured-text implementation and formatter are on
-`feat/Formatter` at `7fe6ce14`; see [StyledText.md](StyledText.md).
+`feat/Formatter` at `0a8ad759`; see [StyledText.md](StyledText.md).
 Nested inheritance and absolute rendering boundaries are implemented.
-Deferred blending, parsing, display width, format specifications beyond the
-empty specification, serialization, and module export remain unimplemented.
+Deferred blending, debug string formatting, parsing, full grapheme/terminal
+width measurement, serialization, and module export remain unimplemented.
 The independent library requires C++23 and uses `std::variant`; the {fmt}
 release retains C++11 support.

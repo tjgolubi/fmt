@@ -413,15 +413,16 @@ convenience as a major design goal.
 ## Current experiment and planned work
 
 The active experiment is `feat/Formatter` at
-`7fe6ce14f6ae1c1eb4ce8a4fc257e674e8c521c9`, verified pushed with a clean library
+`0a8ad7595ece4ce976c49c6091bdeb39bbb7d86c`, verified pushed with a clean library
 working tree. It starts from the owning `feat/StyledText2` baseline at `08a9d3b7` and
 adds nested formatting, tests, guide documentation, and a GNU make demo. This
 experimental branch remains separate from accepted `color-dev` integration.
 See [StyledText.md](StyledText.md) for exact API and invariants and
 [BuildAndTest.md](BuildAndTest.md) for validation limits and the unresolved
-strict Release/C++11 blend warning. The candidate at `7fe6ce14` has all
+strict Release/C++11 blend warning. The candidate at `0a8ad759` has all
 41 push-CI jobs passing (18 Linux, 13 Windows, 9 macOS, 1 documentation).
 The current candidate includes composition and header refactors, guide updates,
+both free absolute helpers, width/precision formatting, deferred SGR emission,
 and SGR reset de-duplication with regressions in both modes. Acceptance and
 squash integration remain separate.
 
@@ -485,23 +486,35 @@ boundaries before calling the complete-state transition function. Relative
 styles inherit colors and OR emphasis; absolute styles replace the entire
 inherited state. Reset emission follows the mode-specific rules above. Each
 replacement field assumes terminal defaults at entry; no external state is
-queried or reset automatically. Descendants then inherit from
-that absolute node without repeating its boundary reset. Each child restores
-its enclosing state, and the root returns to defaults. Narrow/wide `{}` and
-`{:}` formatting are implemented; other specifications are rejected. Output
-uses ordinary SGR directly and does not interpret raw escapes in leaf strings.
-No public traversal, deferred blending, or extended-SGR interchange rendering
-is introduced. See StyledText.md for external-state assumptions and the demo.
+queried or reset automatically. Descendants inherit from an absolute node without
+repeating its boundary reset. Logical styles are tracked separately from the
+last emitted state: emit transitions only before text or padding, never merely
+on entry/exit, and transition to defaults at field end. Narrow/wide fill,
+alignment, width, precision, optional `s`, and dynamic width/precision are
+implemented. Padding receives the root style. Precision stops the whole traversal
+when the next code point will not fit; unwind without intermediate transitions.
+No public traversal or extended-SGR interchange rendering is introduced.
+
+The free `absolute(text_style)` returns an absolute copy; `absolute(text)` returns
+owned styled text with only its root marked absolute. Named inputs copy and
+rvalues move, matching overlay's ownership rules. The style overload is noexcept
+and conditionally constexpr like its member counterpart.
+
+`display_width()` reuses fmt UTF-8 decoding and width lookup per narrow leaf;
+wide strings count code units. Precision and padding match those ordinary string
+rules, with one shared budget across the tree. Keep UTF-8 code points within a
+leaf; raw escapes are not interpreted. A private noinline branch-width helper
+avoids GCC 13/14 recursive-inlining union warnings while leaf calculation stays
+inline. Shared-pointer access prevents useful constexpr tree measurement.
 
 ### Deferred blending and other future work
 
-Free `absolute` convenience helpers, including `absolute(text_style) ->
-text_style`, are planned next after the now-passing CI; only the member style
-operation exists today. No implementation was authorized by recording this plan.
-Deferred styled-text blend remains separate from root overlay. Their nested semantics and interface need agreement before
-implementation. Earlier `styled_text& blend()` proposals do not authorize code;
-do not add a previously rejected free operation without a new explicit decision.
-Parsing, display width, serialization, and module export also remain future work.
+Deferred styled-text blend remains separate from root overlay. Its nested
+semantics and interface need agreement before implementation. Earlier
+`styled_text& blend()` proposals do not authorize code. Debug string presentation,
+parsing, full grapheme/terminal width, serialization, and module export remain
+future work. `fmt::styled` is unchanged; accepting its internal `styled_arg`
+wrapper in concatenation is deferred until requested.
 
 For the later independent library, reconsider factory names alongside
 `using enum fmt::emphasis`: imported enum names can hide unqualified factories;
@@ -525,9 +538,10 @@ bold/faint. Do not use style OR composition to interpret those commands.
 Push/pop save and restore state. Visually equivalent output is sufficient;
 identical SGR byte sequences are unnecessary.
 
-Plan display-width measurement and non-mutating truncation that ignore escape
-sequences and preserve surviving styles. Alignment/precision work on visible
-text; Unicode boundaries, graphemes, and padding placement remain open. For lazy
+Display-width measurement and non-mutating truncation are implemented for the
+owning tree using ordinary fmt string rules. Generated SGR contributes no width;
+raw embedded escapes are not interpreted. Padding is root-styled. Complete
+grapheme and terminal-control handling remain future work. For lazy
 `styled_arg<T>`, retain the underlying formatter's type-specific behavior and
 place its padding inside the styled span.
 
