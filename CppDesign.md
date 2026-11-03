@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated November 2, 2026. Implemented behavior is separated below from future
+Updated November 3, 2026. Implemented behavior is separated below from future
 design. A proposal is not permission to implement it.
 
 ## Goals and boundaries
@@ -551,6 +551,22 @@ For the later independent library, reconsider factory names alongside
 `using enum fmt::emphasis`: imported enum names can hide unqualified factories;
 qualified `fmt::bold()` remains clear.
 
+## Active SGR parser and stripping proposal
+
+`feat/parser` at `1cda652f` adds `<fmt/parse_styled_text.h>` and character-generic
+`parse_styled_text`; it is not yet integrated into `color-dev`. It produces owned
+flat spans with an absolute root (or absolute single leaf), applies standard SGR
+state sequentially, and preserves non-SGR/malformed escapes literally. Unknown
+valid parameters are ignored. No extended push/pop parsing is implemented;
+leading-zero reset codes are ordinary resets. See StyledText.md for exact API,
+color forms, malformed-input policy, and tree shape, and BuildAndTest.md for the
+incomplete macOS CI state. Parsed `plain_text()` removes decoded SGR only.
+
+A proposed separate `strip_ansi` would remove syntactically valid ESC-prefixed
+sequences regardless of whether commands are known/private, preserving standalone
+C0, single-byte C1, and malformed/incomplete escapes. This remains discussion,
+not implementation authorization. The current parser is not a sanitizer.
+
 ## Rendering, parsing, and serialization
 
 Keep three responsibilities distinct:
@@ -558,7 +574,8 @@ Keep three responsibilities distinct:
 1. `render()` produces an interchange string with extended SGR push/pop markers.
 2. A terminal formatter emits ordinary ANSI SGR directly from the tree, resolving
    inheritance without calling `render()` or building an extended-SGR intermediate.
-3. An ANSI parser consumes ordinary SGR and extended push/pop sequences into a tree.
+3. The candidate ANSI parser consumes ordinary SGR into flat spans; extended
+   push/pop parsing remains future work.
 
 The legacy markers are `ESC[00m` for push and `ESC[000m` for pop, distinct from
 `ESC[0m` reset. Verify behavior against `AnsiColor.hpp` and `AnsiRender.hpp` before

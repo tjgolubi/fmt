@@ -1,6 +1,6 @@
 # FmtColor coordination
 
-Updated November 2, 2026.
+Updated November 3, 2026.
 
 FmtColor develops color and text-style extensions for C++. We plan two
 sequential deliverables:
@@ -69,6 +69,32 @@ committed and pushed; the earlier deferred `.tjg.cpp` file is no longer present.
 Coordination documents are maintained and pushed separately on `docs/Coord`.
 Future commits and pushes still require explicit authorization.
 
+## Active parser work
+
+Active library checkout: `feat/parser`, based on accepted `color-dev` at
+`2fa0bd92`, committed and pushed at
+`1cda652f459204dd552d1d06660f3c4f128b156d`. The library tree is clean. The
+parser is not squash-integrated into `color-dev`; acceptance is still pending.
+
+`<fmt/parse_styled_text.h>` adds character-generic `parse_styled_text`: standard
+SGR becomes owned narrow/wide spans with an absolute root. Non-SGR and malformed
+escapes stay literal; unknown valid parameters are ignored. It does not implement
+push/pop extensions. See [StyledText.md](StyledText.md#sgr-parser).
+
+Local tests pass in C++11/C++23 and both SGR modes. Latest observed push CI:
+Linux 18/18, Windows 13/13, doc 1/1 passed; macOS has 5 passed, 3 queued, and
+1 cancelled. No failures were reported, but this is not a complete green matrix.
+Terry reports repeated macOS runner cancellations today; their cause is unknown.
+Do not attribute them to parser code or claim acceptance. See BuildAndTest.md.
+
+A separate `strip_ansi` function was discussed, not implemented: strip syntactically
+valid ESC-prefixed sequences, including private/unknown codes; preserve standalone
+C0 controls, single-byte C1 forms, and malformed/incomplete escapes. The parser's
+`plain_text()` removes decoded SGR only and preserves other escapes.
+
+Terry authorized committing and pushing this coordination update on `docs/Coord`.
+The published website remains version 39 and predates this parser work.
+
 ## Implemented styled text and format contexts
 
 The complete release remains C++11-compatible. `<fmt/styled_text.h>` supplies
@@ -96,7 +122,7 @@ specifies changed targets, omitting a redundant reset from known defaults.
 One-argument `to_sgr` still emits an explicit absolute reset.
 
 Run `make -C demo run` for the checked-in header-only C++23 compact-SGR demo.
-Debug formatting, deferred blending, parsing, full grapheme/terminal width,
+Debug formatting, deferred blending, extended push/pop parsing, full grapheme/terminal width,
 serialization, styled-text module export, and public iteration remain deferred.
 Appending `detail::styled_arg` to a tree remains deferred; `fmt::styled` retains
 its borrowing return type, with updated formatting behavior.

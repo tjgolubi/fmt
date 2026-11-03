@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Website](Website.md)
 
-Updated November 2, 2026. Commands run from the library checkout root unless
+Updated November 3, 2026. Commands run from the library checkout root unless
 stated otherwise. Use `color-dev` or an authorized feature branch, not the
 `coord/` documentation worktree on `docs/Coord`. Run library commands from
 `..` when starting in `coord/`. `/doc/` means repository-relative.
@@ -122,6 +122,58 @@ example was checked. The ordinary doc job and separate Pages build/deploy
 passed for `2fa0bd92`. The revised guide rebuilt locally, including expected
 displays and the C++20 pi example. The localhost preview uses port 8875 and
 `build/guide-output-preview`; check availability before relying on it.
+
+## Parser candidate validation
+
+`feat/parser` at `1cda652f459204dd552d1d06660f3c4f128b156d` is committed and
+pushed, based on `color-dev` at `2fa0bd92`. It is not integrated or accepted.
+
+On Debian GCC 14.2, all five parser tests passed in C++11/C++23 crossed with
+compact/noncompact SGR, using header-only mode and
+`-pedantic-errors -Wall -Wextra -Werror`. Tests exercise both character types,
+all 256 indexed colors and emphasis masks, truecolor/colon forms, resets/off
+codes, flat structure and coalescing, ownership, literal/malformed escapes,
+render round trips, and isolation from enclosing styles. Normalization means
+round trips compare appearance/style structure, not original escape bytes.
+
+A fresh Debug/C++23 CMake build in `build/parser23` passed parser, styled-text,
+and styled-text-format targets through CTest. The header is registered for
+installation and its test target is registered in CMake. A header-only C++11
+no-exceptions probe passed. C++23 ASan/UBSan passed a deterministic 20,000-input
+random-escape probe with leak detection disabled for the existing ptrace limit.
+No new full local suite or old-compiler run is claimed.
+
+Latest inspected workflow SHAs all match the parser commit. Every matrix job
+was checked; the observed state is:
+
+| Workflow | Status                          | Evidence                                                        |
+| -------- | ------------------------------- | --------------------------------------------------------------- |
+| Linux    | 18 passed                       | [Run](https://github.com/tjgolubi/fmt/actions/runs/41616892400) |
+| Windows  | 13 passed                       | [Run](https://github.com/tjgolubi/fmt/actions/runs/41616892654) |
+| macOS    | 5 passed, 3 queued, 1 cancelled | [Run](https://github.com/tjgolubi/fmt/actions/runs/41616892361) |
+| Doc      | 1 passed                        | [Run](https://github.com/tjgolubi/fmt/actions/runs/41616892403) |
+
+No failed jobs were reported, but the queued/cancelled jobs prevent a complete
+pass. Terry reports repeated macOS runner cancellations today; no cause has been
+established. No runs were cancelled or rerun by the assistant. Recheck on demand;
+passing jobs for the accepted `color-dev` baseline do not validate this candidate.
+Guide build CI is not guide publication. No website update was performed.
+
+Reproduce the focused CMake checks:
+
+```bash
+cmake -S . -B build/parser23 -DFMT_DOC=OFF -DFMT_TEST=ON \
+  -DCMAKE_CXX_STANDARD=23 -DCMAKE_BUILD_TYPE=Debug \
+  -DFMT_PEDANTIC=OFF -DFMT_WERROR=ON
+cmake --build build/parser23 --target parse-styled-text-test \
+  styled-text-test styled-text-format-test --parallel 4
+ctest --test-dir build/parser23 \
+  -R '^(parse-styled-text|styled-text|styled-text-format)-test$' --output-on-failure
+```
+
+Direct four-mode parser logs are under
+`/workspace/regression-checks/parser-{11,23}-{0,1}.log`. These are local artifacts.
+The older color-dev context/formatter results above remain separately scoped.
 
 ## Platforms and tools
 

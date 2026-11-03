@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated November 2, 2026.
+Updated November 3, 2026.
 
 ## Authorization and scope
 
@@ -53,8 +53,8 @@ changed the structured-text header (now `styled_text.h`) only; do not mechanical
 
 Terry authorized native Linux tools in the cloud; MSYS2 Git and PATH rules
 below apply to his Windows/MSYS2 checkouts. Use compact SGR for the StyledText
-experiments. The library checkout is now `color-dev`; Formatter and ColorCtx
-have been squash-integrated. The linux, windows, macos, and doc push exclusions
+experiments. The library checkout is now `feat/parser`, based on accepted
+`color-dev`; Formatter and ColorCtx have been squash-integrated into that baseline. The linux, windows, macos, and doc push exclusions
 still match `feat/StyledText2`, not `color-dev` or `feat/ColorCtx`. PR triggers remain enabled. Do not change workflow
 exclusions or cancel runs without instruction. Batch changes
 before authorized pushes to conserve GitHub Actions compute. CI status is
@@ -251,7 +251,7 @@ after an authorized rewrite.
 ## Coordination worktree
 
 The library root and `coord/` are separate working trees of the same repository.
-The library root currently uses `color-dev`; `coord/` uses `docs/Coord`. Entering the
+The library root currently uses `feat/parser`; `coord/` uses `docs/Coord`. Entering the
 directory changes which checkout Git sees; it does not switch either worktree's
 branch. Use `git -C coord status` and `git -C coord diff` from the library root.
 Do not switch the library checkout to `docs/Coord` while that branch is checked

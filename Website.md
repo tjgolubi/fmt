@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md)
 
-Updated November 2, 2026.
+Updated November 3, 2026.
 
 ## Purpose and content
 
@@ -149,6 +149,15 @@ design is described on the Site. Debug formatting,
 deferred blending, parsing, full grapheme/terminal width, serialization, and
 styled-text module export remain future work. Consult CppDesign.md and
 StyledText.md for current implementation and boundaries.
+
+## Unpublished parser progress
+
+The separate `feat/parser` candidate adds standard SGR-to-owned-styled-text
+parsing in `<fmt/parse_styled_text.h>` at `1cda652f`. Local checks pass, while
+macOS CI has queued/cancelled jobs; no complete candidate pass or integration
+is claimed. Published version 39 predates this candidate and remains unchanged.
+The proposed general ANSI stripper is not implemented. Do not silently relabel
+these as published or accepted features; a website update requires instruction.
 
 ## Sites maintenance and publication
 

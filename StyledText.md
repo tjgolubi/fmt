@@ -1,6 +1,6 @@
 # Structured styled text and format contexts
 
-Updated November 2, 2026.
+Updated November 3, 2026.
 
 ## Scope and state
 
@@ -12,8 +12,9 @@ matched. All 41 push-CI jobs and both guide-publication jobs passed for that
 final tip. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 
 The library's tracked tree is clean. The modernized demo is committed and
-pushed; the former deferred `.tjg.cpp` file is no longer present. No new implementation
-branch has been selected. `feat/Formatter` and `feat/ColorCtx` are integrated
+pushed; the former deferred `.tjg.cpp` file is no longer present. The active
+parser implementation is separately committed/pushed on `feat/parser` at
+`1cda652f459204dd552d1d06660f3c4f128b156d`, based on `2fa0bd92`. `feat/Formatter` and `feat/ColorCtx` are integrated
 source branches, not the next development baseline. The borrowing StringView
 experiment remains a separate ownership alternative. The old transition-fix
 bundle and dependency history are retained in Git history; they are not needed
@@ -303,9 +304,59 @@ tree and padding uses the root style. Expected displays also show the whole
 sentence underlined around bright-red `42`, and C++20 `std::numbers::pi`
 rounded by stream precision to bold-green `3.14`.
 
+## SGR parser
+
+`<fmt/parse_styled_text.h>` on `feat/parser` defines:
+
+```cpp
+template<typename Char>
+auto parse_styled_text(basic_string_view<Char>) -> basic_styled_text<Char>;
+```
+
+Narrow and wide convenience overloads accept literals and standard strings.
+The result owns the text. Plain input or a single styled run produces one leaf;
+multiple runs produce a flat branch. The root is absolute: an otherwise empty
+absolute parent isolates relative child styles, while a single leaf retains its
+own colors/emphasis and is marked absolute. Children need no individual absolute
+flags. Empty input produces an empty absolute leaf. No public structural API was
+added to construct these results.
+
+SGR parameters update one current relative style in order. Reset clears it;
+empty parameters, `0`, `00`, and `000` are ordinary resets, never push/pop.
+A leaf is emitted only when text is present. Consecutive sequences create no
+empty spans, adjacent text with equal styles is combined, and trailing SGR
+without text contributes no leaf. The parser represents appearance, not exact
+escape-byte round trips or the final input terminal state after trailing SGR.
+
+Recognized codes include the eight supported emphasis bits and their off codes,
+SGR 22 clearing both bold/faint, normal/bright terminal colors, 39/49 defaults,
+256-color indexed values, and RGB truecolor. Semicolon and colon color forms
+are supported, including omitted/default RGB color-space fields. It handles
+ASCII escape syntax in either character type and preserves text code units and
+sized embedded nulls without Unicode decoding.
+
+Only ESC-prefixed CSI sequences ending in lowercase `m` are decoded. Non-SGR
+commands, including uppercase `M`, and opaque OSC/DCS/SOS/PM/APC payloads remain
+literal. Malformed SGR, incomplete/out-of-range supported colors, and unsigned
+parameter overflow are preserved atomically without changing style. Unknown valid
+parameters and unsupported colon groups are ignored; an unknown semicolon color
+mode discards the remainder of that SGR because its payload boundary is unknown.
+Preserved raw terminal commands can affect state outside the model. This is not
+sanitization. The old `AnsiColor.hpp::Apply` was read as a reference, not copied
+as the implementation or treated as authoritative policy.
+
+### Proposed ANSI stripping
+
+`strip_ansi` is a separate, unimplemented proposal. Remove syntactically well-formed
+ESC-prefixed ANSI sequences even when codes are private or unknown. Preserve
+standalone C0 controls (including tabs/newlines), single-byte C1 forms, malformed
+sequences, and incomplete sequences. Parsing followed by `plain_text()` strips
+recognized SGR but deliberately retains other escapes; it is not a general
+ANSI stripper. No implementation was requested by this discussion.
+
 ## Next work and validation limits
 
-Current code and guide are accepted on `color-dev`; the 41-job push matrix and
+The integrated tree/context code and guide are accepted on `color-dev`; the 41-job push matrix and
 guide build/deployment passed for exact current tip `2fa0bd92`. Branch candidate results
 and earlier cancelled macOS jobs are not the final acceptance evidence.
 
@@ -317,7 +368,11 @@ is retained. Older strict local Release blend/union diagnostics remain open;
 see BuildAndTest.md for exact validation limits. No PR-only lint/fuzz, tablet,
 performance, or ABI-validation result is inferred from passing push CI.
 
-Debug formatting, deferred blending, parsing, full grapheme/terminal width,
+The parser candidate passes local tests but its macOS CI is incomplete: 5 passed,
+3 queued, 1 cancelled at last inspection. Linux/Windows/doc passed; do not infer
+full acceptance. See BuildAndTest.md for exact runs.
+
+Debug formatting, deferred blending, extended push/pop parsing, full grapheme/terminal width,
 serialization, styled-text module export, and public iteration remain deferred.
 Appending `detail::styled_arg` to a tree is also deferred. `fmt::styled` keeps
 its borrowing wrapper type while inheriting/restoring context when formatted.
