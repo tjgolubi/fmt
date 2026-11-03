@@ -73,7 +73,7 @@ Future commits and pushes still require explicit authorization.
 
 Active library checkout: `feat/parser`, based on accepted `color-dev` at
 `2fa0bd92`, committed and pushed at
-`1cda652f459204dd552d1d06660f3c4f128b156d`. The library tree is clean. The
+`be665d942d0352911ea6da8678c948ed49c20970`. The library tree is clean. The
 parser is not squash-integrated into `color-dev`; acceptance is still pending.
 
 `<fmt/parse_styled_text.h>` adds character-generic `parse_styled_text`: standard
@@ -81,18 +81,19 @@ SGR becomes owned narrow/wide spans with an absolute root. Non-SGR and malformed
 escapes stay literal; unknown valid parameters are ignored. It does not implement
 push/pop extensions. See [StyledText.md](StyledText.md#sgr-parser).
 
-Local tests pass in C++11/C++23 and both SGR modes. Latest observed push CI:
-Linux 18/18, Windows 13/13, doc 1/1 passed; macOS has 5 passed, 3 queued, and
-1 cancelled. No failures were reported, but this is not a complete green matrix.
-Terry reports repeated macOS runner cancellations today; their cause is unknown.
-Do not attribute them to parser code or claim acceptance. See BuildAndTest.md.
+Local parser tests pass in C++11/C++23 and both SGR modes. All **41 push-CI jobs
+passed** for `be665d94`: Linux 18, Windows 13, macOS 9, doc 1. Every job was
+inspected and workflow SHAs matched; no failed, cancelled, or pending jobs remain
+for this commit. Earlier macOS cancellations are superseded, not a complete pass
+for the earlier SHA. See BuildAndTest.md for exact runs.
 
-A separate `strip_ansi` function was discussed, not implemented: strip syntactically
-valid ESC-prefixed sequences, including private/unknown codes; preserve standalone
-C0 controls, single-byte C1 forms, and malformed/incomplete escapes. The parser's
-`plain_text()` removes decoded SGR only and preserves other escapes.
+`<fmt/strip_ansi.h>` now implements character-generic `strip_ansi`, returning an
+owning string with syntactically valid ESC-prefixed ANSI sequences removed,
+including private/unknown commands. It preserves standalone C0, single-byte C1,
+and malformed/incomplete escapes. Parser `plain_text()` still removes decoded
+SGR only. Neither function simulates terminal editing or sanitizes text.
 
-Terry authorized committing and pushing this coordination update on `docs/Coord`.
+Terry authorized committing and pushing these coordination updates on `docs/Coord`.
 The published website remains version 39 and predates this parser work.
 
 ## Implemented styled text and format contexts

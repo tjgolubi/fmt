@@ -125,7 +125,7 @@ displays and the C++20 pi example. The localhost preview uses port 8875 and
 
 ## Parser candidate validation
 
-`feat/parser` at `1cda652f459204dd552d1d06660f3c4f128b156d` is committed and
+`feat/parser` at `be665d942d0352911ea6da8678c948ed49c20970` is committed and
 pushed, based on `color-dev` at `2fa0bd92`. It is not integrated or accepted.
 
 On Debian GCC 14.2, all five parser tests passed in C++11/C++23 crossed with
@@ -143,21 +143,33 @@ no-exceptions probe passed. C++23 ASan/UBSan passed a deterministic 20,000-input
 random-escape probe with leak detection disabled for the existing ptrace limit.
 No new full local suite or old-compiler run is claimed.
 
-Latest inspected workflow SHAs all match the parser commit. Every matrix job
-was checked; the observed state is:
+All **41 push-CI jobs passed** for `be665d94`. All workflow head SHAs matched
+that full commit and every job's conclusion was inspected. No job failed,
+was cancelled, or remained pending. This supersedes the incomplete macOS result
+for the earlier parser-only commit; no cancellation cause is established.
 
-| Workflow | Status                          | Evidence                                                        |
-| -------- | ------------------------------- | --------------------------------------------------------------- |
-| Linux    | 18 passed                       | [Run](https://github.com/tjgolubi/fmt/actions/runs/41616892400) |
-| Windows  | 13 passed                       | [Run](https://github.com/tjgolubi/fmt/actions/runs/41616892654) |
-| macOS    | 5 passed, 3 queued, 1 cancelled | [Run](https://github.com/tjgolubi/fmt/actions/runs/41616892361) |
-| Doc      | 1 passed                        | [Run](https://github.com/tjgolubi/fmt/actions/runs/41616892403) |
+| Workflow | Passed jobs | Evidence                                                        |
+| -------- | ----------- | --------------------------------------------------------------- |
+| Linux    | 18          | [Run](https://github.com/tjgolubi/fmt/actions/runs/41620515207) |
+| Windows  | 13          | [Run](https://github.com/tjgolubi/fmt/actions/runs/41620515033) |
+| macOS    | 9           | [Run](https://github.com/tjgolubi/fmt/actions/runs/41620515052) |
+| Doc      | 1           | [Run](https://github.com/tjgolubi/fmt/actions/runs/41620515253) |
 
-No failed jobs were reported, but the queued/cancelled jobs prevent a complete
-pass. Terry reports repeated macOS runner cancellations today; no cause has been
-established. No runs were cancelled or rerun by the assistant. Recheck on demand;
-passing jobs for the accepted `color-dev` baseline do not validate this candidate.
-Guide build CI is not guide publication. No website update was performed.
+No runs were cancelled or rerun by the assistant. Check on demand; no periodic
+polling. These candidate results do not establish squash acceptance, PR-only
+lint/fuzz, guide publication, or a full remote compact-SGR matrix.
+
+`strip-ansi-test` passes all three test groups in strict header-only C++11/C++23.
+It checks both character types, private/unknown CSI, numeric values irrelevant
+to grammar, OSC hyperlinks, opaque control strings and both terminators,
+malformed/incomplete sequences, C0/C1/NUL preservation, Unicode, and ownership.
+The four focused Debug/C++23 CMake targets pass through CTest: stripper, parser,
+styled-text, and styled-text-format. CMake registers both new installed headers
+and test targets. A C++11 no-exceptions probe passed, including explicit
+`char16_t`/`char32_t` calls. C++23 ASan/UBSan passed a 30,000-input deterministic
+random-escape probe, checking output is a subsequence and never grows. Leak
+detection was disabled for the known ptrace restriction; no leak-check pass is
+claimed. Local strip logs are `/workspace/regression-checks/strip-{11,23}.log`.
 
 Reproduce the focused CMake checks:
 
@@ -166,9 +178,9 @@ cmake -S . -B build/parser23 -DFMT_DOC=OFF -DFMT_TEST=ON \
   -DCMAKE_CXX_STANDARD=23 -DCMAKE_BUILD_TYPE=Debug \
   -DFMT_PEDANTIC=OFF -DFMT_WERROR=ON
 cmake --build build/parser23 --target parse-styled-text-test \
-  styled-text-test styled-text-format-test --parallel 4
+  styled-text-test styled-text-format-test strip-ansi-test --parallel 4
 ctest --test-dir build/parser23 \
-  -R '^(parse-styled-text|styled-text|styled-text-format)-test$' --output-on-failure
+  -R '^(strip-ansi|parse-styled-text|styled-text|styled-text-format)-test$' --output-on-failure
 ```
 
 Direct four-mode parser logs are under

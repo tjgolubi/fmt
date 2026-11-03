@@ -14,7 +14,7 @@ final tip. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 The library's tracked tree is clean. The modernized demo is committed and
 pushed; the former deferred `.tjg.cpp` file is no longer present. The active
 parser implementation is separately committed/pushed on `feat/parser` at
-`1cda652f459204dd552d1d06660f3c4f128b156d`, based on `2fa0bd92`. `feat/Formatter` and `feat/ColorCtx` are integrated
+`be665d942d0352911ea6da8678c948ed49c20970`, based on `2fa0bd92`. `feat/Formatter` and `feat/ColorCtx` are integrated
 source branches, not the next development baseline. The borrowing StringView
 experiment remains a separate ownership alternative. The old transition-fix
 bundle and dependency history are retained in Git history; they are not needed
@@ -345,14 +345,27 @@ Preserved raw terminal commands can affect state outside the model. This is not
 sanitization. The old `AnsiColor.hpp::Apply` was read as a reference, not copied
 as the implementation or treated as authoritative policy.
 
-### Proposed ANSI stripping
+### ANSI stripping
 
-`strip_ansi` is a separate, unimplemented proposal. Remove syntactically well-formed
-ESC-prefixed ANSI sequences even when codes are private or unknown. Preserve
-standalone C0 controls (including tabs/newlines), single-byte C1 forms, malformed
-sequences, and incomplete sequences. Parsing followed by `plain_text()` strips
-recognized SGR but deliberately retains other escapes; it is not a general
-ANSI stripper. No implementation was requested by this discussion.
+`<fmt/strip_ansi.h>` implements character-generic
+`strip_ansi(basic_string_view<Char>) -> std::basic_string<Char>`, with narrow/wide
+convenience overloads for literals and standard strings. It makes an owning
+result directly without constructing a styled tree or decoding Unicode.
+
+It removes syntactically complete ESC-prefixed CSI, OSC, DCS, SOS, PM, APC, and
+ordinary ESC sequences, including private/unknown commands and numerically invalid
+parameters whose syntax is well formed. CSI requires parameter bytes, then
+intermediates, then a final byte. OSC accepts BEL or ESC-backslash termination;
+other control strings require ESC-backslash. Payloads and terminators are removed
+together; visible hyperlink labels outside OSC markers remain.
+
+Standalone C0 controls (including tabs/newlines/NUL), single-byte C1 forms, and
+malformed/incomplete escape prefixes remain. Scanning resumes at an interrupting
+character, allowing a later independent escape to be stripped. An unterminated
+control string is preserved whole, including embedded apparent escapes. CAN/SUB
+cancel control-string recognition and are retained. This function does not
+simulate cursor movement or erase commands and is not a security sanitizer.
+Parser `plain_text()` removes decoded SGR only and retains other escapes.
 
 ## Next work and validation limits
 
@@ -368,9 +381,11 @@ is retained. Older strict local Release blend/union diagnostics remain open;
 see BuildAndTest.md for exact validation limits. No PR-only lint/fuzz, tablet,
 performance, or ABI-validation result is inferred from passing push CI.
 
-The parser candidate passes local tests but its macOS CI is incomplete: 5 passed,
-3 queued, 1 cancelled at last inspection. Linux/Windows/doc passed; do not infer
-full acceptance. See BuildAndTest.md for exact runs.
+The combined parser/stripper candidate at `be665d94` passes all 41 push-CI jobs,
+including all nine macOS jobs. Local strip tests pass C++11/C++23; CMake parser,
+stripper, styled-text, and formatter suites pass. Sanitizer and no-exceptions
+probes pass. Candidate validation does not authorize squash integration.
+See BuildAndTest.md for exact evidence and limits.
 
 Debug formatting, deferred blending, extended push/pop parsing, full grapheme/terminal width,
 serialization, styled-text module export, and public iteration remain deferred.

@@ -551,21 +551,52 @@ For the later independent library, reconsider factory names alongside
 `using enum fmt::emphasis`: imported enum names can hide unqualified factories;
 qualified `fmt::bold()` remains clear.
 
-## Active SGR parser and stripping proposal
+## Active SGR parser and ANSI stripping
 
-`feat/parser` at `1cda652f` adds `<fmt/parse_styled_text.h>` and character-generic
+`feat/parser` at `be665d94` adds `<fmt/parse_styled_text.h>` and character-generic
 `parse_styled_text`; it is not yet integrated into `color-dev`. It produces owned
 flat spans with an absolute root (or absolute single leaf), applies standard SGR
 state sequentially, and preserves non-SGR/malformed escapes literally. Unknown
 valid parameters are ignored. No extended push/pop parsing is implemented;
 leading-zero reset codes are ordinary resets. See StyledText.md for exact API,
 color forms, malformed-input policy, and tree shape, and BuildAndTest.md for the
-incomplete macOS CI state. Parsed `plain_text()` removes decoded SGR only.
+complete candidate CI state. Parsed `plain_text()` removes decoded SGR only.
 
-A proposed separate `strip_ansi` would remove syntactically valid ESC-prefixed
-sequences regardless of whether commands are known/private, preserving standalone
-C0, single-byte C1, and malformed/incomplete escapes. This remains discussion,
-not implementation authorization. The current parser is not a sanitizer.
+`<fmt/strip_ansi.h>` now implements the separate character-generic stripper.
+It removes syntactically valid ESC-prefixed sequences regardless of semantic
+validity or private/unknown commands. Standalone C0, single-byte C1, and
+malformed/incomplete prefixes remain. Control-string payloads and terminators
+are removed together; incomplete strings remain opaque and are preserved whole.
+This directly produces an owning string, without building a tree. It neither
+simulates terminal editing nor sanitizes text. Both functions are on `feat/parser`
+at `be665d94`, with all 41 push-CI jobs passing; integration remains separate.
+
+### Independent-library buffer discussion
+
+The next phase ports the styling layer, not fmt's unrelated formatting features.
+C++20 supplies most language facilities; the planned minimum remains C++23,
+including standard print/println and simpler standard utilities. Do not copy or
+rebuild fmt's whole formatting engine or modify standard format contexts.
+
+Terry favors a small own memory buffer with a limited append/copy interface for
+SGR construction. His existing fixed-capacity static string is a possible
+reference, but a complete string interface is unnecessary. No implementation or
+final buffer capacity has been authorized. In this fmt version, memory buffers
+default to 500 inline elements; SGR code already uses its explicit 60-element
+bound. Inline storage lives in the object, on the stack only when the object is
+stack-local. Standard string SSO is implementation-dependent and is not enough
+to guarantee allocation-free SGR construction. A returned owning string may
+still allocate even when the temporary SGR buffer does not.
+
+Styled-text leaves continue to use immutable shared basic strings, and rendering
+writes to output iterators; do not impose a fixed capacity on arbitrary text.
+Audit retained buffer operations before replacing them. Other fmt dependencies
+include string views, formatter/parse contexts, string-spec parsing and dynamic
+arguments, padding/copying, Unicode decoding/width estimates, assertions/errors,
+and compatibility macros. Standard views, algorithms, concepts, and utilities
+replace many; Unicode measurement and specification handling need a separate
+plan. Standard-library facilities expose no general public UTF-8 decoder or
+width-measurement helper. The agreed standard-context boundary remains unchanged.
 
 ## Rendering, parsing, and serialization
 

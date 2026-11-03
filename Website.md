@@ -153,10 +153,9 @@ StyledText.md for current implementation and boundaries.
 ## Unpublished parser progress
 
 The separate `feat/parser` candidate adds standard SGR-to-owned-styled-text
-parsing in `<fmt/parse_styled_text.h>` at `1cda652f`. Local checks pass, while
-macOS CI has queued/cancelled jobs; no complete candidate pass or integration
-is claimed. Published version 39 predates this candidate and remains unchanged.
-The proposed general ANSI stripper is not implemented. Do not silently relabel
+parsing in `<fmt/parse_styled_text.h>` and `strip_ansi` in `<fmt/strip_ansi.h>`
+at `be665d94`. All 41 push-CI jobs pass, including macOS; the candidate is not
+yet integrated. Published version 39 predates it and remains unchanged. Do not silently relabel
 these as published or accepted features; a website update requires instruction.
 
 ## Sites maintenance and publication
