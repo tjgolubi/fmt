@@ -7,227 +7,121 @@ stated otherwise. Use `color-dev` or an authorized feature branch, not the
 `coord/` documentation worktree on `docs/Coord`. Run library commands from
 `..` when starting in `coord/`. `/doc/` means repository-relative.
 
-## Cloud StyledText validation
+## Current color-dev validation
 
-Current experimental source: `feat/Formatter` at
-`0a8ad7595ece4ce976c49c6091bdeb39bbb7d86c`, verified pushed with matching
-local/GitHub full SHAs and a clean library working tree. It starts from
-`feat/StyledText2` at `08a9d3b7`. Current local checks used native Debian 13
-x86-64, GCC 14.2.0, and CMake 4.4.4. CMake is installed locally under
-`/workspace/build-tools/cmake/data/bin`; it is not necessarily on PATH.
-Latest local styled-text and formatter suites pass **29 tests** in each of four
-configurations: C++11/C++23 crossed with compact/noncompact SGR. GCC 14.2 direct
-builds used `-pedantic-errors -Wall -Wextra -Werror`, without optimization.
-Coverage includes Unicode width and precision, dynamic arguments, root-styled
-padding, exact deferred-transition output, absolute boundaries, output iterators,
-and all 65,536 parent/child emphasis combinations.
+Verified for accepted `color-dev` tip
+`2fa0bd9269a54d1fe155ff7ee95e96dfb9d0b6c3`. Local, GitHub branch, workflow, and job
+full SHAs matched. Every job was inspected: all **41 push-CI jobs passed**, plus
+the separate guide build and deployment. None failed, were cancelled, or
+remained pending.
 
-Header-only probes passed C++11 with exceptions disabled and C++23 with ASan/UBSan,
-including bounded and counting output. Leak detection was disabled for the
-successful sanitizer run because LeakSanitizer cannot run under this environment's
-ptrace setup; no successful leak-check result is claimed.
+| Workflow          | Successful jobs | Evidence                                                          |
+| ----------------- | --------------: | ----------------------------------------------------------------- |
+| Linux             | 18              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41556114291)   |
+| Windows           | 13              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41556114172)   |
+| macOS             | 9               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41556114195)   |
+| Doc build         | 1               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41556114169)   |
+| Guide publication | 2               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41556114426)   |
 
-The GCC warning workaround additionally passed optimized GCC 13.3 shared-library
-runs in all four modes (29 tests each), using `-O3 -DNDEBUG -fPIC -DFMT_SHARED`
-and the same strict warnings. GCC 13.3 was extracted under
-`/workspace/build-tools/gcc13`, without changing the system compiler. Local
-support/gtest libraries were previously built with GCC 14, so these runs linked
-the host GCC 14 C++ runtime; they are not an exact CI image reproduction. The
-remote GCC 13 shared job below supplies the native CI validation.
+The final tip contains the Formatter and ColorCtx squash integrations and the
+regenerated tracked changelog, modernized demonstration, and updated guide examples. These final results replace earlier candidate
+failures/cancellations as acceptance evidence. In particular, macOS completed
+all nine jobs successfully. Candidate `3afa54fb` had passed Linux/Windows/doc
+but four cancelled macOS jobs; it is not the basis for the complete pass.
+No workflows were cancelled or reconfigured by the assistant.
 
-Earlier color/formatter four-mode checks at `7fe6ce14` passed 62/65 tests in
-C++11 noncompact/compact and 67/70 in C++23. Their binaries/logs are under
-`/workspace/regression-checks/cxx{11,23}-sgr{0,1}`. Current styled-text/formatter
-logs are `deferred-{11,23}-{0,1}.log` and optimized workaround logs are
-`width-helper13-{11,23}-{0,1}.log` in that directory. These are local artifacts.
-No local Clang build was run; Linux CI provides Clang coverage.
+The remote matrix uses default/noncompact SGR. It includes old GCC 4.9 and
+Clang 3.6 C++11, modern compilers, shared builds, and sanitizer jobs. Push CI
+does not establish separate PR-only lint/fuzz passes, individual test-skip
+counts, performance, ABI validation, or tablet results. GCC 16/C++26 reflection
+remains excluded; issue #2 stays open. Check CI on demand, not periodically.
 
-### GCC display-width warning workaround
+### ColorCtx local validation
 
-The original `display_width()` failed the optimized GCC 13/C++23 shared CI build
-with `-Werror=maybe-uninitialized`: vector iterators for the inactive branch
-union member were reported while measuring a known leaf. The same diagnostic
-was reproduced locally with GCC 13.3 and 14 at `-O3`; constructors initialize the
-leaf and discriminator. Reversing the branch/leaf control flow helped in C++23
-but still warned in C++11, so it was not used. A small private `FMT_NOINLINE`
-branch traversal helper avoids recursive-inlining analysis of the inactive union
-member, leaving leaf width inline and all warnings enabled. The current complete
-push matrix passes, including the previously failing job. This is separate from
-the unresolved blend diagnostic below.
+MSYS GCC 16.2 verified strict Debug C++11/C++23 color, styled-text-format, and
+color-ostream suites in default SGR mode. C++23 core, format, and compile suites
+also passed. The wide suite passed with an existing dangling-else warning and
+missing `es_ES.UTF-8` locale notice. Compact direct runs passed **92 tests** in
+C++11 and **132 tests** in C++23 (the latter includes compiled formatting).
+Direct builds used `-pedantic-errors -Wall -Wextra -Werror`, treating bundled
+GoogleTest as a system include where needed. Compiled formatting retains the
+existing constant-evaluated styled `formatted_size` regression.
 
-Earlier formatter validation also passed Release/C++23 compact CTest, strict
-Release/C++11 formatter/styled-text CTest, a strict header-only C++11 compact
-no-exceptions probe, and demo appearance checks. The following reproduction
-commands describe those earlier optimized configurations; they are not the
-commands used for the latest four direct regression runs.
+Changed-header syntax checks passed C++11/C++23 in both SGR modes with
+`-Wconversion -Wshadow -Werror`. A C++11 compact/header-only no-exceptions
+probe built and ran. The final stream-construction correction additionally
+passed strict C++11 syntax checking with `-fno-elide-constructors` and the
+existing Release/C++23 formatter test. Attribute corrections passed strict
+GCC C++11/17/23 header checks with attribute warnings as errors. No local Clang
+or GCC 4.9/11 compiler was available; the passing final remote matrix supplies
+those checks.
 
-Strict C++11 CMake builds used `-pedantic-errors -Wall -Wextra -Werror`.
-The header-only/no-exceptions probe used those warnings plus `-fno-exceptions`
-and `FMT_HEADER_ONLY`; the header syntax check additionally enabled
-`-Wconversion -Wshadow`. The directly linked C++23/noncompact formatter used
-`-pedantic-errors -Wall -Wextra -Werror`. Both formatter SGR modes passed
-without diagnostics after explicit discarded results were added to exception
-checks. The C++23 CMake build did not enable all strict warning flags.
+Tests cover plain `{}` shortcuts, explicit/dynamic specifications, independent
+contexts, nested styled wrappers and trees, absolute-only spans, inherited root
+padding, empty/precision-zero text, direct and buffered nested formatters,
+pointer output, wide/ostream/FILE entry points, and metadata restoration on
+exceptions. The independent ANSI interpreter checks visible text/style state.
 
-The new `styled-text-format-test` covers ordinary and compiled format strings,
-`{}`/`{:}`, rejected specifications, narrow/wide output, nested inheritance,
-absolute boundaries, logical style restoration and deferred transitions,
-empty/binary/long text, raw escapes copied verbatim, output iterators, and input
-preservation. Its independent ANSI interpreter checks every output character's
-state across all 65,536 parent/child emphasis combinations. Those checks are
-separate from the color suite's existing 65,536 transition-state pairs.
-
-### Unresolved GCC blend diagnostic
-
-The strict Release/C++11 `color-test` build failed because GCC 14.2 emitted
-`-Wmaybe-uninitialized`, promoted to an error by `-Werror`, while inlining the
-older recursive style-blending path. Diagnostics point to `blend_state::add`
-in `include/fmt/color.h:938`, including `state` and RGB payload bytes in the
-color union. The blend-state constructor initializes its fields, but a false
-positive has not been established. Do not suppress or claim to have fixed the
-warning. Later transition work changes `color.h` and `color-test.cc`, but does
-not change the blend implementation or establish a fix for this diagnostic.
-
-This was an optimized Release build with `NDEBUG`, so debug assertions were
-disabled. The absolute-blend precondition assertion is separate from this
-compiler diagnostic. Current blend overloads require two or more arguments;
-absolute inputs must specify both color channels when assertions are enabled.
-The earlier GCC 13.3 result does not establish whether the arity/assertion
-revision caused the newer warning. No local lower-optimization, baseline-comparison, older-GCC, or Clang
-investigation of this warning was performed. The passing remote matrix does
-not reproduce the exact local GCC 14.2 Release/C++11 configuration.
-
-### Reproduction
-
-Use the installed CMake path above in this cloud workspace, or a normal CMake
-executable on the target platform. From the library root:
+Local temporary `build/colorctx11` and `build/colorctx23` configurations were
+removed later; do not assume their binaries or logs survive. Recreate an
+isolated build rather than relying on stale caches:
 
 ```bash
-cmake -S . -B build/formatter-compact23 -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_STANDARD=23 -DFMT_TEST=ON -DFMT_DOC=OFF \
-  -DFMTCOLOR_SKIP=OFF -DCMAKE_CXX_FLAGS=-DFMT_COLOR_COMPACT_SGR=1
-cmake --build build/formatter-compact23 \
-  --target styled-text-format-test styled-text-test color-test --parallel 8
-ctest --test-dir build/formatter-compact23 \
-  -R '^(styled-text-format|styled-text|color)-test$' --output-on-failure
-
-cmake -S . -B build/formatter-compact11 -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_STANDARD=11 -DFMT_TEST=ON -DFMT_DOC=OFF -DFMTCOLOR_SKIP=OFF \
-  -DCMAKE_CXX_FLAGS='-DFMT_COLOR_COMPACT_SGR=1 -pedantic-errors -Wall -Wextra -Werror'
-cmake --build build/formatter-compact11 \
-  --target styled-text-format-test styled-text-test --parallel 8
-ctest --test-dir build/formatter-compact11 \
-  -R '^(styled-text-format|styled-text)-test$' --output-on-failure
+cmake -S . -B build/colorctx11 -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_CXX_STANDARD=11 -DFMT_TEST=ON -DFMT_DOC=OFF \
+  -DFMT_PEDANTIC=OFF -DFMT_WERROR=ON \
+  -DCMAKE_CXX_FLAGS='-pedantic-errors -Wall -Wextra -Werror'
+cmake --build build/colorctx11 \
+  --target styled-text-format-test color-test color-ostream-test --parallel 8
+ctest --test-dir build/colorctx11 \
+  -R '^(styled-text-format|color|color-ostream)-test$' --output-on-failure
 ```
 
-The earlier color/formatter four-mode regression checks can be reproduced in this workspace
-using the existing matching support libraries (these are unoptimized builds):
+Use separate directories for C++23, optimization, and SGR mode. For compact
+mode, add `-DFMT_COLOR_COMPACT_SGR=1` to compiler flags consistently. Defining
+only a CMake cache variable of that name does not define the macro.
 
-```bash
-for std in 11 23; do
-  for mode in 0 1; do
-    g++ -std=c++$std -DFMT_COLOR_COMPACT_SGR=$mode \
-      -pedantic-errors -Wall -Wextra -Werror -Iinclude -Itest -Itest/gtest \
-      test/color-test.cc test/styled-text-format-test.cc \
-      build/formatter-compact$std/test/libtest-main.a \
-      build/formatter-compact$std/test/gtest/libgtest.a \
-      build/formatter-compact$std/libfmt.a -pthread \
-      -o /tmp/fmt-regressions-$std-$mode && /tmp/fmt-regressions-$std-$mode
-  done
-done
-```
+### Remaining local diagnostics and older evidence
 
-Adding `color-test` to the strict C++11 build reproduces the unresolved failure.
-The C++23/noncompact formatter suite was linked directly against the matching
-C++23 fmt/test-main/gtest libraries; it was not a full noncompact CTest run.
-Use separate build directories when changing standard, compiler, or SGR mode.
+Strict optimized MSYS GCC 16.2 validation encountered conversion diagnostics
+in the existing file-output code under full fmt pedantic flags, and a
+`-Wmaybe-uninitialized` diagnostic in the ANSI test interpreter's color-union
+assignment under `-O3 -Werror`. No source warning suppression was introduced;
+the exact strict Release configuration is not established passing.
 
-The demo needs only GNU make and a C++23-capable compiler:
+The older Debian GCC 14.2 strict Release/C++11 blend-path warning remains
+unresolved and is not established to be a false positive. Remote green jobs
+do not reproduce that exact local configuration. The GCC 13/14 recursive-width
+warning is distinct: its private noinline branch-width helper is retained and
+the final shared CI passes.
 
-```bash
-make -C demo run
-make -C demo clean
-```
+Earlier Formatter checks covered 29 owning/formatter tests in four modes and
+all 65,536 parent/child emphasis combinations, plus 65,536 transition pairs in
+the color suite. Earlier cloud ASan/UBSan checks passed with leak detection
+disabled because of ptrace restrictions; no successful leak check is claimed.
+Those are historical focused results, not fresh local tests of `b8bf6293`.
 
-Its Makefile sets `FMT_DIR=..`, includes that checkout's headers, and defines
-`FMT_HEADER_ONLY` and `FMT_COLOR_COMPACT_SGR=1`. Override `FMT_DIR` or `CXX` on
-the command line. The generated executable is ignored; the Makefile is tracked.
-Both output lines were independently checked character by character: nested
-bold remains red, separators remain plain, the second line has gray background
-and strikethrough, the absolute span has only underline, and enclosing styling
-resumes after it. The GNU make build's ANSI output matched the directly linked
-build's output. The demo changes neither terminal capabilities nor the Site.
+### Allocation and demo coverage
 
-### Allocation-test portability
+Leaf copies/assignment and in-place root overlay require zero allocations.
+MSVC iterator-debug builds alone permit bounded measured bookkeeping; larger
+allocations must match the branch-copy baseline. An explicit `operator new`
+control avoids old string copy-on-write and optimized-away allocations. The
+final Windows matrix validates this policy. Other builds remain strict.
 
-The allocation regression now labels failing stages and reports character type,
-allocation count, total bytes, largest allocation, and baseline/bookkeeping
-measurements. Leaf copying/assignment and in-place root overlay still require
-zero allocations everywhere. Only `_MSC_VER` with nonzero
-`_ITERATOR_DEBUG_LEVEL` permits extra bookkeeping allocations in helper moves
-and empty string construction. The limit is measured from empty native strings
-and vectors, without private STL types: at most 32 extra proxy-sized allocations
-and their bounded byte total. Larger allocations must match the branch-copy
-baseline, so copying child buffers cannot hide in the proxy allowance.
+`make -C demo run` builds the checked-in C++23/header-only compact-SGR demo
+without CMake or a prebuilt library. Earlier character-by-character appearance
+checks covered nested colors, emphasis, absolute boundaries, and restoration.
+The modernized demo is committed and pushed, using `absolute(underline(...))`.
+Its helper cleanup was built with strict C++23 warnings and retained identical
+ANSI output (350 bytes, two lines). The website embeds its complete source and
+verified display. The deferred `.tjg.cpp` file is no longer present.
 
-A large-buffer control explicitly calls the replacement `operator new` and
-verifies that the allocation is counted and rejected by the zero-baseline
-policy. A string copy was unsuitable: old libstdc++ can share copied character
-storage, and optimized libc++ can omit the measured string allocation. These
-were control-test failures, not formatter failures. The final control avoids
-both library-specific behaviors. All modes preserve value/ownership checks.
-
-The final allocation test passed locally under GCC 14.2 in Release/C++23 via
-CTest and strict optimized C++11 with libstdc++'s old copy-on-write ABI.
-Earlier checks of the MSVC policy change also passed strict C++11 with
-libstdc++ debug iterators. The native MSVC allowance is validated by the
-Windows CI matrix below, including all six previously failing Debug jobs.
-These commits changed only `test/styled-text-sharing-test.cc`.
-
-### Remote CI verification
-
-All **41 jobs passed** for
-`0a8ad7595ece4ce976c49c6091bdeb39bbb7d86c` on `feat/Formatter`.
-Local and GitHub full SHAs matched after the push. All four workflow head SHAs
-matched that commit, and every job's successful
-conclusion was inspected on November 2, 2026; none were failed, cancelled,
-queued, or running.
-
-| Workflow | Successful jobs | Evidence                                                        |
-| -------- | --------------- | --------------------------------------------------------------- |
-| Linux    | 18              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41374518722) |
-| Windows  | 13              | [Run](https://github.com/tjgolubi/fmt/actions/runs/41374518944) |
-| macOS    | 9               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41374518661) |
-| Doc      | 1               | [Run](https://github.com/tjgolubi/fmt/actions/runs/41374518797) |
-
-The exclusions for `feat/StyledText2` do not exclude `feat/Formatter`.
-This verifies the push workflows for the current candidate, including the
-allocation control on GCC 4.9, MSVC Debug, and optimized macOS builds. Linux
-provides Clang and old-compiler coverage; local testing used GCC only.
-A successful job is distinct from individual test skips, which are not
-summarized here. No PR-only lint/fuzz result is established by these push
-runs. The separate local strict GCC 14.2/C++11 blend warning remains unresolved.
-No workflows were cancelled or reconfigured. Periodic polling was stopped at
-Terry's instruction; check status on demand. The doc workflow builds the guide
-without publishing it, and no website update was performed.
-
-### Earlier owning baseline
-
-At `08a9d3b7`, direct Ubuntu GCC 13.3 checks passed 61 C++11/compact color tests,
-63 C++23/noncompact color tests, 18 C++11/compact styled-text tests, and the
-C++11 allocation regression. All used `-Wall -Wextra -Werror -pedantic` and
-reported no skips. These historical checks are distinct from current Release
-GCC 14.2 checks and do not cover the new formatter. The transition fix was
-transferred in `SgrTransitionFix.bundle`, requiring exact base
-`a8fcd97b608c7b20c758883acad389380d0313bf`; its import was verified separately.
-The bundle does not include the formatter commits or coordination documents.
-
-The passing remote push matrix is the current cross-platform evidence. No
-additional local full-suite, tablet, performance,
-guide-publication, or PR-only workflow result is claimed. Website version
-36 remains unchanged. Deferred blending and debug string presentation remain
-future work. The focused sanitizer scope and leak-check limitation are recorded
-above.
+The updated guide built locally and its rendered inheritance/restoration
+example was checked. The ordinary doc job and separate Pages build/deploy
+passed for `2fa0bd92`. The revised guide rebuilt locally, including expected
+displays and the C++20 pi example. The localhost preview uses port 8875 and
+`build/guide-output-preview`; check availability before relying on it.
 
 ## Platforms and tools
 
@@ -397,25 +291,15 @@ The release tags were resolved through GitHub and both exact `action.yml`
 files verified to declare `runs.using: node24`. This replaces the Node.js 20
 pins that caused runner deprecation warnings. Workflow YAML parsing, the
 renamed `color-dev` filter, both pins, and whitespace checks passed locally.
-The guide rebuilt successfully during that work. Publication verification for
-the renamed filter remains unestablished here.
+The guide rebuilt successfully during that work. Current `color-dev`
+publication is verified at `2fa0bd92` as recorded above.
 
-For `a18689e1`, [FmtColor documentation](https://github.com/tjgolubi/fmt/actions/runs/40680365434)
-completed successfully: both `build` and `deploy` jobs passed, including
-Configure Pages and Publish documentation. The [ordinary doc workflow](https://github.com/tjgolubi/fmt/actions/runs/40680365328)
-also passed. The platform runs were still in progress when checked:
-[Linux](https://github.com/tjgolubi/fmt/actions/runs/40680365266),
-[Windows](https://github.com/tjgolubi/fmt/actions/runs/40680365275), and
-[macOS](https://github.com/tjgolubi/fmt/actions/runs/40680365376).
-Do not claim a full green matrix for this new SHA from the earlier 41-job result.
-
-Publication from the former `dev` branch succeeded, establishing that the
-environment permitted that deployment. Verify that its selected-branch rule
-also permits `color-dev`; the rename does not establish that permission.
-Its exact branch-policy setting was not inspected: the connector does not expose the endpoint and the available browser was signed
-out. The guide was also rebuilt locally with the new edit URI. The ordinary
-`doc` workflow builds documentation without deploying it.
-See [Website.md](Website.md#user-guide) and `support/fmtcolor-pages.md` for setup.
+For `2fa0bd92`, the [guide publication](https://github.com/tjgolubi/fmt/actions/runs/41556114426)
+passed both build and deployment from `color-dev`, establishing that the
+environment permitted this branch. The precise environment policy was not
+inspected. The [ordinary doc workflow](https://github.com/tjgolubi/fmt/actions/runs/41556114169)
+also passed; it builds without deploying. See the complete final matrix above,
+[Website.md](Website.md#user-guide), and `support/fmtcolor-pages.md`.
 
 ## Compatibility checks
 
@@ -485,77 +369,21 @@ The same installed compiled library supports either header-selected mode.
 
 ### Integrated styling helpers
 
-Verified October 28, 2026 for the consolidated `color-dev` commit
-[`2c456778d9ff63cdf284a7d85c8dc8eb384cf3d3`](https://github.com/tjgolubi/fmt/commit/2c456778d9ff63cdf284a7d85c8dc8eb384cf3d3),
-whose parent and upstream baseline is `f87a75e15262614ce8aa0e6a0664df9d0823fb92`:
+The complete accepted styling/tree/context code is on `color-dev` at `b8bf6293`.
+Use the exact [current validation](#current-color-dev-validation) above, including
+all 41 platform/doc jobs and both guide-publication jobs. The original
+`2c456778` 41-job result remains historical evidence for the foundational
+contribution only; it does not by itself cover owning text or ColorCtx.
 
-| Workflow            | Successful jobs | Evidence                                                        |
-| ------------------- | --------------: | --------------------------------------------------------------- |
-| Linux               |              18 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40670919249) |
-| Windows             |              13 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40670919152) |
-| macOS               |               9 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40670919144) |
-| Documentation build |               1 | [Run](https://github.com/tjgolubi/fmt/actions/runs/40670919387) |
-
-All **41 jobs** completed successfully, with none failed, cancelled, or pending.
-The local commit, GitHub branch (then named `dev`), and run SHAs matched. Every job was
-inspected. This SHA already includes Terry's deletion of `FmtColorChangeLog.md`
-and amended force-with-lease push; no post-verification amendment is implied.
-The four push workflows cover the complete contribution. The guide-publication
-workflow did not run for that commit because its branch filter was still
-`FmtColorDev`. The filter switched to `dev` in `a18689e1`, whose successful publication is
-recorded above; this does not retroactively add a run to `2c456778`.
-
-The current user-guide documents built successfully with the pinned MkDocs
-configuration and were served from `build/doc-html` at
-`http://localhost:8000/color/index.html`. The server was running at the handoff;
-check availability before restarting it. Firefox can use this URL directly.
-Rendered checks covered API Reference entries, the requested section links,
-factory/fluent examples, and expected output. The known upstream `syntax.md`
-missing-anchor notice and Material future-version notice remain nonfatal.
-A local build and successful `doc` CI alone do not establish publication; the
-separate successful Pages run at `a18689e1` is recorded above.
-
-A focused MSYS2 GCC probe verified the website's style-copy factory example
-with `-std=c++14` and `-std=c++23`, `-pedantic-errors -Wall -Wextra -Werror`,
-`-Iinclude`, and `-fsyntax-only`. Static assertions verify that
-`constexpr auto second = fmt::underline(fmt::fg(fmt::gray_color{12}));`
-blends with the bold terminal-red foreground to RGB `{166, 64, 64}`, with
-unspecified background, bold, and underline. The `const auto` form was also
-checked in C++11; the style-copy overload is not C++11 constexpr. This is a
-focused syntax/constant-evaluation check, not an additional runtime-suite pass.
-`build/website-blend-probe.cc` is disposable ignored build output.
-
-Historical local checks covered both SGR modes, assertion-enabled boundaries,
-header-only exceptions-disabled paths, and a 23-target compact C++23 suite.
-Those checks predate the rebased contribution and are not fresh full-suite
-results for `color-dev`. GitHub CI uses default SGR output; compact-mode
-cross-platform CI remains a coverage gap. Terry's reported TaskWarrior tests
-are application-team evidence, not a freshly executed application run here.
-No new tablet run or performance benchmark is claimed.
-
-`color-test` covers exhaustive emphasis OR-assignment masks, returned reference,
-chaining and constexpr behavior; signed palette/RGB inputs; mixed byte/int RGB
-arguments; cube getter types; and release clamping at negative/oversized
-boundaries including integer limits. Cube index tests check clamping before
-decomposition. Assertion-enabled invalid input belongs in `assert-test`;
-release fallback tests are gated by `NDEBUG` so debug runs do not abort.
-
-`color-ostream-test` additionally covers normal narrow/wide insertion, chaining,
-empty styles/text, embedded nulls/braces, stream formatting and stream-only
-values, plus reset recovery preserving the original exception. Recovery tests
-use `FMT_USE_EXCEPTIONS`, matching the current core macro. The generalized print
-functions have wide tests for all four APIs, SGR modes, reset/newline order,
-stream format preservation, formatting failures before output, and I/O failures.
-
-Reproduce the focused assertion-enabled build from the library root:
-
-```bash
-cmake -S . -B build/clamp-debug -DCMAKE_BUILD_TYPE=Debug \
-  -DCMAKE_CXX_COMPILER=g++ -DCMAKE_CXX_STANDARD=11 \
-  -DFMT_TEST=ON -DFMT_DOC=OFF
-cmake --build build/clamp-debug --target assert-test color-test --parallel 4
-ctest --test-dir build/clamp-debug -R '^(assert|color)-test$' --output-on-failure
-```
+Numeric bounds and cube/gray construction, variant access/visitation, blending,
+fluent styles, ostream output, context inheritance, absolute spans, and SGR
+transitions are covered by the integrated suites. C++11 remains required.
+`FmtColorChangeLog.md` is tracked and includes the latest squash entry.
+The prior compiler-checked foreground blend example still uses `fg`, not `bg`:
+terminal red and `gray_color{12}` produce RGB `{166, 64, 64}`, unspecified
+background, bold and underline. Its style-copy factory form is constexpr only
+from C++14; use `const auto` in C++11. No fresh application or performance
+benchmark is claimed.
 
 ### Upstream compatibility branch
 
@@ -629,17 +457,14 @@ and every applicable job; never cite a baseline-only run for uncommitted work.
 
 ### Website validation
 
-Website version **36** presents the contribution under its former `dev` name at `2c456778` as one contribution and
-links the four exact 41-job CI runs. It omits intermediate development history,
-obsolete compatibility claims, and links to the removed changelog. Validation
-of the revised three-page site covered 40 local links/anchors and unique IDs;
-the overview and contribution layout were inspected in the browser. Subsequent
-small example corrections were checked against the source, and each native
-publication returned `succeeded`. The final foreground-blend expression and
-result were compiler-checked as described above. Downloads were preserved.
-The site preview server on port 8875 was stopped; the separate guide server on
-8000 was left running. See [Website.md](Website.md#current-publication) for
-final source, version, archive, and deployment identifiers.
+Version **39** is the confirmed public Site publication. It presents context
+inheritance/restoration, the complete modernized demo and its expected display,
+the revised nested precision/padding and C++20 pi examples, and all 43 passing
+CI/publication jobs for `2fa0bd92`. Source links match that commit. The updated
+pi example was inspected in the local browser; whitespace checks passed and
+native deployment returned `succeeded`. The port 8874 Site preview was stopped.
+See Website.md for exact source/version/deployment IDs. No fresh full library,
+tablet, performance, or ABI test is claimed by website QA.
 
 For new test results, record branch/full SHA, toolchain, mode, CMake options,
 commands, results, and skips. Distinguish observed checks from Terry reports.

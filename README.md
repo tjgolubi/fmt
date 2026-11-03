@@ -23,7 +23,7 @@ fmtlib-specific application code or identical binary representations.
 | [CppDesign.md](CppDesign.md)       | Implemented foundation, future design, and open decisions.    |
 | [BuildAndTest.md](BuildAndTest.md) | Build commands, compatibility checks, and current validation. |
 | [Website.md](Website.md)           | Website content, publication, and maintenance.                |
-| [StyledText.md](StyledText.md)       | Owned styled-text design and current experimental work.       |
+| [StyledText.md](StyledText.md)     | Owning styled text, context state, and future work.           |
 
 Maintain these files in the `coord/` Git worktree on `docs/Coord`, separate
 from the library checkout. `cd coord` enters the documentation worktree;
@@ -41,125 +41,80 @@ records remain available in Git history.
 
 ## Current baseline
 
-The development branch is [`color-dev`](https://github.com/tjgolubi/fmt/tree/color-dev), at
-[`5b3f49ff`](https://github.com/tjgolubi/fmt/commit/5b3f49ff7599df5beb651c3ccc8a403d7a7386a1).
-Its documentation-publication configuration follows the complete styling
-contribution at `2c456778`, which is one squash commit directly
-above upstream [`f87a75e1`](https://github.com/fmtlib/fmt/commit/f87a75e15262614ce8aa0e6a0664df9d0823fb92),
-which is also the local `main` tip. Terry created `Phase1` from `FmtColorDev`,
-rebased it onto freshly updated `main`, and squash-merged it onto `dev`.
-Terry renamed the GitHub branch to `color-dev`; the local checkout and tracking
-branch now also use `color-dev`. The workflow filter, guide edit URI, and publication instructions now follow
-`color-dev`, committed and pushed at `5b3f49ff`. Publication and platform CI
-for that SHA were not inspected in this cloud session.
-Use `color-dev` for new independent feature baselines, not superseded development
-or compatibility branches. Continue the active formatter experiment identified below
-on `feat/Formatter`.
-No release tag or fork version has been assigned; the contribution has not
-been accepted into fmtlib/fmt.
+The accepted development baseline is `color-dev` at
+`2fa0bd9269a54d1fe155ff7ee95e96dfb9d0b6c3`, committed and pushed. Local, remote,
+workflow, and job full SHAs matched. It includes the owning styled-text and
+formatter squash at `1e8fc387` and the ColorCtx squash at `b8bf6293`, above
+the earlier styling contribution and publication configuration. The current tip
+also includes the modernized demo and its `absolute` helper cleanup, plus the
+revised guide examples and expected displays. Upstream
+baseline/local `main` remains `f87a75e15262614ce8aa0e6a0664df9d0823fb92`.
+Use `color-dev` for new independent feature baselines, not the integrated
+`feat/Formatter` or `feat/ColorCtx` branches.
 
-Terry removed `FmtColorChangeLog.md`, amended the contribution, and pushed
-with `--force-with-lease` before the CI verification below. The verified SHA
-already includes that removal. Do not regenerate the file without instruction.
+All **41 push-CI jobs passed** for this final SHA: Linux 18, Windows 13,
+macOS 9, and documentation build 1. The separate guide-publication build and
+deployment also passed (43 successful jobs in total). Every job was inspected;
+none failed, were cancelled, or remained pending. The guide is published from
+`color-dev`. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 
-All **41 jobs** passed for styling commit `2c456778`: Linux 18, Windows 13,
-macOS 9, and documentation build 1. Local, GitHub branch, and workflow SHAs
-matched; every job was inspected. There were no failed, cancelled, or pending
-jobs. See [BuildAndTest.md](BuildAndTest.md#integrated-styling-helpers).
-Matrix fail-fast remains disabled. GCC 16/C++26 reflection remains excluded,
-tracked in [issue #2](https://github.com/tjgolubi/fmt/issues/2).
+`FmtColorChangeLog.md` is tracked again, regenerated at Terry's request with
+git-cliff 2.14.2, `--offline --no-exec`, and the explicit upstream-to-HEAD
+accepted-history range. It includes both integrated features and their breaking
+changes. Do not regenerate it automatically. No fork release number or tag has
+been assigned, and the contribution has not been accepted into fmtlib/fmt.
 
-Documentation commit `a18689e1a0aced47e96db18b02aab577a853168a` is committed
-and pushed. It targeted the former `dev` branch for publication and edit links
-and pins Node.js 24 actions: `configure-pages` v6.0.0 and `deploy-pages` v5.0.1.
-The [guide build and deployment](https://github.com/tjgolubi/fmt/actions/runs/40680365434)
-both passed for that exact SHA, as did ordinary documentation CI. Platform CI
-was still running when checked; the earlier 41-job result applies specifically
-to `2c456778`. Publication succeeded from `dev`; this does not establish
-that the environment allows the renamed `color-dev` branch. Verify its deployment rule and the next
-publication run. The exact policy setting was not inspected. The root
-library README still names `FmtColorDev` in text/badges and links the deleted
-changelog; that cleanup remains a separate follow-up.
+The tracked library tree is clean. The modernized `demo/FmtColorDemo2.cpp` is
+committed and pushed; the earlier deferred `.tjg.cpp` file is no longer present.
+Coordination documents are maintained and pushed separately on `docs/Coord`.
+Future commits and pushes still require explicit authorization.
 
-## Current experimental work
+## Implemented styled text and format contexts
 
-Active library branch: `feat/Formatter`, committed and pushed at
-`0a8ad7595ece4ce976c49c6091bdeb39bbb7d86c`. Local and GitHub full SHAs matched
-after the push; the library working tree is clean. This branch starts from
-`feat/StyledText2` at `08a9d3b7`. It has not been squash-integrated into
-`color-dev`; committed, pushed, tested, and accepted remain distinct states.
+The complete release remains C++11-compatible. `<fmt/styled_text.h>` supplies
+owning narrow/wide trees, immutable shared leaf strings, value-owned private
+children, concatenation, plain-text extraction, root overlays/emphasis helpers,
+absolute styles, and nested formatting. `+` and `+=` preserve complete styled
+spans; use `overlay(style, expression)` to style a group.
 
-The inherited owning baseline contains minimum blend arity, absolute style
-values, shared immutable leaf strings, value-owned private child vectors,
-concatenation, plain-text extraction, root overlays/emphasis helpers, and
-complete-state SGR transitions. The formatter now implements nested relative
-inheritance and absolute boundaries. It emits transitions only before text or
-padding, and transitions from the last emitted state to defaults at field end.
-Narrow/wide fill, alignment, width, precision, optional `s`, and dynamic width
-and precision are implemented. Debug presentation (`?`) and deferred blending
-remain future work. See [StyledText.md](StyledText.md).
+`styled_arg` and `styled_text` now inherit and restore the enclosing formatting
+context style. An outer underline therefore survives a red replacement field.
+Absolute spans replace inherited state temporarily. Ordinary operations start
+at defaults; a relative top-level style does not reset unknown terminal state.
+See [StyledText.md](StyledText.md#format-context-style-state).
 
-The current candidate includes the formatter, composition refactor, header rename
-from `styled-text.h` to `styled_text.h`, matching build/demo references, and
-updated user-guide examples. `+` and `+=` concatenate complete styled spans;
-use `overlay(style, expression)` to style a group. Concatenation does not extend
-the scope of a styled left operand. The guide explains visible appearance and
-grouping rather than SGR encoding efficiency.
+Narrow/wide fill, alignment, width, precision, optional `s`, and dynamic
+specifications are implemented. Width follows ordinary fmt string rules per
+leaf; one precision budget spans the tree, and padding uses the effective root
+style. Generated SGR adds no width; raw escapes are not interpreted. Keep each
+UTF-8 code point within a leaf.
 
-`demo/` contains `FmtColorDemo2.cpp`, a Makefile, instructions, and executable
-ignore rules. Run `make -C demo run`; the Makefile uses this checkout's headers
-in C++23 header-only mode with compact SGR, without CMake or a prebuilt library.
+`to_sgr(final, initial)` compares complete terminal states. Compact mode chooses
+the shorter selective or reset-and-rebuild sequence, preferring selective on a
+tie; absolute targets explicitly reset. Noncompact mode resets and fully
+specifies changed targets, omitting a redundant reset from known defaults.
+One-argument `to_sgr` still emits an explicit absolute reset.
 
-Two-argument `to_sgr` compares complete terminal states. Compact mode chooses
-the shorter selective or reset-and-rebuild encoding, preferring selective on a
-tie. Noncompact mode resets and fully specifies a changed target, except that
-it omits a redundant reset when the initial state is already defaults. The
-initial absolute flag does not affect either mode. Each formatter replacement
-field assumes terminal defaults on entry; it does not probe or reset unknown
-external state automatically. See StyledText.md for absolute-target details.
+Run `make -C demo run` for the checked-in header-only C++23 compact-SGR demo.
+Debug formatting, deferred blending, parsing, full grapheme/terminal width,
+serialization, styled-text module export, and public iteration remain deferred.
+Appending `detail::styled_arg` to a tree remains deferred; `fmt::styled` retains
+its borrowing return type, with updated formatting behavior.
 
-Latest local color and formatter checks passed with GCC 14.2 in C++11/C++23
-and both SGR modes, including exhaustive transition and inheritance checks.
-The strict Release/C++11 color-suite build failed on existing blend-state
-`-Wmaybe-uninitialized` diagnostics promoted by `-Werror`; this is not resolved
-or established to be a false positive. No local Clang build was run; passing
-Linux CI includes Clang. The demo built, ran, and passed independent character-by-character style checks. Exact scope
-and commands are in [BuildAndTest.md](BuildAndTest.md#cloud-styledtext-validation).
+For the independent C++23 library, omit whole-message
+`print(out, text_style, ...)`/`println(out, text_style, ...)` and analogous
+style-taking formatting overloads. Use ordinary standard formatting with
+`styled` or `styled_text` replacement fields, expressing a whole styled message
+as one value/tree. Keep inheritance inside that formatter rather than modifying
+`std::basic_format_context`. The fmt extension retains its existing styled-call
+overloads, which justify the context integration; upstream may reject that
+feature. No standard-library proposal or prototype is authorized by this design
+discussion. No performance benchmark establishes overhead claims.
 
-Push exclusions still apply to `feat/StyledText2`, not `feat/Formatter`.
-All **41 push-CI jobs passed** for exact commit
-`0a8ad7595ece4ce976c49c6091bdeb39bbb7d86c`: Linux 18, Windows 13, macOS 9,
-and documentation build 1. Workflow SHAs matched and every job passed; none failed,
-were cancelled, or remained pending. Windows Debug allocation checks now allow
-bounded measured iterator bookkeeping, while other builds remain strict.
-The allocation control uses an explicit allocation call, avoiding old string
-copy-on-write behavior and optimized-away string allocations. The current candidate also includes reset
-de-duplication and mode-specific regression expectations. See BuildAndTest.md
-for exact CI links and remaining validation limits.
-
-Both free `absolute(text_style)` and `absolute(styled_text)` helpers are now
-implemented. The style helper returns an absolute copy; the text helper marks
-only the returned root, preserving its style and children. String inputs are
-owned; lvalues copy and rvalues move.
-
-`display_width()` matches ordinary fmt string-width rules per leaf: UTF-8
-width estimates for narrow text, code-unit counts for wide text. Precision
-uses one budget across the tree; padding receives the root style. Unicode code
-points must remain within a leaf. Generated SGR does not count; raw escapes are
-not interpreted. A `FMT_NOINLINE` branch-width helper avoids the reproduced GCC
-13/14 recursive-inlining union warning without disabling diagnostics.
-
-Current scope is implemented; branch review and any authorized squash integration
-remain separate. The older local strict C++11 blend warning is still open.
-Debug formatting, deferred blending, parsing, serialization, and module export
-remain deferred. Support for appending `detail::styled_arg` was discussed and
-left out pending a concrete request; `fmt::styled` remains unchanged.
-Green push CI does not constitute squash acceptance, PR-only
-lint/fuzz validation, or guide publication. Check CI on demand; Terry stopped
-periodic polling. Do not change workflow exclusions or cancel runs without
-instruction.
-Website version 36 remains unchanged. The coordination update is maintained
-separately on `docs/Coord`; Terry authorized committing and pushing this update.
+Older strict local Release blend/union warnings remain validation limits;
+passing remote CI does not establish that those exact local configurations are
+fixed. See BuildAndTest.md. Check CI on demand; do not start periodic polling,
+change workflow exclusions, or cancel runs without instruction.
 
 ## Upstream compatibility
 
@@ -172,15 +127,17 @@ Do not claim that all original upstream tests pass unchanged.
 
 ## Public documentation and next work
 
-- [Project website](https://fmtcolor.ardentokapi66.chatgpt.site): public version
-  **36**, describing the complete contribution and its 41 passing jobs.
-  Its displayed branch name is still `dev`; a website rename update has not
-  been requested.
-  It contains no intermediate development history.
+- [Project website](https://fmtcolor.tjgolubi.chatgpt.site): public version
+  **39**, presenting context inheritance/restoration, the complete modernized
+  demo and display on the overview, revised precision/pi examples, and exact
+  green CI links for `2fa0bd92`.
 - [Generated user guide](https://tjgolubi.github.io/fmt/color/index.html):
-  last verified publication from the former `dev` branch at `a18689e1`. Also available locally at
-  [localhost](http://localhost:8000/color/index.html) while its server runs.
+  build and deployment verified for `2fa0bd92` from `color-dev`.
 - [Issues](https://github.com/tjgolubi/fmt/issues): bugs and follow-up work.
+
+The root library README still has obsolete `FmtColorDev` branch text/badges
+and the previous website URL. Its changelog link now points to a tracked file;
+do not describe that file as deleted. README cleanup remains separate.
 
 The complete C++11 API includes named RGB constants, terminal/cube/gray colors,
 public five-alternative `color_t` access and visitation, comparisons and hashing,
@@ -198,14 +155,12 @@ from the original upstream header to these APIs; omit intermediate API history
 and ABI/rebuild reminders. The ABI change is accepted.
 
 The guide has aligned Markdown tables, links from introductory identifiers to
-their sections, and expected output for all three Styled Arguments examples.
+their sections, and expected displays for the Styled Arguments examples. The nested field
+padding/precision example prints `***hello wor`, all bold with `wor` blue. The
+stream example uses C++20 `std::numbers::pi` and displays bold-green `3.14`.
 The API Reference header list includes `fmt/color-ostream.h`, linking to its
 existing guide section; it has no separate new API Reference section.
 
-The current owning structured-text implementation and formatter are on
-`feat/Formatter` at `0a8ad759`; see [StyledText.md](StyledText.md).
-Nested inheritance and absolute rendering boundaries are implemented.
-Deferred blending, debug string formatting, parsing, full grapheme/terminal
-width measurement, serialization, and module export remain unimplemented.
-The independent library requires C++23 and uses `std::variant`; the {fmt}
-release retains C++11 support.
+The owning tree, nested formatter, and context inheritance are integrated on
+`color-dev` at `b8bf6293`; see [StyledText.md](StyledText.md). The independent
+library requires C++23 and `std::variant`; the fmt release retains C++11.

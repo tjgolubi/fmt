@@ -6,7 +6,7 @@ Updated November 2, 2026.
 
 ## Purpose and content
 
-The public [FmtColor website](https://fmtcolor.ardentokapi66.chatgpt.site)
+The public [FmtColor website](https://fmtcolor.tjgolubi.chatgpt.site)
 explains the contribution, design rationale, demonstration, and future work.
 Its audience, in priority order, is Terry and collaborating assistants, the
 {fmt} developers, technical friends, and nontechnical family. Use brief
@@ -19,25 +19,23 @@ compatibility-run narratives. Source links refer to the current contribution
 and its upstream baseline. Explain behavior and differences from the original
 upstream API without ABI/rebuild reminders; the ABI change is accepted.
 
-Current pages:
+Current published pages (version 39):
 
-- [Overview](https://fmtcolor.ardentokapi66.chatgpt.site/): implemented features,
-  the 41-job CI result, two deliverables, design, and the future nested-text demo.
-- [The contribution](https://fmtcolor.ardentokapi66.chatgpt.site/integrated-changes.html):
-  current baseline, color/style APIs, palette conversion and blending,
-  factories, SGR helpers, stream output, original-API changes, and exact CI links.
-- [Future work](https://fmtcolor.ardentokapi66.chatgpt.site/work-in-progress.html):
-  structured styled text, absolute boundaries, lazy blending, parsing,
-  display width, and serialization as presented in published version 36.
-  That publication predates the current experimental implementation.
+- [Overview](https://fmtcolor.tjgolubi.chatgpt.site/): integrated owning text,
+  design, two deliverables, complete modernized `FmtColorDemo2.cpp`, and its
+  verified styled display.
+- [The contribution](https://fmtcolor.tjgolubi.chatgpt.site/integrated-changes.html):
+  `color-dev` at `2fa0bd92`, value APIs, nested formatting and context restoration,
+  absolute styles, nested precision/padding and C++20 pi examples with expected
+  displays, and exact links to all passing CI jobs.
+- [Future work](https://fmtcolor.tjgolubi.chatgpt.site/work-in-progress.html):
+  deferred blending, debug presentation, parsing, full terminal-width handling,
+  serialization, and the independent C++23 library. The retained independent
+  sample, output, and downloads are here, distinct from the working overview demo.
 
-The styling contribution is commit `2c456778d9ff63cdf284a7d85c8dc8eb384cf3d3`
-on `color-dev`,
-directly above upstream `f87a75e15262614ce8aa0e6a0664df9d0823fb92`.
-It supports C++11 throughout and has not been accepted into fmtlib/fmt.
-All 41 push jobs passed: Linux 18, Windows 13, macOS 9, documentation build 1.
-Do not promote the old 42-job compatibility-branch result as evidence for
-this contribution. Its historical scope is retained in BuildAndTest.md only.
+All 41 push-CI jobs and both guide-publication jobs passed for `2fa0bd92`.
+The contribution remains based on upstream `f87a75e1` and has not been accepted
+into fmtlib/fmt. The historical 42-job compatibility branch is separate evidence.
 
 ## User guide
 
@@ -79,9 +77,11 @@ in C++14 and later; use `const auto` for `second` and `combined` in C++11.
 Boolean-only factories such as `bold()` are constexpr in C++11.
 
 The guide has links from introductory identifiers to their matching sections
-and aligned Markdown tables. All three Styled Arguments examples show expected
-output, including padding and newline behavior. Its ostream example contains
-only the statements inside `main`. The shared styled-value example uses
+and aligned Markdown tables. Styled Arguments examples show expected displays
+and newline behavior. Nested precision/padding uses `{:*>12.9}` on bold
+`"hello " + overlay(fg(blue), "world")`: `***hello wor`, all bold with `wor` blue.
+The ostream example includes `<numbers>` marked C++20 and uses
+`std::numbers::pi`, displaying `Pi: 3.14` with only `3.14` bold green. The shared styled-value example uses
 `color::midnight_blue` (`#191970`) as background. The Overview's nested-reset
 example uses `term_color::bright_red` and displays its fixed RGB equivalent,
 `{255, 0, 0}` (`#FF0000`). A terminal theme may render palette colors differently.
@@ -94,30 +94,30 @@ styled-ostream guide. It has no separate added API Reference section.
 
 ### Guide build versus publication
 
-The current `color-dev` guide builds locally into `build/doc-html` and is served at
-`http://localhost:8000/color/index.html` while its server runs. The server was
-left running for Firefox. The `doc` CI workflow also passed for `2c456778`.
-The known upstream syntax-anchor and Material future-version notices remain
-nonfatal. See BuildAndTest.md for commands and validation scope.
+The latest guide preview builds into `build/guide-output-preview` and was
+served at `http://localhost:8875/color/styled.html`. Check server availability
+before relying on it; older previews used `build/doc-html` and port 8000. The known
+upstream syntax-anchor and Material future-version notices remain nonfatal.
+The guide now documents format-context inheritance and restoration for
+`styled` and `styled_text`, including the whole-sentence underline example.
 
-The guide-publication workflow targets `color-dev`, with edit URI
-`edit/color-dev/doc/` and matching instructions committed at `5b3f49ff`. The preceding configuration targeted `dev` and was committed and
-pushed at `a18689e1`.
-Its Node.js 24 action pins are `configure-pages` v6.0.0 and `deploy-pages`
-v5.0.1; BuildAndTest.md records the exact SHAs. The [guide publication run](https://github.com/tjgolubi/fmt/actions/runs/40680365434)
-passed both build and deploy jobs for `a18689e1`, including Configure Pages
-and Publish documentation. Deployment permissions allowed that `dev` run;
-they have not been verified for `color-dev`. Check the selected-branch rule and the next publication run.
-The exact environment policy was not inspected. The separate
-ordinary documentation workflow also passed; platform CI was still running
-when checked. The website's 41-job result remains scoped to `2c456778`.
-The library README still has old branch text/badges and a link to the
-intentionally removed `FmtColorChangeLog.md`; do not recreate that file.
+The [guide publication](https://github.com/tjgolubi/fmt/actions/runs/41556114426)
+passed build and deployment for current `2fa0bd92` from `color-dev`; the
+[ordinary doc build](https://github.com/tjgolubi/fmt/actions/runs/41556114169)
+also passed. All platform jobs passed for that same SHA. The workflow filter
+and edit URI target `color-dev`; Node.js 24 action pins are recorded in
+BuildAndTest.md. Successful publication verifies that this branch was permitted,
+although the exact environment-policy configuration was not inspected.
+
+The root library README still uses `FmtColorDev` in branch text/badges and the
+older website URL. The changelog is tracked again, so its relative changelog
+link is no longer a deleted-file link. README cleanup is a separate follow-up.
 
 ## Demonstration and future design
 
 Preserve the downloadable `FmtColorDemo.cpp` and `AnsiRenderDemo.txt`, the
-displayed sample, and its styled output together. The demo is a future
+displayed independent sample, and its styled output together on Future work.
+That independent demo is a future
 acceptance target, not implemented/tested functionality. Preserve nested
 emphasis/colors, absolute underline, the enclosing background, and
 `gray_color{12}`. The caption describes representative appearance without
@@ -125,26 +125,30 @@ narrating implementation history.
 
 The sample targets the later independent C++23 implementation, using
 `std::println` while retaining `<fmt/color.h>` and namespace `fmt` through the
-selected installation. It requires planned structured text and standard
-formatter support. The displayed and downloadable C++ must agree. Keeping the
+selected installation. It requires the planned independent implementation and standard formatter
+support; the existing fmt formatter alone does not provide `std::formatter`. The displayed and downloadable C++ must agree. Keeping the
 header spelling does not imply a dependency on fmtlib in that implementation.
 
 Keep implemented value operations distinct from proposed nested rendering:
 constructors/fluent setters replace components, `blend` averages specified
 channels, and bitwise OR composes color bits. Sequential ANSI SGR updates are
 terminal state changes. Bold/faint remain independent. The {fmt} contribution
-retains conceal; the independent design replaces it with flash. The owning
-`feat/Formatter` experiment now implements structured text, root overlays,
-absolute style values, complete-state SGR transitions, and nested formatting
-with inheritance and absolute boundaries. `demo/FmtColorDemo2.cpp` is a locally
-verified, current-API adaptation of Terry's newer demo. Its GNU Makefile uses
-header-only compact SGR. The downloadable Site demo is still the distinct
-future independent-library target; it was not replaced or published here.
-The library now also supports free absolute helpers, display-width measurement,
-and string width/precision formatting with root-styled padding. Debug formatting,
-deferred blending, parsing, full grapheme/terminal width, and serialization remain
-future work. The published site has not been
-updated for this progress. Consult CppDesign.md and StyledText.md.
+retains conceal; the independent design replaces it with flash. The owning tree and nested formatter are integrated on `color-dev` at
+`1e8fc387`. ColorCtx squash `b8bf6293` integrates context state, so `styled`
+and `styled_text` inherit and restore outer message styles. Absolute spans
+temporarily replace them. The modernized `demo/FmtColorDemo2.cpp` is committed
+and pushed, using `absolute(underline(...))`. The former deferred `.tjg.cpp`
+file is no longer present. The overview embeds the complete working source,
+a download, and both output lines; the source and download match.
+
+The Site's downloadable sample remains the distinct future independent-library
+target. Preserve its displayed source, output, and downloads together. The
+independent library will omit whole-message style-taking output overloads and
+use ordinary standard formatting with styled replacement values/trees; this
+design is described on the Site. Debug formatting,
+deferred blending, parsing, full grapheme/terminal width, serialization, and
+styled-text module export remain future work. Consult CppDesign.md and
+StyledText.md for current implementation and boundaries.
 
 ## Sites maintenance and publication
 
@@ -186,56 +190,50 @@ Personal-website links belong to Terry's separate personal-website context.
 
 ### Windows publishing
 
-The Sites Node helper needs **native Windows Git** ahead of
-`C:\msys64\usr\bin` on its process-local PATH. This is an exception for the
-separate Sites checkout; MSYS2 Git remains required for `fmt` and `FmtColorGpt`.
-Locate the current native Git/runtime rather than assuming an old plugin path.
+Prefer native Windows Git for the Sites Node helper; MSYS2 Git remains
+required for the library. If native Git is unavailable, the MSYS helper needs
+Windows drive-path normalization (including uppercase drive letters) and
+compatible commit/tree revision handling. Sites 1.1.2 failed on these mismatches
+in this session; a checkout-external helper copy was corrected without changing
+plugin or library files. Keep credentials in hidden stdin and do not log them.
 
-Bash must also be available for packaging. Set process-local
-`TAR_OPTIONS=--force-local` so GNU tar does not interpret the colon in an absolute
-Windows archive path as a remote host. Use forward slashes in archive arguments.
-Do not alter global Git, SSH, or library-toolchain settings to repair Sites.
-Follow the skill's helper procedure and preserve the opening result, source SHA,
-and exact archive returned for the selected site.
+Use Windows `C:/Windows/System32/tar.exe` ahead of MSYS tar when packaging
+absolute Windows paths; alternatively GNU tar needs `TAR_OPTIONS=--force-local`.
+Use forward slashes in archive arguments. The original package helper was run
+after source push so its bundled preparation script resolved correctly. Do not
+alter global Git, SSH, or toolchain settings. Preserve successful source/package
+results and continue saving/deploying that same state after a helper failure.
 
 ## Current publication
 
-The repository branch is now `color-dev`. Site version 36 still displays and
-links `dev`; updating the public website for the rename requires a separate
-website instruction. The current task changes coordination documentation only; it does not authorize
-a Site update or publication of the experimental user-guide changes. Version 36
-remains the last verified publication, not evidence for `feat/Formatter`.
-
-**Public Site version 36** is live at
-[fmtcolor.ardentokapi66.chatgpt.site](https://fmtcolor.ardentokapi66.chatgpt.site).
-Native deployment returned `succeeded`. The site presents the complete
-contribution using the former `dev` branch name and its four exact CI runs, with no intermediate development
-history. The final blend example preserves the original foreground-averaging
-semantics and uses the compiler-checked expression above.
+**Public Site version 39** is live at
+[fmtcolor.tjgolubi.chatgpt.site](https://fmtcolor.tjgolubi.chatgpt.site).
+Native deployment returned `succeeded`; the existing public audience was preserved.
+It presents the complete modernized demo, context restoration, revised guide
+examples, and current green `2fa0bd92` matrix.
 
 | Item                     | Current value                                                                       |
 | ------------------------ | ----------------------------------------------------------------------------------- |
 | Site project ID          | `appgprj_6ad129c3e8408191b873a4e06e601c63`                                          |
-| Source commit            | `77d338f6f690591e6f16d7dba664b787154693d9`                                          |
-| Saved version ID         | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_9122a83ba5f8819187be73fcb480fe9c` |
-| Successful deployment ID | `appgdep_6ae1d597e62c819189af14945791e4ab`                                          |
+| Source commit            | `c176a0d76d5452ab9f41378788783287adc0f37c`                                          |
+| Saved version ID         | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_4059a0cac90481919368c406c53b8314` |
+| Successful deployment ID | `appgdep_6ae934985b148191a65a3f3308be86f0`                                          |
 | Audience                 | Public                                                                              |
 
 Source checkout:
-`C:/Users/tjgolubi/.codex/visualizations/2026/10/28/01a18165-1e45-76c1-bf94-4c3b5db40aab/fmtcolor-site`.
+`C:/Users/tjgolubi/.codex/visualizations/2026/11/02/01a19d5b-62f8-7e32-9bf2-8f3bf72731c9/fmtcolor-site`.
 Exact saved archive:
-`C:/Users/tjgolubi/.codex/visualizations/2026/10/28/01a18165-1e45-76c1-bf94-4c3b5db40aab/fmtcolor-foreground-blend.tar.gz`.
-The source helper opened `0e70c98c027a7e895e04d6cd346267a1733dfa86` for the
-final correction and pushed the source SHA above before packaging.
+`C:/Users/tjgolubi/.codex/visualizations/2026/11/02/01a19d5b-62f8-7e32-9bf2-8f3bf72731c9/fmtcolor-guide-update.tar.gz`.
+The helper synchronized source `9c4cc17fc77f2d6516fc2526badb196ebda218a2`,
+then committed/pushed the current source. The archive was packaged from that
+pushed state and accepted by Sites as version 39.
 
-The revised three-page site passed checks for 40 local links/anchors, unique
-IDs, current commit links, absence of intermediate records, and all four exact
-CI links. Overview and contribution layouts were inspected in the browser;
-small subsequent example changes were checked against source. The final `fg`
-blend expression and resulting style passed C++14/C++23 static assertions.
-Downloads and the proposed nested-text sample were preserved. Native Sites
-confirmed each publication; these checks do not establish new library runtime
-or tablet coverage. The site preview server on 8875 was stopped.
+The pi example was inspected in the local browser, including its bold-green
+expected display. Whitespace checks passed. The preceding demo publication
+verified source/download equality, 42 local links/anchors, and the demo's
+ANSI display character by character; those checks were not rerun for version 39.
+No new tablet or full library test is claimed by website QA. The Site preview
+on port 8874 was stopped; the guide preview on port 8875 is separate.
 
 Refresh Site metadata and source credentials before further updates; do not
 treat the retained checkout as authoritative until synchronized. Preserve the

@@ -1,62 +1,28 @@
-# Structured styled text experiment
+# Structured styled text and format contexts
 
 Updated November 2, 2026.
 
 ## Scope and state
 
-Active library branch: `feat/Formatter`, committed and pushed at
-`0a8ad7595ece4ce976c49c6091bdeb39bbb7d86c`. Local and GitHub full SHAs matched; the
-library working tree is clean. It starts from `feat/StyledText2` at
-`08a9d3b7a828392e1d64281a6bcc4a6e0212b73d`. It has not been squash-integrated
-into `color-dev`. Committed, pushed, tested, and accepted are distinct states.
-Coordination handoffs live separately on `docs/Coord`; Terry authorized
-committing and pushing this update.
+Owning styled text and its formatter are integrated in `color-dev` at
+`1e8fc387`; context inheritance and restoration are integrated in the accepted
+ColorCtx squash `b8bf6293`. Current tip is
+`2fa0bd9269a54d1fe155ff7ee95e96dfb9d0b6c3`. Local and GitHub full SHAs
+matched. All 41 push-CI jobs and both guide-publication jobs passed for that
+final tip. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 
-The current candidate includes nested formatting, the GNU make demo, composition
-and header refactors, user-guide updates, allocation-test portability fixes,
-and mode-specific SGR reset de-duplication regressions.
+The library's tracked tree is clean. The modernized demo is committed and
+pushed; the former deferred `.tjg.cpp` file is no longer present. No new implementation
+branch has been selected. `feat/Formatter` and `feat/ColorCtx` are integrated
+source branches, not the next development baseline. The borrowing StringView
+experiment remains a separate ownership alternative. The old transition-fix
+bundle and dependency history are retained in Git history; they are not needed
+to continue from the accepted baseline.
 
-The dependency order above `color-dev` at `5b3f49ff` is:
-
-| Commit     | Scope                                                     |
-| ---------- | --------------------------------------------------------- |
-| `ae726b28` | Require two or more public blend arguments.                |
-| `d29412bb` | Absolute text-style values, contracts, and SGR generation. |
-| `a8fcd97b` | Owning styled-text work rebased and branch configuration.  |
-| `08a9d3b7` | Complete-state SGR transitions, regression tests, guide.   |
-
-`a8fcd97b` identifies the rebased tip, not one implementation commit. Its
-preceding series preserves the original styled-text work, including immutable
-shared leaves, private character-generic structure, append fixes, plain-text
-extraction, direct leaf initialization, owning-string regression tests, and
-member/free overlays with free emphasis modifiers. The original branch was
-`feat/StyledText`; the owning baseline for formatter work is `feat/StyledText2`.
-The borrowing `StringView` experiment is separate. Its lifetime and constexpr
-properties are not those of the owning implementation.
-
-Push CI is deliberately excluded for `feat/StyledText2` in linux, windows, macos,
-and doc; the branch spelling now matches the exclusions. PR triggers remain
-preserved. Do not restore push CI without instruction. Use compact SGR and
-focused local checks for experiments. The new `feat/Formatter` branch does not
-match that exclusion, so its authorized push triggered all four push workflows.
-See BuildAndTest.md for the latest checked state; no exclusion was modified.
-
-The transition fix was committed locally and delivered as `SgrTransitionFix.bundle`,
-then imported and pushed by Terry. Its exact prerequisite is
-`a8fcd97b608c7b20c758883acad389380d0313bf`; its exported ref is
-`refs/heads/fix/SgrTransition`. Import into a checkout containing that base:
-
-```bash
-git bundle verify /path/to/SgrTransitionFix.bundle
-git fetch /path/to/SgrTransitionFix.bundle fix/SgrTransition
-git log --oneline HEAD..FETCH_HEAD
-```
-
-These commands inspect/import objects without switching or merging. The fix
-was fast-forwarded into the experimental branch; accepted integration into
-`color-dev` still follows the squash policy in Workflow.md. Preserve exact
-commits in future authorized bundle deliveries. Coordination documents are
-maintained on their own branch and are not included in that historical bundle.
+Push exclusions still apply only to `feat/StyledText2`; PR triggers remain
+enabled. Do not modify exclusions or cancel runs without instruction. The
+current website is version 39 and documents context integration, the complete
+modernized demo/display, and the current passing CI matrix.
 
 ## Representation and public API
 
@@ -179,7 +145,7 @@ There is no inheritance in this overload. The initial absolute flag is ignored.
 
 Behavior depends on `FMT_COLOR_COMPACT_SGR`:
 
-- Compact (`1`): an absolute target delegates to one-argument `to_sgr` and
+- Compact (`1`): an absolute target uses the same emission as one-argument `to_sgr` and
   explicitly resets, including equal states. A relative target chooses the
   shorter selective or reset-and-rebuild encoding, preferring selective changes
   on a tie. Selective transitions can use SGR 39/49 to restore default colors.
@@ -214,7 +180,7 @@ compiled format strings, output iterators, bounded output, and counting output
 are supported. Wide entry points use `<fmt/xchar.h>`. This is a fmt formatter,
 not a `std::formatter`.
 
-Each replacement field assumes terminal defaults on entry. Relative nodes
+Each replacement field starts from its enclosing formatting context. Relative nodes
 inherit missing foreground/background and OR emphasis with the enclosing
 style; specified colors replace the matching channel without promotion.
 Absolute nodes use their own complete style. Compact mode emits an explicit
@@ -224,17 +190,18 @@ state's absolute flag is cleared before passing it to descendants: entering
 an absolute ancestor must not force every relative child to reset.
 
 The formatter walks the private tree directly. Logical enclosing styles are
-passed through recursion, while per-call state records the last emitted terminal
-style. Transitions occur only immediately before nonempty leaf output or padding.
+passed through recursion, while the format context records the last emitted
+terminal style. Transitions occur only immediately before nonempty leaf output or padding.
 Returning through groups emits nothing. The field always finishes with a
-transition from its last emitted style to `text_style{}`; that transition can be
+transition from its last emitted style to the saved enclosing style; it can be
 empty. An absolute boundary is deferred until content is printed, consumed once,
 and discarded if its subtree prints nothing. No extended-SGR intermediate or
 push/pop markers are used. The tree is not modified.
 
 `format()` is const; `write_node()` remains static and receives per-call state
-by reference. State is local to each formatting invocation, not mutable formatter
-storage. Parsing options are separate from remaining precision and emitted state.
+by reference, alongside the formatting context. Logical styles and precision
+remain per-call data; emitted style is stored in the context, not mutable
+formatter storage. Parsing options are separate from remaining precision.
 
 ### Width, padding, and precision
 
@@ -254,21 +221,65 @@ flattening the tree. The ordinary no-width/no-precision case skips measurement.
 
 Padding receives the root style, including for empty text or precision zero.
 After truncation, right padding transitions directly to the root style, then
-field completion transitions to defaults. Without right padding, completion
-transitions directly to defaults without intermediate group restorations.
+field completion restores the saved context style. Without right padding,
+completion transitions directly to that style without intermediate group
+restorations. The effective root style includes inherited context properties.
 
 Raw escapes can invalidate terminal-state assumptions. The formatter does not
-capture external terminal styling or restore styling established by an outer
-ordinary `fmt::styled` call. Full Unicode grapheme handling and escape parsing
+capture external terminal styling. It does inherit and restore the style
+established by an outer `fmt::styled` formatter using the same context. Full Unicode grapheme handling and escape parsing
 remain deferred. Shared-pointer storage prevents useful constant evaluation of
 the owning tree's `display_width()`.
+
+## Format context style state
+
+Both narrow `context` and `generic_context` store packed `uint64_t`
+`color_state_`, initially zero. Internal helpers bridge that private value to
+`text_style`; it is not a public numeric/archive contract. Ordinary formatters
+ignore it. The styled top-level `print`/`println`/`format`/`format_to` families,
+including wide and ostream entry points, seed the formatting operation with
+their style. `styled_arg` and `styled_text` inherit relative styles and restore
+the enclosing context style afterward, including padding. An absolute child
+temporarily replaces the enclosing state and also restores it on completion.
+
+The top-level style retains `absolute` when emitting opening SGR. Only the
+copy stored in the context clears that flag: it records resulting terminal
+state rather than a reset instruction. A relative top-level style does not
+automatically emit an initial reset. Unknown external terminal state and raw
+escapes are not tracked.
+
+Packed state propagates through the exact-`{}` shortcut, ordinary replacement
+fields, custom-value writes used by `nested_formatter`, and its alignment
+buffer contexts. Direct delegation to another formatter with the same `ctx`
+preserves state. A separate `fmt::format_to(ctx.out(), ...)` operation starts a
+new default context; the output iterator alone does not carry styling state.
+There is no global or thread-local state. Scope guards restore context metadata
+on exceptions; partial output may remain.
+
+Transition emission is shared through constexpr-capable buffer helpers,
+preserving compiled formatting and constant-evaluated size calculations.
+Context layouts and the internal `vformat_to` signature change. Clang-only
+`FMT_MAYBE_UNUSED` annotations prevent unused-private-field errors in non-color
+translation units: C++17+ uses `[[maybe_unused]]`, older Clang uses its GNU
+attribute. GCC and other compilers receive an empty macro; older GCC rejects
+these attributes on the fields. Test string streams use direct construction
+for GCC 4.9 compatibility.
+
+For the independent C++23 library, omit whole-message
+`print(out, text_style, ...)`/`println(out, text_style, ...)` and analogous
+style-taking formatting overloads. Use ordinary standard formatting with
+`styled` or `styled_text` replacement fields, expressing a whole styled message
+as one value/tree. Keep inheritance inside that formatter rather than modifying
+`std::basic_format_context`. The fmt extension retains its existing styled-call
+overloads, which justify the context integration; upstream may reject that
+feature. No standard-library proposal or prototype is authorized by this design
+discussion. No performance benchmark establishes overhead claims.
 
 ## Demonstration
 
 `demo/FmtColorDemo2.cpp` adapts Terry's newer uploaded demo to current names:
 `styled_text.h`, `term_color`, `overlay`, and `fmt::println`. An absolute text
-span currently uses `overlay(text_style{}.absolute(), underline(...))`; the new
-free `absolute(underline(...))` helper is also available. The older uploaded `FmtColorDemo.cpp` is not the
+span uses the free `absolute(underline(...))` helper. The older uploaded `FmtColorDemo.cpp` is not the
 active demo and contains obsolete API spellings and syntax errors.
 
 Concatenation preserves the red group as a complete span, so red applies only
@@ -285,24 +296,28 @@ repository's general Makefile ignore rule. A standalone tarball was produced,
 but the voice/task interface did not expose a usable download for Terry; the
 repository demo is the current delivery method.
 
+The guide's nested padding/precision example uses
+`fmt::println("{:*>12.9}", fmt::bold("hello " + overlay(fg(blue), "world")));`.
+Its display is `***hello wor`, all bold, with `wor` blue: precision spans the
+tree and padding uses the root style. Expected displays also show the whole
+sentence underlined around bright-red `42`, and C++20 `std::numbers::pi`
+rounded by stream precision to bold-green `3.14`.
+
 ## Next work and validation limits
 
-All 41 push-CI jobs pass for `0a8ad759`; review remains separate from validation
-and integration acceptance. The GCC 13/C++23 optimized shared-build failure in
-`display_width()` was reproduced with GCC 13.3 and 14. A private `FMT_NOINLINE`
-branch-width helper avoids recursive inlining into the inactive union member;
-leaf calculation stays inline. No warning was suppressed. This is distinct from
-the older unresolved strict Release/C++11 blend diagnostic.
+Current code and guide are accepted on `color-dev`; the 41-job push matrix and
+guide build/deployment passed for exact current tip `2fa0bd92`. Branch candidate results
+and earlier cancelled macOS jobs are not the final acceptance evidence.
 
-Current local styled-text/formatter suites pass all 29 tests in C++11/C++23 and
-both SGR modes, including exact truncation output, root padding, Unicode width,
-dynamic specifications, narrow/wide formatting, absolute boundaries, and all
-65,536 parent/child emphasis combinations. Optimized GCC 13.3 shared-library
-checks also passed with the workaround. See BuildAndTest.md for details and
-limits. No PR-only lint/fuzz result, guide publication, or squash acceptance is
-inferred from push CI. No website update was requested or performed.
+Local MSYS GCC 16.2 checks covered C++11/C++23 and both SGR modes, context
+restoration, compiled formatting, and a header-only no-exceptions probe. Earlier
+cloud width-helper and exhaustive inheritance checks remain useful historical
+evidence, not new local results. The GCC 13/14 noinline branch-width workaround
+is retained. Older strict local Release blend/union diagnostics remain open;
+see BuildAndTest.md for exact validation limits. No PR-only lint/fuzz, tablet,
+performance, or ABI-validation result is inferred from passing push CI.
 
 Debug formatting, deferred blending, parsing, full grapheme/terminal width,
-serialization, module export, and public iteration remain unimplemented.
-Appending `detail::styled_arg` was deliberately deferred pending a real request;
-`fmt::styled` keeps its existing return type and formatting behavior.
+serialization, styled-text module export, and public iteration remain deferred.
+Appending `detail::styled_arg` to a tree is also deferred. `fmt::styled` keeps
+its borrowing wrapper type while inheriting/restoring context when formatted.

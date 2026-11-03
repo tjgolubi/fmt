@@ -37,12 +37,12 @@ naming and API conventions.
 
 ## Implemented foundation
 
-The styling commit `2c456778` on `color-dev` contains the complete C++11 API below
-as one contribution above upstream `f87a75e1`. The `color-dev` baseline at `5b3f49ff` includes documentation-publication
-configuration for the renamed branch. The accepted baseline is in
-[README.md](README.md#current-baseline).
-Current source and tests establish behavior; private numeric representations
-are not stable contracts.
+The accepted `color-dev` tip is `2fa0bd9269a54d1fe155ff7ee95e96dfb9d0b6c3`.
+It includes the foundational styling contribution, owning styled-text formatter,
+and format-context inheritance/restoration. The complete fmt release supports
+C++11. The upstream baseline is `f87a75e1`; see
+[README.md](README.md#current-baseline). Source and tests establish behavior;
+private numeric representations are not stable contracts.
 
 Use `term_color`, `emphasis::strike`, `strike()`, and `is_strike()` in new
 examples and tests. `terminal_color`, `emphasis::strikethrough`,
@@ -99,8 +99,7 @@ input and unspecified otherwise. Inputs are unchanged; all are `noexcept`
 and support C++11 constant evaluation. Implementation uses `rgb(color)` rather
 than braced conversion to satisfy old compiler paths.
 
-Public `blend` overloads require at least two arguments (implemented above
-`color-dev` in `ae726b28` and present in `feat/StyledText2`). Internal recursive
+Public `blend` overloads require at least two arguments (integrated on `color-dev`). Internal recursive
 accumulators retain their base cases. Free variadic `blend` supports:
 
 - Plain colors only: return an equal-weight RGB channel average.
@@ -113,7 +112,7 @@ accumulators retain their base cases. Free variadic `blend` supports:
 All channels are summed before division; fractional results round down. Inputs
 are unchanged. Overloads reject non-colors and mixed raw-color/style arguments.
 They are `noexcept` and constexpr in C++11 via recursive helpers; gated C++23
-implementations use concepts and loops. On `feat/StyledText2`, every absolute
+implementations use concepts and loops. On `color-dev`, every absolute
 style input must specify both colors; `FMT_ASSERT` checks that precondition.
 Unknown terminal-default colors cannot be averaged. With assertions disabled,
 missing channels contribute nothing. The result is relative, clearing absolute.
@@ -176,7 +175,7 @@ return unspecified, empty emphasis returns `emphasis{}`, and each returned
 Passing `no_color` clears a channel; `emphasis{}` clears all attributes.
 
 `has_fg()`, `has_bg()`, and `has_emph()` distinguish unspecified from specified
-black and detect any emphasis bit. On the experimental branch, const `empty` is true only when both
+black and detect any emphasis bit. Const `empty` is true only when both
 colors are unspecified, all emphasis is unset, and absolute is disabled.
 An absolute-only style is nonempty. Fluent `clear` also removes absolute and restores
 the default style, returns `text_style&`, and supports repeated clearing and
@@ -213,8 +212,8 @@ Copy an alternative extracted directly from a temporary style getter. Public
 reference access is distinct from returning a reference to a temporary copy.
 
 Styles pack each color as 24 payload bits plus three discriminator bits:
-foreground bits 0–26, background 27–53, emphasis 54–61. On the experimental
-branch bit 62 is absolute; bit 63 remains unused.
+foreground bits 0–26, background 27–53, emphasis 54–61. Bit 62 is
+absolute; bit 63 remains unused.
 `to_underlying` and internal `detail::unpack_color` reflect this encoding; object
 size does not establish ABI or persisted-data compatibility.
 
@@ -295,8 +294,8 @@ stream formatting and preserves field width while writing SGR. Detailed lifetime
 and exception-recovery rules are recorded below.
 
 The bridge supports C++11, header-only use, installation, and C++20 module
-export. All 41 `color-dev` push jobs passed at `2c456778`, including documentation
-build, but not guide publication. The separate historical compatibility result
+export. All 41 push-CI jobs and both guide-publication jobs passed for
+accepted `color-dev` tip `2fa0bd92`. The separate historical compatibility result
 at `21eba01b` does not validate the current header or bridge.
 
 ## Integrated styling helpers
@@ -368,9 +367,7 @@ no `empty()`. Explicit character template arguments are needed when deduction
 cannot convert a literal to `basic_string_view<Char>`. SGR conversion allocates
 and is not noexcept. Keep style values independent of their rendering.
 
-On `color-dev`, the opening-output bound is 56 characters. The experimental
-absolute-style implementation raises `sgr_max_length` to 60, excluding a null
-terminator, for maximal noncompact output including the leading reset. Maximal
+On `color-dev`, `sgr_max_length` is 60 characters, excluding a null terminator, for maximal noncompact output including the leading reset. Maximal
 compact absolute output is 54 characters. The reset alone is four characters;
 extended push/pop markers are not implemented.
 
@@ -381,13 +378,11 @@ C++17; and avoid copying the empty union member in the SGR visitor during MSVC
 constant evaluation. Tests explicitly initialize const stream-only values and
 avoid shadowing and self-assignment warnings.
 
-The 41-job `color-dev` result validates the accepted contribution in default SGR
-mode. Compact mode has historical local evidence, but no current full compact
-matrix is claimed. See [BuildAndTest.md](BuildAndTest.md#integrated-styling-helpers).
-The public website is version 36. The last verified guide publication used
-the former `dev` branch at `a18689e1`, whose documentation build and deployment passed. Platform CI for
-that configuration commit was still running when checked; the complete 41-job
-result above remains specific to the styling commit.
+All 41 push-CI jobs and both separate guide-publication jobs passed for
+accepted `color-dev` tip `2fa0bd92`. A full remote compact-SGR matrix is not
+claimed; focused local checks cover both modes. The public website is version
+37, predating ColorCtx. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation)
+and [Website.md](Website.md#current-publication).
 
 ### Conditional attribute factories
 
@@ -410,27 +405,62 @@ beneficial, and retained passing application tests. This is reported evidence,
 not a freshly executed application test for `color-dev`. The guide explains
 convenience as a major design goal.
 
-## Current experiment and planned work
+## Integrated structured text and planned work
 
-The active experiment is `feat/Formatter` at
-`0a8ad7595ece4ce976c49c6091bdeb39bbb7d86c`, verified pushed with a clean library
-working tree. It starts from the owning `feat/StyledText2` baseline at `08a9d3b7` and
-adds nested formatting, tests, guide documentation, and a GNU make demo. This
-experimental branch remains separate from accepted `color-dev` integration.
-See [StyledText.md](StyledText.md) for exact API and invariants and
-[BuildAndTest.md](BuildAndTest.md) for validation limits and the unresolved
-strict Release/C++11 blend warning. The candidate at `0a8ad759` has all
-41 push-CI jobs passing (18 Linux, 13 Windows, 9 macOS, 1 documentation).
-The current candidate includes composition and header refactors, guide updates,
-both free absolute helpers, width/precision formatting, deferred SGR emission,
-and SGR reset de-duplication with regressions in both modes. Acceptance and
-squash integration remain separate.
+Formatter was squash-integrated at `1e8fc387`; ColorCtx was squash-integrated
+at `b8bf6293`. Current tip `2fa0bd92` also contains the demo and guide updates.
+Both integrations are committed, pushed, and covered by the current
+41-job matrix and guide publication. Continue new work from `color-dev`, not
+the integrated feature branches. See StyledText.md for exact invariants and
+BuildAndTest.md for local-warning and coverage limits.
 
-The later independent library requires C++23 and `std::variant`; the {fmt}
-release retains C++11 throughout. The owning tree uses a custom union in all
-language modes. Do not restore a C++17 variant gate or strict style-OR policy.
-Experimental alternatives need explicit authorization for implementation or
-website inclusion.
+The owning tree uses a custom union in all language modes. Do not restore a
+C++17 variant gate or strict style-OR policy. Experimental alternatives still
+need authorization for implementation or website inclusion.
+
+### Format context state
+
+Both narrow `context` and `generic_context` store packed `uint64_t`
+`color_state_`, initially zero. Internal helpers bridge that private value to
+`text_style`; it is not a public numeric/archive contract. Ordinary formatters
+ignore it. The styled top-level `print`/`println`/`format`/`format_to` families,
+including wide and ostream entry points, seed the formatting operation with
+their style. `styled_arg` and `styled_text` inherit relative styles and restore
+the enclosing context style afterward, including padding. An absolute child
+temporarily replaces the enclosing state and also restores it on completion.
+
+The top-level style retains `absolute` when emitting opening SGR. Only the
+copy stored in the context clears that flag: it records resulting terminal
+state rather than a reset instruction. A relative top-level style does not
+automatically emit an initial reset. Unknown external terminal state and raw
+escapes are not tracked.
+
+Packed state propagates through the exact-`{}` shortcut, ordinary replacement
+fields, custom-value writes used by `nested_formatter`, and its alignment
+buffer contexts. Direct delegation to another formatter with the same `ctx`
+preserves state. A separate `fmt::format_to(ctx.out(), ...)` operation starts a
+new default context; the output iterator alone does not carry styling state.
+There is no global or thread-local state. Scope guards restore context metadata
+on exceptions; partial output may remain.
+
+Transition emission is shared through constexpr-capable buffer helpers,
+preserving compiled formatting and constant-evaluated size calculations.
+Context layouts and the internal `vformat_to` signature change. Clang-only
+`FMT_MAYBE_UNUSED` annotations prevent unused-private-field errors in non-color
+translation units: C++17+ uses `[[maybe_unused]]`, older Clang uses its GNU
+attribute. GCC and other compilers receive an empty macro; older GCC rejects
+these attributes on the fields. Test string streams use direct construction
+for GCC 4.9 compatibility.
+
+For the independent C++23 library, omit whole-message
+`print(out, text_style, ...)`/`println(out, text_style, ...)` and analogous
+style-taking formatting overloads. Use ordinary standard formatting with
+`styled` or `styled_text` replacement fields, expressing a whole styled message
+as one value/tree. Keep inheritance inside that formatter rather than modifying
+`std::basic_format_context`. The fmt extension retains its existing styled-call
+overloads, which justify the context integration; upstream may reject that
+feature. No standard-library proposal or prototype is authorized by this design
+discussion. No performance benchmark establishes overhead claims.
 
 ### Structured styled text
 
@@ -485,11 +515,11 @@ The formatter now resolves relative inheritance and enforces absolute tree
 boundaries before calling the complete-state transition function. Relative
 styles inherit colors and OR emphasis; absolute styles replace the entire
 inherited state. Reset emission follows the mode-specific rules above. Each
-replacement field assumes terminal defaults at entry; no external state is
-queried or reset automatically. Descendants inherit from an absolute node without
+replacement field inherits its format-context state. Only a new independent
+operation starts from assumed defaults; external state is not queried. Descendants inherit from an absolute node without
 repeating its boundary reset. Logical styles are tracked separately from the
 last emitted state: emit transitions only before text or padding, never merely
-on entry/exit, and transition to defaults at field end. Narrow/wide fill,
+on entry/exit, and restore the saved enclosing context at field end. Narrow/wide fill,
 alignment, width, precision, optional `s`, and dynamic width/precision are
 implemented. Padding receives the root style. Precision stops the whole traversal
 when the next code point will not fit; unwind without intermediate transitions.
@@ -513,8 +543,9 @@ Deferred styled-text blend remains separate from root overlay. Its nested
 semantics and interface need agreement before implementation. Earlier
 `styled_text& blend()` proposals do not authorize code. Debug string presentation,
 parsing, full grapheme/terminal width, serialization, and module export remain
-future work. `fmt::styled` is unchanged; accepting its internal `styled_arg`
-wrapper in concatenation is deferred until requested.
+future work. `fmt::styled` keeps its borrowing wrapper type but now inherits
+and restores the format-context style; accepting that wrapper in concatenation
+is deferred until requested.
 
 For the later independent library, reconsider factory names alongside
 `using enum fmt::emphasis`: imported enum names can hide unqualified factories;

@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated October 31, 2026.
+Updated November 2, 2026.
 
 ## Authorization and scope
 
@@ -53,10 +53,9 @@ changed the structured-text header (now `styled_text.h`) only; do not mechanical
 
 Terry authorized native Linux tools in the cloud; MSYS2 Git and PATH rules
 below apply to his Windows/MSYS2 checkouts. Use compact SGR for the StyledText
-experiments. The current active branch is `feat/Formatter`, based on
-`feat/StyledText2`. The linux, windows, macos, and doc push exclusions still
-match `feat/StyledText2`, so they do not exclude `feat/Formatter`; its push
-triggered those workflows. PR triggers remain enabled. Do not change workflow
+experiments. The library checkout is now `color-dev`; Formatter and ColorCtx
+have been squash-integrated. The linux, windows, macos, and doc push exclusions
+still match `feat/StyledText2`, not `color-dev` or `feat/ColorCtx`. PR triggers remain enabled. Do not change workflow
 exclusions or cancel runs without instruction. Batch changes
 before authorized pushes to conserve GitHub Actions compute. CI status is
 currently checked on demand; Terry asked to stop periodic polling.
@@ -76,14 +75,14 @@ Keep library and coordination working-tree statuses explicit in handoffs.
 
 | Repository                        | Role                                                                                                                                |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `tjgolubi/fmt`                    | Library source, tests, and user documentation. Current development branch: `color-dev`.                                                   |
+| `tjgolubi/fmt`                    | Library source, tests, and user documentation. Current development branch: `color-dev`.                                             |
 | `coord/` worktree on `docs/Coord` | Current coordination handoff documents, separate from library development. Earlier history is in `tjgolubi/FmtColorGpt` (`master`). |
 | Sites source repository           | Separate website implementation, managed by the Sites helper.                                                                       |
 
 Use **MSYS2 Git** for `fmt` and `FmtColorGpt`: `/usr/bin/git` in MSYS, or
 `C:\msys64\usr\bin\git.exe` from PowerShell. Verify executable provenance;
 bare `git` in PowerShell may select Codex's bundled native Git. The Sites Node
-helper instead needs native Windows Git; see
+helper needs Windows-compatible Git path/ref handling; see
 [Website.md](Website.md#windows-publishing).
 
 Terry removed UCRT64. Do not use or reinstall it for this project. The MSYS PATH
@@ -139,15 +138,14 @@ baseline; this policy does not authorize rewriting them.
    the candidate's message and authorship without an editor; lowercase `-c`
    opens the configured editor to revise that message.
 6. Terry commits the squash. Prepare a commit message or additional artifacts
-   only within the authorized scope. `FmtColorChangeLog.md` is intentionally
-   absent from `color-dev`; do not recreate it automatically.
+   only within the authorized scope. `FmtColorChangeLog.md` is tracked and
+   maintained with git-cliff only when explicitly requested.
 7. Terry pushes the final commit, or explicitly authorizes the assistant to
    push. Verify the intended commit structure, matching local/GitHub full SHAs,
    and every applicable CI job for that SHA. The guide-publication workflow
-   targets `color-dev` in committed configuration at `5b3f49ff`. Publication passed at `a18689e1` under
-   the former `dev` name; verify environment permission and publication after
-   pushing the renamed branch configuration. Candidate results do
-   not replace final integration checks.
+   targets `color-dev`; build and deployment passed for the accepted baseline
+   `2fa0bd92`. Candidate results do not replace final integration checks for
+   later SHAs.
 8. Publish an authorized website update before recording its confirmed
    publication in coordination documents. Update or close an issue only when
    instructed; a successful fix does not by itself authorize closure.
@@ -174,11 +172,10 @@ Use Conventional Commits compatible with `cliff.toml`, for example
 Mark deliberate breaks with `!` and a `BREAKING CHANGE:` footer. Describe actual
 effects without promising stable numeric or binary representations.
 
-`FmtColorChangeLog.md` was intentionally removed from the consolidated `color-dev`
-commit. Its deletion, amendment, and force-with-lease push preceded verification
-of `2c456778`; the verified CI applies to the amended commit. Do not regenerate
-or re-add this file unless Terry instructs us to. Do not edit upstream
-`ChangeLog.md` as an automatic substitute.
+`FmtColorChangeLog.md` is tracked on `color-dev`. Terry explicitly requested
+its regeneration for the Formatter and ColorCtx integrations and committed it
+with the final squash. Do not regenerate it or edit upstream `ChangeLog.md`
+automatically. The old removal at `2c456778` is historical, not current policy.
 
 If changelog generation is explicitly requested, use git-cliff **2.14.2** with
 `--offline --no-exec` and an explicit accepted-history range after the upstream
@@ -254,8 +251,7 @@ after an authorized rewrite.
 ## Coordination worktree
 
 The library root and `coord/` are separate working trees of the same repository.
-The library root uses the selected library branch (the active experiment is
-`feat/Formatter`); `coord/` uses `docs/Coord`. Entering the
+The library root currently uses `color-dev`; `coord/` uses `docs/Coord`. Entering the
 directory changes which checkout Git sees; it does not switch either worktree's
 branch. Use `git -C coord status` and `git -C coord diff` from the library root.
 Do not switch the library checkout to `docs/Coord` while that branch is checked
