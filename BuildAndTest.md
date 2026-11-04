@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Website](Website.md)
 
-Updated November 3, 2026. Commands run from the library checkout root unless
+Updated November 4, 2026. Commands run from the library checkout root unless
 stated otherwise. Use `color-dev` or an authorized feature branch, not the
 `coord/` documentation worktree on `docs/Coord`. Run library commands from
 `..` when starting in `coord/`. `/doc/` means repository-relative.
@@ -125,16 +125,44 @@ displays and the C++20 pi example. The localhost preview uses port 8875 and
 
 ## Parser candidate validation
 
-`feat/parser` at `be665d942d0352911ea6da8678c948ed49c20970` is committed and
+`feat/parser` at `76fd8ba61e501ffa48a0eb1945475a67252f0d0e` is committed and
 pushed, based on `color-dev` at `2fa0bd92`. It is not integrated or accepted.
 
-On Debian GCC 14.2, all five parser tests passed in C++11/C++23 crossed with
-compact/noncompact SGR, using header-only mode and
-`-pedantic-errors -Wall -Wextra -Werror`. Tests exercise both character types,
-all 256 indexed colors and emphasis masks, truecolor/colon forms, resets/off
-codes, flat structure and coalescing, ownership, literal/malformed escapes,
-render round trips, and isolation from enclosing styles. Normalization means
-round trips compare appearance/style structure, not original escape bytes.
+The current parser has six regression groups. Latest runs passed **42 tests in
+four focused suites** (owning text, formatter, parser, stripper) in each of eight
+configurations: GCC 13.3/14.2 crossed with C++11/C++23 and compact/noncompact SGR.
+All use header-only mode, `-pedantic-errors -Wall -Wextra -Werror`; GCC 13 uses
+`-O3 -DNDEBUG`, while the usual GCC 14 checks are unoptimized. The host GCC 14
+C++ runtime and prebuilt support/gtest libraries were used for the local GCC 13
+runs; this is not an exact CI-image reproduction.
+
+Parser regressions cover both character types, all indexed colors/emphasis masks,
+color forms, reset-created groups, repeated resets without extra nesting,
+relative prefixes, trailing resets, malformed/literal escapes, ownership, round
+trips, and nested context behavior. The candidate guide now describes the reset
+group rather than an unconditional absolute root; its example passed C++11/compact
+and C++23/noncompact probes. No new full guide build was run locally because
+Doxygen is unavailable; the remote doc build below passed.
+
+### GCC 13 branch-move workaround
+
+The reset-group update exposed `-Werror=maybe-uninitialized` in the GCC 13/C++23
+Release shared CI compile, inlining the vector move through a concatenation chain
+in the parser round-trip test. The exact warning was reproduced with GCC 13.3 at
+`-O3 -DNDEBUG -DFMT_SHARED -fPIC`. Inspection found no initialization defect; the
+vector move is guarded by the initialized discriminator. Original tests passed
+ASan/UBSan (leak detection disabled); that is supporting evidence, not proof that
+all uninitialized reads are absent.
+
+A private noinline vector-move helper is gated by
+`1300 <= FMT_GCC_VERSION && FMT_GCC_VERSION < 1400`. Other compilers retain the
+original move path; leaf moves stay inline everywhere. No warning is suppressed.
+The previously failing shared compile passes with strict warnings, the eight local
+runs above pass, and the exact final CI shared job passes. A direct-link setup
+error during testing was corrected by including the OS support used by stream
+regressions. Current logs are under
+`/workspace/regression-checks/gated-gcc{13,14}-{11,23}-{0,1}.log`.
+This workaround is separate from the older GCC 13/14 branch-width workaround.
 
 A fresh Debug/C++23 CMake build in `build/parser23` passed parser, styled-text,
 and styled-text-format targets through CTest. The header is registered for
@@ -143,17 +171,18 @@ no-exceptions probe passed. C++23 ASan/UBSan passed a deterministic 20,000-input
 random-escape probe with leak detection disabled for the existing ptrace limit.
 No new full local suite or old-compiler run is claimed.
 
-All **41 push-CI jobs passed** for `be665d94`. All workflow head SHAs matched
+All **41 push-CI jobs passed** for `76fd8ba6`. All workflow head SHAs matched
 that full commit and every job's conclusion was inspected. No job failed,
-was cancelled, or remained pending. This supersedes the incomplete macOS result
-for the earlier parser-only commit; no cancellation cause is established.
+was cancelled, or remained pending. This supersedes the earlier failed GCC 13
+parser compile and older incomplete macOS matrix; their results do not validate
+this final commit.
 
 | Workflow | Passed jobs | Evidence                                                        |
 | -------- | ----------- | --------------------------------------------------------------- |
-| Linux    | 18          | [Run](https://github.com/tjgolubi/fmt/actions/runs/41620515207) |
-| Windows  | 13          | [Run](https://github.com/tjgolubi/fmt/actions/runs/41620515033) |
-| macOS    | 9           | [Run](https://github.com/tjgolubi/fmt/actions/runs/41620515052) |
-| Doc      | 1           | [Run](https://github.com/tjgolubi/fmt/actions/runs/41620515253) |
+| Linux    | 18          | [Run](https://github.com/tjgolubi/fmt/actions/runs/41795136165) |
+| Windows  | 13          | [Run](https://github.com/tjgolubi/fmt/actions/runs/41795136298) |
+| macOS    | 9           | [Run](https://github.com/tjgolubi/fmt/actions/runs/41795136527) |
+| Doc      | 1           | [Run](https://github.com/tjgolubi/fmt/actions/runs/41795136829) |
 
 No runs were cancelled or rerun by the assistant. Check on demand; no periodic
 polling. These candidate results do not establish squash acceptance, PR-only

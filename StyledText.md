@@ -1,6 +1,6 @@
 # Structured styled text and format contexts
 
-Updated November 3, 2026.
+Updated November 4, 2026.
 
 ## Scope and state
 
@@ -14,7 +14,7 @@ final tip. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 The library's tracked tree is clean. The modernized demo is committed and
 pushed; the former deferred `.tjg.cpp` file is no longer present. The active
 parser implementation is separately committed/pushed on `feat/parser` at
-`be665d942d0352911ea6da8678c948ed49c20970`, based on `2fa0bd92`. `feat/Formatter` and `feat/ColorCtx` are integrated
+`76fd8ba61e501ffa48a0eb1945475a67252f0d0e`, based on `2fa0bd92`. `feat/Formatter` and `feat/ColorCtx` are integrated
 source branches, not the next development baseline. The borrowing StringView
 experiment remains a separate ownership alternative. The old transition-fix
 bundle and dependency history are retained in Git history; they are not needed
@@ -314,19 +314,30 @@ auto parse_styled_text(basic_string_view<Char>) -> basic_styled_text<Char>;
 ```
 
 Narrow and wide convenience overloads accept literals and standard strings.
-The result owns the text. Plain input or a single styled run produces one leaf;
-multiple runs produce a flat branch. The root is absolute: an otherwise empty
-absolute parent isolates relative child styles, while a single leaf retains its
-own colors/emphasis and is marked absolute. Children need no individual absolute
-flags. Empty input produces an empty absolute leaf. No public structural API was
-added to construct these results.
+The result owns the text. Plain input is a relative leaf; no initial reset is
+invented. Relative spans before the first reset can inherit an enclosing style.
+The first reset that has following text starts one absolute group, with relative
+children describing subsequent spans from terminal defaults. If no text precedes
+that reset, the result itself is absolute without a redundant relative wrapper.
+A single run can be represented directly by an absolute leaf. Empty input stays
+an empty relative leaf. No public structural API was added.
 
-SGR parameters update one current relative style in order. Reset clears it;
-empty parameters, `0`, `00`, and `000` are ordinary resets, never push/pop.
-A leaf is emitted only when text is present. Consecutive sequences create no
-empty spans, adjacent text with equal styles is combined, and trailing SGR
-without text contributes no leaf. The parser represents appearance, not exact
-escape-byte round trips or the final input terminal state after trailing SGR.
+Later resets only clear the current style within the existing absolute group;
+they create no further nested groups. This keeps defaults in effect for all
+subsequent spans, avoiding accidental re-inheritance of an outer style. For
+example, `ESC[m A ESC[1m B` inside an underlined context produces plain A and
+bold-only B. If text preceded the reset, that prefix retains its inheritance.
+This supersedes both the unconditional absolute-root design and the temporary
+consume-reset-on-one-leaf design. No incorrect intermediate implementation was
+committed separately.
+
+SGR parameters update the current style in order. Empty parameters, `0`, `00`,
+and `000` reset normally, never push/pop. Consecutive sequences produce no empty
+leaves. Equal adjacent text styles coalesce within each group; trailing SGR
+without text creates no span or empty group. The parser represents appearance,
+not original escape bytes or a trailing command's final terminal effect.
+Selective clears before the first reset cannot cancel an unknown inherited
+attribute using relative `text_style`; this remains an explicit limitation.
 
 Recognized codes include the eight supported emphasis bits and their off codes,
 SGR 22 clearing both bold/faint, normal/bright terminal colors, 39/49 defaults,
@@ -381,8 +392,12 @@ is retained. Older strict local Release blend/union diagnostics remain open;
 see BuildAndTest.md for exact validation limits. No PR-only lint/fuzz, tablet,
 performance, or ABI-validation result is inferred from passing push CI.
 
-The combined parser/stripper candidate at `be665d94` passes all 41 push-CI jobs,
-including all nine macOS jobs. Local strip tests pass C++11/C++23; CMake parser,
+The combined parser/stripper candidate at `76fd8ba6` passes all 41 push-CI jobs,
+including all nine macOS jobs. Latest regression runs pass 42 tests in each of eight configurations:
+GCC 13.3/14.2, C++11/C++23, compact/noncompact SGR. GCC 13 uses optimized
+Release flags; the usual GCC 14 runs are unoptimized and strict. The GCC-13-only
+branch-move noinline workaround is distinct from the existing branch-width
+workaround. Local strip tests pass C++11/C++23; CMake parser,
 stripper, styled-text, and formatter suites pass. Sanitizer and no-exceptions
 probes pass. Candidate validation does not authorize squash integration.
 See BuildAndTest.md for exact evidence and limits.

@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md)
 
-Updated November 3, 2026.
+Updated November 4, 2026.
 
 ## Purpose and content
 
@@ -154,7 +154,7 @@ StyledText.md for current implementation and boundaries.
 
 The separate `feat/parser` candidate adds standard SGR-to-owned-styled-text
 parsing in `<fmt/parse_styled_text.h>` and `strip_ansi` in `<fmt/strip_ansi.h>`
-at `be665d94`. All 41 push-CI jobs pass, including macOS; the candidate is not
+at `76fd8ba6`. All 41 push-CI jobs pass, including macOS; the candidate is not
 yet integrated. Published version 39 predates it and remains unchanged. Do not silently relabel
 these as published or accepted features; a website update requires instruction.
 

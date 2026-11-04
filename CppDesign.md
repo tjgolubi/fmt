@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated November 3, 2026. Implemented behavior is separated below from future
+Updated November 4, 2026. Implemented behavior is separated below from future
 design. A proposal is not permission to implement it.
 
 ## Goals and boundaries
@@ -553,14 +553,25 @@ qualified `fmt::bold()` remains clear.
 
 ## Active SGR parser and ANSI stripping
 
-`feat/parser` at `be665d94` adds `<fmt/parse_styled_text.h>` and character-generic
+`feat/parser` at `76fd8ba6` adds `<fmt/parse_styled_text.h>` and character-generic
 `parse_styled_text`; it is not yet integrated into `color-dev`. It produces owned
-flat spans with an absolute root (or absolute single leaf), applies standard SGR
-state sequentially, and preserves non-SGR/malformed escapes literally. Unknown
+relative spans before the first reset and one absolute group for the suffix,
+applies standard SGR state sequentially, and preserves non-SGR/malformed escapes literally. Unknown
 valid parameters are ignored. No extended push/pop parsing is implemented;
 leading-zero reset codes are ordinary resets. See StyledText.md for exact API,
 color forms, malformed-input policy, and tree shape, and BuildAndTest.md for the
 complete candidate CI state. Parsed `plain_text()` removes decoded SGR only.
+A reset before any text makes the result itself absolute; repeated resets clear
+styles within the same group, without creating new groups. No reset in the input
+means no absolute flags are invented. Selective clears before any reset cannot
+cancel unknown inherited attributes; relative styles lack that representation.
+The candidate guide and regression expectations follow this reset-group model.
+
+The vector-move workaround in `basic_styled_text` is gated to GCC 13 only. It
+isolates the branch move in a noinline helper to avoid the reproduced optimized
+union warning, preserving other compilers' original path and inline leaf moves.
+All 42 focused tests pass locally in eight configurations and the final 41-job
+push matrix passes. No warning is suppressed or ABI/performance result inferred.
 
 `<fmt/strip_ansi.h>` now implements the separate character-generic stripper.
 It removes syntactically valid ESC-prefixed sequences regardless of semantic
@@ -569,7 +580,7 @@ malformed/incomplete prefixes remain. Control-string payloads and terminators
 are removed together; incomplete strings remain opaque and are preserved whole.
 This directly produces an owning string, without building a tree. It neither
 simulates terminal editing nor sanitizes text. Both functions are on `feat/parser`
-at `be665d94`, with all 41 push-CI jobs passing; integration remains separate.
+at `76fd8ba6`, with all 41 push-CI jobs passing; integration remains separate.
 
 ### Independent-library buffer discussion
 

@@ -1,6 +1,6 @@
 # FmtColor coordination
 
-Updated November 3, 2026.
+Updated November 4, 2026.
 
 FmtColor develops color and text-style extensions for C++. We plan two
 sequential deliverables:
@@ -73,19 +73,26 @@ Future commits and pushes still require explicit authorization.
 
 Active library checkout: `feat/parser`, based on accepted `color-dev` at
 `2fa0bd92`, committed and pushed at
-`be665d942d0352911ea6da8678c948ed49c20970`. The library tree is clean. The
+`76fd8ba61e501ffa48a0eb1945475a67252f0d0e`. The library tree is clean. The
 parser is not squash-integrated into `color-dev`; acceptance is still pending.
 
 `<fmt/parse_styled_text.h>` adds character-generic `parse_styled_text`: standard
-SGR becomes owned narrow/wide spans with an absolute root. Non-SGR and malformed
+SGR becomes owned narrow/wide spans. Text before the first reset is relative;
+the first reset starts one absolute group containing the remaining text. A reset
+before any text makes the result itself absolute; later resets clear styles
+within that same group. Non-SGR and malformed
 escapes stay literal; unknown valid parameters are ignored. It does not implement
 push/pop extensions. See [StyledText.md](StyledText.md#sgr-parser).
 
 Local parser tests pass in C++11/C++23 and both SGR modes. All **41 push-CI jobs
-passed** for `be665d94`: Linux 18, Windows 13, macOS 9, doc 1. Every job was
+passed** for `76fd8ba6`: Linux 18, Windows 13, macOS 9, doc 1. Every job was
 inspected and workflow SHAs matched; no failed, cancelled, or pending jobs remain
 for this commit. Earlier macOS cancellations are superseded, not a complete pass
 for the earlier SHA. See BuildAndTest.md for exact runs.
+The GCC 13/C++23 Release shared job now passes after a GCC-13-only noinline
+branch-move workaround. All 42 focused tests passed locally in eight
+compiler/standard/SGR configurations. The reset-group contract and examples
+are updated in the candidate user guide; publication remains separate.
 
 `<fmt/strip_ansi.h>` now implements character-generic `strip_ansi`, returning an
 owning string with syntactically valid ESC-prefixed ANSI sequences removed,
@@ -93,7 +100,7 @@ including private/unknown commands. It preserves standalone C0, single-byte C1,
 and malformed/incomplete escapes. Parser `plain_text()` still removes decoded
 SGR only. Neither function simulates terminal editing or sanitizes text.
 
-Terry authorized committing and pushing these coordination updates on `docs/Coord`.
+Terry authorized committing and pushing this coordination update on `docs/Coord`.
 The published website remains version 39 and predates this parser work.
 
 ## Implemented styled text and format contexts
