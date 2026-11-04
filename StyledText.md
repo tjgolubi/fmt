@@ -4,26 +4,23 @@ Updated November 4, 2026.
 
 ## Scope and state
 
-Owning styled text and its formatter are integrated in `color-dev` at
-`1e8fc387`; context inheritance and restoration are integrated in the accepted
-ColorCtx squash `b8bf6293`. Current tip is
-`2fa0bd9269a54d1fe155ff7ee95e96dfb9d0b6c3`. Local and GitHub full SHAs
-matched. All 41 push-CI jobs and both guide-publication jobs passed for that
-final tip. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
+Owning text, its corrected formatter, context inheritance/restoration, parser,
+and string/tree ANSI stripping are integrated in `color-dev` at `3a2159158ef436fe967622b22d5acf230bf83f4b`.
+This is one consolidated extension commit above upstream `4ed35350`, replacing
+the earlier formatter/parser integration history. The library tracked tree is
+clean; use this baseline rather than the historical feature branches.
 
-The library's tracked tree is clean. The modernized demo is committed and
-pushed; the former deferred `.tjg.cpp` file is no longer present. The active
-parser implementation is separately committed/pushed on `feat/parser` at
-`76fd8ba61e501ffa48a0eb1945475a67252f0d0e`, based on `2fa0bd92`. `feat/Formatter` and `feat/ColorCtx` are integrated
-source branches, not the next development baseline. The borrowing StringView
-experiment remains a separate ownership alternative. The old transition-fix
-bundle and dependency history are retained in Git history; they are not needed
-to continue from the accepted baseline.
+The last inspected CI snapshot, November 4, 2026 before website publication,
+shows **33 of 41 push-CI jobs passed, 3 macOS jobs cancelled, and 5 queued**.
+Linux (18), Windows (13), and the ordinary documentation build (1) passed;
+macOS has one passed job. The separate guide build and deployment both passed.
+This is incomplete validation, not an all-green matrix. See
+[BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 
-Push exclusions still apply only to `feat/StyledText2`; PR triggers remain
-enabled. Do not modify exclusions or cancel runs without instruction. The
-current website is version 39 and documents context integration, the complete
-modernized demo/display, and the current passing CI matrix.
+The public website is version 40 and documents parsing/stripping, resets,
+context integration, the complete working demo, and the dated CI snapshot.
+Push exclusions still apply to `feat/StyledText2`; PR triggers remain enabled.
+Do not change exclusions, cancel jobs, or start periodic polling without instruction.
 
 ## Representation and public API
 
@@ -155,13 +152,13 @@ Behavior depends on `FMT_COLOR_COMPACT_SGR`:
 - Noncompact (`0`): equal states emit nothing unless the target is explicitly
   absolute. Otherwise reset and emit the complete target with separate sequences
   and padded color components. If the initial state is already defaults, omit
-  that redundant reset even for an absolute target. An absolute-only target
-  from defaults therefore emits nothing. The initial absolute flag is cleared
-  before testing whether the initial state is empty.
+  that redundant reset for a relative target. An absolute target always emits
+  a reset and its full style, even from defaults or equal attribute states.
+  The initial absolute flag does not request a reset.
 
 Both narrow and wide output are supported. One-argument `to_sgr` still honors
-an explicit absolute flag by emitting a reset; the known-initial-state
-optimization belongs to the two-argument overload only.
+an explicit absolute flag by emitting a reset. The known-initial-state
+optimization never removes an explicitly requested absolute reset.
 
 The opening-output bound is now 60 characters for maximal noncompact absolute
 output; maximal compact absolute output is 54. These are bounds for one-argument
@@ -184,25 +181,29 @@ not a `std::formatter`.
 Each replacement field starts from its enclosing formatting context. Relative nodes
 inherit missing foreground/background and OR emphasis with the enclosing
 style; specified colors replace the matching channel without promotion.
-Absolute nodes use their own complete style. Compact mode emits an explicit
-reset; noncompact mode can omit it when the enclosing state is already defaults.
-After entering a node, the effective
-state's absolute flag is cleared before passing it to descendants: entering
-an absolute ancestor must not force every relative child to reset.
+Absolute nodes use their own complete style and emit an SGR reset before
+applying it in either SGR mode, unless there is no output. That transition is
+issued immediately when the absolute node is visited after the formatter's
+empty/stopped-output checks. Its absolute flag is then cleared from the resulting
+terminal state before passing the effective style to descendants; relative
+children do not repeat the ancestor's reset. Explicitly absolute descendants
+establish their own boundaries.
 
-The formatter walks the private tree directly. Logical enclosing styles are
-passed through recursion, while the format context records the last emitted
-terminal style. Transitions occur only immediately before nonempty leaf output or padding.
-Returning through groups emits nothing. The field always finishes with a
-transition from its last emitted style to the saved enclosing style; it can be
-empty. An absolute boundary is deferred until content is printed, consumed once,
-and discarded if its subtree prints nothing. No extended-SGR intermediate or
-push/pop markers are used. The tree is not modified.
+The formatter walks the private tree directly. `enclosing` supplies logical
+inheritance; a separate per-call `text_style terminal` records the last emitted
+terminal state and is passed by reference through `write_node`. Relative
+transitions occur immediately before nonempty leaf output or padding. Returning
+through groups emits nothing. Absolute nodes use the immediate transition rule
+above. At field completion, the formatter restores the saved enclosing context
+style from the last emitted terminal state, without intermediate group restores.
+The tree is not modified; no extended-SGR intermediate or push/pop markers are used.
 
-`format()` is const; `write_node()` remains static and receives per-call state
-by reference, alongside the formatting context. Logical styles and precision
-remain per-call data; emitted style is stored in the context, not mutable
-formatter storage. Parsing options are separate from remaining precision.
+`format` is const; `write_node` remains static. Precision state and terminal
+state are separate per-call values. Format-context metadata supplies the enclosing
+style; it is not a substitute for the recursive traversal's terminal-state
+reference. Parsing options remain separate from remaining precision.
+If measurement finds zero output width and no padding, `format` returns without
+emitting SGR. Empty nodes without padding and stopped traversal are skipped.
 
 ### Width, padding, and precision
 
@@ -306,7 +307,7 @@ rounded by stream precision to bold-green `3.14`.
 
 ## SGR parser
 
-`<fmt/parse_styled_text.h>` on `feat/parser` defines:
+`<fmt/parse_styled_text.h>` in the consolidated `color-dev` defines:
 
 ```cpp
 template<typename Char>
@@ -319,7 +320,7 @@ invented. Relative spans before the first reset can inherit an enclosing style.
 The first reset that has following text starts one absolute group, with relative
 children describing subsequent spans from terminal defaults. If no text precedes
 that reset, the result itself is absolute without a redundant relative wrapper.
-A single run can be represented directly by an absolute leaf. Empty input stays
+The absolute group can retain a single child; no hoisting pass is required. Empty input stays
 an empty relative leaf. No public structural API was added.
 
 Later resets only clear the current style within the existing absolute group;
@@ -327,9 +328,8 @@ they create no further nested groups. This keeps defaults in effect for all
 subsequent spans, avoiding accidental re-inheritance of an outer style. For
 example, `ESC[m A ESC[1m B` inside an underlined context produces plain A and
 bold-only B. If text preceded the reset, that prefix retains its inheritance.
-This supersedes both the unconditional absolute-root design and the temporary
-consume-reset-on-one-leaf design. No incorrect intermediate implementation was
-committed separately.
+The absolute group protects the whole suffix; it is not consumed by just the
+first styled leaf.
 
 SGR parameters update the current style in order. Empty parameters, `0`, `00`,
 and `000` reset normally, never push/pop. Consecutive sequences produce no empty
@@ -378,29 +378,26 @@ cancel control-string recognition and are retained. This function does not
 simulate cursor movement or erase commands and is not a security sanitizer.
 Parser `plain_text()` removes decoded SGR only and retains other escapes.
 
+`strip_ansi(basic_styled_text<Char>) -> basic_styled_text<Char>` takes its tree by
+value and strips each leaf independently. It preserves node styles, absolute
+boundaries, structure, and leaves that become empty. Unchanged leaf strings remain
+shared; lvalue input is not modified. No sequence is recognized across leaves.
+`strip_ansi(x.plain_text())` scans the flattened string; `strip_ansi(x).plain_text()`
+extracts text after leaf-local stripping. Both yield strings without explicit
+tree styling, but their handling of split escapes differs.
+
 ## Next work and validation limits
 
-The integrated tree/context code and guide are accepted on `color-dev`; the 41-job push matrix and
-guide build/deployment passed for exact current tip `2fa0bd92`. Branch candidate results
-and earlier cancelled macOS jobs are not the final acceptance evidence.
+The consolidated tree/context/parser/stripper code is on `color-dev`; current
+exact-SHA CI remains incomplete as recorded in BuildAndTest.md. Earlier feature
+matrix and local results are historical evidence, not fresh checks of the
+rewritten baseline. Current guide build/deployment passed.
 
-Local MSYS GCC 16.2 checks covered C++11/C++23 and both SGR modes, context
-restoration, compiled formatting, and a header-only no-exceptions probe. Earlier
-cloud width-helper and exhaustive inheritance checks remain useful historical
-evidence, not new local results. The GCC 13/14 noinline branch-width workaround
-is retained. Older strict local Release blend/union diagnostics remain open;
-see BuildAndTest.md for exact validation limits. No PR-only lint/fuzz, tablet,
-performance, or ABI-validation result is inferred from passing push CI.
-
-The combined parser/stripper candidate at `76fd8ba6` passes all 41 push-CI jobs,
-including all nine macOS jobs. Latest regression runs pass 42 tests in each of eight configurations:
-GCC 13.3/14.2, C++11/C++23, compact/noncompact SGR. GCC 13 uses optimized
-Release flags; the usual GCC 14 runs are unoptimized and strict. The GCC-13-only
-branch-move noinline workaround is distinct from the existing branch-width
-workaround. Local strip tests pass C++11/C++23; CMake parser,
-stripper, styled-text, and formatter suites pass. Sanitizer and no-exceptions
-probes pass. Candidate validation does not authorize squash integration.
-See BuildAndTest.md for exact evidence and limits.
+The prior GCC 13/14 branch-width and GCC-13-only branch-move noinline workarounds
+remain. Older strict local Release blend/union diagnostics remain validation
+limits. No PR-only lint/fuzz, tablet, performance, ABI, or complete remote
+compact-SGR result is inferred. Website QA rebuilt the current compact demo,
+not the full regression suite.
 
 Debug formatting, deferred blending, extended push/pop parsing, full grapheme/terminal width,
 serialization, styled-text module export, and public iteration remain deferred.

@@ -41,67 +41,48 @@ records remain available in Git history.
 
 ## Current baseline
 
-The accepted development baseline is `color-dev` at
-`2fa0bd9269a54d1fe155ff7ee95e96dfb9d0b6c3`, committed and pushed. Local, remote,
-workflow, and job full SHAs matched. It includes the owning styled-text and
-formatter squash at `1e8fc387` and the ColorCtx squash at `b8bf6293`, above
-the earlier styling contribution and publication configuration. The current tip
-also includes the modernized demo and its `absolute` helper cleanup, plus the
-revised guide examples and expected displays. Upstream
-baseline/local `main` remains `f87a75e15262614ce8aa0e6a0664df9d0823fb92`.
-Use `color-dev` for new independent feature baselines, not the integrated
-`feat/Formatter` or `feat/ColorCtx` branches.
+The development baseline is `color-dev` at `3a2159158ef436fe967622b22d5acf230bf83f4b`,
+committed and force-pushed by Terry after consolidating `color-dev5`. It is one
+extension commit directly above upstream/main at `4ed3535092a96ac9f56fab80df83416d51bcc78e`.
+The library's tracked tree is clean. Local and GitHub branch SHAs matched during
+the website update, and all five inspected workflow runs target that exact SHA.
+Use this rewritten `color-dev` for subsequent work; older formatter/parser branch
+commits are historical references, not prerequisites to replay.
 
-All **41 push-CI jobs passed** for this final SHA: Linux 18, Windows 13,
-macOS 9, and documentation build 1. The separate guide-publication build and
-deployment also passed (43 successful jobs in total). Every job was inspected;
-none failed, were cancelled, or remained pending. The guide is published from
-`color-dev`. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
+The consolidated contribution includes color values, fluent styles, SGR helpers,
+ostream support, owning styled text, the corrected formatter and context state,
+standard SGR parsing, ANSI stripping, the demo, and user documentation.
 
-`FmtColorChangeLog.md` is tracked again, regenerated at Terry's request with
-git-cliff 2.14.2, `--offline --no-exec`, and the explicit upstream-to-HEAD
-accepted-history range. It includes both integrated features and their breaking
-changes. Do not regenerate it automatically. No fork release number or tag has
-been assigned, and the contribution has not been accepted into fmtlib/fmt.
+The last inspected CI snapshot, November 4, 2026 before website publication,
+shows **33 of 41 push-CI jobs passed, 3 macOS jobs cancelled, and 5 queued**.
+Linux (18), Windows (13), and the ordinary documentation build (1) passed;
+macOS has one passed job. The separate guide build and deployment both passed.
+This is incomplete validation, not an all-green matrix. See
+[BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 
-The tracked library tree is clean. The modernized `demo/FmtColorDemo2.cpp` is
-committed and pushed; the earlier deferred `.tjg.cpp` file is no longer present.
-Coordination documents are maintained and pushed separately on `docs/Coord`.
-Future commits and pushes still require explicit authorization.
+`FmtColorChangeLog.md` remains tracked. History consolidation does not establish
+that it has been regenerated for the new single-commit range. Regenerate it only
+when requested. No fork release number or tag has been assigned; the contribution
+has not been accepted into fmtlib/fmt. Library and coordination commits/pushes
+still need explicit authorization.
 
-## Active parser work
+## Integrated parser and ANSI stripping
 
-Active library checkout: `feat/parser`, based on accepted `color-dev` at
-`2fa0bd92`, committed and pushed at
-`76fd8ba61e501ffa48a0eb1945475a67252f0d0e`. The library tree is clean. The
-parser is not squash-integrated into `color-dev`; acceptance is still pending.
+`<fmt/parse_styled_text.h>` provides character-generic standard SGR parsing into
+owned narrow/wide styled text. Text before the first reset is relative; the first
+reset starts one absolute group protecting all subsequent text from inherited
+styles. Later resets clear styles within that group. Non-SGR and malformed
+escapes stay literal; unknown valid parameters are ignored. Extended push/pop
+parsing remains deferred. See [StyledText.md](StyledText.md#sgr-parser).
 
-`<fmt/parse_styled_text.h>` adds character-generic `parse_styled_text`: standard
-SGR becomes owned narrow/wide spans. Text before the first reset is relative;
-the first reset starts one absolute group containing the remaining text. A reset
-before any text makes the result itself absolute; later resets clear styles
-within that same group. Non-SGR and malformed
-escapes stay literal; unknown valid parameters are ignored. It does not implement
-push/pop extensions. See [StyledText.md](StyledText.md#sgr-parser).
-
-Local parser tests pass in C++11/C++23 and both SGR modes. All **41 push-CI jobs
-passed** for `76fd8ba6`: Linux 18, Windows 13, macOS 9, doc 1. Every job was
-inspected and workflow SHAs matched; no failed, cancelled, or pending jobs remain
-for this commit. Earlier macOS cancellations are superseded, not a complete pass
-for the earlier SHA. See BuildAndTest.md for exact runs.
-The GCC 13/C++23 Release shared job now passes after a GCC-13-only noinline
-branch-move workaround. All 42 focused tests passed locally in eight
-compiler/standard/SGR configurations. The reset-group contract and examples
-are updated in the candidate user guide; publication remains separate.
-
-`<fmt/strip_ansi.h>` now implements character-generic `strip_ansi`, returning an
-owning string with syntactically valid ESC-prefixed ANSI sequences removed,
-including private/unknown commands. It preserves standalone C0, single-byte C1,
-and malformed/incomplete escapes. Parser `plain_text()` still removes decoded
-SGR only. Neither function simulates terminal editing or sanitizes text.
-
-Terry authorized committing and pushing this coordination update on `docs/Coord`.
-The published website remains version 39 and predates this parser work.
+`<fmt/strip_ansi.h>` removes syntactically complete ESC-prefixed sequences from
+strings. Its styled-text overload returns a new tree, preserving every node's
+style and structure while stripping each leaf independently. It does not remove
+sequences spanning leaves. Use `strip_ansi(x.plain_text())` to scan flattened text
+or `strip_ansi(x).plain_text()` to extract text after leaf-local stripping; both
+discard explicit styles in the returned string, with different leaf-boundary
+behavior. Standalone C0, single-byte C1, and malformed/incomplete sequences remain.
+Neither parser nor stripper simulates terminal editing or sanitizes text.
 
 ## Implemented styled text and format contexts
 
@@ -125,9 +106,11 @@ UTF-8 code point within a leaf.
 
 `to_sgr(final, initial)` compares complete terminal states. Compact mode chooses
 the shorter selective or reset-and-rebuild sequence, preferring selective on a
-tie; absolute targets explicitly reset. Noncompact mode resets and fully
-specifies changed targets, omitting a redundant reset from known defaults.
-One-argument `to_sgr` still emits an explicit absolute reset.
+tie. Absolute targets explicitly reset in both modes, even from defaults or
+equal attribute states. Noncompact relative transitions reset and fully specify
+changed targets, omitting a redundant reset from known defaults.
+An absolute styled-text node emits an SGR reset unless there is no output;
+relative transitions wait until text or padding is emitted.
 
 Run `make -C demo run` for the checked-in header-only C++23 compact-SGR demo.
 Debug formatting, deferred blending, extended push/pop parsing, full grapheme/terminal width,
@@ -162,11 +145,10 @@ Do not claim that all original upstream tests pass unchanged.
 ## Public documentation and next work
 
 - [Project website](https://fmtcolor.tjgolubi.chatgpt.site): public version
-  **39**, presenting context inheritance/restoration, the complete modernized
-  demo and display on the overview, revised precision/pi examples, and exact
-  green CI links for `2fa0bd92`.
+  **40**, including parser/stripper examples, current reset behavior, retained
+  demos/downloads, exact `3a215915` source links, and the incomplete CI snapshot.
 - [Generated user guide](https://tjgolubi.github.io/fmt/color/index.html):
-  build and deployment verified for `2fa0bd92` from `color-dev`.
+  build and deployment passed for `3a215915` from `color-dev`.
 - [Issues](https://github.com/tjgolubi/fmt/issues): bugs and follow-up work.
 
 The root library README still has obsolete `FmtColorDev` branch text/badges
@@ -195,6 +177,6 @@ stream example uses C++20 `std::numbers::pi` and displays bold-green `3.14`.
 The API Reference header list includes `fmt/color-ostream.h`, linking to its
 existing guide section; it has no separate new API Reference section.
 
-The owning tree, nested formatter, and context inheritance are integrated on
-`color-dev` at `b8bf6293`; see [StyledText.md](StyledText.md). The independent
+The owning tree, nested formatter, context inheritance, parser, and stripper are
+integrated in the consolidated baseline; see [StyledText.md](StyledText.md). The independent
 library requires C++23 and `std::variant`; the fmt release retains C++11.

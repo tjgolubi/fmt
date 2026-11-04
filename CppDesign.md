@@ -37,10 +37,10 @@ naming and API conventions.
 
 ## Implemented foundation
 
-The accepted `color-dev` tip is `2fa0bd9269a54d1fe155ff7ee95e96dfb9d0b6c3`.
+The consolidated `color-dev` tip is `3a2159158ef436fe967622b22d5acf230bf83f4b`.
 It includes the foundational styling contribution, owning styled-text formatter,
 and format-context inheritance/restoration. The complete fmt release supports
-C++11. The upstream baseline is `f87a75e1`; see
+C++11. The upstream baseline is `4ed35350`; see
 [README.md](README.md#current-baseline). Source and tests establish behavior;
 private numeric representations are not stable contracts.
 
@@ -294,8 +294,8 @@ stream formatting and preserves field width while writing SGR. Detailed lifetime
 and exception-recovery rules are recorded below.
 
 The bridge supports C++11, header-only use, installation, and C++20 module
-export. All 41 push-CI jobs and both guide-publication jobs passed for
-accepted `color-dev` tip `2fa0bd92`. The separate historical compatibility result
+export. Current exact-SHA CI is recorded in BuildAndTest.md; macOS remains
+incomplete in the last inspected snapshot. The separate historical compatibility result
 at `21eba01b` does not validate the current header or bridge.
 
 ## Integrated styling helpers
@@ -378,10 +378,10 @@ C++17; and avoid copying the empty union member in the SGR visitor during MSVC
 constant evaluation. Tests explicitly initialize const stream-only values and
 avoid shadowing and self-assignment warnings.
 
-All 41 push-CI jobs and both separate guide-publication jobs passed for
-accepted `color-dev` tip `2fa0bd92`. A full remote compact-SGR matrix is not
-claimed; focused local checks cover both modes. The public website is version
-37, predating ColorCtx. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation)
+Current validation is scoped to consolidated `color-dev` at `3a215915`;
+the last inspected macOS matrix remains incomplete. Both guide-publication jobs
+passed. A full remote compact-SGR matrix is not claimed. The public website is
+version 40. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation)
 and [Website.md](Website.md#current-publication).
 
 ### Conditional attribute factories
@@ -407,12 +407,11 @@ convenience as a major design goal.
 
 ## Integrated structured text and planned work
 
-Formatter was squash-integrated at `1e8fc387`; ColorCtx was squash-integrated
-at `b8bf6293`. Current tip `2fa0bd92` also contains the demo and guide updates.
-Both integrations are committed, pushed, and covered by the current
-41-job matrix and guide publication. Continue new work from `color-dev`, not
-the integrated feature branches. See StyledText.md for exact invariants and
-BuildAndTest.md for local-warning and coverage limits.
+Owning text, the corrected formatter, context inheritance/restoration, parser,
+and stripper are integrated in the single extension commit `3a215915` above
+upstream `4ed35350`. Continue from `color-dev`; earlier integration commits are
+historical, not dependencies to replay. See StyledText.md for invariants and
+BuildAndTest.md for exact-SHA validation and remaining limits.
 
 The owning tree uses a custom union in all language modes. Do not restore a
 C++17 variant gate or strict style-OR policy. Experimental alternatives still
@@ -508,7 +507,8 @@ the shorter selective or reset-and-rebuild encoding, preferring selective on a
 tie. Missing target colors can require SGR 39/49. Output is combined/unpadded.
 Noncompact transitions reset and fully specify changed states with separate
 sequences/padded colors, but omit a redundant reset from known defaults,
-including for absolute targets. Equal relative states emit nothing. One-argument
+for relative targets. Absolute targets always reset in both modes, even from
+defaults or equal attribute states. Equal relative states emit nothing. One-argument
 `to_sgr` continues to honor explicit absolute resets in either mode.
 
 The formatter now resolves relative inheritance and enforces absolute tree
@@ -518,8 +518,12 @@ inherited state. Reset emission follows the mode-specific rules above. Each
 replacement field inherits its format-context state. Only a new independent
 operation starts from assumed defaults; external state is not queried. Descendants inherit from an absolute node without
 repeating its boundary reset. Logical styles are tracked separately from the
-last emitted state: emit transitions only before text or padding, never merely
-on entry/exit, and restore the saved enclosing context at field end. Narrow/wide fill,
+last emitted state: relative transitions wait until text or padding; an absolute
+node emits its reset/style immediately when visited unless there is no output.
+Clear its absolute flag after emission so relative descendants do not repeat it.
+Returning from a group emits nothing; restore the saved enclosing context at
+field end. Traversal carries the terminal state by reference, separately from
+logical inheritance and precision state. Narrow/wide fill,
 alignment, width, precision, optional `s`, and dynamic width/precision are
 implemented. Padding receives the root style. Precision stops the whole traversal
 when the next code point will not fit; unwind without intermediate transitions.
@@ -542,7 +546,8 @@ inline. Shared-pointer access prevents useful constexpr tree measurement.
 Deferred styled-text blend remains separate from root overlay. Its nested
 semantics and interface need agreement before implementation. Earlier
 `styled_text& blend()` proposals do not authorize code. Debug string presentation,
-parsing, full grapheme/terminal width, serialization, and module export remain
+readable style parsing, extended push/pop parsing, full grapheme/terminal width,
+serialization, and module export remain
 future work. `fmt::styled` keeps its borrowing wrapper type but now inherits
 and restores the format-context style; accepting that wrapper in concatenation
 is deferred until requested.
@@ -551,36 +556,41 @@ For the later independent library, reconsider factory names alongside
 `using enum fmt::emphasis`: imported enum names can hide unqualified factories;
 qualified `fmt::bold()` remains clear.
 
-## Active SGR parser and ANSI stripping
+## Integrated SGR parser and ANSI stripping
 
-`feat/parser` at `76fd8ba6` adds `<fmt/parse_styled_text.h>` and character-generic
-`parse_styled_text`; it is not yet integrated into `color-dev`. It produces owned
+The consolidated `color-dev` includes `<fmt/parse_styled_text.h>` and
+character-generic `parse_styled_text`. It produces owned
 relative spans before the first reset and one absolute group for the suffix,
 applies standard SGR state sequentially, and preserves non-SGR/malformed escapes literally. Unknown
 valid parameters are ignored. No extended push/pop parsing is implemented;
 leading-zero reset codes are ordinary resets. See StyledText.md for exact API,
 color forms, malformed-input policy, and tree shape, and BuildAndTest.md for the
-complete candidate CI state. Parsed `plain_text()` removes decoded SGR only.
+current exact-SHA CI state. Parsed `plain_text()` removes decoded SGR only.
 A reset before any text makes the result itself absolute; repeated resets clear
 styles within the same group, without creating new groups. No reset in the input
 means no absolute flags are invented. Selective clears before any reset cannot
 cancel unknown inherited attributes; relative styles lack that representation.
-The candidate guide and regression expectations follow this reset-group model.
+The guide and regression expectations follow this reset-group model.
 
 The vector-move workaround in `basic_styled_text` is gated to GCC 13 only. It
 isolates the branch move in a noinline helper to avoid the reproduced optimized
 union warning, preserving other compilers' original path and inline leaf moves.
-All 42 focused tests pass locally in eight configurations and the final 41-job
-push matrix passes. No warning is suppressed or ABI/performance result inferred.
+The earlier parser candidate passed 42 focused tests in eight configurations
+and its 41-job push matrix. Those results do not replace validation of the
+rewritten `color-dev`; see BuildAndTest.md. No warning is suppressed or ABI/performance result inferred.
 
 `<fmt/strip_ansi.h>` now implements the separate character-generic stripper.
 It removes syntactically valid ESC-prefixed sequences regardless of semantic
 validity or private/unknown commands. Standalone C0, single-byte C1, and
 malformed/incomplete prefixes remain. Control-string payloads and terminators
 are removed together; incomplete strings remain opaque and are preserved whole.
-This directly produces an owning string, without building a tree. It neither
-simulates terminal editing nor sanitizes text. Both functions are on `feat/parser`
-at `76fd8ba6`, with all 41 push-CI jobs passing; integration remains separate.
+String input directly produces an owning string without building a tree. The
+styled-text overload returns a new tree, preserving styles and structure while
+stripping leaves independently, including leaves that become empty. It never
+recognizes escape sequences spanning leaves. Flatten before stripping to scan
+across those boundaries, or call `plain_text` afterward to discard explicit styles.
+It neither simulates terminal editing nor sanitizes text. Both APIs are integrated
+in `color-dev` at `3a215915`.
 
 ### Independent-library buffer discussion
 
@@ -616,8 +626,9 @@ Keep three responsibilities distinct:
 1. `render()` produces an interchange string with extended SGR push/pop markers.
 2. A terminal formatter emits ordinary ANSI SGR directly from the tree, resolving
    inheritance without calling `render()` or building an extended-SGR intermediate.
-3. The candidate ANSI parser consumes ordinary SGR into flat spans; extended
-   push/pop parsing remains future work.
+3. The implemented ANSI parser consumes ordinary SGR into owned spans and a
+   reset-protecting absolute suffix group; extended push/pop parsing remains
+   future work.
 
 The legacy markers are `ESC[00m` for push and `ESC[000m` for pop, distinct from
 `ESC[0m` reset. Verify behavior against `AnsiColor.hpp` and `AnsiRender.hpp` before

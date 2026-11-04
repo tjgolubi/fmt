@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated November 3, 2026.
+Updated November 4, 2026.
 
 ## Authorization and scope
 
@@ -44,7 +44,10 @@ file's line endings; create new text files with LF. Git uses
 assuming a checkout follows those settings.
 
 For authored styling code, Terry prefers leading underscores on private member
-variables and brace initialization. Retain parentheses when narrowing rules,
+variables and brace initialization. Prefer `int` or other signed types unless
+there is a compelling reason for an unsigned type; existing size interfaces and
+packed bit representations need deliberate treatment rather than mechanical
+edits. Retain parentheses when narrowing rules,
 initializer-list overload selection, or compiler compatibility require them.
 Otherwise follow the {fmt} foundation's source style. The authorized style pass
 changed the structured-text header (now `styled_text.h`) only; do not mechanically restyle unrelated headers.
@@ -53,8 +56,8 @@ changed the structured-text header (now `styled_text.h`) only; do not mechanical
 
 Terry authorized native Linux tools in the cloud; MSYS2 Git and PATH rules
 below apply to his Windows/MSYS2 checkouts. Use compact SGR for the StyledText
-experiments. The library checkout is now `feat/parser`, based on accepted
-`color-dev`; Formatter and ColorCtx have been squash-integrated into that baseline. The linux, windows, macos, and doc push exclusions
+experiments. The library checkout is now the consolidated `color-dev`; owning
+text, formatter/context corrections, parser, and stripper are integrated. The linux, windows, macos, and doc push exclusions
 still match `feat/StyledText2`, not `color-dev` or `feat/ColorCtx`. PR triggers remain enabled. Do not change workflow
 exclusions or cancel runs without instruction. Batch changes
 before authorized pushes to conserve GitHub Actions compute. CI status is
@@ -114,7 +117,10 @@ approval to implement it or include it on the website.
 Each accepted feature integration is one squash commit containing applicable
 source, tests, and documentation changes. Do not substitute a
 fast-forward or ordinary merge. Accepted feature commits and publication fixes are recorded in the current
-baseline; this policy does not authorize rewriting them.
+baseline; this policy does not authorize rewriting them. Terry has already
+consolidated all extensions as one commit above upstream/main and force-updated
+`color-dev` from `color-dev5`. Do not reconstruct the superseded integration
+history or infer permission for another rewrite.
 
 ### CI gate and acceptance
 
@@ -144,7 +150,7 @@ baseline; this policy does not authorize rewriting them.
    push. Verify the intended commit structure, matching local/GitHub full SHAs,
    and every applicable CI job for that SHA. The guide-publication workflow
    targets `color-dev`; build and deployment passed for the accepted baseline
-   `2fa0bd92`. Candidate results do not replace final integration checks for
+   `3a215915`. Candidate results do not replace final integration checks for
    later SHAs.
 8. Publish an authorized website update before recording its confirmed
    publication in coordination documents. Update or close an issue only when
@@ -218,7 +224,7 @@ branch; rebasing or refreshing its header requires authorization and fresh CI.
 
 Keeping production changes in `color.h` reduces rebase conflicts, but changes
 to supporting APIs, tests, documentation, or tooling can still require fixes.
-The current `color-dev` baseline is upstream `f87a75e1`, recorded in README.md.
+The current `color-dev` baseline is upstream `4ed35350`, recorded in README.md.
 The compatibility branch still uses its historical `0fc31633` baseline. Inspect
 current refs before any later rebase; consolidation has already been performed
 on `color-dev` and grants no permission to rewrite other refs.
@@ -251,7 +257,7 @@ after an authorized rewrite.
 ## Coordination worktree
 
 The library root and `coord/` are separate working trees of the same repository.
-The library root currently uses `feat/parser`; `coord/` uses `docs/Coord`. Entering the
+The library root currently uses `color-dev`; `coord/` uses `docs/Coord`. Entering the
 directory changes which checkout Git sees; it does not switch either worktree's
 branch. Use `git -C coord status` and `git -C coord diff` from the library root.
 Do not switch the library checkout to `docs/Coord` while that branch is checked
