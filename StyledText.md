@@ -5,19 +5,20 @@ Updated November 4, 2026.
 ## Scope and state
 
 Owning text, its corrected formatter, context inheritance/restoration, parser,
-and string/tree ANSI stripping are integrated in `color-dev` at `3a2159158ef436fe967622b22d5acf230bf83f4b`.
+and string/tree ANSI stripping are integrated in `color-dev` at `fecee9480923c787d2ce05cd57424ab767642119`.
 This is one consolidated extension commit above upstream `4ed35350`, replacing
-the earlier formatter/parser integration history. The library tracked tree is
-clean; use this baseline rather than the historical feature branches.
+the earlier formatter/parser integration history. The active checkout is the
+separate comparison-fix branch recorded in README.md; its tracked tree is clean.
+Use `color-dev` as the FmtColor baseline rather than historical feature branches.
 
-The last inspected CI snapshot, November 4, 2026 before website publication,
-shows **33 of 41 push-CI jobs passed, 3 macOS jobs cancelled, and 5 queued**.
-Linux (18), Windows (13), and the ordinary documentation build (1) passed;
-macOS has one passed job. The separate guide build and deployment both passed.
-This is incomplete validation, not an all-green matrix. See
+The November 4, 2026 CI snapshot for the amended commit shows **32 of 41
+push-CI jobs passed and all 9 macOS jobs cancelled**. None of the macOS jobs
+received a runner or executed steps; the workflow reports failure and macOS
+validation remains incomplete. Linux (18), Windows (13), and documentation (1)
+passed, as did the separate guide build and deployment. See
 [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 
-The public website is version 40 and documents parsing/stripping, resets,
+The public website is version 41 and documents parsing/stripping, resets,
 context integration, the complete working demo, and the dated CI snapshot.
 Push exclusions still apply to `feat/StyledText2`; PR triggers remain enabled.
 Do not change exclusions, cancel jobs, or start periodic polling without instruction.

@@ -19,13 +19,13 @@ compatibility-run narratives. Source links refer to the current contribution
 and its upstream baseline. Explain behavior and differences from the original
 upstream API without ABI/rebuild reminders; the ABI change is accepted.
 
-Current published pages (version 40):
+Current published pages (version 41):
 
 - [Overview](https://fmtcolor.tjgolubi.chatgpt.site/): implemented features,
   parser/stripper introduction, design, two deliverables, complete working
   `FmtColorDemo2.cpp`, download, and verified styled display.
 - [The contribution](https://fmtcolor.tjgolubi.chatgpt.site/integrated-changes.html):
-  consolidated `color-dev` at `3a215915`, value APIs, nested formatting/context
+  consolidated `color-dev` at `fecee948`, value APIs, nested formatting/context
   restoration, absolute resets unless no output, parser and leaf-local stripping
   examples, guide links, and an explicitly incomplete CI snapshot.
 - [Future work](https://fmtcolor.tjgolubi.chatgpt.site/work-in-progress.html):
@@ -34,11 +34,13 @@ Current published pages (version 40):
   library. The independent sample, output, and downloads remain distinct from
   the working overview demo.
 
-Source links identify `3a2159158ef436fe967622b22d5acf230bf83f4b`, directly above
+Source links identify `fecee9480923c787d2ce05cd57424ab767642119`, directly above
 upstream `4ed3535092a96ac9f56fab80df83416d51bcc78e`. The contribution has not been
-accepted into fmtlib/fmt. At the last prepublication CI check, 33 of 41 push jobs
-passed, 3 macOS jobs were cancelled, and 5 were queued. Both separate guide jobs
-passed. No completed job failed; this does not constitute a complete CI pass.
+accepted into fmtlib/fmt. At the prepublication CI check, 32 of 41 push jobs
+passed and all 9 macOS jobs were cancelled before runner assignment or any steps
+executed. The macOS workflow reports failure; macOS validation remains incomplete.
+Both separate guide jobs passed. The separate `fix/StringViewCompare` branch
+must not be mentioned on the website; Terry explicitly excluded it from this update.
 
 ## User guide
 
@@ -104,17 +106,19 @@ upstream syntax-anchor and Material future-version notices remain nonfatal.
 The guide now documents format-context inheritance and restoration for
 `styled` and `styled_text`, including the whole-sentence underline example.
 
-The [guide publication](https://github.com/tjgolubi/fmt/actions/runs/41881625680)
-passed build and deployment for `3a215915` from `color-dev`; the
-[ordinary doc build](https://github.com/tjgolubi/fmt/actions/runs/41881625868)
+The [guide publication](https://github.com/tjgolubi/fmt/actions/runs/41890746387)
+passed build and deployment for `fecee948` from `color-dev`; the
+[ordinary doc build](https://github.com/tjgolubi/fmt/actions/runs/41890747163)
 also passed. The workflow filter and edit URI target `color-dev`; Node.js 24
 action pins are recorded in BuildAndTest.md. The exact environment policy was
 not inspected. The guide includes the parser, string/tree stripping, and the
 absolute-node reset guarantee unless there is no output.
 
-The root library README still uses `FmtColorDev` in branch text/badges and the
-older website URL. The changelog is tracked again, so its relative changelog
-link is no longer a deleted-file link. README cleanup is a separate follow-up.
+The amended `color-dev` README uses current branch badges and the correct
+website URL and documents owning text, parser, and stripper. The refreshed
+integration document uses C++17 examples and explains header selection,
+inheritance/restoration, and leaf-local stripping. Its changelog was regenerated
+from the consolidated accepted history.
 
 ## Demonstration and future design
 
@@ -156,7 +160,7 @@ StyledText.md for current implementation and boundaries.
 
 ## Published parsing and stripping
 
-Version 40 presents standard SGR parsing as implemented, including the first-reset
+Version 41 presents standard SGR parsing as implemented, including the first-reset
 absolute group protecting its suffix. It explains preserved malformed/non-SGR
 escapes and appearance rather than byte-for-byte round trips. The new stripping
 example distinguishes raw escapes from explicit tree styles. Tree stripping
@@ -217,31 +221,34 @@ results and continue saving/deploying that same state after a helper failure.
 
 ## Current publication
 
-**Public Site version 40** is live at
+**Public Site version 41** is live at
 [fmtcolor.tjgolubi.chatgpt.site](https://fmtcolor.tjgolubi.chatgpt.site).
-Native deployment returned `succeeded` on November 4, 2026 at 18:21 UTC, preserving
-the public audience. It presents parser/stripper examples, corrected reset
-behavior, current source links and CI snapshot, and the retained demonstrations.
+Native deployment returned `succeeded` on November 4, 2026 at 19:44 UTC, preserving
+the public audience. It updates source links and CI results for amended
+`color-dev` at `fecee948`, retaining the parser/stripper examples, reset behavior,
+and demonstrations. No comparison-fix branch reference appears in the site.
 
 | Item                     | Current value                                                                       |
 | ------------------------ | ----------------------------------------------------------------------------------- |
 | Site project ID          | `appgprj_6ad129c3e8408191b873a4e06e601c63`                                          |
-| Source commit            | `8769647f3e274c284bb4fe57e028a48561a3add0`                                          |
-| Saved version ID         | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_73af64232a788191bc08873473591e0e` |
-| Successful deployment ID | `appgdep_6aeb77a16ffc819183b1d7fd8f4a26b8`                                          |
+| Source commit            | `f4c3c5c1cf247907acc7a646b5e3279675ba1231`                                          |
+| Saved version ID         | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_1e4a3f64f4fc81918799a9631f65516d` |
+| Successful deployment ID | `appgdep_6aeb8b0339888191b2a2de84dfe2d3b4`                                          |
 | Audience                 | Public                                                                              |
 
 Source checkout:
 `C:/Users/tjgolubi/.codex/visualizations/2026/11/04/01a1a5a3-edf0-7bb0-9962-4ccf7e94539a/fmtcolor-site`.
 Exact saved archive:
-`C:/Users/tjgolubi/.codex/visualizations/2026/11/04/01a1a5a3-edf0-7bb0-9962-4ccf7e94539a/fmtcolor-update.tar.gz`.
+`C:/Users/tjgolubi/.codex/visualizations/2026/11/04/01a1a5a3-edf0-7bb0-9962-4ccf7e94539a/fmtcolor-amended-ci.tar.gz`.
 The helper synchronized published source before editing, then committed/pushed
-and packaged the final state above. Sites accepted that archive as version 40.
+and packaged the final state above. Sites accepted that archive as version 41.
 
 Validation passed 45 local links/anchors, unique IDs, embedded demo/download/source
 equality, and independent character/style comparison of all 214 demo characters.
-The current demo was built and its ANSI output regenerated. The parser/stripper
-section was inspected in the local browser; whitespace checks passed. Native
+Demo equality was checked against the exact amended commit without switching
+the active library branch. The amendment changed only three documentation files,
+so existing demo output remained applicable. The updated CI section was inspected
+in the local browser; whitespace and excluded-branch checks passed. Native
 deployment verified publication, and the live URL was opened in the existing
 browser tab. The owned port 8874 preview was stopped. No new full library,
 tablet, performance, or ABI test is claimed by website QA.

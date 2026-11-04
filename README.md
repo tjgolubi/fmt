@@ -41,8 +41,9 @@ records remain available in Git history.
 
 ## Current baseline
 
-The development baseline is `color-dev` at `3a2159158ef436fe967622b22d5acf230bf83f4b`,
-committed and force-pushed by Terry after consolidating `color-dev5`. It is one
+The development baseline is `color-dev` at `fecee9480923c787d2ce05cd57424ab767642119`,
+amended and force-pushed by Terry to include the refreshed changelog,
+integration instructions, and root README after consolidating `color-dev5`. It is one
 extension commit directly above upstream/main at `4ed3535092a96ac9f56fab80df83416d51bcc78e`.
 The library's tracked tree is clean. Local and GitHub branch SHAs matched during
 the website update, and all five inspected workflow runs target that exact SHA.
@@ -53,18 +54,35 @@ The consolidated contribution includes color values, fluent styles, SGR helpers,
 ostream support, owning styled text, the corrected formatter and context state,
 standard SGR parsing, ANSI stripping, the demo, and user documentation.
 
-The last inspected CI snapshot, November 4, 2026 before website publication,
-shows **33 of 41 push-CI jobs passed, 3 macOS jobs cancelled, and 5 queued**.
-Linux (18), Windows (13), and the ordinary documentation build (1) passed;
-macOS has one passed job. The separate guide build and deployment both passed.
-This is incomplete validation, not an all-green matrix. See
+The November 4, 2026 CI snapshot for the amended commit shows **32 of 41
+push-CI jobs passed and all 9 macOS jobs cancelled**. None of the macOS jobs
+received a runner or executed steps; the workflow reports failure and macOS
+validation remains incomplete. Linux (18), Windows (13), and documentation (1)
+passed, as did the separate guide build and deployment. See
 [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 
-`FmtColorChangeLog.md` remains tracked. History consolidation does not establish
-that it has been regenerated for the new single-commit range. Regenerate it only
-when requested. No fork release number or tag has been assigned; the contribution
+`FmtColorChangeLog.md` was regenerated with git-cliff 2.14.2, `--offline --no-exec`, and the explicit upstream-to-consolidated-commit range. It now reflects
+the single accepted extension commit and breaking-change footer. Do not regenerate
+it automatically. No fork release number or tag has been assigned; the contribution
 has not been accepted into fmtlib/fmt. Library and coordination commits/pushes
 still need explicit authorization.
+
+## Separate upstream comparison fix
+
+The active library checkout is `fix/StringViewCompare`, branched from `main` at
+`4ed35350`, committed and pushed at `f9b5ccae427403158e3695a8a94b3d1f1c2180ff`.
+It adds only `if (n == 0) return 0;` in `detail::compare` and braces around the
+wide-character test's conditional to eliminate a dangling-else warning.
+It is separate from the FmtColor contribution and must not appear on the website.
+The earlier pointer-equality shortcut broke C++20 constant evaluation and was
+removed. Linux, Windows, and doc CI passed for the corrected SHA; macOS has one
+passed job and eight queued in the latest inspected snapshot. See BuildAndTest.md.
+
+No upstream PR has been created. The connector rejected creation in `fmtlib/fmt`
+with HTTP 403, the GitHub CLI was unavailable, and Firefox automation stopped
+because browser URL-policy enforcement was unsupported. A subsequent API check
+found no PR for this branch. Terry has a prepared compare link; submission remains
+outstanding. Do not mistake the earlier attempt for a published PR.
 
 ## Integrated parser and ANSI stripping
 
@@ -145,15 +163,17 @@ Do not claim that all original upstream tests pass unchanged.
 ## Public documentation and next work
 
 - [Project website](https://fmtcolor.tjgolubi.chatgpt.site): public version
-  **40**, including parser/stripper examples, current reset behavior, retained
-  demos/downloads, exact `3a215915` source links, and the incomplete CI snapshot.
+  **41**, including parser/stripper examples, current reset behavior, retained
+  demos/downloads, exact `fecee948` source links, and the incomplete CI snapshot.
 - [Generated user guide](https://tjgolubi.github.io/fmt/color/index.html):
-  build and deployment passed for `3a215915` from `color-dev`.
+  build and deployment passed for `fecee948` from `color-dev`.
 - [Issues](https://github.com/tjgolubi/fmt/issues): bugs and follow-up work.
 
-The root library README still has obsolete `FmtColorDev` branch text/badges
-and the previous website URL. Its changelog link now points to a tracked file;
-do not describe that file as deleted. README cleanup remains separate.
+The `color-dev` root README now uses current branch badges and the correct
+website URL and lists owning text, context restoration, parser, and stripper.
+`FmtColorIntegration.md` includes header selection, current reset behavior,
+C++17 application examples, and Make/CMake/header-only integration. The library
+minimum remains C++11; the complete working demo remains C++23.
 
 The complete C++11 API includes named RGB constants, terminal/cube/gray colors,
 public five-alternative `color_t` access and visitation, comparisons and hashing,

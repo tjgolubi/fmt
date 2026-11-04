@@ -9,26 +9,29 @@ stated otherwise. Use `color-dev` or an authorized feature branch, not the
 
 ## Current color-dev validation
 
-Verified against consolidated `color-dev` at `3a2159158ef436fe967622b22d5acf230bf83f4b`,
-directly above upstream `4ed3535092a96ac9f56fab80df83416d51bcc78e`. Local and GitHub branch SHAs matched,
-and the five workflow runs below target that exact commit. The last inspected
-snapshot, November 4, 2026 before website publication at 18:21 UTC, is incomplete:
-**33 of 41 push-CI jobs passed; 3 macOS jobs were cancelled and 5 queued**.
-Both separate guide-publication jobs passed. No completed job failed. Do not
-carry the older branch's complete green matrix forward to this rewritten SHA.
+Verified against amended consolidated `color-dev` at
+`fecee9480923c787d2ce05cd57424ab767642119`, directly above upstream
+`4ed3535092a96ac9f56fab80df83416d51bcc78e`. GitHub branch and all five workflow
+SHAs match. The November 4, 2026 prepublication snapshot is incomplete:
+**32 of 41 push-CI jobs passed; all 9 macOS jobs were cancelled**. Both separate
+guide-publication jobs passed. The macOS workflow reports failure; none of its
+jobs received a runner or executed any build/test steps. This does not establish
+a macOS pass or a code/test failure on macOS.
 
-| Workflow          | Last inspected result             | Evidence                                                        |
-| ----------------- | --------------------------------- | --------------------------------------------------------------- |
-| Linux             | 18 passed                         | [Run](https://github.com/tjgolubi/fmt/actions/runs/41881625630) |
-| Windows           | 13 passed                         | [Run](https://github.com/tjgolubi/fmt/actions/runs/41881625875) |
-| macOS             | 1 passed, 3 cancelled, 5 queued   | [Run](https://github.com/tjgolubi/fmt/actions/runs/41881625589) |
-| Doc build         | 1 passed                          | [Run](https://github.com/tjgolubi/fmt/actions/runs/41881625868) |
-| Guide publication | build and deployment passed       | [Run](https://github.com/tjgolubi/fmt/actions/runs/41881625680) |
+| Workflow          | Last inspected result                | Evidence                                                        |
+| ----------------- | ------------------------------------ | --------------------------------------------------------------- |
+| Linux             | 18 passed                            | [Run](https://github.com/tjgolubi/fmt/actions/runs/41890746302) |
+| Windows           | 13 passed                            | [Run](https://github.com/tjgolubi/fmt/actions/runs/41890746237) |
+| macOS             | 9 cancelled before runner assignment | [Run](https://github.com/tjgolubi/fmt/actions/runs/41890746249) |
+| Doc build         | 1 passed                             | [Run](https://github.com/tjgolubi/fmt/actions/runs/41890747163) |
+| Guide publication | build and deployment passed          | [Run](https://github.com/tjgolubi/fmt/actions/runs/41890746387) |
 
-macOS passed `c++23 Release`. Cancelled jobs were `c++11 Debug`, `c++17 Release`,
-and `c++20 Debug`. Queued jobs were `c++23 Debug`, `c++11 Release`, `c++20 Release`,
-`c++23 Release Shared`, and `c++17 Debug`. These are a dated snapshot, not a claim
-about subsequent progress. No runs were cancelled or rerun by the assistant.
+Similar pre-step macOS cancellations occurred on unmodified `main`, while the
+earlier parser matrix passed. Runner allocation is the observed bottleneck;
+the precise cancellation cause is unconfirmed. GitHub reported an Actions
+[incident](https://www.githubstatus.com/incidents/h02n9572mx9y), resolved at
+18:16 UTC, but its relationship to the continuing delays is not established.
+No runs were cancelled or rerun by the assistant. Check on demand only.
 
 The remote matrix uses default/noncompact SGR. It includes old GCC 4.9 and
 Clang 3.6 C++11, modern compilers, shared builds, and sanitizer jobs. Push CI
@@ -38,7 +41,7 @@ remains excluded; issue #2 stays open. Check CI on demand, not periodically.
 
 ### Historical ColorCtx local validation
 
-These earlier feature checks predate `3a215915`; they were not rerun during the
+These earlier feature checks predate `fecee948`; they were not rerun during the
 website/coordination update. MSYS GCC 16.2 verified strict Debug C++11/C++23 color, styled-text-format, and
 color-ostream suites in default SGR mode. C++23 core, format, and compile suites
 also passed. The wide suite passed with an existing dangling-else warning and
@@ -386,12 +389,12 @@ files verified to declare `runs.using: node24`. This replaces the Node.js 20
 pins that caused runner deprecation warnings. Workflow YAML parsing, the
 renamed `color-dev` filter, both pins, and whitespace checks passed locally.
 The guide rebuilt successfully during that work. Current `color-dev`
-publication is verified at `3a215915` as recorded above.
+publication is verified at `fecee948` as recorded above.
 
-For `3a215915`, the [guide publication](https://github.com/tjgolubi/fmt/actions/runs/41881625680)
+For `fecee948`, the [guide publication](https://github.com/tjgolubi/fmt/actions/runs/41890746387)
 passed both build and deployment from `color-dev`, establishing that the
 environment permitted this branch. The precise environment policy was not
-inspected. The [ordinary doc workflow](https://github.com/tjgolubi/fmt/actions/runs/41881625868)
+inspected. The [ordinary doc workflow](https://github.com/tjgolubi/fmt/actions/runs/41890747163)
 also passed; it builds without deploying. See the current CI snapshot above,
 [Website.md](Website.md#user-guide), and `support/fmtcolor-pages.md`.
 
@@ -464,14 +467,15 @@ The same installed compiled library supports either header-selected mode.
 ### Integrated styling helpers
 
 The consolidated styling/tree/context/parser/stripper code is on `color-dev`
-at `3a215915`. Use the [current exact-SHA snapshot](#current-color-dev-validation),
+at `fecee948`. Use the [current exact-SHA snapshot](#current-color-dev-validation),
 including incomplete macOS and passing guide publication. Earlier feature
 matrices do not establish a complete pass for the rewritten baseline.
 
 Numeric bounds and cube/gray construction, variant access/visitation, blending,
 fluent styles, ostream output, context inheritance, absolute spans, and SGR
 transitions are covered by the integrated suites. C++11 remains required.
-`FmtColorChangeLog.md` is tracked; regeneration for the new history is not verified.
+`FmtColorChangeLog.md` was regenerated for the consolidated history before the
+documentation amendment captured in `fecee948`.
 The prior compiler-checked foreground blend example still uses `fg`, not `bg`:
 terminal red and `gray_color{12}` produce RGB `{166, 64, 64}`, unspecified
 background, bold and underline. Its style-copy factory form is constexpr only
@@ -548,18 +552,54 @@ ABI verification, or performance benchmark is established by these checks.
 After every amendment, header refresh, or rebase, verify the exact new commit
 and every applicable job; never cite a baseline-only run for uncommitted work.
 
+### Current integration-document examples
+
+The refreshed `FmtColorIntegration.md` examples target C++17. A fresh local
+MSYS GCC 16.2 static library was built and installed under
+`build/docs-integration-check/prefix` with tests/docs OFF, installation ON,
+Release, and shared libraries OFF. Extracted Make/CMake examples built and ran
+against that installation in both SGR modes; the tree/parser/stripper example
+also built and ran header-only in both modes. An independent ANSI interpreter
+confirmed all displayed text/styles and the final terminal state. This was
+example validation, not a full local regression run. Root upstream README
+content was verified unchanged; local links and whitespace checks passed.
+
+### Separate string-view comparison fix
+
+`fix/StringViewCompare` at `f9b5ccae427403158e3695a8a94b3d1f1c2180ff` is based on
+`main` at `4ed35350`; it is not part of `color-dev`. `detail::compare` now returns
+zero immediately for `n == 0`, avoiding a zero-length `memcmp` call with null
+pointers. Explicit braces in `test/xchar-test.cc` eliminate the dangling-else
+warning around an existing GoogleTest macro.
+
+The rejected `s1 == s2` shortcut broke C++20 constant evaluation of wide named
+arguments in GCC 11 and Clang 14. The initial C++11/C++17 header-only syntax checks
+did not instantiate that path. After removing it, existing `xchar-test.cc` and
+`core-test.cc` passed GCC 16.2 C++20 syntax checks with `-D_GNU_SOURCE`,
+`-pedantic-errors -Wall -Wextra -Werror`, `-Iinclude -Itest`, and GoogleTest as a
+system include. The C++11 header check also passed. After adding the braces,
+the wide test compiled with no warning exemption. No full local suite was run.
+
+Latest inspected CI for that corrected SHA: [Linux](https://github.com/tjgolubi/fmt/actions/runs/41896720428)
+19 passed (including the upstream reflection job),
+[Windows](https://github.com/tjgolubi/fmt/actions/runs/41896720473) 13 passed,
+[doc](https://github.com/tjgolubi/fmt/actions/runs/41896720612) 1 passed, and
+[macOS](https://github.com/tjgolubi/fmt/actions/runs/41896720492) 1 passed with
+8 queued. macOS remains incomplete. These counts must not be used for the
+separate `color-dev` baseline. No upstream PR exists as of the last API check.
+
 ### Website validation
 
-Version **40** is the confirmed public Site publication for `3a215915` source
-links and the dated incomplete CI snapshot. It adds parser/stripper examples,
-updates reset behavior and future work, and retains the working and independent
-demos/downloads. QA passed 45 local links/anchors, unique IDs, demo
-source/download/library equality, and independent comparison of 214 rendered
-characters and their styles. The current compact demo was rebuilt and its ANSI
-output regenerated; the parser/stripper section was inspected in the browser.
-Whitespace checks passed and native deployment returned `succeeded`. The owned
-port 8874 preview was stopped. See Website.md for source/version/deployment IDs.
-No fresh full library, tablet, performance, or ABI test is claimed by website QA.
+Version **41** is the confirmed public Site publication for `fecee948` source
+links and the exact-SHA CI snapshot: Linux/Windows/doc passed, all nine macOS jobs
+cancelled before runner assignment, guide build/deployment passed. QA passed
+45 local links/anchors, unique IDs, demo source/download/exact-commit equality,
+and independent comparison of 214 rendered characters and their styles.
+The documentation-only amendment did not change the demo. The updated CI section
+was inspected in the browser; whitespace and excluded-branch checks passed.
+Native deployment returned `succeeded`; the live page was opened and the owned
+port 8874 preview stopped. See Website.md for publication IDs. No fresh full
+library, tablet, performance, or ABI test is claimed by website QA.
 
 For new test results, record branch/full SHA, toolchain, mode, CMake options,
 commands, results, and skips. Distinguish observed checks from Terry reports.

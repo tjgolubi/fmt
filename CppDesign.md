@@ -37,7 +37,7 @@ naming and API conventions.
 
 ## Implemented foundation
 
-The consolidated `color-dev` tip is `3a2159158ef436fe967622b22d5acf230bf83f4b`.
+The amended consolidated `color-dev` tip is `fecee9480923c787d2ce05cd57424ab767642119`.
 It includes the foundational styling contribution, owning styled-text formatter,
 and format-context inheritance/restoration. The complete fmt release supports
 C++11. The upstream baseline is `4ed35350`; see
@@ -378,10 +378,10 @@ C++17; and avoid copying the empty union member in the SGR visitor during MSVC
 constant evaluation. Tests explicitly initialize const stream-only values and
 avoid shadowing and self-assignment warnings.
 
-Current validation is scoped to consolidated `color-dev` at `3a215915`;
+Current validation is scoped to consolidated `color-dev` at `fecee948`;
 the last inspected macOS matrix remains incomplete. Both guide-publication jobs
 passed. A full remote compact-SGR matrix is not claimed. The public website is
-version 40. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation)
+version 41. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation)
 and [Website.md](Website.md#current-publication).
 
 ### Conditional attribute factories
@@ -408,7 +408,7 @@ convenience as a major design goal.
 ## Integrated structured text and planned work
 
 Owning text, the corrected formatter, context inheritance/restoration, parser,
-and stripper are integrated in the single extension commit `3a215915` above
+and stripper are integrated in the single extension commit `fecee948` above
 upstream `4ed35350`. Continue from `color-dev`; earlier integration commits are
 historical, not dependencies to replay. See StyledText.md for invariants and
 BuildAndTest.md for exact-SHA validation and remaining limits.
@@ -590,7 +590,7 @@ stripping leaves independently, including leaves that become empty. It never
 recognizes escape sequences spanning leaves. Flatten before stripping to scan
 across those boundaries, or call `plain_text` afterward to discard explicit styles.
 It neither simulates terminal editing nor sanitizes text. Both APIs are integrated
-in `color-dev` at `3a215915`.
+in `color-dev` at `fecee948`.
 
 ### Independent-library buffer discussion
 

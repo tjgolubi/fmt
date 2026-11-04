@@ -56,8 +56,10 @@ changed the structured-text header (now `styled_text.h`) only; do not mechanical
 
 Terry authorized native Linux tools in the cloud; MSYS2 Git and PATH rules
 below apply to his Windows/MSYS2 checkouts. Use compact SGR for the StyledText
-experiments. The library checkout is now the consolidated `color-dev`; owning
-text, formatter/context corrections, parser, and stripper are integrated. The linux, windows, macos, and doc push exclusions
+experiments. The FmtColor baseline is the consolidated `color-dev`; owning
+text, formatter/context corrections, parser, and stripper are integrated. The
+active library checkout is the separate `fix/StringViewCompare` branch from
+`main`; it is not a replacement baseline for FmtColor work. On `color-dev`, the linux, windows, macos, and doc push exclusions
 still match `feat/StyledText2`, not `color-dev` or `feat/ColorCtx`. PR triggers remain enabled. Do not change workflow
 exclusions or cancel runs without instruction. Batch changes
 before authorized pushes to conserve GitHub Actions compute. CI status is
@@ -150,7 +152,7 @@ history or infer permission for another rewrite.
    push. Verify the intended commit structure, matching local/GitHub full SHAs,
    and every applicable CI job for that SHA. The guide-publication workflow
    targets `color-dev`; build and deployment passed for the accepted baseline
-   `3a215915`. Candidate results do not replace final integration checks for
+   `fecee948`. Candidate results do not replace final integration checks for
    later SHAs.
 8. Publish an authorized website update before recording its confirmed
    publication in coordination documents. Update or close an issue only when
@@ -178,10 +180,12 @@ Use Conventional Commits compatible with `cliff.toml`, for example
 Mark deliberate breaks with `!` and a `BREAKING CHANGE:` footer. Describe actual
 effects without promising stable numeric or binary representations.
 
-`FmtColorChangeLog.md` is tracked on `color-dev`. Terry explicitly requested
-its regeneration for the Formatter and ColorCtx integrations and committed it
-with the final squash. Do not regenerate it or edit upstream `ChangeLog.md`
-automatically. The old removal at `2c456778` is historical, not current policy.
+`FmtColorChangeLog.md` is tracked on `color-dev`. Terry requested regeneration
+for the consolidated history and amended the refreshed changelog, integration
+instructions, and README into `fecee948`. Regeneration used git-cliff 2.14.2 with
+the explicit `4ed35350..3a215915` range before amendment; the template renders
+the subject and breaking-change footer. Do not regenerate it or edit upstream
+`ChangeLog.md` automatically.
 
 If changelog generation is explicitly requested, use git-cliff **2.14.2** with
 `--offline --no-exec` and an explicit accepted-history range after the upstream
@@ -257,7 +261,7 @@ after an authorized rewrite.
 ## Coordination worktree
 
 The library root and `coord/` are separate working trees of the same repository.
-The library root currently uses `color-dev`; `coord/` uses `docs/Coord`. Entering the
+The library root currently uses `fix/StringViewCompare`; `coord/` uses `docs/Coord`. Entering the
 directory changes which checkout Git sees; it does not switch either worktree's
 branch. Use `git -C coord status` and `git -C coord diff` from the library root.
 Do not switch the library checkout to `docs/Coord` while that branch is checked
