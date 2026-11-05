@@ -19,7 +19,7 @@ compatibility-run narratives. Source links refer to the current contribution
 and its upstream baseline. Explain behavior and differences from the original
 upstream API without ABI/rebuild reminders; the ABI change is accepted.
 
-Current published pages (version 44):
+Current published pages (version 45):
 
 - [Overview](https://fmtcolor.tjgolubi.chatgpt.site/): implemented features,
   parser/stripper introduction, design, two deliverables, complete working
@@ -37,9 +37,10 @@ Current published pages (version 44):
 
 Source links identify `35de08cc2de5b25100d02e51bdc41d8b595ccb01`, directly above
 upstream `4ed3535092a96ac9f56fab80df83416d51bcc78e`. The contribution has not been
-accepted into fmtlib/fmt. `pr/color` identifies the same proposed contribution;
-the large PR has not yet been submitted. Link the branch as “Proposed contribution
-/ pr/color,” then add a separate upstream PR link after submission. All 41
+accepted into fmtlib/fmt. `pr/color` identifies the same contribution.
+[Upstream PR #5015](https://github.com/fmtlib/fmt/pull/5015) is open as a draft,
+unmerged, at head `35de08cc`. Both the overview and contribution pages link to
+it for API and scope discussion, alongside “Source / pr/color” branch links. All 41
 push-CI jobs passed on each branch on attempt 1. The separate `color-dev` guide
 build and deployment also passed, for 43 successful jobs on that branch. No failed, cancelled, or pending jobs remain in
 the latest workflow attempts. The separate `fix/StringViewCompare` branch
@@ -235,37 +236,40 @@ results and continue saving/deploying that same state after a helper failure.
 
 ## Current publication
 
-**Public Site version 44** is live at
+**Public Site version 45** is live at
 [fmtcolor.tjgolubi.chatgpt.site](https://fmtcolor.tjgolubi.chatgpt.site).
-Native deployment returned `succeeded` on November 4, 2026 at 19:57 CST (November 5, 01:57 UTC), preserving
+Native deployment returned `succeeded` on November 4, 2026 at 20:15 CST (November 5, 02:15 UTC), preserving
 the public audience. It presents `35de08cc` on both `color-dev` and `pr/color`,
-with a two-branch passing CI table and links to the proposed contribution branch.
-It explicitly says the large PR has not been submitted. The planned backslash
-utilities, parser/stripper examples, reset behavior, and demos are retained. No comparison-fix branch reference appears in the site.
+with a two-branch passing CI table, source-branch links, and a separate link to
+upstream draft PR #5015. The obsolete not-submitted wording is removed.
+Fork push results do not establish upstream PR-only check results. The planned
+backslash utilities, parser/stripper examples, reset behavior, and demos are
+retained. No comparison-fix branch reference appears in the site.
 
 | Item                     | Current value                                                                       |
 | ------------------------ | ----------------------------------------------------------------------------------- |
 | Site project ID          | `appgprj_6ad129c3e8408191b873a4e06e601c63`                                          |
-| Source commit            | `357fe91684cecba2a315c14fe0205719e4791bce`                                          |
-| Saved version ID         | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_5df68c4d4a4081919944717454ae9939` |
-| Successful deployment ID | `appgdep_6aebe2a05f808191b2cdf68377e9f06e`                                          |
+| Source commit            | `be14409b60d9fc95dcf801e995f7a7ef0d0cd222`                                          |
+| Saved version ID         | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_0adf625a97688191ac167acb91327d44` |
+| Successful deployment ID | `appgdep_6aebe6ab1a308191be68927664e24962`                                          |
 | Audience                 | Public                                                                              |
 
 Source checkout:
 `C:/Users/tjgolubi/.codex/visualizations/2026/11/04/01a1a5a3-edf0-7bb0-9962-4ccf7e94539a/fmtcolor-site`.
 Exact saved archive:
-`C:/Users/tjgolubi/.codex/visualizations/2026/11/04/01a1a5a3-edf0-7bb0-9962-4ccf7e94539a/fmtcolor-pr-color.tar.gz`.
+`C:/Users/tjgolubi/.codex/visualizations/2026/11/04/01a1a5a3-edf0-7bb0-9962-4ccf7e94539a/fmtcolor-upstream-pr.tar.gz`.
 The helper synchronized published source before editing, then committed/pushed
-and packaged the final state above. Sites accepted that archive as version 44.
+and packaged the final state above. Sites accepted that archive as version 45.
 
 Validation passed 46 local links/anchors, unique IDs, embedded demo/download/source
 equality, and independent character/style comparison of all 214 demo characters.
 Demo equality was checked against the exact amended commit without switching
 the active library branch. The demo remained unchanged. The two-branch CI table
-and proposed-branch wording were inspected in the local browser. Existing future
-work and escape examples were retained. Whitespace and excluded-branch checks
-passed. Native deployment verified publication, and the live URL was opened in the existing
-browser tab. The owned port 8874 preview was stopped. No new full library,
+was retained. The draft PR link and wording were inspected in the local browser
+and verified on the live contribution page. Existing future work and escape
+examples were retained. Whitespace and excluded-branch checks
+passed. Native deployment verified publication, and the live page confirmed the
+draft PR wording. The owned port 8874 preview was stopped. No new full library,
 tablet, performance, or ABI test is claimed by website QA.
 
 Refresh Site metadata and source credentials before further updates; do not

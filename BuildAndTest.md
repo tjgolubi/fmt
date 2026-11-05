@@ -588,18 +588,20 @@ approval at the last workflow inspection, distinct from these passing fork jobs.
 
 ### Website validation
 
-Version **44** is the confirmed public Site publication for `35de08cc` source
-links, passing CI on both `color-dev` and `pr/color`, and links labeled
-“Proposed contribution / pr/color.” The large PR has not yet been submitted;
-the site states this and has no upstream PR link for that contribution. The
-planned backslash utilities and comparison-fix exclusion remain intact.
+Version **45** is the confirmed public Site publication for `35de08cc` source
+links, passing CI on both `color-dev` and `pr/color`, and “Source / pr/color”
+links. The overview and contribution pages now link to
+[upstream draft PR #5015](https://github.com/fmtlib/fmt/pull/5015), open and
+unmerged at head `35de08cc`. The obsolete not-submitted wording is removed.
+Fork push CI does not establish upstream PR-only check results. The planned
+backslash utilities and comparison-fix exclusion remain intact.
 
 QA passed 46 local links/anchors, unique IDs, demo source/download/exact-commit
 equality, and independent comparison of 214 rendered characters and their styles.
-The two-branch CI table was inspected in the local browser; whitespace and
-excluded-branch checks passed. Native deployment returned `succeeded`, the live
-table was verified, and the owned port 8874 preview stopped. See Website.md for
-publication IDs. No fresh full local library, tablet, performance, or ABI test
+The draft PR link and wording were inspected in the local browser; whitespace
+and excluded-branch checks passed. Native deployment returned `succeeded`, the
+live contribution page confirmed the draft PR wording, and the owned port 8874
+preview stopped. See Website.md for publication IDs. No fresh full local library, tablet, performance, or ABI test
 is claimed by website QA.
 
 For new test results, record branch/full SHA, toolchain, mode, CMake options,

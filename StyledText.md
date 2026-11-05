@@ -19,8 +19,9 @@ also passed, for **43 successful jobs on that branch**. Every run passed on
 attempt 1, with no failed, cancelled, or pending jobs. Local/GitHub SHAs match. See
 [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 
-The public website is version 44 and documents parsing/stripping, resets,
+The public website is version 45 and documents parsing/stripping, resets,
 context integration, the complete working demo, and the dated CI snapshot.
+It links to upstream draft PR #5015 alongside the `pr/color` source branch.
 The obsolete `feat/StyledText2` push exclusions were removed from Linux,
 Windows, macOS, and doc workflows. All four use `on: [push, pull_request]`.
 Do not cancel jobs or start periodic polling without instruction.

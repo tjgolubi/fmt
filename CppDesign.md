@@ -382,7 +382,8 @@ Current validation is scoped to consolidated `color-dev` at `35de08cc`;
 all 41 push-CI jobs and both guide-publication jobs passed, including all nine
 macOS jobs on attempt 1. The same 41 push-CI jobs passed on `pr/color` at that
 commit. A full remote compact-SGR matrix is not claimed. The public website is
-version 44. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation)
+version 45, with a link to upstream draft PR #5015. See
+[BuildAndTest.md](BuildAndTest.md#current-color-dev-validation)
 and [Website.md](Website.md#current-publication).
 
 ### Conditional attribute factories

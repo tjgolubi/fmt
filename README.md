@@ -69,15 +69,16 @@ it automatically. No fork release number or tag has been assigned; the contribut
 has not been accepted into fmtlib/fmt. Library and coordination commits/pushes
 still need explicit authorization.
 
-## Proposed upstream contribution
+## Upstream contribution
 
 `pr/color` is pushed at the same `35de08cc` commit as `color-dev`; it is the active
 library checkout. `color-dev` remains the FmtColor development baseline. Terry
-has not submitted the large upstream PR. The website links to the branch as
-“Proposed contribution / pr/color” and explicitly says no PR has been submitted.
-Add a separate upstream PR link only after submission. A draft was recommended
-for initial API/scope feedback; fork-specific README, publication, tooling, and
-remaining workflow changes still need review for the upstream submission.
+submitted [upstream PR #5015](https://github.com/fmtlib/fmt/pull/5015). Verified
+November 4, 2026: it is open as a draft, unmerged, with head `35de08cc` from
+`pr/color`. Website version 45 links to the PR for API and scope discussion,
+alongside the “Source / pr/color” branch link. Passing fork push CI does not
+establish upstream PR-only check results. Fork-specific README, publication,
+tooling, and remaining workflow changes still need upstream review.
 
 ## Separate upstream comparison fix
 
@@ -125,7 +126,7 @@ as `\\` and double quotes as `\"`. Unescaping would reverse recognized sequences
 including `\n`, `\\`, and `\"`. Unknown or malformed escapes such as `\q`, `\x`,
 `\xG1`, and a trailing backslash remain unchanged. The complete numeric-escape
 grammar and API signatures are not yet settled. These functions are future work,
-not implemented features; website version 44 labels them accordingly.
+not implemented features; website version 45 labels them accordingly.
 
 CSV and TSV conversion belong elsewhere, outside this library's planned scope.
 See [CppDesign.md](CppDesign.md#backslash-escaping-and-unescaping).
@@ -191,9 +192,10 @@ Do not claim that all original upstream tests pass unchanged.
 ## Public documentation and next work
 
 - [Project website](https://fmtcolor.tjgolubi.chatgpt.site): public version
-  **44**, including parser/stripper examples, current reset behavior, retained
-  demos/downloads, exact `35de08cc` source links, proposed `pr/color` branch links,
-  passing CI for both branches, and the planned backslash escape/unescape pair.
+  **45**, including parser/stripper examples, current reset behavior, retained
+  demos/downloads, exact `35de08cc` source links, `pr/color` source and draft
+  PR #5015 links, passing CI for both branches, and the planned backslash
+  escape/unescape pair.
 - [Generated user guide](https://tjgolubi.github.io/fmt/color/index.html):
   build and deployment passed for `35de08cc` from `color-dev`.
 - [Issues](https://github.com/tjgolubi/fmt/issues): bugs and follow-up work.
