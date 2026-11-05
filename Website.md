@@ -19,27 +19,30 @@ compatibility-run narratives. Source links refer to the current contribution
 and its upstream baseline. Explain behavior and differences from the original
 upstream API without ABI/rebuild reminders; the ABI change is accepted.
 
-Current published pages (version 41):
+Current published pages (version 44):
 
 - [Overview](https://fmtcolor.tjgolubi.chatgpt.site/): implemented features,
   parser/stripper introduction, design, two deliverables, complete working
   `FmtColorDemo2.cpp`, download, and verified styled display.
 - [The contribution](https://fmtcolor.tjgolubi.chatgpt.site/integrated-changes.html):
-  consolidated `color-dev` at `fecee948`, value APIs, nested formatting/context
+  consolidated `color-dev` at `35de08cc`, value APIs, nested formatting/context
   restoration, absolute resets unless no output, parser and leaf-local stripping
-  examples, guide links, and an explicitly incomplete CI snapshot.
+  examples, guide links, and the complete passing CI results.
 - [Future work](https://fmtcolor.tjgolubi.chatgpt.site/work-in-progress.html):
   deferred blending, debug presentation, readable style parsing, extended push/pop
   parsing, terminal-width handling, serialization, and the independent C++23
   library. The independent sample, output, and downloads remain distinct from
-  the working overview demo.
+  the working overview demo. The planned `backslash_escape`/`backslash_unescape`
+  pair has its own linked section and is explicitly unimplemented.
 
-Source links identify `fecee9480923c787d2ce05cd57424ab767642119`, directly above
+Source links identify `35de08cc2de5b25100d02e51bdc41d8b595ccb01`, directly above
 upstream `4ed3535092a96ac9f56fab80df83416d51bcc78e`. The contribution has not been
-accepted into fmtlib/fmt. At the prepublication CI check, 32 of 41 push jobs
-passed and all 9 macOS jobs were cancelled before runner assignment or any steps
-executed. The macOS workflow reports failure; macOS validation remains incomplete.
-Both separate guide jobs passed. The separate `fix/StringViewCompare` branch
+accepted into fmtlib/fmt. `pr/color` identifies the same proposed contribution;
+the large PR has not yet been submitted. Link the branch as “Proposed contribution
+/ pr/color,” then add a separate upstream PR link after submission. All 41
+push-CI jobs passed on each branch on attempt 1. The separate `color-dev` guide
+build and deployment also passed, for 43 successful jobs on that branch. No failed, cancelled, or pending jobs remain in
+the latest workflow attempts. The separate `fix/StringViewCompare` branch
 must not be mentioned on the website; Terry explicitly excluded it from this update.
 
 ## User guide
@@ -106,9 +109,9 @@ upstream syntax-anchor and Material future-version notices remain nonfatal.
 The guide now documents format-context inheritance and restoration for
 `styled` and `styled_text`, including the whole-sentence underline example.
 
-The [guide publication](https://github.com/tjgolubi/fmt/actions/runs/41890746387)
-passed build and deployment for `fecee948` from `color-dev`; the
-[ordinary doc build](https://github.com/tjgolubi/fmt/actions/runs/41890747163)
+The [guide publication](https://github.com/tjgolubi/fmt/actions/runs/41950172506)
+passed build and deployment for `35de08cc` from `color-dev`; the
+[ordinary doc build](https://github.com/tjgolubi/fmt/actions/runs/41950172372)
 also passed. The workflow filter and edit URI target `color-dev`; Node.js 24
 action pins are recorded in BuildAndTest.md. The exact environment policy was
 not inspected. The guide includes the parser, string/tree stripping, and the
@@ -168,6 +171,17 @@ preserves styles/structure, processes leaves separately, and never joins escape
 sequences across leaves. Both features link to the guide and exact source.
 Extended push/pop and readable style parsing remain future work.
 
+## Planned backslash utilities
+
+[Backslash escaping and unescaping](https://fmtcolor.tjgolubi.chatgpt.site/work-in-progress.html#backslash-escapes)
+is listed in the future-work table and a dedicated section. Preserve the agreed
+names `backslash_escape` and `backslash_unescape` and mark them unimplemented.
+Escaping covers control characters, backslash (`\\`), and double quote (`\"`).
+Unescaping reverses recognized sequences while retaining unknown/malformed
+sequences and trailing backslashes verbatim. CSV/TSV conversion belongs elsewhere.
+Do not imply these plans are in the current library or choose additional numeric
+escape grammar without agreement.
+
 ## Sites maintenance and publication
 
 Only update the website when requested. An authorized website update includes
@@ -221,35 +235,36 @@ results and continue saving/deploying that same state after a helper failure.
 
 ## Current publication
 
-**Public Site version 41** is live at
+**Public Site version 44** is live at
 [fmtcolor.tjgolubi.chatgpt.site](https://fmtcolor.tjgolubi.chatgpt.site).
-Native deployment returned `succeeded` on November 4, 2026 at 19:44 UTC, preserving
-the public audience. It updates source links and CI results for amended
-`color-dev` at `fecee948`, retaining the parser/stripper examples, reset behavior,
-and demonstrations. No comparison-fix branch reference appears in the site.
+Native deployment returned `succeeded` on November 4, 2026 at 19:57 CST (November 5, 01:57 UTC), preserving
+the public audience. It presents `35de08cc` on both `color-dev` and `pr/color`,
+with a two-branch passing CI table and links to the proposed contribution branch.
+It explicitly says the large PR has not been submitted. The planned backslash
+utilities, parser/stripper examples, reset behavior, and demos are retained. No comparison-fix branch reference appears in the site.
 
 | Item                     | Current value                                                                       |
 | ------------------------ | ----------------------------------------------------------------------------------- |
 | Site project ID          | `appgprj_6ad129c3e8408191b873a4e06e601c63`                                          |
-| Source commit            | `f4c3c5c1cf247907acc7a646b5e3279675ba1231`                                          |
-| Saved version ID         | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_1e4a3f64f4fc81918799a9631f65516d` |
-| Successful deployment ID | `appgdep_6aeb8b0339888191b2a2de84dfe2d3b4`                                          |
+| Source commit            | `357fe91684cecba2a315c14fe0205719e4791bce`                                          |
+| Saved version ID         | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_5df68c4d4a4081919944717454ae9939` |
+| Successful deployment ID | `appgdep_6aebe2a05f808191b2cdf68377e9f06e`                                          |
 | Audience                 | Public                                                                              |
 
 Source checkout:
 `C:/Users/tjgolubi/.codex/visualizations/2026/11/04/01a1a5a3-edf0-7bb0-9962-4ccf7e94539a/fmtcolor-site`.
 Exact saved archive:
-`C:/Users/tjgolubi/.codex/visualizations/2026/11/04/01a1a5a3-edf0-7bb0-9962-4ccf7e94539a/fmtcolor-amended-ci.tar.gz`.
+`C:/Users/tjgolubi/.codex/visualizations/2026/11/04/01a1a5a3-edf0-7bb0-9962-4ccf7e94539a/fmtcolor-pr-color.tar.gz`.
 The helper synchronized published source before editing, then committed/pushed
-and packaged the final state above. Sites accepted that archive as version 41.
+and packaged the final state above. Sites accepted that archive as version 44.
 
-Validation passed 45 local links/anchors, unique IDs, embedded demo/download/source
+Validation passed 46 local links/anchors, unique IDs, embedded demo/download/source
 equality, and independent character/style comparison of all 214 demo characters.
 Demo equality was checked against the exact amended commit without switching
-the active library branch. The amendment changed only three documentation files,
-so existing demo output remained applicable. The updated CI section was inspected
-in the local browser; whitespace and excluded-branch checks passed. Native
-deployment verified publication, and the live URL was opened in the existing
+the active library branch. The demo remained unchanged. The two-branch CI table
+and proposed-branch wording were inspected in the local browser. Existing future
+work and escape examples were retained. Whitespace and excluded-branch checks
+passed. Native deployment verified publication, and the live URL was opened in the existing
 browser tab. The owned port 8874 preview was stopped. No new full library,
 tablet, performance, or ABI test is claimed by website QA.
 

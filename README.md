@@ -41,12 +41,14 @@ records remain available in Git history.
 
 ## Current baseline
 
-The development baseline is `color-dev` at `fecee9480923c787d2ce05cd57424ab767642119`,
+The development baseline is `color-dev` at `35de08cc2de5b25100d02e51bdc41d8b595ccb01`,
 amended and force-pushed by Terry to include the refreshed changelog,
-integration instructions, and root README after consolidating `color-dev5`. It is one
+integration instructions, and root README after consolidating `color-dev5`,
+then amended again to remove the obsolete `feat/StyledText2` push exclusions
+from Linux, Windows, macOS, and doc CI. It is one
 extension commit directly above upstream/main at `4ed3535092a96ac9f56fab80df83416d51bcc78e`.
 The library's tracked tree is clean. Local and GitHub branch SHAs matched during
-the website update, and all five inspected workflow runs target that exact SHA.
+the website update, and all inspected runs on both branches target that exact SHA.
 Use this rewritten `color-dev` for subsequent work; older formatter/parser branch
 commits are historical references, not prerequisites to replay.
 
@@ -54,11 +56,11 @@ The consolidated contribution includes color values, fluent styles, SGR helpers,
 ostream support, owning styled text, the corrected formatter and context state,
 standard SGR parsing, ANSI stripping, the demo, and user documentation.
 
-The November 4, 2026 CI snapshot for the amended commit shows **32 of 41
-push-CI jobs passed and all 9 macOS jobs cancelled**. None of the macOS jobs
-received a runner or executed steps; the workflow reports failure and macOS
-validation remains incomplete. Linux (18), Windows (13), and documentation (1)
-passed, as did the separate guide build and deployment. See
+Verified November 4, 2026: `color-dev` and `pr/color` both identify the amended
+commit. **All 41 push-CI jobs passed on each branch**: Linux 18, Windows 13,
+macOS 9, and documentation 1. The separate `color-dev` guide build and deployment
+also passed, for **43 successful jobs on that branch**. Every run passed on
+attempt 1, with no failed, cancelled, or pending jobs. Local/GitHub SHAs match. See
 [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 
 `FmtColorChangeLog.md` was regenerated with git-cliff 2.14.2, `--offline --no-exec`, and the explicit upstream-to-consolidated-commit range. It now reflects
@@ -67,22 +69,35 @@ it automatically. No fork release number or tag has been assigned; the contribut
 has not been accepted into fmtlib/fmt. Library and coordination commits/pushes
 still need explicit authorization.
 
+## Proposed upstream contribution
+
+`pr/color` is pushed at the same `35de08cc` commit as `color-dev`; it is the active
+library checkout. `color-dev` remains the FmtColor development baseline. Terry
+has not submitted the large upstream PR. The website links to the branch as
+“Proposed contribution / pr/color” and explicitly says no PR has been submitted.
+Add a separate upstream PR link only after submission. A draft was recommended
+for initial API/scope feedback; fork-specific README, publication, tooling, and
+remaining workflow changes still need review for the upstream submission.
+
 ## Separate upstream comparison fix
 
-The active library checkout is `fix/StringViewCompare`, branched from `main` at
+The separate `fix/StringViewCompare` branch was created from `main` at
 `4ed35350`, committed and pushed at `f9b5ccae427403158e3695a8a94b3d1f1c2180ff`.
 It adds only `if (n == 0) return 0;` in `detail::compare` and braces around the
 wide-character test's conditional to eliminate a dangling-else warning.
 It is separate from the FmtColor contribution and must not appear on the website.
 The earlier pointer-equality shortcut broke C++20 constant evaluation and was
-removed. Linux, Windows, and doc CI passed for the corrected SHA; macOS has one
-passed job and eight queued in the latest inspected snapshot. See BuildAndTest.md.
+removed. All 42 CI jobs passed for the corrected SHA: Linux 19, Windows 13,
+macOS 9 (attempt 2), and doc 1. These results are separate from `color-dev`.
+See BuildAndTest.md. This branch does not change the FmtColor baseline.
 
-No upstream PR has been created. The connector rejected creation in `fmtlib/fmt`
-with HTTP 403, the GitHub CLI was unavailable, and Firefox automation stopped
-because browser URL-policy enforcement was unsupported. A subsequent API check
-found no PR for this branch. Terry has a prepared compare link; submission remains
-outstanding. Do not mistake the earlier attempt for a published PR.
+The small fix is now open as [upstream PR #5014](https://github.com/fmtlib/fmt/pull/5014),
+not draft and not merged, at head `f9b5ccae`. The earlier automated creation failed
+with connector HTTP 403, no local GitHub CLI, and unsupported Firefox automation;
+that failure has been superseded by Terry's submission. At the last workflow
+inspection, upstream workflows reported `action_required` and no lint jobs had
+started, consistent with maintainer approval being required for fork workflows.
+Do not describe that as a formatting failure or as an upstream CI pass.
 
 ## Integrated parser and ANSI stripping
 
@@ -101,6 +116,19 @@ or `strip_ansi(x).plain_text()` to extract text after leaf-local stripping; both
 discard explicit styles in the returned string, with different leaf-boundary
 behavior. Standalone C0, single-byte C1, and malformed/incomplete sequences remain.
 Neither parser nor stripper simulates terminal editing or sanitizes text.
+
+## Planned backslash utilities
+
+The agreed names are `backslash_escape` and `backslash_unescape`. Escaping would
+replace control characters with readable escape sequences and escape backslashes
+as `\\` and double quotes as `\"`. Unescaping would reverse recognized sequences,
+including `\n`, `\\`, and `\"`. Unknown or malformed escapes such as `\q`, `\x`,
+`\xG1`, and a trailing backslash remain unchanged. The complete numeric-escape
+grammar and API signatures are not yet settled. These functions are future work,
+not implemented features; website version 44 labels them accordingly.
+
+CSV and TSV conversion belong elsewhere, outside this library's planned scope.
+See [CppDesign.md](CppDesign.md#backslash-escaping-and-unescaping).
 
 ## Implemented styled text and format contexts
 
@@ -163,10 +191,11 @@ Do not claim that all original upstream tests pass unchanged.
 ## Public documentation and next work
 
 - [Project website](https://fmtcolor.tjgolubi.chatgpt.site): public version
-  **41**, including parser/stripper examples, current reset behavior, retained
-  demos/downloads, exact `fecee948` source links, and the incomplete CI snapshot.
+  **44**, including parser/stripper examples, current reset behavior, retained
+  demos/downloads, exact `35de08cc` source links, proposed `pr/color` branch links,
+  passing CI for both branches, and the planned backslash escape/unescape pair.
 - [Generated user guide](https://tjgolubi.github.io/fmt/color/index.html):
-  build and deployment passed for `fecee948` from `color-dev`.
+  build and deployment passed for `35de08cc` from `color-dev`.
 - [Issues](https://github.com/tjgolubi/fmt/issues): bugs and follow-up work.
 
 The `color-dev` root README now uses current branch badges and the correct

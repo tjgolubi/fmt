@@ -37,7 +37,7 @@ naming and API conventions.
 
 ## Implemented foundation
 
-The amended consolidated `color-dev` tip is `fecee9480923c787d2ce05cd57424ab767642119`.
+The amended consolidated `color-dev` tip is `35de08cc2de5b25100d02e51bdc41d8b595ccb01`.
 It includes the foundational styling contribution, owning styled-text formatter,
 and format-context inheritance/restoration. The complete fmt release supports
 C++11. The upstream baseline is `4ed35350`; see
@@ -294,8 +294,8 @@ stream formatting and preserves field width while writing SGR. Detailed lifetime
 and exception-recovery rules are recorded below.
 
 The bridge supports C++11, header-only use, installation, and C++20 module
-export. Current exact-SHA CI is recorded in BuildAndTest.md; macOS remains
-incomplete in the last inspected snapshot. The separate historical compatibility result
+export. All 41 current push-CI jobs and both guide-publication jobs passed
+for `35de08cc`; see BuildAndTest.md for exact evidence. The separate historical compatibility result
 at `21eba01b` does not validate the current header or bridge.
 
 ## Integrated styling helpers
@@ -378,10 +378,11 @@ C++17; and avoid copying the empty union member in the SGR visitor during MSVC
 constant evaluation. Tests explicitly initialize const stream-only values and
 avoid shadowing and self-assignment warnings.
 
-Current validation is scoped to consolidated `color-dev` at `fecee948`;
-the last inspected macOS matrix remains incomplete. Both guide-publication jobs
-passed. A full remote compact-SGR matrix is not claimed. The public website is
-version 41. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation)
+Current validation is scoped to consolidated `color-dev` at `35de08cc`;
+all 41 push-CI jobs and both guide-publication jobs passed, including all nine
+macOS jobs on attempt 1. The same 41 push-CI jobs passed on `pr/color` at that
+commit. A full remote compact-SGR matrix is not claimed. The public website is
+version 44. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation)
 and [Website.md](Website.md#current-publication).
 
 ### Conditional attribute factories
@@ -408,7 +409,7 @@ convenience as a major design goal.
 ## Integrated structured text and planned work
 
 Owning text, the corrected formatter, context inheritance/restoration, parser,
-and stripper are integrated in the single extension commit `fecee948` above
+and stripper are integrated in the single extension commit `35de08cc` above
 upstream `4ed35350`. Continue from `color-dev`; earlier integration commits are
 historical, not dependencies to replay. See StyledText.md for invariants and
 BuildAndTest.md for exact-SHA validation and remaining limits.
@@ -590,7 +591,7 @@ stripping leaves independently, including leaves that become empty. It never
 recognizes escape sequences spanning leaves. Flatten before stripping to scan
 across those boundaries, or call `plain_text` afterward to discard explicit styles.
 It neither simulates terminal editing nor sanitizes text. Both APIs are integrated
-in `color-dev` at `fecee948`.
+in `color-dev` at `35de08cc`.
 
 ### Independent-library buffer discussion
 
@@ -618,6 +619,29 @@ and compatibility macros. Standard views, algorithms, concepts, and utilities
 replace many; Unicode measurement and specification handling need a separate
 plan. Standard-library facilities expose no general public UTF-8 decoder or
 width-measurement helper. The agreed standard-context boundary remains unchanged.
+
+## Backslash escaping and unescaping
+
+Agreed future names: `backslash_escape` and `backslash_unescape`. They would make
+control characters readable for inspection and reconstruct the original text.
+`backslash_escape` would replace control characters with backslash escapes,
+double literal backslashes (`\\`), and escape double quotes (`\"`).
+`backslash_unescape` would decode recognized sequences, including `\n` to newline,
+`\\` to backslash, and `\"` to double quote.
+
+Unknown and malformed sequences must be preserved verbatim, not reduced by
+dropping their backslash. This includes `\q`, `\x`, `\xG1`, and a trailing `\`.
+Do not silently turn an unknown escape into its following character. Full
+numeric-escape grammar, character-type overloads, signatures, and header placement
+remain open; discussion and website inclusion do not authorize implementation.
+
+{fmt} debug presentation already provides quoted escaped output through `{:?}`;
+C++23 standard formatting has a similar facility. Neither supplies the proposed
+general-purpose inverse. `std::quoted` handles delimiters and escape characters,
+not decoding control-character escapes such as backslash-n.
+
+The website lists the pair as planned and unimplemented. CSV and TSV conversion
+belong in a separate text-processing library, not this project's future scope.
 
 ## Rendering, parsing, and serialization
 
