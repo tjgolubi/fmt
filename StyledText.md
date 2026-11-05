@@ -1,26 +1,27 @@
 # Structured styled text and format contexts
 
-Updated November 4, 2026.
+Updated November 5, 2026.
 
 ## Scope and state
 
 Owning text, its corrected formatter, context inheritance/restoration, parser,
-and string/tree ANSI stripping are integrated in `color-dev` at `35de08cc2de5b25100d02e51bdc41d8b595ccb01`.
-This is one consolidated extension commit above upstream `4ed35350`, replacing
-the earlier formatter/parser integration history. The active library checkout
+and string/tree ANSI stripping are integrated in `color-dev` at `dd7180a865d43cb02946874f51c9d690483e18ae`.
+The current baseline includes the foundational extension, accepted formatting,
+and Backslash squash above upstream `4ed35350`. The active library checkout
 is `pr/color`, with a clean tracked tree at the same commit. Use `color-dev` as
 the FmtColor baseline rather than historical feature branches; the comparison
 fix remains a separate branch.
 
-Verified November 4, 2026: `color-dev` and `pr/color` both identify the amended
+Verified November 5, 2026: `color-dev` and `pr/color` both identify the amended
 commit. **All 41 push-CI jobs passed on each branch**: Linux 18, Windows 13,
 macOS 9, and documentation 1. The separate `color-dev` guide build and deployment
 also passed, for **43 successful jobs on that branch**. Every run passed on
 attempt 1, with no failed, cancelled, or pending jobs. Local/GitHub SHAs match. See
 [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 
-The public website is version 45 and documents parsing/stripping, resets,
-context integration, the complete working demo, and the dated CI snapshot.
+The public website is version 46 and documents parsing/stripping, resets,
+context integration, Backslash utilities, the complete working demo, and the
+dated CI snapshot.
 It links to upstream draft PR #5015 alongside the `pr/color` source branch.
 The obsolete `feat/StyledText2` push exclusions were removed from Linux,
 Windows, macOS, and doc workflows. All four use `on: [push, pull_request]`.
@@ -401,10 +402,10 @@ The prior GCC 13/14 branch-width and GCC-13-only branch-move noinline workaround
 remain. Older strict local Release blend/union diagnostics remain validation
 limits. No PR-only lint/fuzz, tablet, performance, ABI, or complete remote
 compact-SGR result is inferred. Website QA rebuilt the current compact demo,
-not the full regression suite. Planned `backslash_escape` and
-`backslash_unescape` are separate text utilities, not tree formatting or SGR
-parsing; their agreed behavior is in CppDesign.md. CSV/TSV conversion is out of
-scope.
+not the full regression suite. Implemented Backslash codecs are separate text
+utilities, not tree formatting or SGR parsing; they have no styled-tree overload.
+Their strict error behavior and constexpr support are in CppDesign.md. CSV/TSV
+conversion is out of scope.
 
 Debug formatting, deferred blending, extended push/pop parsing, full grapheme/terminal width,
 serialization, styled-text module export, and public iteration remain deferred.

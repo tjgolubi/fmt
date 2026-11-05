@@ -1,6 +1,6 @@
 # FmtColor coordination
 
-Updated November 4, 2026.
+Updated November 5, 2026.
 
 FmtColor develops color and text-style extensions for C++. We plan two
 sequential deliverables:
@@ -41,41 +41,39 @@ records remain available in Git history.
 
 ## Current baseline
 
-The development baseline is `color-dev` at `35de08cc2de5b25100d02e51bdc41d8b595ccb01`,
-amended and force-pushed by Terry to include the refreshed changelog,
-integration instructions, and root README after consolidating `color-dev5`,
-then amended again to remove the obsolete `feat/StyledText2` push exclusions
-from Linux, Windows, macOS, and doc CI. It is one
-extension commit directly above upstream/main at `4ed3535092a96ac9f56fab80df83416d51bcc78e`.
-The library's tracked tree is clean. Local and GitHub branch SHAs matched during
-the website update, and all inspected runs on both branches target that exact SHA.
-Use this rewritten `color-dev` for subsequent work; older formatter/parser branch
-commits are historical references, not prerequisites to replay.
+The development baseline is `color-dev` at `dd7180a865d43cb02946874f51c9d690483e18ae`.
+`pr/color` and upstream draft PR #5015 identify the same commit. The active
+library checkout is `pr/color`, with a clean tracked tree. The accepted history
+above upstream/main `4ed3535092a96ac9f56fab80df83416d51bcc78e` consists of the
+foundational styling extension `35de08cc`, source-formatting commit `d1ffcbca`,
+and the Backslash squash commit `dd7180a8`. Do not replay historical formatter,
+parser, or intermediate Backslash commits onto this baseline.
 
-The consolidated contribution includes color values, fluent styles, SGR helpers,
-ostream support, owning styled text, the corrected formatter and context state,
-standard SGR parsing, ANSI stripping, the demo, and user documentation.
+The contribution includes color values, fluent styles, SGR helpers, ostream
+support, owning styled text, formatter/context restoration, standard SGR parsing,
+ANSI stripping, backslash escaping/unescaping, the demo, and user documentation.
 
-Verified November 4, 2026: `color-dev` and `pr/color` both identify the amended
-commit. **All 41 push-CI jobs passed on each branch**: Linux 18, Windows 13,
-macOS 9, and documentation 1. The separate `color-dev` guide build and deployment
-also passed, for **43 successful jobs on that branch**. Every run passed on
-attempt 1, with no failed, cancelled, or pending jobs. Local/GitHub SHAs match. See
+Verified November 5, 2026: **all 41 push-CI jobs passed on each branch**:
+Linux 18, Windows 13, macOS 9, and documentation 1. The separate `color-dev`
+guide build and deployment also passed, for **43 successful jobs on that branch**.
+Every run passed on attempt 1, with no failed, cancelled, or pending jobs.
+Local/GitHub SHAs match. See
 [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 
-`FmtColorChangeLog.md` was regenerated with git-cliff 2.14.2, `--offline --no-exec`, and the explicit upstream-to-consolidated-commit range. It now reflects
-the single accepted extension commit and breaking-change footer. Do not regenerate
-it automatically. No fork release number or tag has been assigned; the contribution
-has not been accepted into fmtlib/fmt. Library and coordination commits/pushes
-still need explicit authorization.
+`FmtColorChangeLog.md` was regenerated with git-cliff 2.14.2,
+`--offline --no-exec`, and the explicit accepted-history range above `4ed35350`.
+It includes the foundational breaking-change footer, formatting, and Backslash
+entries; Terry amended the result into `dd7180a8` and pushed it. Do not regenerate
+it automatically. No fork release number or tag has been assigned. Library and
+coordination commits/pushes still need explicit authorization.
 
 ## Upstream contribution
 
-`pr/color` is pushed at the same `35de08cc` commit as `color-dev`; it is the active
+`pr/color` is pushed at the same `dd7180a8` commit as `color-dev`; it is the active
 library checkout. `color-dev` remains the FmtColor development baseline. Terry
 submitted [upstream PR #5015](https://github.com/fmtlib/fmt/pull/5015). Verified
-November 4, 2026: it is open as a draft, unmerged, with head `35de08cc` from
-`pr/color`. Website version 45 links to the PR for API and scope discussion,
+November 5, 2026: it is open as a draft, unmerged, with head `dd7180a8` from
+`pr/color`. Website version 46 links to the PR for API and scope discussion,
 alongside the “Source / pr/color” branch link. Passing fork push CI does not
 establish upstream PR-only check results. Fork-specific README, publication,
 tooling, and remaining workflow changes still need upstream review.
@@ -118,17 +116,26 @@ discard explicit styles in the returned string, with different leaf-boundary
 behavior. Standalone C0, single-byte C1, and malformed/incomplete sequences remain.
 Neither parser nor stripper simulates terminal editing or sanitizes text.
 
-## Planned backslash utilities
+## Implemented backslash utilities
 
-The agreed names are `backslash_escape` and `backslash_unescape`. Escaping would
-replace control characters with readable escape sequences and escape backslashes
-as `\\` and double quotes as `\"`. Unescaping would reverse recognized sequences,
-including `\n`, `\\`, and `\"`. Unknown or malformed escapes such as `\q`, `\x`,
-`\xG1`, and a trailing backslash remain unchanged. The complete numeric-escape
-grammar and API signatures are not yet settled. These functions are future work,
-not implemented features; website version 45 labels them accordingly.
+`<fmt/backslash.h>` provides `backslash_escape` and `backslash_unescape`, returning
+owning narrow/wide strings, and `backslash_escape_to` / `backslash_unescape_to`,
+returning advanced output iterators. All support C++11; iterator constant
+evaluation is available from C++14 and owning-string constant evaluation where
+{fmt} enables C++20 constexpr strings. These are independent text utilities,
+not styled-text tree overloads.
 
-CSV and TSV conversion belong elsewhere, outside this library's planned scope.
+Encoding uses named control escapes, including `\e` for ESC, and two-digit
+lowercase hexadecimal escapes for remaining ASCII C0 controls and DEL. NUL
+remains `\x00`, not `\0`, avoiding octal lookahead. Backslashes and double
+quotes are escaped; other code units, including UTF-8 bytes, remain unchanged.
+Decoding also accepts `\'`, `\?`, exactly two hexadecimal digits, and one to
+three octal digits with values up to 255. Unknown/malformed escapes, octal
+overflow, and trailing backslashes throw `fmt::format_error`. Iterator output
+written before an error remains. Decoding is one pass.
+
+The user guide includes a compact Markdown escape table. Website version 46
+presents these as implemented. CSV and TSV conversion remain outside scope.
 See [CppDesign.md](CppDesign.md#backslash-escaping-and-unescaping).
 
 ## Implemented styled text and format contexts
@@ -192,12 +199,12 @@ Do not claim that all original upstream tests pass unchanged.
 ## Public documentation and next work
 
 - [Project website](https://fmtcolor.tjgolubi.chatgpt.site): public version
-  **45**, including parser/stripper examples, current reset behavior, retained
-  demos/downloads, exact `35de08cc` source links, `pr/color` source and draft
-  PR #5015 links, passing CI for both branches, and the planned backslash
-  escape/unescape pair.
+  **46**, including parser/stripper examples, current reset behavior, retained
+  demos/downloads, exact `dd7180a8` source links, `pr/color` source and draft
+  PR #5015 links, passing CI for both branches, and the implemented Backslash
+  utilities with strict error handling.
 - [Generated user guide](https://tjgolubi.github.io/fmt/color/index.html):
-  build and deployment passed for `35de08cc` from `color-dev`.
+  build and deployment passed for `dd7180a8` from `color-dev`.
 - [Issues](https://github.com/tjgolubi/fmt/issues): bugs and follow-up work.
 
 The `color-dev` root README now uses current branch badges and the correct

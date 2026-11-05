@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated November 4, 2026.
+Updated November 5, 2026.
 
 ## Authorization and scope
 
@@ -49,8 +49,13 @@ there is a compelling reason for an unsigned type; existing size interfaces and
 packed bit representations need deliberate treatment rather than mechanical
 edits. Retain parentheses when narrowing rules,
 initializer-list overload selection, or compiler compatibility require them.
-Otherwise follow the {fmt} foundation's source style. The authorized style pass
-changed the structured-text header (now `styled_text.h`) only; do not mechanically restyle unrelated headers.
+Otherwise follow the {fmt} foundation's source style. Terry accepted the upstream
+formatter's layout to avoid maintaining two versions for presentation. For an
+authorized formatting pass, use clang-format 21 on the CI-scoped `include/`
+and `src/` files, and cmake-format 0.6.13 on CMake files. Preserve behavior and
+verify the generated guide when comment wrapping changes; Doxygen can interpret
+wrapped text as list syntax. Do not change formatter configuration or restyle
+unrelated files without instruction.
 
 ### Cloud experiment and preservation
 
@@ -154,7 +159,7 @@ history or infer permission for another rewrite.
    push. Verify the intended commit structure, matching local/GitHub full SHAs,
    and every applicable CI job for that SHA. The guide-publication workflow
    targets `color-dev`; build and deployment passed for the accepted baseline
-   `35de08cc`. Candidate results do not replace final integration checks for
+   `dd7180a8`. Candidate results do not replace final integration checks for
    later SHAs.
 8. Publish an authorized website update before recording its confirmed
    publication in coordination documents. Update or close an issue only when
@@ -182,12 +187,12 @@ Use Conventional Commits compatible with `cliff.toml`, for example
 Mark deliberate breaks with `!` and a `BREAKING CHANGE:` footer. Describe actual
 effects without promising stable numeric or binary representations.
 
-`FmtColorChangeLog.md` is tracked on `color-dev`. Terry requested regeneration
-for the consolidated history and amended the refreshed changelog, integration
-instructions, and README into `35de08cc`. Regeneration used git-cliff 2.14.2 with
-the explicit `4ed35350..3a215915` range before amendment; the template renders
-the subject and breaking-change footer. Do not regenerate it or edit upstream
-`ChangeLog.md` automatically.
+`FmtColorChangeLog.md` is tracked on `color-dev`. Its current generation used
+git-cliff 2.14.2, `--offline --no-exec`, and the explicit range above upstream
+`4ed35350` through the accepted Backslash squash (before Terry's final amend to
+`dd7180a8`). It includes the foundational breaking change, formatting, and
+Backslash entries. Do not regenerate it or edit upstream `ChangeLog.md`
+automatically.
 
 If changelog generation is explicitly requested, use git-cliff **2.14.2** with
 `--offline --no-exec` and an explicit accepted-history range after the upstream

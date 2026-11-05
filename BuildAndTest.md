@@ -2,15 +2,15 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Website](Website.md)
 
-Updated November 4, 2026. Commands run from the library checkout root unless
+Updated November 5, 2026. Commands run from the library checkout root unless
 stated otherwise. Use `color-dev` or an authorized feature branch, not the
 `coord/` documentation worktree on `docs/Coord`. Run library commands from
 `..` when starting in `coord/`. `/doc/` means repository-relative.
 
 ## Current color-dev validation
 
-Verified November 4, 2026 for `color-dev` and `pr/color` at the same amended
-commit `35de08cc2de5b25100d02e51bdc41d8b595ccb01`, directly above upstream
+Verified November 5, 2026 for `color-dev` and `pr/color` at the same commit
+`dd7180a865d43cb02946874f51c9d690483e18ae`, based on upstream
 `4ed3535092a96ac9f56fab80df83416d51bcc78e`. Local and GitHub branch SHAs match;
 all nine workflow runs below target this exact SHA. Every job was inspected:
 **all 41 push-CI jobs passed on each branch**. The separate `color-dev` guide
@@ -19,11 +19,11 @@ All runs succeeded on attempt 1; no failed, cancelled, or pending jobs remain.
 
 | Workflow          | color-dev evidence                                                                      | pr/color evidence                                                     |
 | ----------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Linux             | [18 passed](https://github.com/tjgolubi/fmt/actions/runs/41950172424)                   | [18 passed](https://github.com/tjgolubi/fmt/actions/runs/41950252811) |
-| Windows           | [13 passed](https://github.com/tjgolubi/fmt/actions/runs/41950172367)                   | [13 passed](https://github.com/tjgolubi/fmt/actions/runs/41950252814) |
-| macOS             | [9 passed](https://github.com/tjgolubi/fmt/actions/runs/41950172402)                    | [9 passed](https://github.com/tjgolubi/fmt/actions/runs/41950252945)  |
-| Doc build         | [1 passed](https://github.com/tjgolubi/fmt/actions/runs/41950172372)                    | [1 passed](https://github.com/tjgolubi/fmt/actions/runs/41950252845)  |
-| Guide publication | [Build and deployment passed](https://github.com/tjgolubi/fmt/actions/runs/41950172506) | Published from color-dev.                                             |
+| Linux             | [18 passed](https://github.com/tjgolubi/fmt/actions/runs/41975144817)                   | [18 passed](https://github.com/tjgolubi/fmt/actions/runs/41976484562) |
+| Windows           | [13 passed](https://github.com/tjgolubi/fmt/actions/runs/41975144860)                   | [13 passed](https://github.com/tjgolubi/fmt/actions/runs/41976484556) |
+| macOS             | [9 passed](https://github.com/tjgolubi/fmt/actions/runs/41975144897)                    | [9 passed](https://github.com/tjgolubi/fmt/actions/runs/41976484545)  |
+| Doc build         | [1 passed](https://github.com/tjgolubi/fmt/actions/runs/41975144738)                    | [1 passed](https://github.com/tjgolubi/fmt/actions/runs/41976484597)  |
+| Guide publication | [Build and deployment passed](https://github.com/tjgolubi/fmt/actions/runs/41975144737) | Published from color-dev.                                             |
 
 The amended tree removes the obsolete `feat/StyledText2` push exclusions from
 the four ordinary workflows. These new results supersede the previous SHA's
@@ -122,6 +122,40 @@ example was checked. The ordinary doc job and separate Pages build/deploy
 passed for the former baseline `2fa0bd92`. The revised guide rebuilt locally, including expected
 displays and the C++20 pi example. The localhost preview uses port 8875 and
 `build/guide-output-preview`; check availability before relying on it.
+
+## Backslash and formatting validation
+
+Backslash feature commit `d3e2aa72c20be8d75f819d2eaba6eb14e20dca9d` passed all
+41 feature push-CI jobs before squash integration. The final accepted commit
+`dd7180a8` has its own fresh passing matrix above. Earlier Clang/Linux and all
+macOS failures were compile-time `-Werror,-Wsign-conversion` diagnostics in
+`backslash_unescape_to`, not runtime or constexpr assertion failures. Terry
+changed the bounded view indices to `std::size_t`, removing those conversions.
+Do not weaken the warning policy or mechanically convert unrelated signed fields.
+
+Strict local Clang 21.1.8 checks passed C++11/14/20/23 with
+`-Wall -Wextra -Wsign-conversion -Werror`, including applicable static assertions.
+Five Backslash regression groups passed in C++11 header-only and C++23 compiled
+modes: escape examples, invalid-input exceptions, all byte values/UTF-8/wide
+round trips, ownership/NULs, and output iterators. Tests cover partial output
+before errors and retained NUL encoding as `\x00`. The header also passed a
+C++11 no-exceptions syntax check. These local checks preceded the final squash;
+final-SHA evidence is the remote matrix above.
+
+Use clang-format 21 (`21.1.8` locally) on `include/` and `src/`, and cmake-format
+`0.6.13` for CMake files, matching `.github/workflows/lint.yml`. The CMake
+formatter needs PyYAML to read `.cmake-format`. Terry installed MSYS clang with
+`pacman -S --needed clang`; no persistent cmake-format environment was installed
+after MSYS Python rejected a user/global pip install as externally managed.
+Temporary tools under `build/` are disposable. Do not force a global pip install.
+
+Formatting checks and six focused C++11 suites passed after the formatting
+changes. The doc target then exposed a Doxygen issue: wrapping the gray-color
+comment put `232.` on its own line, creating an `orderedlist` unsupported by
+the renderer. The accepted comment was reworded to avoid that parse. Verify
+`cmake --build build --target doc` after affected comment changes; library tests
+alone do not validate generated documentation. The doc target and all final
+remote documentation jobs now pass.
 
 ## Historical parser candidate validation
 
@@ -385,12 +419,12 @@ files verified to declare `runs.using: node24`. This replaces the Node.js 20
 pins that caused runner deprecation warnings. Workflow YAML parsing, the
 renamed `color-dev` filter, both pins, and whitespace checks passed locally.
 The guide rebuilt successfully during that work. Current `color-dev`
-publication is verified at `35de08cc` as recorded above.
+publication is verified at `dd7180a8` as recorded above.
 
-For `35de08cc`, the [guide publication](https://github.com/tjgolubi/fmt/actions/runs/41950172506)
+For `dd7180a8`, the [guide publication](https://github.com/tjgolubi/fmt/actions/runs/41975144737)
 passed both build and deployment from `color-dev`, establishing that the
 environment permitted this branch. The precise environment policy was not
-inspected. The [ordinary doc workflow](https://github.com/tjgolubi/fmt/actions/runs/41950172372)
+inspected. The [ordinary doc workflow](https://github.com/tjgolubi/fmt/actions/runs/41975144738)
 also passed; it builds without deploying. See the current CI snapshot above,
 [Website.md](Website.md#user-guide), and `support/fmtcolor-pages.md`.
 
@@ -463,15 +497,16 @@ The same installed compiled library supports either header-selected mode.
 ### Integrated styling helpers
 
 The consolidated styling/tree/context/parser/stripper code is on `color-dev`
-at `35de08cc`. Use the [current exact-SHA snapshot](#current-color-dev-validation),
+at `dd7180a8`. Use the [current exact-SHA snapshot](#current-color-dev-validation),
 including passing macOS and guide publication on attempt 1. Earlier feature
 matrices do not establish a complete pass for the rewritten baseline.
 
 Numeric bounds and cube/gray construction, variant access/visitation, blending,
 fluent styles, ostream output, context inheritance, absolute spans, and SGR
 transitions are covered by the integrated suites. C++11 remains required.
-`FmtColorChangeLog.md` was regenerated for the consolidated history before the
-documentation amendment captured in `35de08cc`.
+`FmtColorChangeLog.md` was regenerated for the accepted history above
+`4ed35350`, including the formatting and Backslash commits, and amended into
+`dd7180a8`.
 The prior compiler-checked foreground blend example still uses `fg`, not `bg`:
 terminal red and `gray_color{12}` produce RGB `{166, 64, 64}`, unspecified
 background, bold and underline. Its style-copy factory form is constexpr only
@@ -588,21 +623,20 @@ approval at the last workflow inspection, distinct from these passing fork jobs.
 
 ### Website validation
 
-Version **45** is the confirmed public Site publication for `35de08cc` source
-links, passing CI on both `color-dev` and `pr/color`, and “Source / pr/color”
-links. The overview and contribution pages now link to
-[upstream draft PR #5015](https://github.com/fmtlib/fmt/pull/5015), open and
-unmerged at head `35de08cc`. The obsolete not-submitted wording is removed.
-Fork push CI does not establish upstream PR-only check results. The planned
-backslash utilities and comparison-fix exclusion remain intact.
+Version **46** is the confirmed public Site publication for `dd7180a8`, with
+passing CI on both branches, source and draft PR #5015 links, and the implemented
+Backslash APIs. The PR is open, draft, and unmerged at the same head. Fork push
+CI does not establish upstream PR-only check results. The separate comparison
+fix remains excluded from the site.
 
-QA passed 46 local links/anchors, unique IDs, demo source/download/exact-commit
+QA passed 47 local links/anchors, unique IDs, demo source/download/exact-commit
 equality, and independent comparison of 214 rendered characters and their styles.
-The draft PR link and wording were inspected in the local browser; whitespace
-and excluded-branch checks passed. Native deployment returned `succeeded`, the
-live contribution page confirmed the draft PR wording, and the owned port 8874
-preview stopped. See Website.md for publication IDs. No fresh full local library, tablet, performance, or ABI test
-is claimed by website QA.
+The new Backslash example compiled and ran against the C++17 header-only API.
+The Backslash section was inspected in a browser. Native deployment returned
+`succeeded`; the live CI table confirmed all 41 jobs passing on each branch.
+The owned port 8874 preview was stopped. See Website.md for publication IDs.
+No full local library, tablet, performance, or ABI result is inferred from
+website QA.
 
 For new test results, record branch/full SHA, toolchain, mode, CMake options,
 commands, results, and skips. Distinguish observed checks from Terry reports.

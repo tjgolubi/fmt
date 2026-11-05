@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md)
 
-Updated November 4, 2026.
+Updated November 5, 2026.
 
 ## Purpose and content
 
@@ -19,27 +19,27 @@ compatibility-run narratives. Source links refer to the current contribution
 and its upstream baseline. Explain behavior and differences from the original
 upstream API without ABI/rebuild reminders; the ABI change is accepted.
 
-Current published pages (version 45):
+Current published pages (version 46):
 
 - [Overview](https://fmtcolor.tjgolubi.chatgpt.site/): implemented features,
   parser/stripper introduction, design, two deliverables, complete working
   `FmtColorDemo2.cpp`, download, and verified styled display.
 - [The contribution](https://fmtcolor.tjgolubi.chatgpt.site/integrated-changes.html):
-  consolidated `color-dev` at `35de08cc`, value APIs, nested formatting/context
+  consolidated `color-dev` at `dd7180a8`, value APIs, nested formatting/context
   restoration, absolute resets unless no output, parser and leaf-local stripping
   examples, guide links, and the complete passing CI results.
 - [Future work](https://fmtcolor.tjgolubi.chatgpt.site/work-in-progress.html):
   deferred blending, debug presentation, readable style parsing, extended push/pop
   parsing, terminal-width handling, serialization, and the independent C++23
   library. The independent sample, output, and downloads remain distinct from
-  the working overview demo. The planned `backslash_escape`/`backslash_unescape`
-  pair has its own linked section and is explicitly unimplemented.
+  the working overview demo. Backslash utilities are implemented and linked from
+  the contribution page; the old future-work anchor directs readers there.
 
-Source links identify `35de08cc2de5b25100d02e51bdc41d8b595ccb01`, directly above
+Source links identify `dd7180a865d43cb02946874f51c9d690483e18ae`, based on
 upstream `4ed3535092a96ac9f56fab80df83416d51bcc78e`. The contribution has not been
 accepted into fmtlib/fmt. `pr/color` identifies the same contribution.
 [Upstream PR #5015](https://github.com/fmtlib/fmt/pull/5015) is open as a draft,
-unmerged, at head `35de08cc`. Both the overview and contribution pages link to
+unmerged, at head `dd7180a8`. Both the overview and contribution pages link to
 it for API and scope discussion, alongside “Source / pr/color” branch links. All 41
 push-CI jobs passed on each branch on attempt 1. The separate `color-dev` guide
 build and deployment also passed, for 43 successful jobs on that branch. No failed, cancelled, or pending jobs remain in
@@ -110,9 +110,9 @@ upstream syntax-anchor and Material future-version notices remain nonfatal.
 The guide now documents format-context inheritance and restoration for
 `styled` and `styled_text`, including the whole-sentence underline example.
 
-The [guide publication](https://github.com/tjgolubi/fmt/actions/runs/41950172506)
-passed build and deployment for `35de08cc` from `color-dev`; the
-[ordinary doc build](https://github.com/tjgolubi/fmt/actions/runs/41950172372)
+The [guide publication](https://github.com/tjgolubi/fmt/actions/runs/41975144737)
+passed build and deployment for `dd7180a8` from `color-dev`; the
+[ordinary doc build](https://github.com/tjgolubi/fmt/actions/runs/41975144738)
 also passed. The workflow filter and edit URI target `color-dev`; Node.js 24
 action pins are recorded in BuildAndTest.md. The exact environment policy was
 not inspected. The guide includes the parser, string/tree stripping, and the
@@ -172,16 +172,21 @@ preserves styles/structure, processes leaves separately, and never joins escape
 sequences across leaves. Both features link to the guide and exact source.
 Extended push/pop and readable style parsing remain future work.
 
-## Planned backslash utilities
+## Implemented Backslash utilities
 
-[Backslash escaping and unescaping](https://fmtcolor.tjgolubi.chatgpt.site/work-in-progress.html#backslash-escapes)
-is listed in the future-work table and a dedicated section. Preserve the agreed
-names `backslash_escape` and `backslash_unescape` and mark them unimplemented.
-Escaping covers control characters, backslash (`\\`), and double quote (`\"`).
-Unescaping reverses recognized sequences while retaining unknown/malformed
-sequences and trailing backslashes verbatim. CSV/TSV conversion belongs elsewhere.
-Do not imply these plans are in the current library or choose additional numeric
-escape grammar without agreement.
+[Backslash escaping and unescaping](https://fmtcolor.tjgolubi.chatgpt.site/integrated-changes.html#backslash-escapes)
+is presented as implemented, with the four public functions, a C++17-compatible
+example, source/test links at `dd7180a8`, and a link to the guide's Markdown
+escape reference table. It is no longer listed as planned work. Preserve the
+legacy future-work anchor as a link to the current contribution.
+
+Describe the strict codec: ASCII controls and DEL are escaped, ESC uses `\e`,
+NUL stays `\x00`, and unknown/malformed decoding input throws
+`fmt::format_error`. The iterator variants retain output written before an
+error. Narrow/wide support and available constexpr evaluation are implemented.
+Do not restore the superseded malformed-escape preservation policy. Keep the
+website concise; the complete grammar and table belong in the guide, with the
+accepted design in CppDesign.md. CSV/TSV conversion remains outside scope.
 
 ## Sites maintenance and publication
 
@@ -236,41 +241,41 @@ results and continue saving/deploying that same state after a helper failure.
 
 ## Current publication
 
-**Public Site version 45** is live at
+**Public Site version 46** is live at
 [fmtcolor.tjgolubi.chatgpt.site](https://fmtcolor.tjgolubi.chatgpt.site).
-Native deployment returned `succeeded` on November 4, 2026 at 20:15 CST (November 5, 02:15 UTC), preserving
-the public audience. It presents `35de08cc` on both `color-dev` and `pr/color`,
+Native deployment returned `succeeded` on November 5, 2026 at 00:02 CST
+(06:02 UTC), preserving the public audience. It presents `dd7180a8` on both `color-dev` and `pr/color`,
 with a two-branch passing CI table, source-branch links, and a separate link to
-upstream draft PR #5015. The obsolete not-submitted wording is removed.
-Fork push results do not establish upstream PR-only check results. The planned
-backslash utilities, parser/stripper examples, reset behavior, and demos are
-retained. No comparison-fix branch reference appears in the site.
+upstream draft PR #5015. Both branches and PR #5015 point to `dd7180a8`.
+All 41 push-CI jobs passed on each branch, and the two guide-publication jobs passed on `color-dev`.
+Fork push results do not establish upstream PR-only check results. Backslash
+utilities are documented as implemented with strict error handling. The parser,
+stripper, reset behavior, and demos are retained. No comparison-fix branch
+reference appears in the site.
 
 | Item                     | Current value                                                                       |
 | ------------------------ | ----------------------------------------------------------------------------------- |
 | Site project ID          | `appgprj_6ad129c3e8408191b873a4e06e601c63`                                          |
-| Source commit            | `be14409b60d9fc95dcf801e995f7a7ef0d0cd222`                                          |
-| Saved version ID         | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_0adf625a97688191ac167acb91327d44` |
-| Successful deployment ID | `appgdep_6aebe6ab1a308191be68927664e24962`                                          |
+| Source commit            | `3e51265ec9321e42b36fc2f67a3fbae82415f95b`                                          |
+| Saved version ID         | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_9c7620bc17508191b56e476a44e74d9a` |
+| Successful deployment ID | `appgdep_6aec1bd81e048191949ea8d738d8e7be`                                          |
 | Audience                 | Public                                                                              |
 
 Source checkout:
 `C:/Users/tjgolubi/.codex/visualizations/2026/11/04/01a1a5a3-edf0-7bb0-9962-4ccf7e94539a/fmtcolor-site`.
 Exact saved archive:
-`C:/Users/tjgolubi/.codex/visualizations/2026/11/04/01a1a5a3-edf0-7bb0-9962-4ccf7e94539a/fmtcolor-upstream-pr.tar.gz`.
+`C:/Users/tjgolubi/.codex/visualizations/2026/11/04/01a1a5a3-edf0-7bb0-9962-4ccf7e94539a/fmtcolor-backslash-ci.tar.gz`.
 The helper synchronized published source before editing, then committed/pushed
-and packaged the final state above. Sites accepted that archive as version 45.
+and packaged the final state above. Sites accepted that archive as version 46.
 
-Validation passed 46 local links/anchors, unique IDs, embedded demo/download/source
+Validation passed 47 local links/anchors, unique IDs, embedded demo/download/source
 equality, and independent character/style comparison of all 214 demo characters.
-Demo equality was checked against the exact amended commit without switching
-the active library branch. The demo remained unchanged. The two-branch CI table
-was retained. The draft PR link and wording were inspected in the local browser
-and verified on the live contribution page. Existing future work and escape
-examples were retained. Whitespace and excluded-branch checks
-passed. Native deployment verified publication, and the live page confirmed the
-draft PR wording. The owned port 8874 preview was stopped. No new full library,
-tablet, performance, or ABI test is claimed by website QA.
+Demo source was checked against the clean current library checkout; the demo
+remained unchanged. The Backslash example compiled and ran in C++17 header-only
+mode. A local browser screenshot verified the new section's layout. The owned
+port 8874 preview was stopped. The refreshed live CI table was inspected after
+native deployment confirmed success. No new full local library, tablet,
+performance, or ABI result is inferred from this website QA.
 
 Refresh Site metadata and source credentials before further updates; do not
 treat the retained checkout as authoritative until synchronized. Preserve the
