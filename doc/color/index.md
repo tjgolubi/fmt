@@ -150,6 +150,10 @@ concatenate complete spans with `+` or `+=`, and use `underlay` to supply group
 defaults while preserving explicit colors. Use `overlay` to replace specified
 colors throughout relative nodes; absolute scopes are protected.
 
+See the [table demonstration](styled.md#table-demonstration) for a complete
+example combining column defaults, row emphasis, absolute spans, UTF-8 display
+widths, and fixed-width formatting, with build and run instructions.
+
 Style state belongs to one formatting operation. A separate `format` or
 `format_to` call starts with its own context, even when given the same output
 iterator. Custom formatters that directly delegate to another formatter using

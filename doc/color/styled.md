@@ -221,6 +221,108 @@ leaf. Raw escape sequences inside text are not recognized or excluded.
 Each leaf must contain complete UTF-8 code points for width and precision to
 match formatting the equivalent ordinary concatenated string.
 
+### Table demonstration
+
+The complete [TableDemo.cpp](https://github.com/tjgolubi/fmt/blob/color-dev/demo/TableDemo.cpp)
+example combines column backgrounds, independently colored cell contents, row
+emphasis, and an absolute warning span. It also demonstrates UTF-8 display
+widths and fixed-width padding and truncation.
+
+From the repository root, build and run the table demo with:
+
+```sh
+make -C demo TableDemo
+./demo/TableDemo
+```
+
+The demo Makefile uses C++23, header-only formatting, and compact SGR output.
+Run `make -C demo` to build both `FmtColorDemo2` and `TableDemo`,
+`make -C demo run` to run both, and `make -C demo clean` to remove both
+executables. The library itself supports C++11 and later.
+
+#### Apply column defaults beneath cell styles
+
+Each column supplies a foreground and background. The cell helper uses
+`underlay` so explicit colors in a cell take precedence:
+
+```cpp
+constexpr auto notes_color =
+    fmt::fg(fmt::term_color::white).bg(fmt::color::indigo);
+
+auto cell(fmt::styled_text text, fmt::text_style column) -> fmt::styled_text {
+  return fmt::underlay(column, std::move(text));
+}
+
+auto nas_note = fmt::styled_text{"All",
+                   fmt::fg(fmt::term_color::red).bg(fmt::term_color::cyan)}
+    + " volumes "
+    + fmt::styled_text{"healthy", fmt::fg(fmt::term_color::green)};
+```
+
+With `cell(nas_note, notes_color)`, `All` keeps its red foreground and cyan
+background. The plain ` volumes ` inherits the column's white foreground and
+indigo background; `healthy` keeps its green foreground and inherits indigo.
+Padding also uses the column defaults. Using `overlay` here would replace
+explicit colors throughout the relative cell contents.
+
+#### Combine row emphasis with fixed-width fields
+
+The demo's `print_row` function passes the row style to `println` and formats
+four cells:
+
+```cpp
+fmt::println(row, "{:<16.16} {:^12.12} {:>12.12} {:<30.30}",
+             cell(std::move(service), service_color),
+             cell(std::move(status), status_color),
+             cell(std::move(latency), latency_color),
+             cell(std::move(notes), notes_color));
+```
+
+Service and Notes are left-aligned, Status is centered, and Latency is
+right-aligned. Each field uses equal width and precision: short text is padded
+and long text is truncated to the column width. The literal spaces between
+fields use the row style rather than a column background.
+
+The heading row supplies `fmt::bold().underline()`, the Backup row supplies
+`fmt::bold()`, and the Old server row supplies `fmt::faint()`. Relative cell
+contents inherit that emphasis while retaining their explicit colors and
+column backgrounds.
+
+#### Protect an absolute span
+
+The Database row contains an absolute red-on-white warning:
+
+```cpp
+constexpr auto critical_style = fmt::fg(fmt::color::red)
+    .bg(fmt::color::white).bold().blink().absolute();
+auto db_note = fmt::styled_text{"Connection refused: "}
+    + fmt::styled_text{"CRITICAL!", critical_style}
+    + " Database service is unavailable";
+```
+
+`CRITICAL!` uses its complete style instead of inheriting the indigo column
+background or row emphasis. The column style resumes for the field's right
+padding. The trailing explanation is omitted because the Notes field has a
+precision of 30.
+
+Expected display (followed by a newline):
+
+<pre class="color-output" style="white-space: pre; overflow-x: auto; background-color: #101010" aria-label="System health dashboard with column colors, row emphasis, and an absolute warning"><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">SYSTEM HEALTH DASHBOARD
+
+</span><span style="color:#e5e5e5;background-color:#00008b;font-weight:700;font-style:normal;text-decoration-line:underline">Service         </span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:underline"> </span><span style="color:#e5e5e5;background-color:#006400;font-weight:700;font-style:normal;text-decoration-line:underline">   Status   </span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:underline"> </span><span style="color:#e5e5e5;background-color:#b8860b;font-weight:700;font-style:normal;text-decoration-line:underline">     Latency</span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:underline"> </span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:700;font-style:normal;text-decoration-line:underline">Notes                         </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">
+</span><span style="color:#e5e5e5;background-color:#00008b;font-weight:400;font-style:normal;text-decoration-line:none">NAS             </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#00ff00;background-color:#006400;font-weight:400;font-style:normal;text-decoration-line:none">     OK     </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#b8860b;font-weight:400;font-style:normal;text-decoration-line:none">       12 ms</span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#cd0000;background-color:#00cdcd;font-weight:400;font-style:normal;text-decoration-line:none">All</span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none"> volumes </span><span style="color:#00cd00;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none">healthy</span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none">           </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">
+</span><span style="color:#e5e5e5;background-color:#00008b;font-weight:400;font-style:normal;text-decoration-line:none">東京 NAS         </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#00ff00;background-color:#006400;font-weight:400;font-style:normal;text-decoration-line:none">     OK     </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#b8860b;font-weight:400;font-style:normal;text-decoration-line:none">        9 ms</span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none">Café 東京: all systems normal </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">
+</span><span style="color:#e5e5e5;background-color:#00008b;font-weight:400;font-style:normal;text-decoration-line:none">VPN             </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#00ff00;background-color:#006400;font-weight:400;font-style:normal;text-decoration-line:none">     OK     </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#b8860b;font-weight:400;font-style:normal;text-decoration-line:none">       38 ms</span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none">Encrypted </span><span style="color:#7fffd4;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none">connection</span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none">          </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">
+</span><span style="color:#e5e5e5;background-color:#00008b;font-weight:700;font-style:normal;text-decoration-line:none">Backup          </span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:none"> </span><span style="color:#cdcd00;background-color:#006400;font-weight:700;font-style:normal;text-decoration-line:none">    WARN    </span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#b8860b;font-weight:700;font-style:normal;text-decoration-line:none">      215 ms</span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:none"> </span><span style="color:#ffff00;background-color:#4b0082;font-weight:700;font-style:normal;text-decoration-line:none">Slow</span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:700;font-style:normal;text-decoration-line:none"> - retry scheduled        </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">
+</span><span style="color:#e5e5e5;background-color:#00008b;font-weight:700;font-style:normal;text-decoration-line:none">Database        </span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:none"> </span><span style="color:#ff0000;background-color:#006400;font-weight:700;font-style:normal;text-decoration-line:none">    FAIL    </span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#b8860b;font-weight:700;font-style:normal;text-decoration-line:none">          --</span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:700;font-style:normal;text-decoration-line:none">Connection refused: </span><span style="color:#ff0000;background-color:#ffffff;font-weight:700;font-style:normal;text-decoration-line:none">CRITICAL!</span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:700;font-style:normal;text-decoration-line:none"> </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">
+</span><span style="color:#e5e5e5;background-color:#00008b;font-weight:400;font-style:normal;text-decoration-line:none;opacity:0.6">Old server      </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none;opacity:0.6"> </span><span style="color:#e5e5e5;background-color:#006400;font-weight:400;font-style:normal;text-decoration-line:none;opacity:0.6">  OFFLINE   </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none;opacity:0.6"> </span><span style="color:#e5e5e5;background-color:#b8860b;font-weight:400;font-style:normal;text-decoration-line:none;opacity:0.6">          --</span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none;opacity:0.6"> </span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none;opacity:0.6">Maintenance mode              </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">
+</span></pre>
+
+`東京` occupies six UTF-8 bytes but has an estimated display width of four;
+`Café` occupies five bytes and also has width four. Their columns remain aligned
+because formatting measures display width rather than byte length. View the demo in an ANSI-capable terminal to see its native styling, including
+blink where supported.
+
 ## Parsing SGR text
 
 Include `<fmt/parse_styled_text.h>` and call `parse_styled_text` to turn text
