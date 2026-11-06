@@ -13,7 +13,7 @@ span's style over the text added after it, even if that span contains several
 styled parts.
 
 ```cpp
-auto red_text = fmt::overlay(fmt::fg(fmt::color::red),
+auto red_text = fmt::underlay(fmt::fg(fmt::color::red),
     "red text with " + fmt::bold("nested bold") + " still red");
 auto line = fmt::styled_text{"plain | "} + red_text + " | plain again";
 fmt::println("{}", line);
@@ -36,47 +36,72 @@ The appended text is outside the red span. A plain string has no style of its
 own; it inherits a surrounding group style only when you apply one to the
 combined text. Empty text adds nothing.
 
-### Use `overlay` to style a group
+### Use `underlay` to supply group defaults
 
-Concatenate the parts first, then use `overlay(style, text)` to give the whole
-group a surrounding style. Existing child styles are preserved. A child inherits
-colors it does not specify, and emphasis such as bold and underline combines
-with the group's emphasis. A child that specifies a foreground or background
-uses that color instead of the corresponding group color.
+Concatenate the parts first, then use `underlay(style, text)` to supply defaults
+for the combined text. Existing foreground and background colors are preserved.
+The supplied colors fill unspecified channels in the root style. During
+formatting, each relative child inherits colors it does not specify; explicit
+child colors take precedence. Emphasis combines by OR.
 
 ```cpp
-auto words = fmt::overlay(fmt::fg(fmt::color::red), "red")
-    + " " + fmt::overlay(fmt::fg(fmt::color::green), "green")
-    + " " + fmt::overlay(fmt::fg(fmt::color::blue), "blue");
-auto group = fmt::overlay(fmt::bg(fmt::color::light_gray), words);
+auto words = fmt::styled_text{"red", fmt::fg(fmt::color::red)}
+    + " " + fmt::styled_text{"green", fmt::fg(fmt::color::green)}
+    + " " + fmt::styled_text{"blue", fmt::fg(fmt::color::blue)};
+auto defaults = fmt::fg(fmt::color::black).bg(fmt::color::light_gray);
+auto group = fmt::underlay(defaults, words);
 fmt::println("{}", group);
 ```
 
 Expected output (followed by a newline):
 
-<pre class="color-output"><span style="background-color: #D3D3D3"><span style="color: #FF0000">red</span> <span style="color: #008000">green</span> <span style="color: #0000FF">blue</span></span></pre>
+<pre class="color-output"><span style="color: #000000; background-color: #D3D3D3"><span style="color: #FF0000">red</span> <span style="color: #008000">green</span> <span style="color: #0000FF">blue</span></span></pre>
 
-Each word keeps its foreground color. The light-gray background covers all
-three words and the spaces between them.
+Each word keeps its foreground color. The spaces use the black default
+foreground, and the light-gray background covers the whole group.
 
-The free form `overlay(style, text)` returns a new value and leaves the input
-unchanged. The member form updates the group in place:
-
-```cpp
-words.overlay(fmt::bg(fmt::color::light_gray));
-```
-
-Overlay adds the specified colors and emphasis to the group's own style;
-it does not replace styles explicitly chosen for its parts. To include more
-text in a group's style, concatenate before applying that style:
+The free function returns an owning value; named inputs are copied and rvalues
+can be moved. The member updates the value in place:
 
 ```cpp
-auto all_red = fmt::overlay(fmt::fg(fmt::color::red),
-    red_text + " and this is red too");
+words.underlay(defaults);
 ```
 
-Appending to `all_red` later still adds a separate span. Apply `overlay` to the
-new combined value if the surrounding style should include the appended text.
+Underlay modifies only the root style. Formatting carries those defaults to
+relative descendants without changing their stored styles. An absolute scope
+starts from terminal initial conditions instead of inheriting outer defaults.
+
+### Use `overlay` for explicit overrides
+
+`overlay(overrides, text)` replaces the specified colors throughout the text
+tree, adding emphasis by OR. It skips existing absolute nodes and their entire
+subtrees. Use it when the supplied colors should replace explicit choices:
+
+```cpp
+auto all_red = fmt::overlay(fmt::fg(fmt::color::red), words);
+fmt::println("{}", all_red);
+```
+
+Expected output (followed by a newline):
+
+<pre class="color-output"><span style="color: #FF0000; background-color: #D3D3D3">red green blue</span></pre>
+
+Here `words` has the defaults added by the preceding member call. All relative
+parts become red, and the gray background remains. `words` itself is unchanged.
+The member `words.overlay(overrides)` applies the same recursive modification
+in place. Unlike `underlay`, overlay changes stored styles in descendants.
+Neither operation changes how formatting combines enclosing and inner styles.
+
+To overlay only the root style, use the style getter and setter:
+
+```cpp
+words.style(words.style().overlay(fmt::fg(fmt::color::red)));
+```
+
+That changes the root foreground; the words' explicit foregrounds still take
+precedence during formatting. Appending text with `+` or `+=` adds a separate
+span. Concatenate before underlaying defaults or applying overrides if the new
+text should be included.
 
 ### Absolute spans ignore the surrounding style
 
@@ -89,7 +114,9 @@ For a style value, `absolute(style)` returns an absolute copy of that style.
 An absolute style describes the complete appearance of its span. Missing
 foreground and background colors mean terminal defaults, and absent emphasis
 means off. Children inside an absolute group can inherit from that group as
-usual. After the absolute span, the surrounding appearance resumes.
+usual. Outer recursive overlays also skip the absolute node and its entire
+subtree.
+After the absolute span, the surrounding appearance resumes.
 
 An absolute node emits an SGR reset before applying its style, unless it
 produces no output. This applies in both compact and noncompact modes, even when
@@ -101,7 +128,7 @@ explicitly absolute descendant establishes its own reset boundary.
 auto underline_only = fmt::absolute(fmt::underline("underline only"));
 auto sentence = fmt::styled_text{"before "} + underline_only + " after";
 auto decorated = fmt::strike(
-    fmt::overlay(fmt::bg(fmt::gray_color{12}), sentence));
+    fmt::underlay(fmt::bg(fmt::gray_color{12}), sentence));
 fmt::println("{}", decorated);
 ```
 
@@ -130,7 +157,7 @@ style from the last emitted state.
 
 ```cpp
 fmt::print(fmt::underline(), "The result is {} after rounding.",
-           fmt::overlay(fmt::fg(fmt::term_color::bright_red), "42"));
+           fmt::styled_text{"42", fmt::fg(fmt::term_color::bright_red)});
 ```
 
 Expected output (without a trailing newline):
@@ -145,7 +172,7 @@ and precision, with optional `s` presentation. Width and precision may also be
 dynamic arguments. Debug presentation (`?`) is not supported.
 
 ```cpp
-fmt::println("{:*>12.9}", fmt::bold("hello " + overlay(fg(blue), "world")));
+fmt::println("{:*>12.9}", fmt::bold("hello " + fmt::styled_text{"world", fmt::fg(fmt::color::blue)}));
 // Three '*' characters followed by "hello wor", all bold; "wor" is blue.
 ```
 
@@ -443,3 +470,4 @@ Expected output (followed by a newline):
 
 Only `3.14` is styled in bold green. The value is rounded to two decimal places
 using the ostream's formatting settings.
+

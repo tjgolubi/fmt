@@ -146,7 +146,9 @@ replacement field temporarily uses its own complete style, then also restores
 the enclosing style.
 
 The same rules apply to [structured styled text](styled.md#structured-styled-text):
-concatenate complete spans with `+` or `+=`, and use `overlay` to style a group.
+concatenate complete spans with `+` or `+=`, and use `underlay` to supply group
+defaults while preserving explicit colors. Use `overlay` to replace specified
+colors throughout relative nodes; absolute scopes are protected.
 
 Style state belongs to one formatting operation. A separate `format` or
 `format_to` call starts with its own context, even when given the same output
@@ -159,3 +161,4 @@ redirected to a file. The [formatting functions](format.md) store those sequence
 in their result. For format string syntax, see the [syntax reference](../syntax.md).
 
 [SGR]: https://en.wikipedia.org/wiki/ANSI_escape_code#Select_Graphic_Rendition_parameters
+

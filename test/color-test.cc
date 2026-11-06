@@ -2682,3 +2682,39 @@ TEST(color_test, absolute_style_sgr) {
 }
 
 #undef FMT_SGR_EXPECTED
+
+
+TEST(color_test, text_style_underlay) {
+  using tc = fmt::term_color;
+  const fmt::color_t colors[] = {fmt::no_color, tc::black, tc::red,
+      fmt::rgb{1, 2, 3}, fmt::cube_color{3}, fmt::gray_color{12}};
+  for (auto foreground : colors) {
+    for (auto background : colors) {
+      for (auto supplied : colors) {
+        const auto base = fmt::text_style{foreground, background}.bold();
+        const auto defaults = fmt::text_style{supplied, supplied}.underline().absolute();
+        const auto result = fmt::underlay(base, defaults);
+        EXPECT_EQ(result.fg(), base.has_fg() ? foreground : supplied);
+        EXPECT_EQ(result.bg(), base.has_bg() ? background : supplied);
+        EXPECT_TRUE(result.is_bold() && result.is_underline() && result.is_absolute());
+        auto member = base;
+        EXPECT_EQ(&member.underlay(defaults), &member);
+        EXPECT_EQ(member, result);
+        EXPECT_EQ(fmt::underlay(base, fmt::text_style{}), base);
+        EXPECT_EQ(fmt::underlay(base, base), base);
+      }
+    }
+  }
+}
+
+#if FMT_USE_CONSTEXPR
+TEST(color_test, text_style_underlay_constexpr) {
+  constexpr auto base = fmt::fg(fmt::term_color::yellow);
+  constexpr auto defaults = fmt::fg(fmt::term_color::white).bg(fmt::term_color::blue);
+  constexpr auto result = fmt::underlay(base, defaults);
+  static_assert(result.fg() == fmt::term_color::yellow, "preserve foreground");
+  static_assert(result.bg() == fmt::term_color::blue, "supply background");
+  constexpr auto member = fmt::text_style{base}.underlay(defaults);
+  static_assert(member == result, "member and free underlay agree");
+}
+#endif

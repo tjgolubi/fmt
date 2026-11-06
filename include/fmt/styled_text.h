@@ -191,12 +191,28 @@ template <typename Char> class basic_styled_text {
   }
 
   /**
-   * Overlays this node's style in place, leaving its text and children intact.
-   * Specified colors replace matching channels; emphasis bits are combined
-   * by OR. Returns a reference to this node for chaining.
+   * Applies `overrides` recursively in place, skipping absolute nodes and
+   * their entire subtrees. Preserves text and tree structure. Specified
+   * colors replace matching channels; emphasis bits are combined by OR.
+   * Returns this node for chaining.
+   * To overlay only this node, use style(style().overlay(overrides)).
    */
-  auto overlay(text_style style) noexcept -> basic_styled_text& {
-    _style.overlay(style);
+  auto overlay(text_style overrides) noexcept -> basic_styled_text& {
+    if (_style.is_absolute()) return *this;
+    _style.overlay(overrides);
+    if (_is_branch) {
+      for (auto& child : _data.children) child.overlay(overrides);
+    }
+    return *this;
+  }
+
+  /**
+   * Underlays this node's style in place, leaving its text and children intact.
+   * Specified colors replace unspecified matching channels; emphasis bits are
+   * combined by OR. Returns a reference to this node for chaining.
+   */
+  auto underlay(text_style style) noexcept -> basic_styled_text& {
+    _style.underlay(style);
     return *this;
   }
 
@@ -341,7 +357,7 @@ template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
       out = transition(effective, terminal, out);
       effective = terminal;
     } else {
-      effective = fmt::overlay(enclosing, effective);
+      effective = fmt::underlay(effective, enclosing);
     }
     if (left != 0) {
       out = transition(effective, terminal, out);
@@ -414,19 +430,36 @@ template <
 auto to_styled_text(S&& text) -> basic_styled_text<Char> {
   return basic_styled_text<Char>{std::forward<S>(text)};
 }
+
 }  // namespace detail
 
 /**
- * Returns styled text with `style` overlaid on its root. Accepts styled text,
+ * Returns styled text with `overrides` applied recursively, skipping absolute
+ * nodes and their entire subtrees. Specified colors replace matching channels;
+ * Emphasis bits are combined by OR. Accepts styled text, character strings,
+ * and std::basic_string. String
+ * inputs become owned leaves. Styled-text lvalues copy their structure;
+ * rvalues move it. Only the returned value is modified.
+ */
+template <typename T>
+FMT_NODISCARD auto overlay(text_style overrides, T&& text)
+    -> decltype(detail::to_styled_text(std::forward<T>(text))) {
+  auto result = detail::to_styled_text(std::forward<T>(text));
+  result.overlay(overrides);
+  return result;
+}
+
+/**
+ * Returns styled text with `style` underlaid on its root. Accepts styled text,
  * character strings, and std::basic_string. String inputs become owned leaves.
  * Styled-text lvalues copy their structure; rvalues move it. Children retain
  * their styles. Only the returned value is modified.
  */
 template <typename T>
-FMT_NODISCARD auto overlay(text_style style, T&& text)
+FMT_NODISCARD auto underlay(text_style style, T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
   auto result = detail::to_styled_text(std::forward<T>(text));
-  result.overlay(style);
+  result.underlay(style);
   return result;
 }
 
@@ -438,63 +471,64 @@ FMT_NODISCARD auto overlay(text_style style, T&& text)
 template <typename T>
 FMT_NODISCARD auto absolute(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::overlay(fmt::absolute(text_style{}), std::forward<T>(text));
+  return fmt::underlay(fmt::absolute(text_style{}),
+                                         std::forward<T>(text));
 }
 
 /// Returns styled text with bold enabled on its root, preserving other style.
 template <typename T>
 FMT_NODISCARD auto bold(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::overlay(fmt::bold(), std::forward<T>(text));
+  return fmt::underlay(fmt::bold(), std::forward<T>(text));
 }
 
 /// Returns styled text with faint enabled on its root, preserving other style.
 template <typename T>
 FMT_NODISCARD auto faint(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::overlay(fmt::faint(), std::forward<T>(text));
+  return fmt::underlay(fmt::faint(), std::forward<T>(text));
 }
 
 /// Returns styled text with italic enabled on its root, preserving other style.
 template <typename T>
 FMT_NODISCARD auto italic(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::overlay(fmt::italic(), std::forward<T>(text));
+  return fmt::underlay(fmt::italic(), std::forward<T>(text));
 }
 
 /// Enables underline on the returned root, preserving its other style.
 template <typename T>
 FMT_NODISCARD auto underline(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::overlay(fmt::underline(), std::forward<T>(text));
+  return fmt::underlay(fmt::underline(), std::forward<T>(text));
 }
 
 /// Returns styled text with blink enabled on its root, preserving other style.
 template <typename T>
 FMT_NODISCARD auto blink(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::overlay(fmt::blink(), std::forward<T>(text));
+  return fmt::underlay(fmt::blink(), std::forward<T>(text));
 }
 
 /// Enables reverse on the returned root, preserving its other style.
 template <typename T>
 FMT_NODISCARD auto reverse(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::overlay(fmt::reverse(), std::forward<T>(text));
+  return fmt::underlay(fmt::reverse(), std::forward<T>(text));
 }
 
 /// Enables conceal on the returned root, preserving its other style.
 template <typename T>
 FMT_NODISCARD auto conceal(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::overlay(fmt::conceal(), std::forward<T>(text));
+  return fmt::underlay(fmt::conceal(), std::forward<T>(text));
 }
 
 /// Returns styled text with strike enabled on its root, preserving other style.
 template <typename T>
 FMT_NODISCARD auto strike(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::overlay(fmt::strike(), std::forward<T>(text));
+  return fmt::underlay(fmt::strike(), std::forward<T>(text));
 }
 
 FMT_END_NAMESPACE

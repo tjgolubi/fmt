@@ -1275,6 +1275,25 @@ class text_style {
   }  // overlay
 
   /**
+   * Applies `other` under this style.
+   *
+   * Specified colors in `other` fill matching unspecified channels.
+   * Existing colors in this style are preserved. Emphasis bits are combined by OR. The result is
+   * absolute if either input is absolute; explicit underlays remain allowed.
+   */
+  FMT_CONSTEXPR auto underlay(const text_style& other) noexcept -> text_style& {
+    if (other == *this || other.empty()) return *this;
+
+    if (empty()) return *this = other;
+
+    absolute(is_absolute() || other.is_absolute());
+    emph(emph() | other.emph());
+    if (!has_fg()) fg(other.fg());
+    if (!has_bg()) bg(other.bg());
+    return *this;
+  }  // underlay
+
+  /**
    * Combines this style with `rhs` and returns a reference to this style.
    *
    * Emphasis bits are combined by OR. An unspecified color channel takes the
@@ -1688,6 +1707,18 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto overlay(text_style base,
                                                 text_style overrides) noexcept
     -> text_style {
   return base.overlay(overrides);
+}
+
+/**
+ * Returns a copy of `base` with `defaults` applied, leaving both inputs
+ * unchanged. Specified colors in `defaults` replace matching unspecified
+ * channels and preserve their kinds. Other channels retain the base colors.
+ * Emphasis bits are combined by OR. The result is absolute if either input is.
+ */
+FMT_NODISCARD FMT_CONSTEXPR inline auto underlay(text_style base,
+                                                 text_style defaults) noexcept
+    -> text_style {
+  return base.underlay(defaults);
 }
 
 template <> struct underlying_type<text_style> {

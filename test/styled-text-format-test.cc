@@ -511,3 +511,33 @@ TEST(styled_text_format_test, deferred_transitions) {
   check_deferred_transitions<char>();
   check_deferred_transitions<wchar_t>();
 }
+
+
+namespace {
+template <typename Char> void check_defaults_and_overrides() {
+  using node = fmt::basic_styled_text<Char>;
+  using tc = fmt::term_color;
+  const auto defaults = fmt::fg(tc::white).bg(tc::blue);
+  const auto yellow = fmt::fg(tc::yellow).bg(tc::blue);
+  const auto white = defaults;
+  auto protected_group = node{chars<Char>("C"), fmt::fg(tc::red)}
+      + node{chars<Char>("D")};
+  protected_group.style(fmt::absolute(fmt::text_style{}));
+  const auto text = node{chars<Char>("A"), fmt::fg(tc::yellow)}
+      + node{chars<Char>("B")} + protected_group;
+  check_states(render(fmt::underlay(defaults, text)), chars<Char>("ABCD"),
+               {yellow, white, fmt::fg(tc::red), fmt::text_style{}});
+  check_states(render(fmt::overlay(defaults, text)), chars<Char>("ABCD"),
+               {white, white, fmt::fg(tc::red), fmt::text_style{}});
+  const auto leaf = node{chars<Char>("A"), fmt::fg(tc::yellow)};
+  const auto branch = leaf + node{chars<Char>("B")};
+  check_states(fmt::format(fmt::runtime(chars<Char>("{:.1}")),
+                          fmt::underlay(defaults, leaf)), chars<Char>("A"), {yellow});
+  check_states(fmt::format(fmt::runtime(chars<Char>("{:.1}")),
+                          fmt::underlay(defaults, branch)), chars<Char>("A"), {yellow});
+}
+}  // namespace
+TEST(styled_text_format_test, defaults_and_recursive_overrides) {
+  check_defaults_and_overrides<char>();
+  check_defaults_and_overrides<wchar_t>();
+}

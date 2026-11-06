@@ -11,3 +11,9 @@ Run `make clean` before changing the fmt path, compiler, or build flags.
 `FmtColorDemo2.cpp` exercises nested colors/emphasis and absolute boundaries.
 The second line has strikethrough and a gray background except inside the
 absolute underline-only span. Output requires an ANSI-capable terminal.
+
+
+`FmtColorDemo2.cpp` prints the same `line2` with underlay first and overlay
+second, using the same white foreground, gray background, and strikethrough.
+Underlay supplies defaults while preserving explicit colors. Overlay replaces
+the affected colors throughout relative nodes. Both preserve the absolute span.

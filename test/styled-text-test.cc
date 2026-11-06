@@ -316,7 +316,9 @@ void check_overlay() {
                fmt::underline());
   const auto snapshot = source;
   const auto overrides = fmt::fg(fmt::term_color::red) | fmt::bold();
-  auto expected = left + right;
+  auto expected = node{text<Char>("left"),
+                       fmt::fg(fmt::term_color::red).italic().bold()}
+      + node{text<Char>("right"), fmt::fg(fmt::term_color::red).faint().bold()};
   expected.style(fmt::fg(fmt::term_color::red) | fmt::bg(fmt::gray_color{5}) |
                  fmt::underline() | fmt::bold());
   auto member = source;
@@ -325,7 +327,7 @@ void check_overlay() {
   EXPECT_EQ(member.style().fg().index(),
             fmt::to_underlying(fmt::color_t::kind::term));
   EXPECT_EQ(member.plain_text(), text<Char>("leftright"));
-  member.overlay(fmt::text_style{}).overlay(member.style());
+  member.overlay(fmt::text_style{}).overlay(overrides);
   EXPECT_EQ(member, expected);
   EXPECT_EQ(fmt::overlay(overrides, source), expected);
   EXPECT_EQ(source, snapshot);
@@ -428,7 +430,7 @@ TEST(styled_text_test, modifier_literals_and_composition) {
   const auto inner = fmt::styled_text{"nested bold", fmt::bold()};
   auto expected = fmt::styled_text{"red text with "} + inner + " still red";
   expected.style(fmt::fg(fmt::color::red));
-  const auto line = fmt::overlay(fmt::fg(fmt::color::red),
+  const auto line = fmt::underlay(fmt::fg(fmt::color::red),
       "red text with " + fmt::bold("nested bold") + " still red");
   EXPECT_EQ(line, expected);
   EXPECT_EQ(line.plain_text(), "red text with nested bold still red");
@@ -523,4 +525,54 @@ TEST(styled_text_test, display_width) {
   check_display_width(std::wstring{L"wide"});
   check_display_width(std::wstring{L"\u754c"});
   check_display_width(std::wstring{L"e\u0301"});
+}
+
+
+namespace {
+template <typename Char> void check_overlay_boundaries_and_underlay() {
+  using node = fmt::basic_styled_text<Char>;
+  using tc = fmt::term_color;
+  const auto defaults = fmt::fg(tc::white).bg(tc::blue).bold();
+  const auto red = node{text<Char>("red"), fmt::fg(tc::red)};
+  const auto plain = node{text<Char>("plain")};
+  auto protected_group = node{text<Char>("protected"), fmt::fg(tc::green)}
+      + node{text<Char>("default")};
+  protected_group.style(fmt::underline().absolute());
+  auto nested = red + plain;
+  nested.style(fmt::italic());
+  auto source = nested + protected_group;
+  const auto saved = source;
+
+  auto expected_nested = node{text<Char>("red"), defaults}
+      + node{text<Char>("plain"), defaults};
+  expected_nested.style(fmt::text_style{defaults}.italic());
+  auto expected = expected_nested + protected_group;
+  expected.style(defaults);
+  auto member = source;
+  EXPECT_EQ(&member.overlay(defaults), &member);
+  EXPECT_EQ(member, expected);
+  EXPECT_EQ(fmt::overlay(defaults, source), expected);
+  EXPECT_EQ(source, saved);
+  EXPECT_EQ(fmt::overlay(defaults, protected_group), protected_group);
+  const auto absolute_leaf = node{text<Char>("absolute"), fmt::fg(tc::red).absolute()};
+  EXPECT_EQ(fmt::overlay(defaults, absolute_leaf), absolute_leaf);
+
+  auto underlaid = source;
+  EXPECT_EQ(&underlaid.underlay(defaults), &underlaid);
+  auto root_only = source;
+  root_only.style(defaults);
+  EXPECT_EQ(underlaid, root_only);
+  EXPECT_EQ(fmt::underlay(defaults, source), root_only);
+  const auto colored = node{text<Char>("status"), fmt::fg(tc::yellow)};
+  EXPECT_EQ(fmt::underlay(defaults, colored),
+            (node{text<Char>("status"), fmt::fg(tc::yellow).bg(tc::blue).bold()}));
+  EXPECT_EQ(fmt::overlay(defaults, colored), (node{text<Char>("status"), defaults}));
+}
+}  // namespace
+
+TEST(styled_text_test, narrow_overlay_boundaries_and_underlay) {
+  check_overlay_boundaries_and_underlay<char>();
+}
+TEST(styled_text_test, wide_overlay_boundaries_and_underlay) {
+  check_overlay_boundaries_and_underlay<wchar_t>();
 }

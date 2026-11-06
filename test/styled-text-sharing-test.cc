@@ -150,7 +150,7 @@ bool check_sharing() {
     return false;
 
   const auto root_style = fmt::fg(fmt::color::red);
-  auto expected = branch;
+  auto expected = node{large, root_style} + node{large, root_style};
   expected.style(root_style);
   start_counting();
   branch_copy.overlay(root_style);
@@ -196,3 +196,4 @@ int main() {
   std::fputs("styled_text sharing allocation regression failed\n", stderr);
   return 1;
 }
+

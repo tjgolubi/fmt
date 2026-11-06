@@ -116,6 +116,32 @@ auto combined = fmt::overlay(base, overrides);
     options:
       color_reference: true
 
+### Underlaying styles
+
+`style.underlay(defaults)` fills unspecified foreground and background channels
+from `defaults`, preserving colors already specified in `style`. Emphasis bits
+combine by OR, and the result is absolute if either input is absolute. This
+explicitly modifies a style value; it performs no inheritance or ANSI output.
+The member is `noexcept` and returns `text_style&` for chaining.
+
+The free `fmt::underlay(base, defaults)` returns the combined style without
+modifying either input. Both forms support constant evaluation in C++14 and
+later on supported compilers, with runtime use available in C++11.
+
+```cpp
+constexpr auto base = fmt::fg(fmt::color::yellow);
+constexpr auto defaults = fmt::fg(fmt::color::white).bg(fmt::color::blue);
+auto combined = fmt::underlay(base, defaults);
+// Yellow foreground is preserved; the missing background becomes blue.
+```
+
+For style values, `underlay(base, defaults)` equals `overlay(defaults, base)`.
+For structured text, see [group defaults and overrides](styled.md#use-underlay-to-supply-group-defaults).
+
+::: underlay(text_style, text_style)
+    options:
+      color_reference: true
+
 ### Combining styles
 
 `|` returns a combined style and leaves both operands unchanged. `|=` updates
@@ -506,3 +532,4 @@ style's color or emit a terminal reset.
 
 See [Colors](colors.md) for the accepted color types and
 [Text style rendering](index.md#TextStyleRendering) for formatting behavior.
+

@@ -9,6 +9,10 @@ copyright: 2026 Terry Golubiewski, all rights reserved.
 
 ### 🚀 Features
 
+- *(color)* Underlay supplies default colors for styles and structured text.
+- *(text)* Overlay applies overrides recursively, preserving absolute subtrees;
+  examples distinguish default styling from explicit overrides.
+
 - *(color)* [**breaking**] Extend colors, text styles, and structured styled text — `fmt::color` becomes a namespace of RGB constants.
 Emphasis composition returns emphasis. Terminal colors use palette indices
 instead of SGR codes, and color getters return `color_t`. Overlapping terminal
@@ -23,4 +27,5 @@ resetting to terminal defaults.
 ### 🎨 Source Formatting
 
 - Conform to clang-format and cmake-format checks
+
 
