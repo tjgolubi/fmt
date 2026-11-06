@@ -1,31 +1,22 @@
 # Structured styled text and format contexts
 
-Updated November 5, 2026.
+Updated November 6, 2026.
 
 ## Scope and state
 
-Owning text, its corrected formatter, context inheritance/restoration, parser,
-and string/tree ANSI stripping are integrated in `color-dev` at `dd7180a865d43cb02946874f51c9d690483e18ae`.
-The current baseline includes the foundational extension, accepted formatting,
-and Backslash squash above upstream `4ed35350`. The active library checkout
-is `pr/color`, with a clean tracked tree at the same commit. Use `color-dev` as
-the FmtColor baseline rather than historical feature branches; the comparison
-fix remains a separate branch.
+Owning text, formatter/context restoration, parsing, stripping, Backslash,
+and underlay/overlay operations are integrated into `color-dev` at
+`10094dee4bd90f9053dc78315cc25d2e7cdd51d7`. The active library checkout is
+`color-dev`, clean and pushed. The baseline includes underlay `0ba4e364` and
+the table/guide/changelog commit `10094dee` above the earlier foundation.
+`pr/color` remains at `dd7180a8`; PR #5015 is closed and unmerged.
 
-Verified November 5, 2026: `color-dev` and `pr/color` both identify the amended
-commit. **All 41 push-CI jobs passed on each branch**: Linux 18, Windows 13,
-macOS 9, and documentation 1. The separate `color-dev` guide build and deployment
-also passed, for **43 successful jobs on that branch**. Every run passed on
-attempt 1, with no failed, cancelled, or pending jobs. Local/GitHub SHAs match. See
+Verified November 6, 2026: all 41 push-CI jobs and both guide-publication jobs
+passed on attempt 1 for `10094dee`. See
 [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
-
-The public website is version 46 and documents parsing/stripping, resets,
-context integration, Backslash utilities, the complete working demo, and the
-dated CI snapshot.
-It links to upstream draft PR #5015 alongside the `pr/color` source branch.
-The obsolete `feat/StyledText2` push exclusions were removed from Linux,
-Windows, macOS, and doc workflows. All four use `on: [push, pull_request]`.
-Do not cancel jobs or start periodic polling without instruction.
+Public Site version 47 includes both demos, current styling semantics, the
+table's styled output, and exact source/CI links. Check CI on demand; do not
+cancel jobs or start periodic polling without instruction.
 
 ## Representation and public API
 
@@ -74,7 +65,7 @@ both complete operands, preserving their styles and group boundaries. A
 right-hand branch remains nested. `operator+` delegates to `+=`. Neither
 operator hoists identical styles or merges leaf strings.
 
-Use `overlay(style, lhs + rhs)` to style a group. Appending to a styled group
+Use `underlay(style, lhs + rhs)` to supply group defaults. Appending to a styled group
 preserves that group as a child; its style does not leak into the appended span.
 The formatter accepts nested trees and matching parent/child styles without
 requiring structural simplification.
@@ -92,32 +83,31 @@ it does not parse or strip escapes. Empty and moved-from nodes return empty
 strings. Allocation can throw. No preliminary sizing pass or public structural
 traversal is introduced.
 
-## Root styling helpers
+## Root defaults and recursive overrides
 
-Member `overlay(text_style)` updates only `_style`, returns
-`basic_styled_text&`, and is noexcept. It does not copy or traverse the tree.
-The free style-first form `overlay(style, text)` returns an owning styled value.
-Free `bold`, `faint`, `italic`, `underline`, `blink`, `reverse`, `conceal`, and
-`strike` enable the corresponding root emphasis through overlay.
+Member `underlay(text_style)` fills unspecified colors in the root style,
+preserves explicit colors, ORs emphasis, and returns `basic_styled_text&`.
+It is noexcept and does not traverse or copy children. Formatting carries
+root defaults to relative descendants without changing their stored styles.
 
-The free functions accept styled text, character strings, and
-`std::basic_string` of the matching character type. Named styled inputs copy
-the tree structure while sharing leaf strings; rvalues move. String inputs
-become owned leaves. Children retain their own styles. Existing style factory
-calls such as `bold()` and `bold(false)` remain available. These helpers can
-allocate and do not promise unconditional noexcept.
+Member `overlay(text_style)` recursively overrides specified colors and ORs
+emphasis, skipping existing absolute nodes and their entire subtrees. It is
+noexcept and preserves text, structure, and shared leaf strings. To override
+only the root, use `ts.style(ts.style().overlay(overrides))`.
+
+Free style-first `underlay(style, text)` and `overlay(style, text)` accept
+styled text, character strings, and matching `std::basic_string` inputs.
+Named styled inputs copy structure while sharing leaves; rvalues move.
+Strings become owned leaves. Free helpers can allocate. The eight emphasis
+helpers and `absolute(text)` use underlay on the root, preserving child styles.
+The latter marks only the returned root absolute. No individual fluent emphasis
+members or styled-text member `absolute` were added. Deferred blend is separate.
 
 ```cpp
-auto copy = fmt::overlay(fmt::fg(fmt::term_color::red), ts);
-ts.overlay(fmt::underline()); // In place, no tree copy.
+auto copy = fmt::underlay(fmt::fg(fmt::term_color::white), ts);
+ts.overlay(fmt::fg(fmt::term_color::red)); // Recursive override.
 auto phrase = fmt::bold("nested bold");
 ```
-
-No individual fluent emphasis members were added to styled text.
-The free `absolute(text)` helper accepts the same text inputs and marks only the
-returned root absolute, preserving its existing colors, emphasis, and children.
-Lvalues copy; rvalues move. No styled-text member `absolute` was added.
-Deferred `blend` remains a separate decision.
 
 ## Absolute styles and blend contract
 
@@ -284,31 +274,26 @@ discussion. No performance benchmark establishes overhead claims.
 
 ## Demonstration
 
-`demo/FmtColorDemo2.cpp` adapts Terry's newer uploaded demo to current names:
-`styled_text.h`, `term_color`, `overlay`, and `fmt::println`. An absolute text
-span uses the free `absolute(underline(...))` helper. The older uploaded `FmtColorDemo.cpp` is not the
-active demo and contains obsolete API spellings and syntax errors.
+`demo/FmtColorDemo2.cpp` prints the same composed line underlaid and overlaid
+with white foreground, gray background, and strikethrough. Underlay preserves
+explicit red/blue colors; overlay replaces relative colors. Both protect the
+absolute underline-only span and its complete subtree.
 
-Concatenation preserves the red group as a complete span, so red applies only
-to its initial inner phrase, including nested bold, and does not leak into
-plain separators or later spans. The second
-line carries a gray background and strikethrough except for the absolute
-underline-only span; both enclosing properties resume afterward.
+`demo/TableDemo.cpp` shows per-column backgrounds and defaults, nested colors,
+bold/underlined headings, bold and faint rows, an absolute red-on-white warning,
+UTF-8 widths, and fixed-width padding/truncation. `cell` uses underlay to keep
+explicit foreground and background choices. Width equals precision per field;
+the Database explanation truncates after `CRITICAL!` with column-styled padding.
 
-Run `make -C demo run` with GNU make and a C++23-capable compiler. The Makefile
-uses `FMT_DIR=..`, header-only mode, and `FMT_COLOR_COMPACT_SGR=1`; it needs no
-CMake or prebuilt library. Override `FMT_DIR` or `CXX` on the make command line.
-Executable output is ignored locally. The Makefile is tracked despite the
-repository's general Makefile ignore rule. A standalone tarball was produced,
-but the voice/task interface did not expose a usable download for Terry; the
-repository demo is the current delivery method.
+`make -C demo` builds both executables, `make -C demo run` runs both, and
+`make -C demo clean` removes both. The Makefile defaults to C++23 header-only
+compact SGR and accepts `FMT_DIR`/`CXX` overrides. The library remains C++11.
+The user guide contains a table walkthrough and verified complete expected text
+at `color/styled.html#table-demonstration`. Site version 47 shows the styled
+display and provides source and actual ANSI output downloads for both demos.
 
-The guide's nested padding/precision example uses
-`fmt::println("{:*>12.9}", fmt::bold("hello " + overlay(fg(blue), "world")));`.
-Its display is `***hello wor`, all bold, with `wor` blue: precision spans the
-tree and padding uses the root style. Expected displays also show the whole
-sentence underlined around bright-red `42`, and C++20 `std::numbers::pi`
-rounded by stream precision to bold-green `3.14`.
+The nested padding/precision guide example prints `***hello wor`, all bold with
+`wor` blue. Precision spans the tree and padding uses the root style.
 
 ## SGR parser
 
@@ -401,7 +386,7 @@ rewritten baseline. Current guide build/deployment passed.
 The prior GCC 13/14 branch-width and GCC-13-only branch-move noinline workarounds
 remain. Older strict local Release blend/union diagnostics remain validation
 limits. No PR-only lint/fuzz, tablet, performance, ABI, or complete remote
-compact-SGR result is inferred. Website QA rebuilt the current compact demo,
+compact-SGR result is inferred. Website QA rebuilt both current compact demos,
 not the full regression suite. Implemented Backslash codecs are separate text
 utilities, not tree formatting or SGR parsing; they have no styled-tree overload.
 Their strict error behavior and constexpr support are in CppDesign.md. CSV/TSV

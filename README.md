@@ -1,6 +1,6 @@
 # FmtColor coordination
 
-Updated November 5, 2026.
+Updated November 6, 2026.
 
 FmtColor develops color and text-style extensions for C++. We plan two
 sequential deliverables:
@@ -41,42 +41,35 @@ records remain available in Git history.
 
 ## Current baseline
 
-The development baseline is `color-dev` at `dd7180a865d43cb02946874f51c9d690483e18ae`.
-`pr/color` and upstream draft PR #5015 identify the same commit. The active
-library checkout is `pr/color`, with a clean tracked tree. The accepted history
-above upstream/main `4ed3535092a96ac9f56fab80df83416d51bcc78e` consists of the
-foundational styling extension `35de08cc`, source-formatting commit `d1ffcbca`,
-and the Backslash squash commit `dd7180a8`. Do not replay historical formatter,
-parser, or intermediate Backslash commits onto this baseline.
+The development baseline and active library checkout are `color-dev` at
+`10094dee4bd90f9053dc78315cc25d2e7cdd51d7`, pushed with a clean tracked tree.
+The accepted history above upstream/main `4ed3535092a96ac9f56fab80df83416d51bcc78e`
+is the foundational styling extension `35de08cc`, formatting `d1ffcbca`,
+Backslash `dd7180a8`, underlay/overlay `0ba4e364`, and table demo `10094dee`.
+The table commit includes the generated changelog and user-guide walkthrough.
+Do not replay intermediate feature commits onto this baseline.
 
-The contribution includes color values, fluent styles, SGR helpers, ostream
-support, owning styled text, formatter/context restoration, standard SGR parsing,
-ANSI stripping, backslash escaping/unescaping, the demo, and user documentation.
-
-Verified November 5, 2026: **all 41 push-CI jobs passed on each branch**:
-Linux 18, Windows 13, macOS 9, and documentation 1. The separate `color-dev`
-guide build and deployment also passed, for **43 successful jobs on that branch**.
-Every run passed on attempt 1, with no failed, cancelled, or pending jobs.
-Local/GitHub SHAs match. See
-[BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
+Verified November 6, 2026: **all 43 jobs passed** for this exact SHA:
+Linux 18, Windows 13, macOS 9, documentation 1, and guide build/deployment 2.
+Every run passed on attempt 1; none failed, cancelled, or remain pending.
+Local and GitHub SHAs match. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 
 `FmtColorChangeLog.md` was regenerated with git-cliff 2.14.2,
-`--offline --no-exec`, and the explicit accepted-history range above `4ed35350`.
-It includes the foundational breaking-change footer, formatting, and Backslash
-entries; Terry amended the result into `dd7180a8` and pushed it. Do not regenerate
-it automatically. No fork release number or tag has been assigned. Library and
-coordination commits/pushes still need explicit authorization.
+`--offline --no-exec`, and the explicit range above `4ed35350` through the
+accepted history. It includes the table feature and the underlay/overlay
+breaking change, and is included in `10094dee`. Do not regenerate automatically.
+No fork release number or tag has been assigned. Commits and pushes still need
+explicit authorization.
 
 ## Upstream contribution
 
-`pr/color` is pushed at the same `dd7180a8` commit as `color-dev`; it is the active
-library checkout. `color-dev` remains the FmtColor development baseline. Terry
-submitted [upstream PR #5015](https://github.com/fmtlib/fmt/pull/5015). Verified
-November 5, 2026: it is open as a draft, unmerged, with head `dd7180a8` from
-`pr/color`. Website version 46 links to the PR for API and scope discussion,
-alongside the “Source / pr/color” branch link. Passing fork push CI does not
-establish upstream PR-only check results. Fork-specific README, publication,
-tooling, and remaining workflow changes still need upstream review.
+`pr/color` remains at `dd7180a865d43cb02946874f51c9d690483e18ae` and is not the
+current development checkout. Verified November 6, 2026:
+[upstream PR #5015](https://github.com/fmtlib/fmt/pull/5015) is closed and
+unmerged, with that earlier head. Website version 47 states this explicitly.
+The fork's passing push CI does not establish upstream PR-only results or
+upstream acceptance. Fork README, publication, tooling, and workflow changes
+still require upstream review.
 
 ## Separate upstream comparison fix
 
@@ -134,7 +127,7 @@ three octal digits with values up to 255. Unknown/malformed escapes, octal
 overflow, and trailing backslashes throw `fmt::format_error`. Iterator output
 written before an error remains. Decoding is one pass.
 
-The user guide includes a compact Markdown escape table. Website version 46
+The user guide includes a compact Markdown escape table. Website version 47
 presents these as implemented. CSV and TSV conversion remain outside scope.
 See [CppDesign.md](CppDesign.md#backslash-escaping-and-unescaping).
 
@@ -142,9 +135,14 @@ See [CppDesign.md](CppDesign.md#backslash-escaping-and-unescaping).
 
 The complete release remains C++11-compatible. `<fmt/styled_text.h>` supplies
 owning narrow/wide trees, immutable shared leaf strings, value-owned private
-children, concatenation, plain-text extraction, root overlays/emphasis helpers,
+children, concatenation, plain-text extraction, root underlays/emphasis helpers,
 absolute styles, and nested formatting. `+` and `+=` preserve complete styled
-spans; use `overlay(style, expression)` to style a group.
+spans. Use `underlay(style, expression)` for group defaults, preserving explicit
+colors. Underlay changes only the root; formatting carries defaults to relative
+children. Overlay recursively overrides specified colors, skipping existing
+absolute nodes and entire subtrees. Both OR emphasis. Use
+`text.style(text.style().overlay(overrides))` for root-only overrides.
+Emphasis and absolute free helpers use underlay on the root.
 
 `styled_arg` and `styled_text` now inherit and restore the enclosing formatting
 context style. An outer underline therefore survives a red replacement field.
@@ -166,7 +164,12 @@ changed targets, omitting a redundant reset from known defaults.
 An absolute styled-text node emits an SGR reset unless there is no output;
 relative transitions wait until text or padding is emitted.
 
-Run `make -C demo run` for the checked-in header-only C++23 compact-SGR demo.
+Run `make -C demo` to build `FmtColorDemo2` and `TableDemo`, `make -C demo run`
+to run both, or `make -C demo clean` to remove both executables. The Makefile
+uses header-only C++23 with compact SGR. `demo/TableDemo.cpp` demonstrates
+column backgrounds, nested colors, row emphasis, absolute styles, UTF-8 display
+widths, padding, and truncation. The guide includes build/run instructions and
+verified expected text output at `color/styled.html#table-demonstration`.
 Debug formatting, deferred blending, extended push/pop parsing, full grapheme/terminal width,
 serialization, styled-text module export, and public iteration remain deferred.
 Appending `detail::styled_arg` to a tree remains deferred; `fmt::styled` retains
@@ -199,24 +202,23 @@ Do not claim that all original upstream tests pass unchanged.
 ## Public documentation and next work
 
 - [Project website](https://fmtcolor.tjgolubi.chatgpt.site): public version
-  **46**, including parser/stripper examples, current reset behavior, retained
-  demos/downloads, exact `dd7180a8` source links, `pr/color` source and draft
-  PR #5015 links, passing CI for both branches, and the implemented Backslash
-  utilities with strict error handling.
+  **47**, with current underlay/overlay semantics, both working demos and ANSI
+  displays/downloads, exact `10094dee` source links, 43 passing jobs, and the
+  closed/unmerged upstream PR status. Publication is confirmed; see Website.md.
 - [Generated user guide](https://tjgolubi.github.io/fmt/color/index.html):
-  build and deployment passed for `dd7180a8` from `color-dev`.
+  build and deployment passed for `10094dee`, including the table walkthrough.
 - [Issues](https://github.com/tjgolubi/fmt/issues): bugs and follow-up work.
 
 The `color-dev` root README now uses current branch badges and the correct
 website URL and lists owning text, context restoration, parser, and stripper.
 `FmtColorIntegration.md` includes header selection, current reset behavior,
 C++17 application examples, and Make/CMake/header-only integration. The library
-minimum remains C++11; the complete working demo remains C++23.
+minimum remains C++11; the working demos remain C++23.
 
 The complete C++11 API includes named RGB constants, terminal/cube/gray colors,
 public five-alternative `color_t` access and visitation, comparisons and hashing,
 RGB conversion and color/style blending, fluent components and attributes,
-style clearing and overlays, conditional emphasis factories, SGR helpers and
+style clearing, underlays, and overlays, conditional emphasis factories, SGR helpers and
 compact output, and styled narrow/wide ostream formatting and insertion.
 Include `<fmt/color-ostream.h>` for the stream bridge; it includes `color.h`,
 `ostream.h`, and `xchar.h` while the original headers remain independent.

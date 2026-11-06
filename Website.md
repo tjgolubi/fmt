@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Build and test](BuildAndTest.md)
 
-Updated November 5, 2026.
+Updated November 6, 2026.
 
 ## Purpose and content
 
@@ -19,13 +19,14 @@ compatibility-run narratives. Source links refer to the current contribution
 and its upstream baseline. Explain behavior and differences from the original
 upstream API without ABI/rebuild reminders; the ABI change is accepted.
 
-Current published pages (version 46):
+Current published pages (version 47):
 
 - [Overview](https://fmtcolor.tjgolubi.chatgpt.site/): implemented features,
   parser/stripper introduction, design, two deliverables, complete working
-  `FmtColorDemo2.cpp`, download, and verified styled display.
+  `FmtColorDemo2.cpp` underlay/overlay comparison, styled `TableDemo.cpp` display,
+  source/ANSI downloads, and guide walkthrough link.
 - [The contribution](https://fmtcolor.tjgolubi.chatgpt.site/integrated-changes.html):
-  consolidated `color-dev` at `dd7180a8`, value APIs, nested formatting/context
+  current `color-dev` at `10094dee`, value APIs, nested formatting/context
   restoration, absolute resets unless no output, parser and leaf-local stripping
   examples, guide links, and the complete passing CI results.
 - [Future work](https://fmtcolor.tjgolubi.chatgpt.site/work-in-progress.html):
@@ -35,16 +36,14 @@ Current published pages (version 46):
   the working overview demo. Backslash utilities are implemented and linked from
   the contribution page; the old future-work anchor directs readers there.
 
-Source links identify `dd7180a865d43cb02946874f51c9d690483e18ae`, based on
+Source links identify `10094dee4bd90f9053dc78315cc25d2e7cdd51d7`, based on
 upstream `4ed3535092a96ac9f56fab80df83416d51bcc78e`. The contribution has not been
-accepted into fmtlib/fmt. `pr/color` identifies the same contribution.
-[Upstream PR #5015](https://github.com/fmtlib/fmt/pull/5015) is open as a draft,
-unmerged, at head `dd7180a8`. Both the overview and contribution pages link to
-it for API and scope discussion, alongside “Source / pr/color” branch links. All 41
-push-CI jobs passed on each branch on attempt 1. The separate `color-dev` guide
-build and deployment also passed, for 43 successful jobs on that branch. No failed, cancelled, or pending jobs remain in
-the latest workflow attempts. The separate `fix/StringViewCompare` branch
-must not be mentioned on the website; Terry explicitly excluded it from this update.
+accepted into fmtlib/fmt. `pr/color` remains at `dd7180a8`.
+[Upstream PR #5015](https://github.com/fmtlib/fmt/pull/5015) is closed and
+unmerged at that earlier head, verified November 6, 2026. The Site distinguishes
+that from current `color-dev`. All 41 current push-CI jobs and both guide jobs
+passed on attempt 1 (43 total). No failed, cancelled, or pending jobs remain.
+The separate `fix/StringViewCompare` branch must not be mentioned on the Site.
 
 ## User guide
 
@@ -88,7 +87,7 @@ Boolean-only factories such as `bold()` are constexpr in C++11.
 The guide has links from introductory identifiers to their matching sections
 and aligned Markdown tables. Styled Arguments examples show expected displays
 and newline behavior. Nested precision/padding uses `{:*>12.9}` on bold
-`"hello " + overlay(fg(blue), "world")`: `***hello wor`, all bold with `wor` blue.
+`"hello " + fmt::styled_text{"world", fmt::fg(fmt::color::blue)}`: `***hello wor`, all bold with `wor` blue.
 The ostream example includes `<numbers>` marked C++20 and uses
 `std::numbers::pi`, displaying `Pi: 3.14` with only `3.14` bold green. The shared styled-value example uses
 `color::midnight_blue` (`#191970`) as background. The Overview's nested-reset
@@ -103,16 +102,16 @@ styled-ostream guide. It has no separate added API Reference section.
 
 ### Guide build versus publication
 
-The latest guide preview builds into `build/guide-output-preview` and was
+A prior guide preview built into `build/guide-output-preview` and was
 served at `http://localhost:8875/color/styled.html`. Check server availability
-before relying on it; older previews used `build/doc-html` and port 8000. The known
+before relying on it; older previews used `build/doc-html` and port 8000. The previously observed
 upstream syntax-anchor and Material future-version notices remain nonfatal.
 The guide now documents format-context inheritance and restoration for
 `styled` and `styled_text`, including the whole-sentence underline example.
 
-The [guide publication](https://github.com/tjgolubi/fmt/actions/runs/41975144737)
-passed build and deployment for `dd7180a8` from `color-dev`; the
-[ordinary doc build](https://github.com/tjgolubi/fmt/actions/runs/41975144738)
+The [guide publication](https://github.com/tjgolubi/fmt/actions/runs/42307494028)
+passed build and deployment for `10094dee` from `color-dev`; the
+[ordinary doc build](https://github.com/tjgolubi/fmt/actions/runs/42307493285)
 also passed. The workflow filter and edit URI target `color-dev`; Node.js 24
 action pins are recorded in BuildAndTest.md. The exact environment policy was
 not inspected. The guide includes the parser, string/tree stripping, and the
@@ -150,7 +149,9 @@ retains conceal; the independent design replaces it with flash. The consolidated
 temporarily replace them. The modernized `demo/FmtColorDemo2.cpp` is committed
 and pushed, using `absolute(underline(...))`. The former deferred `.tjg.cpp`
 file is no longer present. The overview embeds the complete working source,
-a download, and both output lines; the source and download match.
+a download, and the original/underlay/overlay output; the source and download match.
+The table section displays compiled styled output with UTF-8 alignment and
+truncation, build/run instructions, source/ANSI downloads, and the guide link.
 
 The Site's downloadable sample remains the distinct future independent-library
 target. Preserve its displayed source, output, and downloads together. The
@@ -164,7 +165,7 @@ StyledText.md for current implementation and boundaries.
 
 ## Published parsing and stripping
 
-Version 41 presents standard SGR parsing as implemented, including the first-reset
+The current Site presents standard SGR parsing as implemented, including the first-reset
 absolute group protecting its suffix. It explains preserved malformed/non-SGR
 escapes and appearance rather than byte-for-byte round trips. The new stripping
 example distinguishes raw escapes from explicit tree styles. Tree stripping
@@ -176,7 +177,7 @@ Extended push/pop and readable style parsing remain future work.
 
 [Backslash escaping and unescaping](https://fmtcolor.tjgolubi.chatgpt.site/integrated-changes.html#backslash-escapes)
 is presented as implemented, with the four public functions, a C++17-compatible
-example, source/test links at `dd7180a8`, and a link to the guide's Markdown
+example, source/test links at `10094dee`, and a link to the guide's Markdown
 escape reference table. It is no longer listed as planned work. Preserve the
 legacy future-work anchor as a link to the current contribution.
 
@@ -241,44 +242,41 @@ results and continue saving/deploying that same state after a helper failure.
 
 ## Current publication
 
-**Public Site version 46** is live at
+**Public Site version 47** is live at
 [fmtcolor.tjgolubi.chatgpt.site](https://fmtcolor.tjgolubi.chatgpt.site).
-Native deployment returned `succeeded` on November 5, 2026 at 00:02 CST
-(06:02 UTC), preserving the public audience. It presents `dd7180a8` on both `color-dev` and `pr/color`,
-with a two-branch passing CI table, source-branch links, and a separate link to
-upstream draft PR #5015. Both branches and PR #5015 point to `dd7180a8`.
-All 41 push-CI jobs passed on each branch, and the two guide-publication jobs passed on `color-dev`.
-Fork push results do not establish upstream PR-only check results. Backslash
-utilities are documented as implemented with strict error handling. The parser,
-stripper, reset behavior, and demos are retained. No comparison-fix branch
-reference appears in the site.
+Native deployment returned `succeeded` November 6, 2026 at 23:04:15 UTC,
+preserving public access. It presents `color-dev` at `10094dee`, current
+underlay defaults and recursive overlay overrides, protected absolute scopes,
+the revised FmtColorDemo2, the styled table demo, source/ANSI downloads, exact
+source links, the 43 passing jobs, and the closed/unmerged PR #5015 status.
 
 | Item                     | Current value                                                                       |
 | ------------------------ | ----------------------------------------------------------------------------------- |
 | Site project ID          | `appgprj_6ad129c3e8408191b873a4e06e601c63`                                          |
-| Source commit            | `3e51265ec9321e42b36fc2f67a3fbae82415f95b`                                          |
-| Saved version ID         | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_9c7620bc17508191b56e476a44e74d9a` |
-| Successful deployment ID | `appgdep_6aec1bd81e048191949ea8d738d8e7be`                                          |
+| Source commit            | `ac57d4cb3e6ea2256b7ba670ff217709ce440fe4`                                          |
+| Saved version ID         | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_a1d035f86d748191b80f3fb724c501f8` |
+| Successful deployment ID | `appgdep_6aee5ce86d1081918888ced5a65f3d40`                                          |
 | Audience                 | Public                                                                              |
 
-Source checkout:
-`C:/Users/tjgolubi/.codex/visualizations/2026/11/04/01a1a5a3-edf0-7bb0-9962-4ccf7e94539a/fmtcolor-site`.
-Exact saved archive:
-`C:/Users/tjgolubi/.codex/visualizations/2026/11/04/01a1a5a3-edf0-7bb0-9962-4ccf7e94539a/fmtcolor-backslash-ci.tar.gz`.
-The helper synchronized published source before editing, then committed/pushed
-and packaged the final state above. Sites accepted that archive as version 46.
+Cloud source checkout: `/workspace/sites/fmtcolor`.
+Exact saved archive: `/workspace/sites/fmtcolor-update.tar.gz`.
+The installed cloud skill was readable, but the Sites source helper was absent
+and its script resource could not be retrieved. Source was opened and pushed
+with ordinary Git using fresh Site credentials through hidden stdin and
+process-local headers. No token was persisted in source/configuration.
+The archive contains `.openai/hosting.json` and `dist/` from the exact pushed
+source commit; Sites saved it as version 47 and confirmed deployment success.
+Use the supported helper when available in subsequent environments.
 
-Validation passed 47 local links/anchors, unique IDs, embedded demo/download/source
-equality, and independent character/style comparison of all 214 demo characters.
-Demo source was checked against the clean current library checkout; the demo
-remained unchanged. The Backslash example compiled and ran in C++17 header-only
-mode. A local browser screenshot verified the new section's layout. The owned
-port 8874 preview was stopped. The refreshed live CI table was inspected after
-native deployment confirmed success. No new full local library, tablet,
-performance, or ABI result is inferred from this website QA.
+Validation passed 50 local links/anchors, unique IDs, exact demo-source download
+matches, and rendered text/padding equality against both compiled demos' actual
+ANSI output. Displays were generated from that output. Blink is illustrated as
+steady text and terminal palette/theme limits are disclosed. Browser tools were
+unavailable, so no visual browser QA is claimed for version 47. No preview
+server was started. No new full local library, tablet, performance, or ABI result
+is inferred from website QA.
 
-Refresh Site metadata and source credentials before further updates; do not
-treat the retained checkout as authoritative until synchronized. Preserve the
-opening result, source commit, archive, version, and deployment IDs if work is
-interrupted. Keep screenshots outside the source checkout. Future migration to
-MkDocs/Material is a separate task.
+Refresh Site metadata and credentials before another update. Keep successful
+source/archive/version/deployment identifiers if interrupted. Do not resave or
+redeploy a successful version unnecessarily. Site source stays separate from
+the library. Future migration to MkDocs/Material remains a separate task.

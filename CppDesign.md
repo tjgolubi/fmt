@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated November 5, 2026. Implemented behavior is separated below from future
+Updated November 6, 2026. Implemented behavior is separated below from future
 design. A proposal is not permission to implement it.
 
 ## Goals and boundaries
@@ -37,9 +37,10 @@ naming and API conventions.
 
 ## Implemented foundation
 
-The current `color-dev` tip is `dd7180a865d43cb02946874f51c9d690483e18ae`.
+The current `color-dev` tip is `10094dee4bd90f9053dc78315cc25d2e7cdd51d7`.
 It includes the foundational styling contribution, owning styled-text formatter,
-format-context inheritance/restoration, and Backslash utilities. The complete
+format-context inheritance/restoration, Backslash utilities, underlay defaults,
+recursive overlays, and the table demo with its user-guide walkthrough. The complete
 fmt release supports C++11. The upstream baseline is `4ed35350`; see
 [README.md](README.md#current-baseline). Source and tests establish behavior;
 private numeric representations are not stable contracts.
@@ -295,7 +296,7 @@ and exception-recovery rules are recorded below.
 
 The bridge supports C++11, header-only use, installation, and C++20 module
 export. All 41 current push-CI jobs and both guide-publication jobs passed
-for `dd7180a8`; see BuildAndTest.md for exact evidence. The separate historical compatibility result
+for `10094dee`; see BuildAndTest.md for exact evidence. The separate historical compatibility result
 at `21eba01b` does not validate the current header or bridge.
 
 ## Integrated styling helpers
@@ -318,6 +319,11 @@ with regression tests and guide documentation. They are not proposals.
 - Member `overlay(other)` mutates a style; free `overlay(base, overrides)`
   returns a copy. Specified incoming colors replace matching channels without
   promotion, unspecified channels leave existing colors, and emphasis is ORed.
+- Member `underlay(defaults)` fills unspecified style colors, preserves explicit
+  colors, and ORs emphasis. Free `underlay(base, defaults)` returns a copy;
+  for style values it equals `overlay(defaults, base)`. Either absolute input
+  makes the result absolute. These style operations are noexcept and constexpr
+  where C++14 mutation is supported, with runtime C++11 use.
 - Free `bold`, `faint`, `italic`, `underline`, `blink`, `reverse`, `conceal`,
   and `strike` take a style by value and return a changed copy. Their Boolean
   defaults to `true`; `false` clears only that bit. They are noexcept and use
@@ -378,11 +384,11 @@ C++17; and avoid copying the empty union member in the SGR visitor during MSVC
 constant evaluation. Tests explicitly initialize const stream-only values and
 avoid shadowing and self-assignment warnings.
 
-Current validation is scoped to `color-dev` at `dd7180a8`;
-all 41 push-CI jobs and both guide-publication jobs passed, including all nine
-macOS jobs on attempt 1. The same 41 push-CI jobs passed on `pr/color` at that
-commit. A full remote compact-SGR matrix is not claimed. The public website is
-version 46, with a link to upstream draft PR #5015. See
+Current validation is scoped to `color-dev` at `10094dee`: all 41 push-CI
+jobs and both guide-publication jobs passed on attempt 1. `pr/color` remains
+at `dd7180a8`; upstream PR #5015 is closed and unmerged at that earlier head.
+A full remote compact-SGR matrix is not claimed. Public Site version 47 shows
+the current semantics, both demos, and exact source/CI evidence. See
 [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation)
 and [Website.md](Website.md#current-publication).
 
@@ -411,7 +417,7 @@ convenience as a major design goal.
 
 Owning text, the corrected formatter, context inheritance/restoration, parser,
 and stripper form the foundational extension `35de08cc`; current `color-dev`
-at `dd7180a8` also includes accepted formatting and Backslash changes above
+at `10094dee` also includes formatting, Backslash, underlay, and table changes above
 upstream `4ed35350`. Continue from `color-dev`; earlier integration commits are
 historical, not dependencies to replay. See StyledText.md for invariants and
 BuildAndTest.md for exact-SHA validation and remaining limits.
@@ -475,7 +481,7 @@ or shared vectors. Direct union leaf initialization is implemented.
 Concatenation alone creates branches; empty branches are prohibited. Moves
 reset the source to an empty, unstyled leaf. `+=` extends only an unstyled left branch; otherwise it creates an unstyled
 parent holding both complete operands. Styled groups retain their scope, and
-right-hand groups remain nested. Use `overlay(style, expression)` for grouping;
+right-hand groups remain nested. Use `underlay(style, expression)` for group defaults;
 concatenation does not merge equal styles or extend a styled group. Equality compares exact
 structure, styles, and text, independently of shared-pointer identity.
 `plain_text` concatenates code units without interpreting escapes.
@@ -483,13 +489,16 @@ structure, styles, and text, independently of shared-pointer identity.
 Public structural access and iteration remain deferred. The matching formatter
 is implemented as a friend with private access to the tree. `style` gets or
 replaces the root style;
-member `overlay(text_style)` overlays that root in place, returns a reference,
-and is noexcept without tree copying. Free style-first `overlay(style, text)`
-and all eight free emphasis modifiers accept owning styled text, character
-strings, and `std::basic_string`. Named styled values copy their structure;
-rvalues move. The free helpers can allocate and are not unconditionally noexcept.
-They preserve child styles. No individual fluent emphasis members were added
-to styled text. The borrowing `StringView` experiment is a separate alternative,
+member `underlay(text_style)` fills unspecified root channels and ORs emphasis
+without changing descendants. Member `overlay(text_style)` applies overrides
+recursively, skipping existing absolute nodes and complete subtrees. Both
+return a reference, are noexcept, and preserve shared leaf strings. Use
+`text.style(text.style().overlay(overrides))` for a root-only override.
+Free style-first underlay/overlay and eight emphasis helpers accept owning text,
+character strings, and `std::basic_string`. Named values copy structure;
+rvalues move. Emphasis and absolute helpers use root underlay. Free helpers can
+allocate. No individual fluent emphasis members were added to styled text.
+The borrowing `StringView` experiment is a separate alternative,
 not the active owning baseline or a guarantee of shared constexpr capabilities.
 
 ### Absolute style values and transitions
@@ -546,7 +555,7 @@ inline. Shared-pointer access prevents useful constexpr tree measurement.
 
 ### Deferred blending and other future work
 
-Deferred styled-text blend remains separate from root overlay. Its nested
+Deferred styled-text blend remains separate from underlay and overlay. Its nested
 semantics and interface need agreement before implementation. Earlier
 `styled_text& blend()` proposals do not authorize code. Debug string presentation,
 readable style parsing, extended push/pop parsing, full grapheme/terminal width,
@@ -663,7 +672,7 @@ codec overload is implemented; pass `plain_text()` or formatted output as needed
 
 For valid input, unescaping escaped text recovers the original code units,
 including NULs. The guide has a compact Markdown escape table; website version
-46 presents the functions as implemented and links to that reference. CSV/TSV
+47 presents the functions as implemented and links to that reference. CSV/TSV
 conversion belongs elsewhere. {fmt} debug presentation and `std::quoted` do not
 supply this codec's strict general-purpose inverse.
 
