@@ -51,13 +51,13 @@ matched all six patches to the pre-rebase accepted history without changes.
 Do not replay old feature commits onto this baseline. Retained `feat/debug`
 and `doc/review` at `afb672c5` are pre-rebase history, not the current baseline.
 
-The cloud library checkout remains on local `color-dev` at pre-rebase
-`6b5f4ce62381df7b4f72717f4ed7d5743f3ada6e`, with a clean tracked tree.
-Its refreshed remote-tracking refs point to `bb58bf26`; the histories diverge
-(6 local-only and 12 remote-only commits). No local reset, rebase, or branch
-switch was performed. Synchronizing that checkout needs authorization;
-inspect its actual state before any later library work. Other machines may
-have different branch/worktree states and must be inspected independently.
+The cloud library checkout is synchronized on `color-dev` at `bb58bf26`,
+matching `origin/color-dev` and the verified GitHub tip, with a clean tracked
+tree. Terry authorized synchronization after his rebase and push. The previous
+local tip, `6b5f4ce62381df7b4f72717f4ed7d5743f3ada6e`, is retained on
+`backup/ColorDevBeforeRebase`. Untracked demo binaries were preserved.
+Other machines may have different branch/worktree states and must be inspected
+independently.
 
 Verified November 7, 2026: **all 43 jobs passed** on `color-dev` for this exact SHA:
 Linux 18, Windows 13, macOS 9, documentation 1, and guide build/deployment 2.
@@ -66,7 +66,10 @@ on attempt 1 at the same SHA. No failed, cancelled, or pending jobs remain
 in the latest attempts. Guide publication runs only on color-dev.
 The remote tips and CI head SHAs match. See
 [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation) for the rebased
-results; local checkout state is recorded above.
+results. Fresh local GCC 14.2 runs at `bb58bf26` passed 27 of 30 suites in each
+of C++11/default SGR and C++23/compact SGR. The other three suites could not
+build because of existing dangling-else diagnostics; no executed suite failed.
+Upstream tests and compiler settings were left unchanged.
 
 `FmtColorChangeLog.md` was regenerated with git-cliff 2.14.2,
 `--offline --no-exec`, and the explicit accepted-history range before the
@@ -80,7 +83,7 @@ explicit authorization.
 ## Upstream contribution
 
 `pr/color` is pushed at the same `bb58bf26` commit as `color-dev`.
-The cloud checkout remains on the pre-rebase local `color-dev` described above.
+The cloud checkout matches the rebased `color-dev` described above.
 Verified November 7, 2026:
 [upstream PR #5015](https://github.com/fmtlib/fmt/pull/5015) is closed and
 unmerged; its recorded head remains `dd7180a8`, distinct from the updated

@@ -71,7 +71,8 @@ experiments. The FmtColor baseline is the consolidated `color-dev`; owning
 text, formatter/context corrections, parser, and stripper are integrated. The
 remote development baseline is `color-dev` at `bb58bf26`, based on upstream
 `47fcd357`; `pr/color` is pushed at the same commit. The cloud library checkout
-remains on the pre-rebase local tip; see README.md for its inspected state.
+now matches that baseline after Terry authorized synchronization; see README.md
+for its inspected state and preserved pre-rebase backup.
 Do not reset or synchronize a diverged checkout without authorization.
 The separate `fix/StringViewCompare` branch from `main` does not replace the
 FmtColor baseline. Terry authorized removing the obsolete `feat/StyledText2`

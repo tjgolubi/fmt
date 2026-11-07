@@ -10,7 +10,7 @@ and direct styled-text insertion are integrated into `color-dev` at
 `bb58bf265d51faddb02293aa7342aabb65f630c5`, based on upstream `47fcd357`.
 The accepted rebased history includes underlay `40b024ce`, table/guide
 `c0c277ec`, and output `bb58bf26`, including the changelog. The cloud library
-checkout still has the pre-rebase local tip; see README.md before local work.
+checkout now matches that rebased tip; see README.md for its inspected state.
 `pr/color` now matches color-dev at `bb58bf26`; PR #5015 is closed and
 unmerged with recorded head `dd7180a8`.
 
@@ -436,9 +436,12 @@ tree styling, but their handling of split escapes differs.
 ## Next work and validation limits
 
 The consolidated tree/context/parser/stripper code is on `color-dev`; current
-exact-SHA CI and guide publication passed as recorded in BuildAndTest.md. Earlier feature
-matrix and local results are historical evidence, not fresh checks of the
-rewritten baseline. Current guide build/deployment passed.
+exact-SHA CI and guide publication passed as recorded in BuildAndTest.md.
+Fresh local GCC 14.2 runs at `bb58bf26` passed 27 suites in each of C++11/default
+SGR and C++23/compact SGR; three suites in each configuration could not build
+because of existing dangling-else diagnostics. All executed suites passed.
+Earlier feature matrix and local results remain historical evidence.
+Current guide build/deployment passed.
 
 The prior GCC 13/14 branch-width and GCC-13-only branch-move noinline workarounds
 remain. Older strict local Release blend/union diagnostics remain validation

@@ -12,8 +12,8 @@ stated otherwise. Use `color-dev` or an authorized feature branch, not the
 Verified November 7, 2026 for `color-dev` and `pr/color` at
 `bb58bf265d51faddb02293aa7342aabb65f630c5`, based on upstream
 `47fcd357ab6a9583f2307d1f78fdd674060efe61`. Both remote branches identify the
-same commit. The cloud library checkout has not been synchronized to the
-rebased tip; its separate local state is recorded in README.md.
+same commit. The cloud library checkout is synchronized to that rebased tip
+with a clean tracked tree; its preserved backup is recorded in README.md.
 **All 41 push-CI jobs passed on each branch**, and the two color-dev guide
 build/deployment jobs also passed (43 total on color-dev). Every latest
 color-dev run passed on attempt 1; every pr/color run passed on attempt 1.
@@ -63,9 +63,25 @@ ordinary ostream, and compiled-format suites also passed during feature work.
 Configuration directories are `build/debug11` and `build/debug23`, with Debug,
 `FMT_TEST=ON`, `FMT_DOC=OFF`, `FMT_PEDANTIC=OFF`, `FMT_WERROR=ON`, and compiler
 flags `-pedantic-errors -Wall -Wextra -Werror`. The C++23 directory additionally
-defines `FMT_COLOR_COMPACT_SGR=1` in compiler flags. These are local candidate
-checks from the pre-rebase history; no new local build of `bb58bf26` is claimed.
-The exact accepted-SHA remote results above validate the rebased contribution.
+defines `FMT_COLOR_COMPACT_SGR=1` in compiler flags. The focused checks above
+predate the rebase. Fresh full-build attempts and CTest runs on synchronized
+`bb58bf26`, using these same configurations and GCC 14.2 without changing
+compiler settings, produced the following results on November 7, 2026:
+
+| Configuration       | Suites passed | Suites not run (build blocked) |
+| ------------------- | ------------- | ------------------------------ |
+| C++11/default SGR   | 27            | 3                              |
+| C++23/compact SGR   | 27            | 3                              |
+
+All executed suites passed. Each configuration has 30 suites; this is not a
+full local suite pass. Builds exited with status 2 and CTest with status 8.
+To continue building independent targets after an error, the build used
+`build/tools/bin/cmake --build build/debug11 --parallel 3 -- -k`, followed by
+`build/tools/bin/ctest --test-dir build/debug11 --output-on-failure`, and the
+same commands with `debug23`. Logs are retained in
+`build/rebased-local11-build-all.log`, `build/rebased-local11-test.log`,
+`build/rebased-local23-build-all.log`, and `build/rebased-local23-test.log`.
+These are local artifacts, not repository files.
 
 Output regressions cover all terminal, gray, and cube values and their `color_t`
 alternatives, all emphasis masks in compact styles, absolute/empty styles,
@@ -88,15 +104,19 @@ All 25 CI-scoped `include/` and `src/` files match clang-format 21.1.8 after the
 two cosmetic corrections included in the output squash. The guide built with
 hash-pinned requirements and Doxygen 1.18.0; expected known notices remain nonfatal.
 
-The full local test builds in both existing configurations stop at
-`test/format-impl-test.cc:336` and `:343`: unbraced outer `if` statements around
-GoogleTest macros trigger `-Werror=dangling-else`. Those statements are also
-present on `main`. They are not new output regressions. CI enables
-`FMT_PEDANTIC=ON`, whose existing GCC flags include `-Wno-dangling-else`;
-the manually strict local configurations do not include that exception.
-Terry explicitly said to leave the upstream tests and current compiler settings
-unchanged. No full local test-suite pass is claimed; keep this limitation
-separate from the passing focused checks and final remote matrix.
+The same three suites could not build in both configurations:
+
+- `gtest-extra-test`: `test/gtest-extra-test.cc:226`, `:236`, and `:246`.
+- `format-impl-test`: `test/format-impl-test.cc:336` and `:343`.
+- `xchar-test`: `test/xchar-test.cc:82`.
+
+All six diagnostics per configuration are `-Werror=dangling-else`, from unbraced
+outer `if` statements around GoogleTest macros in existing upstream tests.
+They are not new output regressions. CI enables `FMT_PEDANTIC=ON`, whose
+existing GCC flags include `-Wno-dangling-else`; the manually strict local
+configurations do not include that exception. Terry explicitly said to leave
+the upstream tests and current compiler settings unchanged. Keep this build
+limitation separate from the passing executed suites and final remote matrix.
 
 ### Historical ColorCtx local validation
 
