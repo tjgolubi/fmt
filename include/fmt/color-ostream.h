@@ -12,8 +12,14 @@
 #include "ostream.h"
 #include "xchar.h"
 
+#ifndef FMT_MODULE
+#  include <limits>
+#endif
+
 FMT_BEGIN_NAMESPACE
 FMT_BEGIN_EXPORT
+
+template <typename Char> class basic_styled_text;
 
 namespace detail {
 
@@ -32,6 +38,69 @@ void write_color_buffer(std::basic_ostream<Char>& os, buffer<Char>& buf) {
 }
 
 }  // namespace detail
+
+/**
+ * Inserts set emphasis names in declaration order, separated by spaces and
+ * enclosed in braces. Empty emphasis displays `{}`. Width, fill, and alignment
+ * apply as for ordinary string insertion.
+ */
+template <typename Char>
+auto operator<<(std::basic_ostream<Char>& os, emphasis value)
+    -> std::basic_ostream<Char>& {
+  auto buffer = basic_memory_buffer<Char, 64>{};
+  detail::write_emphasis<Char>(basic_appender<Char>{buffer}, value);
+  return os << std::basic_string<Char>{buffer.data(), buffer.size()};
+}
+
+/**
+ * Inserts a color or text style using its formatter's readable notation.
+ * Stream width, fill, and alignment apply as for ordinary string insertion.
+ */
+template <typename Char, typename T,
+          FMT_ENABLE_IF(detail::is_color<T>::value ||
+                        std::is_same<T, no_color_t>::value ||
+                        std::is_same<T, color_t>::value ||
+                        std::is_same<T, text_style>::value)>
+auto operator<<(std::basic_ostream<Char>& os, const T& value)
+    -> std::basic_ostream<Char>& {
+  auto buffer = basic_memory_buffer<Char, 64>{};
+  detail::write_style_value<Char>(basic_appender<Char>{buffer}, value);
+  return os << std::basic_string<Char>{buffer.data(), buffer.size()};
+}
+
+/**
+ * Inserts styled text using the formatter's ANSI rendering machinery.
+ * Stream width, fill, and alignment control padding. Stream precision is
+ * ignored, as for string insertion. Internal alignment behaves as right
+ * alignment; only left places padding after text.
+ * Field width is consumed; other stream settings are preserved.
+ * Include `fmt/styled_text.h` as well as this header.
+ */
+template <typename Char>
+auto operator<<(std::basic_ostream<Char>& os,
+                const basic_styled_text<Char>& value)
+    -> std::basic_ostream<Char>& {
+  typename std::basic_ostream<Char>::sentry sentry{os};
+  if (!sentry) return os;
+  auto specs = format_specs{};
+  const auto width = os.width();
+  const auto max_int = (std::numeric_limits<int>::max)();
+  if (width > max_int) report_error("styled text stream width is too large");
+  if (width > 0) specs.width = static_cast<int>(width);
+  const auto fill = os.fill();
+  specs.set_fill(basic_string_view<Char>{&fill, 1});
+  specs.set_align((os.flags() & std::ios_base::adjustfield) ==
+                          std::ios_base::left
+                      ? align::left
+                      : align::right);
+  os.width(0);
+  auto buffer = basic_memory_buffer<Char>{};
+  auto ctx = buffered_context<Char>{basic_appender<Char>{buffer}, {}};
+  formatter<basic_styled_text<Char>, Char>::format_with_specs(value, ctx,
+                                                              specs);
+  detail::write_buffer(os, buffer);
+  return os;
+}
 
 /**
  * Prints formatted text to `os` using `ts`.

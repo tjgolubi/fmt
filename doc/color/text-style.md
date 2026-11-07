@@ -15,6 +15,56 @@
         - strikethrough
         - is_strikethrough
 
+### Readable style output
+
+`text_style` supports `{}` and `{:?}` using the same compact notation. With
+`<fmt/color-ostream.h>`, narrow and wide ostream insertion uses that notation
+too. These operations describe the style without emitting SGR sequences.
+
+Output starts with `=` if the style is absolute, immediately followed by the
+characters for its set emphasis bits, in this order:
+
+| Attribute   | Character |
+| ----------- | --------- |
+| `bold`      | `b`       |
+| `faint`     | `f`       |
+| `italic`    | `i`       |
+| `underline` | `_`       |
+| `blink`     | `!`       |
+| `reverse`   | `r`       |
+| `conceal`   | `?`       |
+| `strike`    | `-`       |
+
+If either color is specified, a single space separates it from any absolute or
+emphasis characters. Colors use the
+[readable color notation](colors.md#readable-color-output).
+Foreground and background are separated by `/`. With foreground alone, omit
+the slash; with background alone, begin with `/`. With neither, omit the color
+component. An empty style displays `{}`; an absolute-only style displays `=`.
+
+```cpp
+fmt::format("{}", fmt::text_style{});                  // "{}"
+fmt::format("{}", fmt::bg(fmt::gray_color{12}));        // "/gray12"
+fmt::format("{:?}", fmt::absolute(fmt::bold().underline()
+    .fg(fmt::term_color::bright_red).bg(fmt::rgb{26, 43, 60})));
+// "=b_ bright_red/#1a2b3c"
+```
+
+String fill, alignment, width, and precision are supported, including dynamic
+width and precision. Stream width, fill, and alignment behave as for an ordinary
+string. A [styled-text debug view](styled.md#debug-output) omits empty node
+styles.
+
+With `<fmt/color.h>`, formatting an `emphasis` value with `{}` or `{:?}` lists
+its set attribute names in declaration order, separated by spaces inside braces.
+For example, `bold | faint | strike` displays
+`{bold faint strike}`; an empty `emphasis{}` displays `{}`. The alias
+`strikethrough` displays as `strike`. Narrow and wide formatting accepts string
+fill, alignment, width, precision, optional `s` or `?`, and dynamic specifications.
+With `<fmt/color-ostream.h>`, ostream insertion uses the same named form. Stream
+width, fill, and alignment apply as for a string; precision is ignored. This
+named form is separate from the compact characters used inside `text_style` output.
+
 ### Construction
 
 Construct a style with colors first or emphasis first. Each color may be a
@@ -59,11 +109,12 @@ colors and emphasis and leaving the input unchanged. It is `noexcept` and
 supports constant evaluation under the same conditions as the member setter.
 For example, `auto red = fmt::absolute(fmt::fg(fmt::color::red));`.
 
-The member `absolute(bool enable = true)` returns `text_style&`; `is_absolute()` queries
-the flag. The setter is `noexcept` and supports constant evaluation in C++14
-and later on supported compilers; the query is `constexpr` in C++11 and later.
-The flag uses bit 62 without increasing the style's size. Absolute styles can
-still be explicitly modified using setters, overlays, and composition.
+The member `absolute(bool enable = true)` returns `text_style&`; `is_absolute()`
+queries the flag. The setter is `noexcept` and supports constant evaluation in
+C++14 and later on supported compilers; the query is `constexpr` in C++11 and
+later.  The flag uses bit 62 without increasing the style's size. Absolute
+styles can still be explicitly modified using setters, overlays, and
+composition.
 
 An absolute-only style is nonempty and emits `"\x1b[0m"`. Compact SGR output
 combines the reset and attributes, such as `"\x1b[0;4m"`; noncompact output
@@ -136,7 +187,8 @@ auto combined = fmt::underlay(base, defaults);
 ```
 
 For style values, `underlay(base, defaults)` equals `overlay(defaults, base)`.
-For structured text, see [group defaults and overrides](styled.md#use-underlay-to-supply-group-defaults).
+For structured text, see
+[group defaults and overrides](styled.md#use-underlay-to-supply-group-defaults).
 
 ::: underlay(text_style, text_style)
     options:
@@ -238,8 +290,8 @@ Each component has a getter, a replacement setter, and a presence query:
 | Background   | `bg()`     | `bg(color)`          | `has_bg()`       |
 | Emphasis     | `emph()`   | `emph(attributes)`   | `has_emph()`     |
 
-All these members are `noexcept`. Getters are `const` and return values.
-The color getters return the public type [`fmt::color_t`](colors.md#color-variants),
+All these members are `noexcept`. Getters are `const` and return values.  The
+color getters return the public type [`fmt::color_t`](colors.md#color-variants),
 preserving the RGB, terminal, cube, gray, or unspecified alternative. The result
 can be passed to either color setter, either style constructor, or the free
 `fmt::fg` and `fmt::bg` functions. Use `fmt::holds_alternative`, `fmt::get`,

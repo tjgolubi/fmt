@@ -10,9 +10,10 @@ in one public type.
 
 Convenience is a major design goal. The API deliberately provides several ways
 to express common styling operations: constructors for complete styles, fluent
-member functions for updating values, and free functions for creating or deriving
-styles. These overlapping forms let you choose the clearest expression for each
-use, from concise one-off styles to attributes controlled by user configuration.
+member functions for updating values, and free functions for creating or
+deriving styles. These overlapping forms let you choose the clearest expression
+for each use, from concise one-off styles to attributes controlled by user
+configuration.
 
 ```cpp
 #include <fmt/color.h>
@@ -45,10 +46,14 @@ The first call styles the entire message. The second styles only `42`.
 
 ## Choosing and combining styles
 
-Use constants in the [`color`](colors.md#named-rgb-colors) namespace for named RGB values, [`rgb`](colors.md#rgb-values) for explicit
-RGB components, and [`term_color`](colors.md#terminal-palette-colors) for the terminal's 16 named palette colors.
-Use [`cube_color`](colors.md#cube-palette-colors) for its 6×6×6 cube and [`gray_color`](colors.md#gray-palette-colors) for its 24 gray levels.
-Pass a color to [`fg`](text-style.md#foreground-and-background) or [`bg`](text-style.md#foreground-and-background) to create a foreground or background style.
+Use constants in the [`color`](colors.md#named-rgb-colors) namespace for named
+RGB values, [`rgb`](colors.md#rgb-values) for explicit RGB components, and
+[`term_color`](colors.md#terminal-palette-colors) for the terminal's 16 named
+palette colors.  Use [`cube_color`](colors.md#cube-palette-colors) for its
+6×6×6 cube and [`gray_color`](colors.md#gray-palette-colors) for its 24 gray
+levels.  Pass a color to [`fg`](text-style.md#foreground-and-background) or
+[`bg`](text-style.md#foreground-and-background) to create a foreground or
+background style.
 
 ```cpp
 auto style = fmt::text_style{fmt::rgb{30, 144, 255},
@@ -57,12 +62,13 @@ auto style = fmt::text_style{fmt::rgb{30, 144, 255},
                              fmt::emphasis::underline};
 ```
 
-A default-constructed [`text_style`](text-style.md#text_style) has no colors or emphasis. Combine styles
-with [`blend`](text-style.md#blending-styles). Foreground and background are
-handled independently, unspecified colors are ignored, and emphasis bits are
-ORed. A channel specified by only one input preserves its color and kind.
-When multiple inputs specify the same channel, their colors convert to RGB
-and combine by averaging the color channels; that channel then holds RGB.
+A default-constructed [`text_style`](text-style.md#text_style) has no colors or
+emphasis. Combine styles with [`blend`](text-style.md#blending-styles).
+Foreground and background are handled independently, unspecified colors are
+ignored, and emphasis bits are ORed. A channel specified by only one input
+preserves its color and kind.  When multiple inputs specify the same channel,
+their colors convert to RGB and combine by averaging the color channels; that
+channel then holds RGB.
 
 [`operator|`](text-style.md#combining-styles) and
 [`operator|=`](text-style.md#combining-styles) offer a cheaper
@@ -145,7 +151,8 @@ active. The outer call resets to terminal defaults at the end. An absolute
 replacement field temporarily uses its own complete style, then also restores
 the enclosing style.
 
-The same rules apply to [structured styled text](styled.md#structured-styled-text):
+The same rules apply to
+[structured styled text](styled.md#structured-styled-text):
 concatenate complete spans with `+` or `+=`, and use `underlay` to supply group
 defaults while preserving explicit colors. Use `overlay` to replace specified
 colors throughout relative nodes; absolute scopes are protected.
@@ -161,8 +168,9 @@ their existing context preserve its style. Raw SGR embedded in strings and
 terminal styling established outside the operation are not tracked.
 
 The [output functions](print.md) emit escape sequences even when output is
-redirected to a file. The [formatting functions](format.md) store those sequences
-in their result. For format string syntax, see the [syntax reference](../syntax.md).
+redirected to a file. The [formatting functions](format.md) store those
+sequences in their result. For format string syntax, see the
+[syntax reference](../syntax.md).
 
 [SGR]: https://en.wikipedia.org/wiki/ANSI_escape_code#Select_Graphic_Rendition_parameters
 

@@ -1278,8 +1278,9 @@ class text_style {
    * Applies `other` under this style.
    *
    * Specified colors in `other` fill matching unspecified channels.
-   * Existing colors in this style are preserved. Emphasis bits are combined by OR. The result is
-   * absolute if either input is absolute; explicit underlays remain allowed.
+   * Existing colors in this style are preserved. Emphasis bits are combined by
+   * OR. The result is absolute if either input is absolute; explicit underlays
+   * remain allowed.
    */
   FMT_CONSTEXPR auto underlay(const text_style& other) noexcept -> text_style& {
     if (other == *this || other.empty()) return *this;
@@ -2538,6 +2539,169 @@ inline auto format_to(OutputIt out, text_style ts, format_string<T...> fmt,
                       T&&... args) -> OutputIt {
   return vformat_to(out, ts, fmt.str, vargs<T...>{{args...}});
 }
+
+namespace detail {
+
+template <typename Char, typename OutputIt>
+auto write_color_ascii(OutputIt out, const char* text) -> OutputIt {
+  while (*text) *out++ = static_cast<Char>(*text++);
+  return out;
+}
+
+// Preserve the stored color kind; RGB values never require a name lookup.
+template <typename Char, typename OutputIt>
+auto write_style_value(OutputIt out, color_t value) -> OutputIt {
+  switch (static_cast<color_t::kind>(value.index())) {
+  case color_t::kind::none: return write_color_ascii<Char>(out, "no_color");
+  case color_t::kind::rgb:  {
+    const auto packed = to_underlying(fmt::get<rgb>(value));
+    *out++ = static_cast<Char>('#');
+    for (int shift = 20; shift >= 0; shift -= 4)
+      *out++ = static_cast<Char>("0123456789abcdef"[(packed >> shift) & 15]);
+    return out;
+  }
+  case color_t::kind::term: {
+    static const char* const names[] = {"black",        "red",
+                                        "green",        "yellow",
+                                        "blue",         "magenta",
+                                        "cyan",         "white",
+                                        "bright_black", "bright_red",
+                                        "bright_green", "bright_yellow",
+                                        "bright_blue",  "bright_magenta",
+                                        "bright_cyan",  "bright_white"};
+    const auto index = to_underlying(fmt::get<term_color>(value));
+    if (index < 0 || index >= 16) report_error("invalid terminal color");
+    return write_color_ascii<Char>(out, names[index]);
+  }
+  case color_t::kind::cube: {
+    const auto color = fmt::get<cube_color>(value);
+    out = write_color_ascii<Char>(out, "cube");
+    *out++ = static_cast<Char>('0' + color.r());
+    *out++ = static_cast<Char>('0' + color.g());
+    *out++ = static_cast<Char>('0' + color.b());
+    return out;
+  }
+  case color_t::kind::gray: {
+    const auto index = to_underlying(fmt::get<gray_color>(value));
+    out = write_color_ascii<Char>(out, "gray");
+    if (index >= 10) *out++ = static_cast<Char>('0' + index / 10);
+    *out++ = static_cast<Char>('0' + index % 10);
+    return out;
+  }
+  }
+  return out;
+}
+
+template <typename Char, typename OutputIt>
+auto write_style_value(OutputIt out, text_style value) -> OutputIt {
+  if (value.empty()) return write_color_ascii<Char>(out, "{}");
+  if (value.is_absolute()) *out++ = static_cast<Char>('=');
+  const auto bits = to_underlying(value.emph());
+  for (int bit = 0; bit < 8; ++bit) {
+    if ((bits & (1u << bit)) != 0) *out++ = static_cast<Char>("bfi_!r?-"[bit]);
+  }
+  if (!value.has_fg() && !value.has_bg()) return out;
+  if (value.is_absolute() || bits != 0) *out++ = static_cast<Char>(' ');
+  if (value.has_fg()) out = write_style_value<Char>(out, value.fg());
+  if (value.has_bg()) {
+    *out++ = static_cast<Char>('/');
+    out = write_style_value<Char>(out, value.bg());
+  }
+  return out;
+}
+
+template <typename Char, typename OutputIt>
+auto write_emphasis(OutputIt out, emphasis value) -> OutputIt {
+  static const char* const names[] = {"bold",      "faint", "italic",
+                                      "underline", "blink", "reverse",
+                                      "conceal",   "strike"};
+  *out++ = static_cast<Char>('{');
+  const auto bits = to_underlying(value);
+  auto first = true;
+  for (int bit = 0; bit < 8; ++bit) {
+    if ((bits & (1u << bit)) == 0) continue;
+    if (!first) *out++ = static_cast<Char>(' ');
+    out = write_color_ascii<Char>(out, names[bit]);
+    first = false;
+  }
+  *out++ = static_cast<Char>('}');
+  return out;
+}
+
+template <typename Char, typename OutputIt>
+auto write_style_value(OutputIt out, emphasis value) -> OutputIt {
+  return write_emphasis<Char>(out, value);
+}
+
+template <typename T, typename Char> struct style_value_formatter {
+ private:
+  dynamic_format_specs<Char> _specs;
+
+ public:
+  FMT_CONSTEXPR auto parse(parse_context<Char>& ctx) -> const Char* {
+    if (ctx.begin() == ctx.end() || *ctx.begin() == Char('}'))
+      return ctx.begin();
+    return parse_format_specs(ctx.begin(), ctx.end(), _specs, ctx,
+                              type::string_type);
+  }
+
+  template <typename FormatContext>
+  auto format(const T& value, FormatContext& ctx) const -> decltype(ctx.out()) {
+    auto specs = format_specs{_specs};
+    handle_dynamic_spec(specs.dynamic_width(), specs.width, _specs.width_ref,
+                        ctx);
+    handle_dynamic_spec(specs.dynamic_precision(), specs.precision,
+                        _specs.precision_ref, ctx);
+    // Both ordinary and debug presentation use the same unquoted notation.
+    specs.set_type(presentation_type::string);
+    auto buffer = basic_memory_buffer<Char, 64>{};
+    write_style_value<Char>(basic_appender<Char>{buffer}, value);
+    return write<Char>(ctx.out(),
+                       basic_string_view<Char>{buffer.data(), buffer.size()},
+                       specs);
+  }
+};
+
+}  // namespace detail
+
+/// Formats an unspecified color as `no_color`.
+template <typename Char>
+struct formatter<no_color_t, Char>
+    : detail::style_value_formatter<no_color_t, Char> {};
+
+/// Formats an RGB color as `#rrggbb`, without a named-color lookup.
+template <typename Char>
+struct formatter<rgb, Char> : detail::style_value_formatter<rgb, Char> {};
+
+/// Formats a terminal color using its enum name.
+template <typename Char>
+struct formatter<term_color, Char>
+    : detail::style_value_formatter<term_color, Char> {};
+
+/// Formats a gray color as `grayN`, where N is its index.
+template <typename Char>
+struct formatter<gray_color, Char>
+    : detail::style_value_formatter<gray_color, Char> {};
+
+/// Formats a cube color as `cubeRGB`, with channel indices from 0 to 5.
+template <typename Char>
+struct formatter<cube_color, Char>
+    : detail::style_value_formatter<cube_color, Char> {};
+
+/// Formats the active color alternative, preserving its kind.
+template <typename Char>
+struct formatter<color_t, Char> : detail::style_value_formatter<color_t, Char> {
+};
+
+/// Formats a style as optional absolute/emphasis characters and fg/bg colors.
+template <typename Char>
+struct formatter<text_style, Char>
+    : detail::style_value_formatter<text_style, Char> {};
+
+/// Formats set emphasis names in braces, or `{}` when no bits are set.
+template <typename Char>
+struct formatter<emphasis, Char>
+    : detail::style_value_formatter<emphasis, Char> {};
 
 /// Formats a styled argument using the underlying type's format specifications.
 template <typename T, typename Char>

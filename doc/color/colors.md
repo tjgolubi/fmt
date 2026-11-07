@@ -2,22 +2,27 @@
 
 Choose among four color types for foreground and background styling:
 
-- [`term_color`](#terminal-palette-colors) selects the terminal's 16 named palette colors and follows its
-  theme when rendered directly.
-- [`rgb`](#rgb-values) provides named or custom truecolor values with independent red, green,
-  and blue channels.
-- [`gray_color`](#gray-palette-colors) offers 24 fixed grayscale levels between black and white.
-- [`cube_color`](#cube-palette-colors) selects from the 216-color cube: a compact alternative when SGR
-  sequence size matters or a terminal supports 256 colors but lacks RGB mode.
+- [`term_color`](#terminal-palette-colors) selects the terminal's 16 named
+  palette colors and follows its theme when rendered directly.
+- [`rgb`](#rgb-values) provides named or custom truecolor values with
+  independent red, green, and blue channels.
+- [`gray_color`](#gray-palette-colors) offers 24 fixed grayscale levels between
+  black and white.
+- [`cube_color`](#cube-palette-colors) selects from the 216-color cube: a
+  compact alternative when SGR sequence size matters or a terminal supports 256
+  colors but lacks RGB mode.
 
-Use these values with a [`text_style` constructor or fluent setters](text-style.md).
+Use these values with a
+[`text_style` constructor or fluent setters](text-style.md).
 This page describes their ranges, RGB conversions, blending, and the public
-[`color_t`](#color-variants) variant, including unspecified colors. See the [overview](index.md)
-for examples and [Named Colors](named-colors.md) for swatches.
+[`color_t`](#color-variants) variant, including unspecified colors.
+See the [overview](index.md) for examples and [Named Colors](named-colors.md)
+for swatches.
 
 ## Terminal palette colors
 
-See the [normal and bright terminal-color swatches](named-colors.md#terminal-colors)
+See the
+[normal and bright terminal-color swatches](named-colors.md#terminal-colors)
 for their fixed Xterm-default RGB equivalents.
 
 ::: term_color
@@ -74,7 +79,8 @@ the packed style encoding are not stable serialization formats.
 `fmt::to_underlying(term_color)` also use `int8_t`. The named values are
 indices `0..15`; the signed type does not introduce additional palette colors.
 Conversion to RGB asserts that the index is within that range before accessing
-the fixed palette. Prefer the named values rather than casting arbitrary integers.
+the fixed palette. Prefer the named values rather than casting arbitrary
+integers.
 
 ### Converting terminal colors to RGB
 
@@ -316,7 +322,8 @@ Construct it from three `int` channel indices in the range 0–5, or explicitly
 from a single `unsigned` zero-based index in the range 0–215. Invalid inputs
 trigger `FMT_ASSERT`. When assertions are disabled, each channel clamps to
 `0..5`, and a single index above 215 clamps to 215 before channel decomposition.
-The single index is `36 * r + 6 * g + b`. Default construction selects index zero.
+The single index is `36 * r + 6 * g + b`. Default construction selects index
+zero.
 
 ```cpp
 auto accent = fmt::cube_color{1, 2, 3};
@@ -457,9 +464,9 @@ input pointer. Classification and pointer access are `noexcept`.
 
 Both access functions also accept an index: `get<1>(color)` and
 `get_if<1>(&color)` access RGB. `T` must be one of the listed alternatives;
-an index must be in the range 0–4. An unsupported type or index is a compile-time
-error. Use `color_t::kind` values with `to_underlying` or `enum_cast` when
-selecting an index by name.
+an index must be in the range 0–4. An unsupported type or index is a
+compile-time error. Use `color_t::kind` values with `to_underlying` or
+`enum_cast` when selecting an index by name.
 
 The `get` overloads preserve the argument's constness and value category:
 
@@ -533,7 +540,8 @@ auto payload = fmt::visit([](const auto& value) -> uint32_t {
 
 The explicit return type gives every alternative the same result type.
 This example returns only the numeric payload, without the kind discriminator.
-Visitation supports C++11 constant evaluation when the visitor and color access do.
+Visitation supports C++11 constant evaluation when the visitor and color access
+do.
 
 ### Blending color variants
 
@@ -602,3 +610,30 @@ and later provide `std::strong_ordering` through `operator<=>`.
 `fmt::to_underlying(color)` returns the packed representation used by
 `text_style`, including the alternative's discriminator and payload. This
 encoding and its hash values are not stable serialization formats.
+
+## Readable color output
+
+All color types, including `no_color_t` and `color_t`, support `{}` and `{:?}`
+with the same unquoted notation. Include `<fmt/color.h>` for formatting and
+`<fmt/color-ostream.h>` for narrow or wide ostream insertion.
+
+| Stored color kind | Example output | Meaning                          |
+| ----------------- | -------------- | -------------------------------- |
+| Unspecified       | `no_color`     | No specified color               |
+| Terminal          | `bright_red`   | Enum name, without a qualifier   |
+| Gray              | `gray12`       | Gray index, from 0 to 23         |
+| Cube              | `cube503`      | Red, green, blue indices, 0 to 5 |
+| RGB               | `#ff0080`      | Six lowercase hexadecimal digits |
+
+RGB output always uses hexadecimal, even for named constants. A `color_t`
+uses the notation of its active alternative, preserving the distinction between
+palette colors and their RGB equivalents. Formatting accepts string fill,
+alignment, width, precision, and optional `s` or `?`, including dynamic width
+and precision. Ostream insertion applies width, fill, and alignment as for an
+ordinary string; numeric flags do not change the notation.
+
+```cpp
+fmt::format("{}", fmt::color::red);          // "#ff0000"
+fmt::format("{:>12?}", fmt::gray_color{12}); // "      gray12"
+fmt::format("{}", fmt::cube_color{5, 0, 3}); // "cube503"
+```

@@ -9,10 +9,10 @@ See [Colors](colors.md) for the color types and [the overview](index.md) for
 styling examples.
 
 Named RGB colors are grouped by hue, with equal red, green, and blue components
-in the neutral group. Within each group, colors are ordered by hue and brightness.
-The terminal RGB constants and gray palette levels have separate sections below.
-Each name uses black or white text, whichever gives better contrast.
-Hover over a swatch to see its RGB hex value.
+in the neutral group. Within each group, colors are ordered by hue and
+brightness.  The terminal RGB constants and gray palette levels have separate
+sections below.  Each name uses black or white text, whichever gives better
+contrast.  Hover over a swatch to see its RGB hex value.
 
 ## Red
 

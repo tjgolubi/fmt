@@ -80,8 +80,8 @@ Compact selective changes can restore default foreground or background with
 SGR `39` or `49`. Bold and faint share SGR `22` for removal, so a surviving
 intensity attribute is reapplied when necessary. Colors are compared by kind
 and value, preserving terminal palette semantics. Noncompact mode instead
-rebuilds the full requested state, with a reset when needed. Both modes produce the
-requested appearance.
+rebuilds the full requested state, with a reset when needed. Both modes produce
+the requested appearance.
 
 Both overloads support C++11 and wide characters; transitions can allocate and
 are not `noexcept`.

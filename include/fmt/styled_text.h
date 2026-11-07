@@ -300,22 +300,50 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto copy(const std::basic_string<Char>& str,
 /**
  * Formats an owning styled-text tree using ordinary ANSI SGR sequences.
  * Relative nodes inherit their enclosing style; absolute nodes start from
- * terminal defaults.
+ * terminal defaults. Debug presentation (`?`) displays stored node styles and
+ * quoted leaf strings, indenting children by two spaces per level.
  */
 template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
   FMT_CONSTEXPR auto parse(parse_context<Char>& ctx) -> const Char* {
     if (ctx.begin() == ctx.end() || *ctx.begin() == Char('}'))
       return ctx.begin();
-    auto end = detail::parse_format_specs(ctx.begin(), ctx.end(), _specs, ctx,
-                                          detail::type::string_type);
-    if (_specs.type() == presentation_type::debug)
-      report_error("styled text does not support debug formatting");
-    return end;
+    return detail::parse_format_specs(ctx.begin(), ctx.end(), _specs, ctx,
+                                      detail::type::string_type);
+  }
+
+  FMT_CONSTEXPR void set_debug_format(bool set = true) {
+    _specs.set_type(set ? presentation_type::debug : presentation_type::none);
   }
 
  private:
   detail::dynamic_format_specs<Char> _specs;
   using render_state = detail::styled_text_render_state;
+
+  template <typename OutputIt>
+  static auto write_debug(const basic_styled_text<Char>& node, OutputIt out,
+                          std::size_t indent = 0) -> OutputIt {
+    for (std::size_t i = 0; i < indent; ++i) *out++ = Char(' ');
+    if (!node._style.empty()) {
+      out = detail::write_style_value<Char>(out, node._style);
+      *out++ = Char(' ');
+    }
+    if (!node._is_branch) {
+      const auto text = node._data.text
+                            ? basic_string_view<Char>{*node._data.text}
+                            : basic_string_view<Char>{};
+      out = detail::write_escaped_string(out, text);
+      if (indent != 0) *out++ = Char('\n');
+      return out;
+    }
+    *out++ = Char('{');
+    *out++ = Char('\n');
+    for (const auto& child : node._data.children)
+      out = write_debug(child, out, indent + 2);
+    for (std::size_t i = 0; i < indent; ++i) *out++ = Char(' ');
+    *out++ = Char('}');
+    *out++ = Char('\n');
+    return out;
+  }
 
   static auto measure(const basic_styled_text<Char>& node, render_state& state)
       -> std::size_t {
@@ -393,6 +421,25 @@ template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
                                 _specs.width_ref, ctx);
     detail::handle_dynamic_spec(specs.dynamic_precision(), specs.precision,
                                 _specs.precision_ref, ctx);
+    return format_with_specs(value, ctx, specs);
+  }
+
+  // Shared by the formatter and ostream bridge. Options are already resolved;
+  // stream insertion never builds or parses a format-specification string.
+  template <typename FormatContext>
+  static auto format_with_specs(const basic_styled_text<Char>& value,
+                                FormatContext& ctx, format_specs specs)
+      -> decltype(ctx.out()) {
+    if (specs.type() == presentation_type::debug) {
+      if (specs.width == 0 && specs.precision < 0)
+        return write_debug(value, ctx.out());
+      auto buffer = basic_memory_buffer<Char>{};
+      write_debug(value, basic_appender<Char>{buffer});
+      specs.set_type(presentation_type::string);
+      return detail::write<Char>(
+          ctx.out(), basic_string_view<Char>{buffer.data(), buffer.size()},
+          specs);
+    }
     const auto limit = (specs.precision < 0)
                            ? (std::numeric_limits<std::size_t>::max)()
                            : static_cast<std::size_t>(specs.precision);
@@ -416,7 +463,7 @@ template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
                           left, padding - left);
     return transition(initial, terminal, out);
   }
-};  // text_style formatter
+};  // styled-text formatter
 
 namespace detail {
 template <typename Char>
@@ -471,8 +518,7 @@ FMT_NODISCARD auto underlay(text_style style, T&& text)
 template <typename T>
 FMT_NODISCARD auto absolute(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::underlay(fmt::absolute(text_style{}),
-                                         std::forward<T>(text));
+  return fmt::underlay(fmt::absolute(text_style{}), std::forward<T>(text));
 }
 
 /// Returns styled text with bold enabled on its root, preserving other style.

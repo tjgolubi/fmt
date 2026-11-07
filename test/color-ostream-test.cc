@@ -12,6 +12,55 @@
 
 #include "gtest-extra.h"
 
+TEST(color_ostream_test, emphasis_insertion) {
+  using fmt::emphasis;
+  const struct {
+    emphasis value;
+    const char* expected;
+  } cases[] = {
+      {emphasis{}, "{}"},
+      {emphasis::bold, "{bold}"},
+      {emphasis::faint, "{faint}"},
+      {emphasis::italic, "{italic}"},
+      {emphasis::underline, "{underline}"},
+      {emphasis::blink, "{blink}"},
+      {emphasis::reverse, "{reverse}"},
+      {emphasis::conceal, "{conceal}"},
+      {emphasis::strike, "{strike}"},
+      {emphasis::strikethrough, "{strike}"},
+      {emphasis::strike | emphasis::bold | emphasis::underline,
+       "{bold underline strike}"},
+      {static_cast<emphasis>(255),
+       "{bold faint italic underline blink reverse conceal strike}"}};
+  for (const auto& test : cases) {
+    std::ostringstream os;
+    EXPECT_EQ(&(os << test.value), &os);
+    EXPECT_EQ(os.str(), test.expected);
+    const auto expected = std::string{test.expected};
+    std::wostringstream wide;
+    EXPECT_EQ(&(wide << test.value), &wide);
+    EXPECT_EQ(wide.str(), std::wstring(expected.begin(), expected.end()));
+  }
+}
+
+TEST(color_ostream_test, emphasis_insertion_stream_settings) {
+  std::ostringstream os;
+  os << std::hex << std::setprecision(0) << std::setfill('*') << std::setw(8)
+     << fmt::emphasis::bold << '!';
+  EXPECT_EQ(os.str(), "**{bold}!");
+  EXPECT_EQ(os.width(), 0);
+  EXPECT_EQ(os.precision(), 0);
+  EXPECT_EQ(os.fill(), '*');
+  EXPECT_EQ(os.flags() & std::ios_base::basefield, std::ios_base::hex);
+  os << std::left << std::setw(5) << fmt::emphasis{};
+  EXPECT_EQ(os.str(), "**{bold}!{}***");
+  std::wostringstream wide;
+  wide << std::left << std::setfill(L'*') << std::setw(8)
+       << fmt::emphasis::faint << L'!';
+  EXPECT_EQ(wide.str(), L"{faint}*!");
+  EXPECT_EQ(wide.width(), 0);
+}
+
 TEST(color_ostream_test, insertion) {
   std::ostringstream os;
   const auto style = fmt::text_style{fmt::emphasis::bold, fmt::rgb{1, 2, 3},

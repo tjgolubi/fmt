@@ -120,9 +120,9 @@ After the absolute span, the surrounding appearance resumes.
 
 An absolute node emits an SGR reset before applying its style, unless it
 produces no output. This applies in both compact and noncompact modes, even when
-the recorded terminal state already has the same attributes. Relative descendants
-inherit the resulting style without repeating the group's absolute reset. An
-explicitly absolute descendant establishes its own reset boundary.
+the recorded terminal state already has the same attributes. Relative
+descendants inherit the resulting style without repeating the group's absolute
+reset. An explicitly absolute descendant establishes its own reset boundary.
 
 ```cpp
 auto underline_only = fmt::absolute(fmt::underline("underline only"));
@@ -180,16 +180,16 @@ Expected output (followed by a newline):
 
 <pre class="color-output"><span style="font-weight: bold">***hello <span style="color: #0000FF">wor</span></span></pre>
 
-Precision limits the whole tree rather than each leaf. Narrow text uses
-{fmt}'s UTF-8 display-width estimate without splitting code points; wide text
-uses code-unit counts. If the next code point does not fit, later text is not
+Precision limits the whole tree rather than each leaf. Narrow text uses {fmt}'s
+UTF-8 display-width estimate without splitting code points; wide text uses
+code-unit counts. If the next code point does not fit, later text is not
 printed. Width supplies padding after truncation. Padding receives the root
 style, including for empty text or precision zero; child styles affect only
 their own text. Relative transitions are emitted only before text or padding.
 Absolute nodes reset before applying their styles, unless there is no output.
-Truncation stops traversal of later text and nodes. It does not emit intermediate
-group restorations; after any right padding, the field transitions directly from
-its last emitted style to the enclosing context style.
+Truncation stops traversal of later text and nodes. It does not emit
+intermediate group restorations; after any right padding, the field transitions
+directly from its last emitted style to the enclosing context style.
 
 Use `plain_text` when you need an independent string containing just the stored
 text, without applying the styles:
@@ -204,8 +204,8 @@ terminal escapes. Raw escapes are not interpreted or removed and can interfere
 with the expected appearance. Express styling through the API when composing
 styled text. Terminal support and themes can affect the displayed appearance.
 
-For wide text, use `wstyled_text` and include `<fmt/xchar.h>` for wide formatting
-entry points. The same composition and grouping rules apply.
+For wide text, use `wstyled_text` and include `<fmt/xchar.h>` for wide
+formatting entry points. The same composition and grouping rules apply.
 
 ### Measuring text width
 
@@ -220,6 +220,69 @@ Each leaf is measured independently; keep UTF-8 code points within a single
 leaf. Raw escape sequences inside text are not recognized or excluded.
 Each leaf must contain complete UTF-8 code points for width and precision to
 match formatting the equivalent ordinary concatenated string.
+
+### Debug output
+
+Use `{:?}` to inspect stored styles and tree structure without rendering SGR.
+Each node shows its [readable style](text-style.md#readable-style-output), a
+space, then either its quoted debug string or an opening `{` and newline.
+An empty node style and its following space are omitted. Children are indented
+two spaces per level; each closing `}` aligns with its node's style. Leaf
+strings use ordinary {fmt} debug escaping, including quotes, backslashes,
+embedded nulls, and control characters.
+
+```cpp
+auto text = fmt::bold(fmt::styled_text{"hello\n", fmt::fg(fmt::term_color::red)}
+                      + (fmt::underline("world") + "!"));
+fmt::print("{:?}", text);
+```
+
+Output:
+
+```text
+b {
+  red "hello\n"
+  {
+    _ "world"
+    "!"
+  }
+}
+```
+
+Every child leaf and every closing brace ends with a newline. A top-level leaf
+has no trailing newline: an empty unstyled leaf displays `""`, and a bold leaf
+displays `b "hello"`. No additional outer enclosure is added. Debug output
+shows stored node styles, without resolving inheritance or modifying the tree.
+Wide trees support the same presentation. Fill, alignment, width, and precision
+apply to the completed debug representation; precision can truncate that text.
+
+### Stream insertion
+
+Include both `<fmt/styled_text.h>` and `<fmt/color-ostream.h>` to insert a tree
+into a narrow or wide ostream. Insertion produces normal ANSI-styled output.
+It shares the formatter's rendering machinery and passes options directly,
+without constructing or parsing a format-specification string.
+
+```cpp
+#include <fmt/styled_text.h>
+#include <fmt/color-ostream.h>
+#include <iomanip>
+#include <sstream>
+
+std::ostringstream os;
+os << std::left << std::setfill('*') << std::setw(14)
+   << fmt::bold("hello world");
+// Bold "hello world***", followed by a reset to terminal defaults.
+```
+
+Stream width, fill, and alignment control padding. Left alignment pads after
+the text; right, internal, and default alignment pad before it. Stream precision
+is ignored, matching ordinary string insertion; the complete text is emitted.
+To truncate a tree, use the styled-text formatter with an explicit precision.
+Padding uses the effective root style, and generated SGR does not consume width.
+Field width resets to zero after insertion; precision, fill, and flags remain.
+Stream failures follow the stream's exception mask. For tree debug output on a
+stream, insert the string returned by `fmt::format("{:?}", text)`.
 
 ### Table demonstration
 
@@ -373,12 +436,12 @@ not the original escape bytes or a trailing command's effect on terminal state.
 Input text is copied, including embedded nulls when supplied through a sized
 string or string view.
 
-Recognized codes cover the library's eight emphasis attributes and their removal,
-normal/bright terminal colors, indexed colors, truecolor, and default-color
-restoration. Reset (`0`, empty parameters, or leading-zero forms) clears the
-current style; `00` and `000` have no push/pop meaning. Indexed and RGB colors
-accept semicolon forms and colon forms, including an omitted/default RGB color
-space field. Unicode code units are preserved without decoding.
+Recognized codes cover the library's eight emphasis attributes and their
+removal, normal/bright terminal colors, indexed colors, truecolor, and
+default-color restoration. Reset (`0`, empty parameters, or leading-zero forms)
+clears the current style. Indexed and RGB colors accept semicolon forms and
+colon forms, including an omitted/default RGB color space field. Unicode code
+units are preserved without decoding.
 
 Non-SGR escapes, including uppercase `M` commands and opaque OSC/DCS payloads,
 remain verbatim text. Malformed SGR (including incomplete/out-of-range supported
@@ -399,19 +462,20 @@ auto plain = fmt::strip_ansi("\x1b[31mred\x1b[0m"); // "red"
 
 The character-generic function accepts `basic_string_view<Char>`; convenience
 overloads accept narrow/wide literals and standard strings. It recognizes CSI,
-OSC, DCS, SOS, PM, APC, and ordinary ESC sequences by syntax. Private and unknown
-commands are removed too, without validating parameter meanings. OSC ends at
-BEL or `ESC \`; the other control strings end at `ESC \`. Their payloads and
-terminators are removed with them. Hyperlink labels outside OSC markers remain.
+OSC, DCS, SOS, PM, APC, and ordinary ESC sequences by syntax. Private and
+unknown commands are removed too, without validating parameter meanings. OSC
+ends at BEL or `ESC \`; the other control strings end at `ESC \`. Their payloads
+and terminators are removed with them. Hyperlink labels outside OSC markers
+remain.
 
-Standalone C0 controls (such as tabs, newlines, and embedded nulls) and single-byte
-C1 forms are preserved. Malformed or incomplete escape prefixes are preserved;
-scanning resumes at an interrupting character so a subsequent independent escape
-can still be removed. Unterminated control strings are preserved in full,
-including any apparent escapes inside their payload. CAN and SUB cancel a
-control string: its preceding bytes and the cancellation character are retained,
-and scanning resumes at that character. Text code units are copied without
-Unicode decoding.
+Standalone C0 controls (such as tabs, newlines, and embedded nulls) and
+single-byte C1 forms are preserved. Malformed or incomplete escape prefixes are
+preserved; scanning resumes at an interrupting character so a subsequent
+independent escape can still be removed. Unterminated control strings are
+preserved in full, including any apparent escapes inside their payload. CAN and
+SUB cancel a control string: its preceding bytes and the cancellation character
+are retained, and scanning resumes at that character. Text code units are copied
+without Unicode decoding.
 
 This function does not simulate cursor movement, erase commands, carriage
 returns, or other terminal behavior, and is not a security sanitizer. Unlike
@@ -420,8 +484,9 @@ constructing a styled tree.
 
 The styled-text overload returns a new `basic_styled_text<Char>` with the same
 tree structure, styles, and absolute boundaries. It strips ANSI sequences from
-each leaf independently, retaining leaves that become empty and sharing unchanged
-leaf strings. The input is unchanged. Sequences split across leaves are preserved.
+each leaf independently, retaining leaves that become empty and sharing
+unchanged leaf strings. The input is unchanged. Sequences split across leaves
+are preserved.
 
 ```cpp
 auto text = fmt::bold("\x1b[31mred\x1b[0m");
@@ -470,11 +535,11 @@ the canonical spelling produced by `backslash_escape` and `backslash_escape_to`.
 | `\xhh` | Exactly 2 hex digits | `0xhh` | Yes   |
 | `\nnn` | 1 to 3 octal digits  |        | No    |
 
-`backslash_escape` uses `\a`, `\b`, `\e`, `\f`, `\n`, `\r`, `\t`, and `\v`
-for the corresponding controls. `\e` represents ESC (`0x1b`); it is an
-extension to the standard C++ escape spellings. It uses `\xhh` with two lowercase
-hexadecimal digits for other ASCII C0 controls and DEL (`0x7f`), including `\x00` for NUL. Literal
-backslashes become `\\` and double quotes become `\"`. Other code units,
+`backslash_escape` uses `\a`, `\b`, `\e`, `\f`, `\n`, `\r`, `\t`, and `\v` for
+the corresponding controls. `\e` represents ESC (`0x1b`); it is an extension to
+the standard C++ escape spellings. It uses `\xhh` with two lowercase hexadecimal
+digits for other ASCII C0 controls and DEL (`0x7f`), including `\x00` for NUL.
+Literal backslashes become `\\` and double quotes become `\"`. Other code units,
 including non-ASCII text and UTF-8 bytes, are preserved. No surrounding quotes
 are added.
 
@@ -520,9 +585,9 @@ append to the string supplying the input view, since reallocation can invalidate
 that view.
 
 `backslash_unescape(backslash_escape(text))` recovers the original code units.
-To inspect a styled value's text, pass `text.plain_text()`; to inspect its emitted
-SGR sequences too, pass the formatted string. These functions do not interpret
-ANSI sequences or remove explicit styles.
+To inspect a styled value's text, pass `text.plain_text()`; to inspect its
+emitted SGR sequences too, pass the formatted string. These functions do not
+interpret ANSI sequences or remove explicit styles.
 
 ## Individual styled arguments
 

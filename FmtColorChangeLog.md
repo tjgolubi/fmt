@@ -21,6 +21,8 @@ resetting to terminal defaults.
 
 - *(demo)* Add a styled table demo and build both examples
 
+- *(output)* Add styling value output and styled-text debug views
+
 
 ### 🐛 Bug Fixes
 

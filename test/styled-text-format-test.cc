@@ -4,6 +4,9 @@
 #include "fmt/color-ostream.h"
 #include "gtest-extra.h"
 
+#include <iomanip>
+#include <sstream>
+
 namespace {
 auto render(const fmt::styled_text& value) -> std::string {
   return fmt::format(FMT_STRING("{}"), value);
@@ -377,8 +380,109 @@ TEST(styled_text_format_test, compiled_nested_style_and_pointer_output) {
 TEST(styled_text_format_test, unsupported_specifications) {
 #if FMT_USE_EXCEPTIONS
   const auto value = fmt::bold("text");
-  EXPECT_THROW((void)fmt::format(fmt::runtime("{:?}"), value), fmt::format_error);
   EXPECT_THROW((void)fmt::format(fmt::runtime("{:+}"), value), fmt::format_error);
+#endif
+}
+
+TEST(styled_text_format_test, stream_insertion_options) {
+  const auto tree = fmt::bold(fmt::styled_text{"ab"} +
+                             fmt::styled_text{"cdefgh", fmt::fg(fmt::term_color::red)});
+  const auto bold_red = fmt::bold(fmt::fg(fmt::term_color::red));
+#if defined(_MSC_VER) && _MSC_VER < 1930
+  // Older MSVC STL alignment constants and fmtflags have different types.
+  const std::ios_base::fmtflags alignments[] = {
+      std::ios_base::left, std::ios_base::right,
+      std::ios_base::internal, std::ios_base::fmtflags{}};
+  for (auto alignment : alignments) {
+#else
+  for (auto alignment : {std::ios_base::left, std::ios_base::right,
+                         std::ios_base::internal, std::ios_base::fmtflags{}}) {
+#endif
+    std::ostringstream os;
+    os.setf(alignment, std::ios_base::adjustfield);
+    os << std::hex << std::setprecision(4) << std::setfill('*') << std::setw(11);
+    const auto flags = os.flags();
+    auto& result = (os << tree);
+    EXPECT_EQ(&result, &os);
+    if (alignment == std::ios_base::left) {
+      check_states(os.str(), std::string{"abcdefgh***"},
+                   {fmt::bold(), fmt::bold(), bold_red, bold_red,
+                    bold_red, bold_red, bold_red, bold_red,
+                    fmt::bold(), fmt::bold(), fmt::bold()});
+    } else {
+      check_states(os.str(), std::string{"***abcdefgh"},
+                   {fmt::bold(), fmt::bold(), fmt::bold(), fmt::bold(),
+                    fmt::bold(), bold_red, bold_red, bold_red, bold_red,
+                    bold_red, bold_red});
+    }
+    EXPECT_EQ(os.width(), 0);
+    EXPECT_EQ(os.precision(), 4);
+    EXPECT_EQ(os.fill(), '*');
+    EXPECT_EQ(os.flags(), flags);
+    os << '!';
+    EXPECT_EQ(os.str().back(), '!');
+  }
+  std::ostringstream default_stream;
+  default_stream << tree;
+  check_states(default_stream.str(), std::string{"abcdefgh"},
+               {fmt::bold(), fmt::bold(), bold_red, bold_red, bold_red, bold_red,
+                bold_red, bold_red});
+  std::ostringstream zero;
+  zero << std::setprecision(0) << std::setfill('*') << std::setw(3) << tree;
+  check_states(zero.str(), std::string{"abcdefgh"},
+               {fmt::bold(), fmt::bold(), bold_red, bold_red, bold_red, bold_red,
+                bold_red, bold_red});
+  EXPECT_EQ(zero.precision(), 0);
+  std::ostringstream empty;
+  empty << std::setfill('*') << std::setw(3) << fmt::bold("");
+  check_states(empty.str(), std::string{"***"},
+               {fmt::bold(), fmt::bold(), fmt::bold()});
+}
+
+TEST(styled_text_format_test, stream_insertion_wide_and_utf8) {
+  const auto style = fmt::bold();
+  std::wostringstream wide;
+  wide << std::left << std::setfill(L'\u2603') << std::setprecision(2)
+       << std::setw(5) << fmt::bold(fmt::wstyled_text{L"abcd"});
+  check_states(wide.str(), std::wstring{L"abcd\u2603"},
+               {style, style, style, style, style});
+  EXPECT_EQ(wide.width(), 0);
+  EXPECT_EQ(wide.fill(), L'\u2603');
+  const auto tree = fmt::bold(fmt::styled_text{"\xe6\x9d\xb1\xe4\xba\xac"} + "abc");
+  std::ostringstream utf8;
+  utf8 << std::left << std::setprecision(3) << std::setw(9) << tree;
+  EXPECT_EQ(utf8.str(), fmt::format("{:<9}", tree));
+  check_states(utf8.str(), std::string{"\xe6\x9d\xb1\xe4\xba\xac" "abc  "},
+               {style, style, style, style, style, style, style, style, style,
+                style, style});
+  std::ostringstream absolute;
+  const auto protected_tree = fmt::bold(
+      fmt::styled_text{"a"} + fmt::absolute(fmt::underline("b")) + "c");
+  absolute << protected_tree;
+  check_states(absolute.str(), std::string{"abc"},
+               {style, fmt::underline(), style});
+}
+
+TEST(styled_text_format_test, stream_insertion_failure) {
+  std::ostringstream os;
+  os.setstate(std::ios_base::failbit);
+  os << std::setw(3) << fmt::bold("text");
+  EXPECT_EQ(os.str(), "");
+  EXPECT_EQ(os.width(), 3);
+  std::wostringstream wide;
+  wide.setstate(std::ios_base::failbit);
+  wide << fmt::bold(L"text");
+  EXPECT_EQ(wide.str(), L"");
+  struct failing_buffer : std::streambuf {
+    std::streamsize xsputn(const char*, std::streamsize) override { return 0; }
+  } buffer;
+  std::ostream failing{&buffer};
+  failing << fmt::bold("text");
+  EXPECT_TRUE(failing.bad());
+#if FMT_USE_EXCEPTIONS
+  failing.clear();
+  failing.exceptions(std::ios_base::badbit);
+  EXPECT_THROW(failing << fmt::bold("text"), std::ios_base::failure);
 #endif
 }
 
