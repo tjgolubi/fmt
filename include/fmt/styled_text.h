@@ -441,8 +441,8 @@ template <typename Char> struct styled_text_formatter {
     if (specs.type() == fmt::presentation_type::debug) {
       if (specs.width == 0 && specs.precision < 0)
         return write_debug(value, ctx.out());
-      auto buffer = fmt::basic_memory_buffer<Char>{};
-      write_debug(value, fmt::basic_appender<Char>{buffer});
+      auto buffer = basic_memory_buffer<Char>{};
+      write_debug(value, std::back_inserter(buffer));
       specs.set_type(fmt::presentation_type::string);
       return fmt::detail::write<Char>(
           ctx.out(), fmt::basic_string_view<Char>{buffer.data(), buffer.size()},

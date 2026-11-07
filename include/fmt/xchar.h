@@ -366,7 +366,7 @@ namespace tjg {
 FMT_BEGIN_EXPORT
 inline auto vformat(text_style ts, fmt::wstring_view fmt,
                     fmt::wformat_args args) -> std::wstring {
-  auto buf = fmt::wmemory_buffer();
+  auto buf = basic_memory_buffer<wchar_t>();
   detail::vformat_to(buf, ts, fmt, args);
   return {buf.data(), buf.size()};
 }

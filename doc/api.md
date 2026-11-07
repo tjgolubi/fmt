@@ -11,6 +11,7 @@ The {fmt} library API consists of the following components:
 - [`fmt/std.h`](#std-api): formatters for standard library types
 - [`fmt/enum.h`](#enum-api): formatting of annotated enums
 - [`fmt/compile.h`](#compile-api): format string compilation
+- [`fmt/memory_buffer.h`](color/index.md#memory-buffer): extension-owned memory buffer
 - [`fmt/color.h`](#color-api): terminal colors and text styles
 - [`fmt/color-ostream.h`](color/print.md#styled-ostream-output): styled narrow and wide ostream output
 - [`fmt/os.h`](#os-api): system APIs
@@ -19,8 +20,8 @@ The {fmt} library API consists of the following components:
 - [`fmt/printf.h`](#printf-api): safe `printf`
 - [`fmt/xchar.h`](#xchar-api): optional `wchar_t` support
 
-All functions and types provided by the library reside in namespace `fmt`
-and macros have prefix `FMT_`.
+The formatting engine APIs reside in namespace `fmt`; the extension APIs use
+namespace `tjg`. Macros have prefix `FMT_`.
 
 ## C++ Module API
 

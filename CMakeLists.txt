@@ -277,6 +277,7 @@ foreach (
   header
   args.h
   backslash.h
+  memory_buffer.h
   base.h
   chrono.h
   color-ostream.h

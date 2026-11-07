@@ -354,6 +354,7 @@ class CxxHandler(BaseHandler):
             "core.h",
             "enum.h",
             "format.h",
+            "memory_buffer.h",
             "os.h",
             "ostream.h",
             "printf.h",
@@ -404,7 +405,7 @@ class CxxHandler(BaseHandler):
         # Merge all file-level XMLs into one to simplify search.
         self._file_doxyxml: "ET.ElementTree[ET.Element[str]] | None" = None
         for h in headers:
-            filename = h.replace(".h", "_8h.xml")
+            filename = h.replace("_", "__").replace(".h", "_8h.xml")
             doxyxml = ET.parse(os.path.join(self._doxyxml_dir, filename))
             if self._file_doxyxml is None:
                 self._file_doxyxml = doxyxml

@@ -179,3 +179,20 @@ sequences in their result. For format string syntax, see the
 
 [SGR]: https://en.wikipedia.org/wiki/ANSI_escape_code#Select_Graphic_Rendition_parameters
 
+
+## Memory buffer
+
+`<fmt/memory_buffer.h>` provides `tjg::basic_memory_buffer<Char, SIZE>` and
+its `char` alias, `tjg::memory_buffer`, using only standard C++23 facilities.
+It stores `SIZE` characters inline (500 by default) and grows dynamically when
+needed. SGR construction uses an explicit 60-character inline buffer.
+
+The interface consists of `data`, `size`, `clear`, `push_back`, pointer-range
+`append`, and `value_type` for `std::back_inserter`. Output is not null-terminated.
+Growth invalidates pointers into the buffer; `clear` retains storage for reuse.
+The buffer is neither copyable nor movable. Appending a range of its own output
+is supported, including across growth.
+
+::: basic_memory_buffer
+    options:
+      color_reference: true

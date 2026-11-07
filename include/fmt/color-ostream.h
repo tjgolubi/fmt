@@ -28,15 +28,23 @@ template <typename Char> struct color_ostream_types {
   using format_args = fmt::basic_format_args<fmt::buffered_context<Char>>;
 };
 
-inline void write_color_buffer(std::ostream& os,
-                               fmt::detail::buffer<char>& buf) {
+inline void write_color_buffer(std::ostream& os, const memory_buffer& buf) {
   fmt::print(os, FMT_STRING("{}"), fmt::string_view(buf.data(), buf.size()));
 }
 
-template <typename Char>
+template <typename Char, std::size_t SIZE>
 void write_color_buffer(std::basic_ostream<Char>& os,
-                        fmt::detail::buffer<Char>& buf) {
-  write_buffer(os, buf);
+                        const basic_memory_buffer<Char, SIZE>& buf) {
+  auto remaining = buf.size();
+  auto data = buf.data();
+  constexpr auto max_size =
+      static_cast<std::size_t>((std::numeric_limits<std::streamsize>::max)());
+  do {
+    const auto count = (std::min)(remaining, max_size);
+    os.write(data, static_cast<std::streamsize>(count));
+    data += count;
+    remaining -= count;
+  } while (remaining != 0);
 }
 
 }  // namespace detail
@@ -49,8 +57,8 @@ void write_color_buffer(std::basic_ostream<Char>& os,
 template <typename Char>
 auto operator<<(std::basic_ostream<Char>& os, emphasis value)
     -> std::basic_ostream<Char>& {
-  auto buffer = fmt::basic_memory_buffer<Char, 64>{};
-  detail::write_emphasis<Char>(fmt::basic_appender<Char>{buffer}, value);
+  auto buffer = basic_memory_buffer<Char, 64>{};
+  detail::write_emphasis<Char>(std::back_inserter(buffer), value);
   return os << std::basic_string<Char>{buffer.data(), buffer.size()};
 }
 
@@ -65,8 +73,8 @@ template <typename Char, typename T,
                         std::is_same<T, text_style>::value)>
 auto operator<<(std::basic_ostream<Char>& os, const T& value)
     -> std::basic_ostream<Char>& {
-  auto buffer = fmt::basic_memory_buffer<Char, 64>{};
-  detail::write_style_value<Char>(fmt::basic_appender<Char>{buffer}, value);
+  auto buffer = basic_memory_buffer<Char, 64>{};
+  detail::write_style_value<Char>(std::back_inserter(buffer), value);
   return os << std::basic_string<Char>{buffer.data(), buffer.size()};
 }
 
@@ -97,11 +105,12 @@ auto operator<<(std::basic_ostream<Char>& os,
                       ? fmt::align::left
                       : fmt::align::right);
   os.width(0);
-  auto buffer = fmt::basic_memory_buffer<Char>{};
-  auto ctx = fmt::buffered_context<Char>{fmt::basic_appender<Char>{buffer}, {}};
+  auto buffer = basic_memory_buffer<Char>{};
+  auto out = std::back_inserter(buffer);
+  auto ctx = fmt::basic_format_context<decltype(out), Char>{out, {}};
   fmt::formatter<basic_styled_text<Char>, Char>::format_with_specs(value, ctx,
                                                                    specs);
-  fmt::detail::write_buffer(os, buffer);
+  detail::write_color_buffer(os, buffer);
   return os;
 }
 
@@ -114,7 +123,7 @@ template <typename Char>
 void vprint(std::basic_ostream<Char>& os, text_style ts,
             typename detail::color_ostream_types<Char>::string_view fmt,
             typename detail::color_ostream_types<Char>::format_args args) {
-  auto buffer = fmt::basic_memory_buffer<Char>();
+  auto buffer = basic_memory_buffer<Char>();
   detail::vformat_to(buffer, ts, fmt, args);
   detail::write_color_buffer(os, buffer);
 }
@@ -127,7 +136,7 @@ template <typename Char>
 void vprintln(std::basic_ostream<Char>& os, text_style ts,
               typename detail::color_ostream_types<Char>::string_view fmt,
               typename detail::color_ostream_types<Char>::format_args args) {
-  auto buffer = fmt::basic_memory_buffer<Char>();
+  auto buffer = basic_memory_buffer<Char>();
   detail::vformat_to(buffer, ts, fmt, args);
   buffer.push_back(static_cast<Char>('\n'));
   detail::write_color_buffer(os, buffer);

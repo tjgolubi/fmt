@@ -2544,11 +2544,11 @@ TEST(color_test, compact_sgr_combined_style) {
             sgr + "value\x1b[0mplain");
 
   // Appending a style must preserve existing buffer contents.
-  auto buf = fmt::memory_buffer();
+  auto buf = tjg::memory_buffer();
   const auto prefix = std::string{"prefix"};
   buf.append(prefix.data(), prefix.data() + prefix.size());
   tjg::detail::append_sgr(buf, style);
-  EXPECT_EQ(fmt::to_string(buf), prefix + sgr);
+  EXPECT_EQ(std::string(buf.data(), buf.size()), prefix + sgr);
 }
 
 TEST(color_test, compact_sgr_empty_and_single_components) {

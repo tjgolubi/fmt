@@ -10,7 +10,10 @@
 #ifndef FMT_COLOR_H_
 #define FMT_COLOR_H_
 
+#include <iterator>
+
 #include "format.h"
+#include "memory_buffer.h"
 
 #ifndef FMT_MODULE
 #  include <functional>  // std::hash
@@ -2100,8 +2103,8 @@ FMT_CONSTEXPR auto make_emphasis(emphasis em) noexcept
   return ansi_color_escape<Char>(em);
 }
 
-template <typename Char>
-FMT_CONSTEXPR20 inline void reset_color(fmt::detail::buffer<Char>& buffer) {
+template <typename Buffer, typename Char = typename Buffer::value_type>
+FMT_CONSTEXPR20 inline void reset_color(Buffer& buffer) {
   constexpr auto reset_color = sgr_reset<Char>();
   buffer.append(reset_color.begin(), reset_color.end());
 }
@@ -2112,9 +2115,8 @@ template <typename T> struct styled_arg : fmt::detail::view {
   constexpr styled_arg(const T& v, text_style s) : value{v}, style{s} {}
 };  // styled_arg
 
-template <typename Char>
-FMT_CONSTEXPR20 void append_sgr_raw(fmt::detail::buffer<Char>& buf,
-                                    text_style ts) {
+template <typename Buffer, typename Char = typename Buffer::value_type>
+FMT_CONSTEXPR20 void append_sgr_raw(Buffer& buf, text_style ts) {
   if (ts.empty()) return;
   if (ts.is_absolute()) {
     buf.push_back(Char('0'));
@@ -2130,8 +2132,8 @@ FMT_CONSTEXPR20 void append_sgr_raw(fmt::detail::buffer<Char>& buf,
 
 #if FMT_COLOR_COMPACT_SGR
 
-template <typename Char>
-FMT_CONSTEXPR20 void append_sgr(fmt::detail::buffer<Char>& buf, text_style ts) {
+template <typename Buffer, typename Char = typename Buffer::value_type>
+FMT_CONSTEXPR20 void append_sgr(Buffer& buf, text_style ts) {
   if (ts.empty()) return;
   buf.push_back(static_cast<Char>('\x1b'));
   buf.push_back(static_cast<Char>('['));
@@ -2141,8 +2143,8 @@ FMT_CONSTEXPR20 void append_sgr(fmt::detail::buffer<Char>& buf, text_style ts) {
 
 #else
 
-template <typename Char>
-FMT_CONSTEXPR20 void append_sgr(fmt::detail::buffer<Char>& buf,
+template <typename Buffer, typename Char = typename Buffer::value_type>
+FMT_CONSTEXPR20 void append_sgr(Buffer& buf,
                                 const ansi_color_escape<Char>& sgr) {
   if (sgr.empty()) return;
   buf.push_back(static_cast<Char>('\x1b'));
@@ -2151,8 +2153,8 @@ FMT_CONSTEXPR20 void append_sgr(fmt::detail::buffer<Char>& buf,
   buf.data()[buf.size() - 1] = static_cast<Char>('m');
 }  // append_sgr
 
-template <typename Char>
-FMT_CONSTEXPR20 void append_sgr(fmt::detail::buffer<Char>& buf, text_style ts) {
+template <typename Buffer, typename Char = typename Buffer::value_type>
+FMT_CONSTEXPR20 void append_sgr(Buffer& buf, text_style ts) {
   if (ts.empty()) return;
   if (ts.is_absolute()) reset_color(buf);
   auto emphasis = make_emphasis<Char>(ts.emph());
@@ -2178,15 +2180,18 @@ class style_scope {
   void operator=(const style_scope&) = delete;
 };  // style_scope
 
-template <typename Char>
-void vformat_to(fmt::detail::buffer<Char>& buf, text_style ts,
-                fmt::basic_string_view<Char> fmt,
+template <typename Buffer, typename Char = typename Buffer::value_type>
+void vformat_to(Buffer& buf, text_style ts, fmt::basic_string_view<Char> fmt,
                 fmt::basic_format_args<fmt::buffered_context<Char>> args) {
   style_scope scope{};
   append_sgr(buf, ts);
   get_terminal_state() = text_style{ts}.absolute(false);
-  vformat_to(buf, fmt, args);
-  if (ts != text_style()) reset_color<Char>(buf);
+  if constexpr (std::is_base_of_v<fmt::detail::buffer<Char>, Buffer>) {
+    vformat_to(buf, fmt, args);
+  } else {
+    vformat_to(std::back_inserter(buf), fmt, args);
+  }
+  if (ts != text_style()) reset_color(buf);
 }  // vformat_to
 
 }  // namespace detail
@@ -2205,7 +2210,7 @@ template <typename Char = char>
 FMT_NODISCARD inline auto to_sgr(const text_style& ts)
     -> std::basic_string<Char> {
   if (ts.empty()) return {};
-  auto buf = fmt::basic_memory_buffer<Char, sgr_max_length>{};
+  auto buf = basic_memory_buffer<Char, sgr_max_length>{};
   detail::append_sgr(buf, ts);
   return {buf.data(), buf.size()};
 }
@@ -2214,16 +2219,15 @@ FMT_NODISCARD inline auto to_sgr(const text_style& ts)
 
 namespace detail {
 
-template <typename Char>
-FMT_CONSTEXPR20 void append_transition_code(fmt::detail::buffer<Char>& buf,
-                                            uint8_t code) {
+template <typename Buffer, typename Char = typename Buffer::value_type>
+FMT_CONSTEXPR20 void append_transition_code(Buffer& buf, uint8_t code) {
   for (auto cp = decimal_strings[code]; *cp; ++cp) buf.push_back(Char(*cp));
   buf.push_back(Char(';'));
 }
 
-template <typename Char>
-FMT_CONSTEXPR20 void append_transition(fmt::detail::buffer<Char>& buf,
-                                       text_style target, text_style initial) {
+template <typename Buffer, typename Char = typename Buffer::value_type>
+FMT_CONSTEXPR20 void append_transition(Buffer& buf, text_style target,
+                                       text_style initial) {
   auto before = static_cast<unsigned>(to_underlying(initial.emph()));
   auto after = static_cast<unsigned>(to_underlying(target.emph()));
   auto removed = before & ~after;
@@ -2261,17 +2265,16 @@ FMT_CONSTEXPR20 void append_transition(fmt::detail::buffer<Char>& buf,
   }
 }  // append_transition
 
-template <typename Char>
-FMT_CONSTEXPR20 void append_sgr_transition(fmt::detail::buffer<Char>& buf,
-                                           text_style target,
+template <typename Buffer, typename Char = typename Buffer::value_type>
+FMT_CONSTEXPR20 void append_sgr_transition(Buffer& buf, text_style target,
                                            text_style initial) {
   if (target.is_absolute()) return append_sgr(buf, target);
   initial.absolute(false);
   if (target == initial) return;
-  auto relative = fmt::basic_memory_buffer<Char, sgr_max_length>{};
+  auto relative = basic_memory_buffer<Char, sgr_max_length>{};
   append_transition(relative, target, initial);
   if (relative.size() == 0) return;
-  auto absolute = fmt::basic_memory_buffer<Char, sgr_max_length>{};
+  auto absolute = basic_memory_buffer<Char, sgr_max_length>{};
   append_sgr_raw(absolute, text_style{target}.absolute());
   const auto& parameters =
       (absolute.size() < relative.size()) ? absolute : relative;
@@ -2300,7 +2303,7 @@ template <typename Char = char>
 FMT_NODISCARD inline auto to_sgr(const text_style& target,
                                  const text_style& initial)
     -> std::basic_string<Char> {
-  auto buf = fmt::basic_memory_buffer<Char, sgr_max_length>{};
+  auto buf = basic_memory_buffer<Char, sgr_max_length>{};
   detail::append_sgr_transition(buf, target, initial);
   return {buf.data(), buf.size()};
 }
@@ -2309,9 +2312,8 @@ FMT_NODISCARD inline auto to_sgr(const text_style& target,
 
 namespace detail {
 
-template <typename Char>
-FMT_CONSTEXPR20 void append_sgr_transition(fmt::detail::buffer<Char>& buf,
-                                           text_style target,
+template <typename Buffer, typename Char = typename Buffer::value_type>
+FMT_CONSTEXPR20 void append_sgr_transition(Buffer& buf, text_style target,
                                            text_style initial) {
   if (!target.is_absolute()) {
     initial.absolute(false);
@@ -2326,7 +2328,7 @@ FMT_CONSTEXPR20 void append_sgr_transition(fmt::detail::buffer<Char>& buf,
 template <typename Char = char>
 FMT_NODISCARD inline auto to_sgr(text_style target, const text_style& initial)
     -> std::basic_string<Char> {
-  auto buf = fmt::basic_memory_buffer<Char, sgr_max_length>{};
+  auto buf = basic_memory_buffer<Char, sgr_max_length>{};
   detail::append_sgr_transition(buf, target, initial);
   return {buf.data(), buf.size()};
 }
@@ -2369,9 +2371,9 @@ FMT_NODISCARD inline auto wrap_sgr(const text_style& ts, fmt::string_view sv)
  */
 inline void vprint(FILE* f, text_style ts, fmt::string_view fmt,
                    fmt::format_args args) {
-  auto buf = fmt::memory_buffer();
+  auto buf = memory_buffer();
   detail::vformat_to(buf, ts, fmt, args);
-  fmt::print(f, FMT_STRING("{}"), fmt::string_view(buf.begin(), buf.size()));
+  fmt::print(f, FMT_STRING("{}"), fmt::string_view(buf.data(), buf.size()));
 }
 
 /**
@@ -2419,10 +2421,10 @@ void print(text_style ts, fmt::format_string<T...> fmt, T&&... args) {
  */
 inline void vprintln(FILE* f, text_style ts, fmt::string_view fmt,
                      fmt::format_args args) {
-  auto buf = fmt::memory_buffer();
+  auto buf = memory_buffer();
   detail::vformat_to(buf, ts, fmt, args);
   buf.push_back('\n');
-  fmt::print(f, FMT_STRING("{}"), fmt::string_view(buf.begin(), buf.size()));
+  fmt::print(f, FMT_STRING("{}"), fmt::string_view(buf.data(), buf.size()));
 }
 
 /**
@@ -2472,9 +2474,9 @@ void println(text_style ts, fmt::format_string<T...> fmt, T&&... args) {
  */
 inline auto vformat(text_style ts, fmt::string_view fmt, fmt::format_args args)
     -> std::string {
-  auto buf = fmt::memory_buffer();
+  auto buf = memory_buffer();
   detail::vformat_to(buf, ts, fmt, args);
-  return fmt::to_string(buf);
+  return {buf.data(), buf.size()};
 }
 
 /**
@@ -2513,7 +2515,8 @@ template <typename OutputIt,
 auto vformat_to(OutputIt out, text_style ts, fmt::string_view fmt,
                 fmt::format_args args) -> OutputIt {
   auto&& buf = fmt::detail::get_buffer<char>(out);
-  detail::vformat_to(buf, ts, fmt, args);
+  detail::vformat_to(static_cast<fmt::detail::buffer<char>&>(buf), ts, fmt,
+                     args);
   return fmt::detail::get_iterator(buf, out);
 }
 
@@ -2652,8 +2655,8 @@ template <typename T, typename Char> struct style_value_formatter {
                                      _specs.precision_ref, ctx);
     // Both ordinary and debug presentation use the same unquoted notation.
     specs.set_type(fmt::presentation_type::string);
-    auto buffer = fmt::basic_memory_buffer<Char, 64>{};
-    write_style_value<Char>(fmt::basic_appender<Char>{buffer}, value);
+    auto buffer = basic_memory_buffer<Char, 64>{};
+    write_style_value<Char>(std::back_inserter(buffer), value);
     return fmt::detail::write<Char>(
         ctx.out(), fmt::basic_string_view<Char>{buffer.data(), buffer.size()},
         specs);
@@ -2673,7 +2676,7 @@ struct styled_arg_formatter : fmt::formatter<T, Char> {
     const auto effective =
         arg.style.is_absolute() ? arg.style : tjg::overlay(initial, arg.style);
     detail::style_scope scope{};
-    auto sgr = fmt::basic_memory_buffer<Char, sgr_max_length>{};
+    auto sgr = basic_memory_buffer<Char, sgr_max_length>{};
     detail::append_sgr_transition(sgr, effective, initial);
     auto out =
         fmt::detail::copy<Char>(sgr.data(), sgr.data() + sgr.size(), ctx.out());

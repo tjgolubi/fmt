@@ -14,6 +14,7 @@ engine remains in namespace `fmt`, and existing header paths are retained.
 | `<fmt/styled_text.h>`       | Owning narrow/wide text trees and their formatter.         |
 | `<fmt/parse_styled_text.h>` | Parse standard ANSI SGR into owned styled text.            |
 | `<fmt/strip_ansi.h>`        | Strip ANSI sequences from strings or styled-text leaves.   |
+| `<fmt/memory_buffer.h>`     | Standalone C++23 inline/growable buffer in namespace `tjg`. |
 | `<fmt/backslash.h>`         | Escape control characters or decode backslash escapes.     |
 | `<fmt/color-ostream.h>`     | Styled narrow/wide ostream output and stream insertion.    |
 | `<fmt/xchar.h>`             | Wide-character formatting and printing entry points.       |
