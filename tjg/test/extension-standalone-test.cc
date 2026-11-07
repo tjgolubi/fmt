@@ -31,8 +31,13 @@ int main() {
   check(tjg::strip_ansi(rendered) == "hello");
   check(tjg::parse_styled_text(rendered).plain_text() == "hello");
   check(tjg::backslash_unescape(tjg::backslash_escape(rendered)) == rendered);
+#if TJG_COLOR_COMPACT_SGR
   check(tjg::format(red, "{} {}", 42, tree) ==
         "\x1b[31m42 \x1b[1mhello\x1b[22m\x1b[0m");
+#else
+  check(tjg::format(red, "{} {}", 42, tree) ==
+        "\x1b[31m42 \x1b[0m\x1b[1m\x1b[31mhello\x1b[0m\x1b[31m\x1b[0m");
+#endif
   auto output = std::string{};
   tjg::format_to(std::back_inserter(output), red, "{:04x}", 42);
   check(output == "\x1b[31m002a\x1b[0m");

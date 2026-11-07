@@ -11,11 +11,13 @@
 #  error "TJG must not include the fmt engine"
 #endif
 #if defined(_MSVC_LANG)
-static_assert(_MSVC_LANG >= 202100L);
+// /std:c++latest can report a C++20 draft value on MSVC. CMake also
+// checks that the imported target explicitly requests cxx_std_23.
+static_assert(_MSVC_LANG >= 202002L);
 #else
 static_assert(__cplusplus >= 202100L);
 #endif
-static_assert(TJG_COLOR_COMPACT_SGR == 1);
+static_assert(TJG_COLOR_COMPACT_SGR == TJG_EXPECTED_COMPACT_SGR);
 
 int main() {
   const auto tree = tjg::bold("hello") + " world";

@@ -686,17 +686,24 @@ TEST(styled_text_format_test, defaults_and_recursive_overrides) {
 TEST(styled_text_format_test, standard_tree_specs_and_debug) {
   const auto tree = tjg::bold(tjg::styled_text{"hello "} +
       tjg::styled_text{"world", tjg::fg(tjg::term_color::blue)});
-  const auto rendered = std::string{"\x1b[1mhello \x1b[34mworld\x1b[0m"};
+#if TJG_COLOR_COMPACT_SGR
+  const auto child_open = std::string{"\x1b[34m"};
+  const auto child_close = std::string{"\x1b[39m"};
+#else
+  const auto child_open = std::string{"\x1b[0m\x1b[1m\x1b[34m"};
+  const auto child_close = std::string{"\x1b[0m\x1b[1m"};
+#endif
+  const auto rendered = "\x1b[1mhello " + child_open + "world\x1b[0m";
   EXPECT_EQ(std::format("{}", tree), rendered);
   EXPECT_EQ(std::format("{:s}", tree), rendered);
-  EXPECT_EQ(std::format("{:>15}", tree), "\x1b[1m    hello \x1b[34mworld\x1b[0m");
+  EXPECT_EQ(std::format("{:>15}", tree), "\x1b[1m    hello " + child_open + "world\x1b[0m");
   EXPECT_EQ(std::format("{:*^15.9}", tree),
-            "\x1b[1m***hello \x1b[34mwor\x1b[39m***\x1b[0m");
+            "\x1b[1m***hello " + child_open + "wor" + child_close + "***\x1b[0m");
   EXPECT_EQ(std::format("{:.0}", tree), "");
   EXPECT_EQ(std::format("{:*>8.0}", tree), "\x1b[1m********\x1b[0m");
   EXPECT_EQ(std::format("{:?}", tree), "b {\n  \"hello \"\n  blue \"world\"\n}\n");
   EXPECT_EQ(std::format("{:>{}.{}s} {}", tree, 12, 9, 42),
-            "\x1b[1m   hello \x1b[34mwor\x1b[0m 42");
+            "\x1b[1m   hello " + child_open + "wor\x1b[0m 42");
   EXPECT_EQ(std::format("{0:*^{1}.{2}?}", tree, 15, 9), "***b {\n  \"he***");
   const auto wide = tjg::underline(tjg::wstyled_text{L"wide"} + L" tree");
   EXPECT_EQ(std::format(L"{:*^15.6}", wide), L"\x1b[4m****wide t*****\x1b[0m");

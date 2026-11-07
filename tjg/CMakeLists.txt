@@ -13,9 +13,8 @@ add_library(tjg INTERFACE)
 add_library(tjg::tjg ALIAS tjg)
 target_compile_features(tjg INTERFACE cxx_std_23)
 target_include_directories(
-  tjg INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+  tjg INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+                $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 target_compile_definitions(
   tjg INTERFACE TJG_COLOR_COMPACT_SGR=$<BOOL:${TJG_COLOR_COMPACT_SGR}>)
 
@@ -25,16 +24,29 @@ if (TJG_INSTALL)
     "${CMAKE_CURRENT_SOURCE_DIR}/tjg-config.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/tjg-config.cmake"
     INSTALL_DESTINATION "${TJG_CMAKE_DIR}")
-  install(TARGETS tjg EXPORT tjg-targets COMPONENT tjg)
-  install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../include/tjg"
-          DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}" COMPONENT tjg
-          FILES_MATCHING PATTERN "*.h")
-  install(EXPORT tjg-targets NAMESPACE tjg::
-          DESTINATION "${TJG_CMAKE_DIR}" COMPONENT tjg)
-  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/tjg-config.cmake"
-          DESTINATION "${TJG_CMAKE_DIR}" COMPONENT tjg)
-  install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE"
-          DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/tjg" COMPONENT tjg)
+  install(
+    TARGETS tjg
+    EXPORT tjg-targets
+    COMPONENT tjg)
+  install(
+    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../include/tjg"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    COMPONENT tjg
+    FILES_MATCHING
+    PATTERN "*.h")
+  install(
+    EXPORT tjg-targets
+    NAMESPACE tjg::
+    DESTINATION "${TJG_CMAKE_DIR}"
+    COMPONENT tjg)
+  install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/tjg-config.cmake"
+    DESTINATION "${TJG_CMAKE_DIR}"
+    COMPONENT tjg)
+  install(
+    FILES "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/tjg"
+    COMPONENT tjg)
 endif ()
 
 if (TJG_TEST)

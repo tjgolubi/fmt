@@ -1,6 +1,8 @@
 name: lint
 
 on:
+  push:
+    branches: [ref/CPP20]
   pull_request:
 
 permissions:
@@ -8,7 +10,6 @@ permissions:
 
 jobs:
   clang-format:
-    if: github.ref != 'refs/heads/ref/CPP20' && github.head_ref != 'ref/CPP20' && github.base_ref != 'ref/CPP20'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -27,12 +28,11 @@ jobs:
 
     - name: Run clang-format
       run: |
-        find include src -name '*.h' -o -name '*.cc' | \
+        find include/tjg -name '*.h' -o -name '*.cc' | \
           xargs clang-format-21 -i -style=file -fallback-style=none
         git diff --exit-code
 
   cmake-format:
-    if: github.ref != 'refs/heads/ref/CPP20' && github.head_ref != 'ref/CPP20' && github.base_ref != 'ref/CPP20'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -42,6 +42,6 @@ jobs:
 
     - name: Run cmake-format
       run: |
-        find . -name CMakeLists.txt -o -name '*.cmake' | \
+        find tjg -name CMakeLists.txt -o -name '*.cmake' | \
           xargs cmake-format -i
         git diff --exit-code

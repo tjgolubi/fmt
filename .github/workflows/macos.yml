@@ -1,60 +1,43 @@
-name: macos
+name: TJG macOS
 
 on:
   push:
-    branches-ignore: [ref/CPP20]
   pull_request:
-    branches-ignore: [ref/CPP20]
 
 permissions:
   contents: read
 
 jobs:
   build:
-    if: github.ref != 'refs/heads/ref/CPP20' && github.head_ref != 'ref/CPP20' && github.base_ref != 'ref/CPP20'
-    name: >-
-      c++${{matrix.std }} ${{ matrix.build_type}}
-      ${{matrix.shared && 'Shared' || ''}}
+    name: LLVM 20 libc++ C++23 ${{ matrix.build_type }} SGR=${{ matrix.compact }}
+    runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15]
         build_type: [Debug, Release]
-        std: [11, 17, 20, 23]
-        shared: [""]
-        include:
-          - os: macos-15
-            std: 23
-            build_type: Release
-            shared: -DBUILD_SHARED_LIBS=ON
-
-    runs-on: '${{ matrix.os }}'
-
+        compact: ["ON", "OFF"]
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-    - name: Set timezone
-      run: sudo systemsetup -settimezone 'Europe/Minsk'
+      - name: Install LLVM and libc++
+        run: |
+          brew install llvm@20 ninja
+          llvm_prefix=$(brew --prefix llvm@20)
+          echo "CXX=$llvm_prefix/bin/clang++" >> "$GITHUB_ENV"
+          echo "CXXFLAGS=-stdlib=libc++ -nostdinc++ -isystem $llvm_prefix/include/c++/v1" >> "$GITHUB_ENV"
+          echo "LDFLAGS=-L$llvm_prefix/lib/c++ -Wl,-rpath,$llvm_prefix/lib/c++ -L$llvm_prefix/lib/unwind -Wl,-rpath,$llvm_prefix/lib/unwind -lunwind" >> "$GITHUB_ENV"
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "$GITHUB_ENV"
 
-    - name: Create Build Environment
-      run: cmake -E make_directory ${{runner.workspace}}/build
+      - name: Configure TJG
+        run: >-
+          cmake -S tjg -B build/tjg -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DCMAKE_CXX_STANDARD=23 -DCMAKE_CXX_STANDARD_REQUIRED=ON
+          -DTJG_TEST=ON -DTJG_WERROR=ON
+          -DTJG_COLOR_COMPACT_SGR=${{ matrix.compact }}
 
-    - name: Configure
-      working-directory: ${{runner.workspace}}/build
-      run: |
-        cmake -DCMAKE_BUILD_TYPE=${{matrix.build_type}} ${{matrix.shared}} \
-              -DCMAKE_CXX_STANDARD=${{matrix.std}} \
-              -DCMAKE_CXX_VISIBILITY_PRESET=hidden -DCMAKE_VISIBILITY_INLINES_HIDDEN=ON \
-              -DFMT_DOC=OFF -DFMT_PEDANTIC=ON -DFMT_WERROR=ON $GITHUB_WORKSPACE
+      - name: Build TJG tests
+        run: cmake --build build/tjg --parallel 4
 
-    - name: Build
-      working-directory: ${{runner.workspace}}/build
-      run: |
-        threads=`sysctl -n hw.logicalcpu`
-        cmake --build . --config ${{matrix.build_type}} --parallel $threads
-
-    - name: Test
-      working-directory: ${{runner.workspace}}/build
-      run: ctest -C ${{matrix.build_type}}
-      env:
-        CTEST_OUTPUT_ON_FAILURE: True
+      - name: Test TJG
+        run: ctest --test-dir build/tjg -L tjg --output-on-failure

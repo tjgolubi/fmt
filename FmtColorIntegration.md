@@ -8,7 +8,7 @@ formatter adapters are required.
 The repository retains the original {fmt} library for unrelated consumers.
 
 A C++23 standard library with `<format>` and `<print>` is required. Development
-validation uses GCC 14.2 with compact SGR enabled.
+validation uses GCC 14.2 in both compact and non-compact SGR modes.
 
 ## Select the headers
 
@@ -31,8 +31,8 @@ Wide styling no longer needs `<fmt/xchar.h>`. Internal utilities are in
 
 Define `TJG_COLOR_COMPACT_SGR=1` to emit one SGR sequence per style, with decimal
 parameters without leading zeros. This replaces `FMT_COLOR_COMPACT_SGR`.
-Undefined or `0` retains the separate, zero-padded output mode, but this branch
-is validated only in compact mode.
+Undefined or `0` retains the separate, zero-padded output mode. Both modes are
+covered by the test suite.
 
 Use the same setting in every translation unit. The setting changes inline and
 template definitions; mixing settings violates the one-definition rule.
@@ -103,7 +103,7 @@ no compiled library. `TJG_INSTALL=OFF` disables installation rules.
 `TJG_COLOR_COMPACT_SGR` is a CMake option as well as the compiler definition.
 The CMake target propagates its selected value, which defaults to `ON`. Consumers
 should use the target's setting consistently instead of overriding the macro.
-This branch is validated only with compact SGR and C++23 or later.
+This branch is validated in both SGR modes with C++23 or later.
 
 ## Use the installed package with CMake
 
@@ -147,11 +147,11 @@ a top-level build, use `cmake --install build --component tjg`.
 
 The extension is included directly; importing the retained `fmt` module does
 not export TJG APIs. `./build.bash` configures only the standalone TJG project,
-builds its tests, and runs the TJG-only suite with C++23 and compact SGR.
-It uses `build/tjg/`; `./build.bash taskwarrior` uses `build/tjg-taskwarrior/`
-with the same settings. Neither builds FMT or runs its regressions. The script
-requires a C++23 toolchain and CMake, without documentation tools. CI stays
-disabled for `ref/CPP20`.
+builds its tests, and runs the TJG-only suite with C++23 in both SGR modes.
+It uses `build/tjg/ON/` and `build/tjg/OFF/`; `./build.bash taskwarrior` uses
+the corresponding mode directories under `build/tjg-taskwarrior/`. Neither builds FMT or runs its regressions. The script
+requires a C++23 toolchain and CMake, without documentation tools. CI runs the TJG checks on
+`ref/CPP20`.
 The package test copies only TJG sources/headers, installs and relocates them,
 and builds a separate consumer using `find_package(tjg)`.
 
@@ -162,11 +162,13 @@ that package directly to build and run its full suite without configuring,
 building, or linking the FMT library:
 
 ```bash
-cmake -S tjg -B build/tjg-tests \
-  -DTJG_TEST=ON -DTJG_WERROR=ON -DTJG_COLOR_COMPACT_SGR=ON \
-  -DCMAKE_CXX_STANDARD=23 -DCMAKE_BUILD_TYPE=Debug
-cmake --build build/tjg-tests --parallel 4
-ctest --test-dir build/tjg-tests --output-on-failure
+for mode in ON OFF; do
+  cmake -S tjg -B "build/tjg-tests-$mode" \
+    -DTJG_TEST=ON -DTJG_WERROR=ON -DTJG_COLOR_COMPACT_SGR="$mode" \
+    -DCMAKE_CXX_STANDARD=23 -DCMAKE_BUILD_TYPE=Debug
+  cmake --build "build/tjg-tests-$mode" --parallel 4
+  ctest --test-dir "build/tjg-tests-$mode" --output-on-failure
+done
 ```
 
 Tests use the checkout's vendored Google Test sources, or an installed
@@ -174,7 +176,7 @@ Tests use the checkout's vendored Google Test sources, or an installed
 FMT's library or test harness. `TJG_TEST` defaults to `OFF` for the standalone
 package; the top-level repository build defaults it to the `FMT_TEST` setting.
 When both suites are configured, `ctest --test-dir build -L tjg` selects only
-TJG tests. All validation on this branch uses C++23 or later and compact SGR.
+TJG tests. Validation on this branch uses C++23 or later in both SGR modes.
 
 ## User guide sources
 
@@ -190,3 +192,19 @@ documentation dependencies from `support/doc-requirements.txt` installed:
 PYTHONPATH=support/python mkdocs build -f support/mkdocs-pages.yml \
   --site-dir build/tjg-guide --no-directory-urls
 ```
+
+## CI test coverage
+
+The Linux, Windows, and macOS regression workflows configure `tjg/` directly
+with `TJG_TEST=ON`, C++23, and both `TJG_COLOR_COMPACT_SGR=ON` and `OFF`.
+They cover Debug and Release configurations. Linux selects GCC 14 and Clang 20
+with libc++ 20; Windows selects the current Visual Studio 2022 v143 toolset;
+macOS uses Homebrew LLVM 20 and its libc++ instead of the system library.
+Linux also includes address/undefined-behavior sanitizer jobs in both modes.
+Configuration checks that `<format>`, `std::formattable`, and `<print>` actually
+compile and link; a language-standard flag alone is insufficient.
+
+CodeQL builds TJG test executables in both modes. The old FMT-specific fuzz
+workflow is removed. Formatting checks cover TJG headers and CMake files.
+The TJG regression, lint, and CodeQL workflows run on pushes to `ref/CPP20`.
+Other documentation and release workflows retain their existing purpose.

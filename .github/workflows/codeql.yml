@@ -2,17 +2,20 @@ name: codeql
 
 on:
   push:
-    branches: [main]
+    branches: [main, ref/CPP20]
   pull_request:
-    branches: [main]
+    branches: [main, ref/CPP20]
 
 permissions:
   contents: read
 
 jobs:
   analyze:
-    if: github.ref != 'refs/heads/ref/CPP20' && github.head_ref != 'ref/CPP20' && github.base_ref != 'ref/CPP20'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compact: ["ON", "OFF"]
     permissions:
       contents: read
       security-events: write
@@ -23,12 +26,22 @@ jobs:
     - uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v3.29.5
       with:
         languages: c-cpp
+        build-mode: manual
 
-    - name: Build
+    - name: Install C++23 toolchain
       run: |
-        cmake -B build -DFMT_DOC=OFF -DFMT_TEST=OFF
-        cmake --build build --parallel
+        sudo apt-get update
+        sudo apt-get install --yes g++-14 ninja-build
+
+    - name: Build TJG tests for analysis
+      env:
+        CXX: g++-14
+      run: |
+        cmake -S tjg -B build/tjg -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_CXX_STANDARD=23 -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+          -DTJG_TEST=ON -DTJG_WERROR=ON -DTJG_COLOR_COMPACT_SGR=${{ matrix.compact }}
+        cmake --build build/tjg --parallel 4
 
     - uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v3.29.5
       with:
-        category: /language:c-cpp
+        category: /language:c-cpp/sgr-${{ matrix.compact }}
