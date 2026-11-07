@@ -36,6 +36,10 @@ configuration. It sets the fork URL and repository links and disables the
 version selector because this deployment publishes a single version. Generated
 HTML is uploaded as a Pages artifact, rather than committed to the source tree.
 
+The guide Markdown sources live in `tjg/doc/`. The shared configuration uses
+`support/python/tjg_docs.py` to include them at the existing `color/` site paths,
+so source moves do not change published guide URLs.
+
 The upstream `doc.yml` workflow and `support/mkdocs` publication helper retain
 their upstream destinations; this workflow uses neither for deployment.
 

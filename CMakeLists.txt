@@ -605,6 +605,10 @@ function (add_doc_target)
     set(sources ${sources} doc/${source})
   endforeach ()
 
+  file(GLOB tjg_guide_sources CONFIGURE_DEPENDS
+       "${CMAKE_CURRENT_SOURCE_DIR}/tjg/doc/*.md")
+  list(APPEND sources ${tjg_guide_sources} support/python/tjg_docs.py)
+
   add_custom_target(
     doc
     COMMAND

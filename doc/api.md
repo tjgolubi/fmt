@@ -11,9 +11,9 @@ The {fmt} library API consists of the following components:
 - [`fmt/std.h`](#std-api): formatters for standard library types
 - [`fmt/enum.h`](#enum-api): formatting of annotated enums
 - [`fmt/compile.h`](#compile-api): format string compilation
-- [`tjg/memory_buffer.h`](color/index.md#memory-buffer): extension-owned memory buffer
+- [`tjg/memory_buffer.h`](../tjg/doc/index.md#memory-buffer): extension-owned memory buffer
 - [`tjg/color.h`](#color-api): terminal colors and text styles
-- [`tjg/color-ostream.h`](color/print.md#styled-ostream-output): styled narrow and wide ostream output
+- [`tjg/color-ostream.h`](../tjg/doc/print.md#styled-ostream-output): styled narrow and wide ostream output
 - [`fmt/os.h`](#os-api): system APIs
 - [`fmt/ostream.h`](#ostream-api): `std::ostream` support
 - [`fmt/args.h`](#args-api): dynamic argument lists
@@ -681,7 +681,7 @@ Example:
 
 `tjg/color.h` provides support for terminal color and text style output.
 
-See [Terminal Colors and Text Styles](color/index.md) for detailed documentation.
+See [Terminal Colors and Text Styles](../tjg/doc/index.md) for detailed documentation.
 
 ::: tjg::print(text_style, std::format_string<T...>, T&&...)
 

@@ -180,7 +180,7 @@ Raw SGR embedded in strings and external terminal styling are not tracked.
 The [output functions](print.md) emit escape sequences even when output is
 redirected to a file. The [formatting functions](format.md) store those
 sequences in their result. For format string syntax, see the
-[syntax reference](../syntax.md).
+[syntax reference](../../doc/syntax.md).
 
 [SGR]: https://en.wikipedia.org/wiki/ANSI_escape_code#Select_Graphic_Rendition_parameters
 

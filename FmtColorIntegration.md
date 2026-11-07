@@ -171,3 +171,10 @@ FMT's library or test harness. `TJG_TEST` defaults to `OFF` for the standalone
 package; the top-level repository build defaults it to the `FMT_TEST` setting.
 When both suites are configured, `ctest --test-dir build -L tjg` selects only
 TJG tests. All validation on this branch uses C++23 or later and compact SGR.
+
+## User guide sources
+
+The user guide lives in `tjg/doc/`, with its overview at `tjg/doc/index.md`.
+The shared MkDocs configuration reads those sources directly and retains the
+existing `color/` page URLs. Repository links and edit links point to the moved
+files. The original {fmt} documentation remains under `doc/`.
