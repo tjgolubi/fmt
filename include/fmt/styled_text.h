@@ -12,29 +12,19 @@
 #include <vector>
 
 #include "color.h"
+#include "tree_format_specs.h"
 
 namespace tjg {
 
 namespace detail {
 struct styled_text_ansi_stripper;
+template <typename Char> struct styled_text_renderer;
 template <typename Char> struct styled_text_formatter;
 
-// Match ordinary string formatting: UTF-8 display width for char, code-unit
-// count for other character types.
 template <typename Char>
 auto styled_text_width(std::basic_string_view<Char> text) noexcept
     -> std::size_t {
-  return text.size();
-}
-
-inline auto styled_text_width(std::string_view text) noexcept -> std::size_t {
-  auto width = std::size_t{0};
-  fmt::detail::for_each_codepoint(fmt::string_view{text.data(), text.size()},
-                                  [&](uint32_t cp, auto) {
-                                    width += fmt::detail::display_width_of(cp);
-                                    return true;
-                                  });
-  return width;
+  return text_prefix(text, (std::numeric_limits<std::size_t>::max)()).second;
 }
 
 struct styled_text_render_state {
@@ -51,31 +41,11 @@ struct styled_text_prefix {
 template <typename Char>
 auto styled_text_take(std::basic_string_view<Char> text,
                       styled_text_render_state& state) -> styled_text_prefix {
-  const auto size = (std::min)(text.size(), state.remaining);
-  state.remaining -= size;
-  state.stopped = size < text.size() || state.remaining == 0;
-  return {size, size};
+  const auto prefix = text_prefix(text, state.remaining);
+  state.remaining -= prefix.second;
+  state.stopped = prefix.first < text.size() || state.remaining == 0;
+  return {prefix.first, prefix.second};
 }
-
-inline auto styled_text_take(std::string_view text,
-                             styled_text_render_state& state)
-    -> styled_text_prefix {
-  auto result = styled_text_prefix{0, 0};
-  fmt::detail::for_each_codepoint(
-      fmt::string_view{text.data(), text.size()}, [&](uint32_t cp, auto bytes) {
-        const auto width = fmt::detail::display_width_of(cp);
-        if (width > state.remaining) {
-          state.stopped = true;
-          return false;
-        }
-        result.size += bytes.size();
-        result.width += width;
-        state.remaining -= width;
-        return true;
-      });
-  if (state.remaining == 0) state.stopped = true;
-  return result;
-}  // styled_text_take
 
 }  // namespace detail
 
@@ -89,7 +59,7 @@ template <typename Char> class basic_styled_text {
  private:
   using leaf = std::shared_ptr<const string_type>;
   using branch = std::vector<basic_styled_text>;
-  friend struct detail::styled_text_formatter<Char>;
+  friend struct detail::styled_text_renderer<Char>;
   friend struct detail::styled_text_ansi_stripper;
   text_style _style{};
   // A branch is created only by concatenating nonempty values.
@@ -311,21 +281,8 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto copy(const std::basic_string<Char>& str,
  * quoted leaf strings, indenting children by two spaces per level.
  */
 namespace detail {
-template <typename Char> struct styled_text_formatter {
-  FMT_CONSTEXPR auto parse(fmt::parse_context<Char>& ctx) -> const Char* {
-    if (ctx.begin() == ctx.end() || *ctx.begin() == Char('}'))
-      return ctx.begin();
-    return fmt::detail::parse_format_specs(ctx.begin(), ctx.end(), _specs, ctx,
-                                           fmt::detail::type::string_type);
-  }
-
-  FMT_CONSTEXPR void set_debug_format(bool set = true) {
-    _specs.set_type(set ? fmt::presentation_type::debug
-                        : fmt::presentation_type::none);
-  }
-
+template <typename Char> struct styled_text_renderer {
  private:
-  fmt::detail::dynamic_format_specs<Char> _specs;
   using render_state = detail::styled_text_render_state;
 
   template <typename OutputIt>
@@ -340,8 +297,7 @@ template <typename Char> struct styled_text_formatter {
       const auto text = node._data.text
                             ? std::basic_string_view<Char>{*node._data.text}
                             : std::basic_string_view<Char>{};
-      out = fmt::detail::write_escaped_string(
-          out, fmt::basic_string_view<Char>{text.data(), text.size()});
+      out = quote_text(text, out);
       if (indent != 0) *out++ = Char('\n');
       return out;
     }
@@ -385,8 +341,9 @@ template <typename Char> struct styled_text_formatter {
   static auto write_node(const basic_styled_text<Char>& node,
                          text_style enclosing, text_style& terminal,
                          OutputIt out, render_state& state,
-                         const fmt::format_specs& specs, std::size_t left = 0,
-                         std::size_t right = 0) -> OutputIt {
+                         const tree_format_specs<Char>& specs,
+                         std::size_t left = 0, std::size_t right = 0)
+      -> OutputIt {
     if ((node.empty() || state.stopped) && left == 0 && right == 0) return out;
     auto effective = node._style;
     // Output absolute style changes immediately; otherwise wait until before
@@ -399,7 +356,7 @@ template <typename Char> struct styled_text_formatter {
     }
     if (left != 0) {
       out = transition(effective, terminal, out);
-      out = fmt::detail::fill<Char>(out, left, specs);
+      out = specs.pad(out, left);
     }
     if (node._is_branch) {
       for (const auto& child : node._data.children) {
@@ -417,54 +374,51 @@ template <typename Char> struct styled_text_formatter {
     }
     if (right != 0) {
       out = transition(effective, terminal, out);
-      out = fmt::detail::fill<Char>(out, right, specs);
+      out = specs.pad(out, right);
     }
     return out;
   }
 
  public:
-  template <typename FormatContext>
-  auto format(const basic_styled_text<Char>& value, FormatContext& ctx) const
-      -> decltype(ctx.out()) {
-    auto specs = fmt::format_specs{_specs};
-    fmt::detail::handle_dynamic_spec(specs.dynamic_width(), specs.width,
-                                     _specs.width_ref, ctx);
-    fmt::detail::handle_dynamic_spec(specs.dynamic_precision(), specs.precision,
-                                     _specs.precision_ref, ctx);
-    return format_with_specs(value, ctx, specs);
-  }
-
   // Shared by the formatter and ostream bridge. Options are already resolved;
   // stream insertion never builds or parses a format-specification string.
   template <typename FormatContext>
   static auto format_with_specs(const basic_styled_text<Char>& value,
-                                FormatContext& ctx, fmt::format_specs specs)
+                                FormatContext& ctx,
+                                tree_format_specs<Char> specs)
       -> decltype(ctx.out()) {
-    if (specs.type() == fmt::presentation_type::debug) {
-      if (specs.width == 0 && specs.precision < 0)
+    if (specs.debug) {
+      if (specs.width == 0 &&
+          specs.precision == (std::numeric_limits<std::size_t>::max)())
         return write_debug(value, ctx.out());
       auto buffer = basic_memory_buffer<Char>{};
       write_debug(value, std::back_inserter(buffer));
-      specs.set_type(fmt::presentation_type::string);
-      return fmt::detail::write<Char>(
-          ctx.out(), fmt::basic_string_view<Char>{buffer.data(), buffer.size()},
-          specs);
+      const auto prefix = text_prefix(
+          std::basic_string_view<Char>{buffer.data(), buffer.size()},
+          specs.precision);
+      const auto padding =
+          specs.width > prefix.second ? specs.width - prefix.second : 0;
+      const auto left = specs.alignment == '>'   ? padding
+                        : specs.alignment == '^' ? padding / 2
+                                                 : 0;
+      auto out = specs.pad(ctx.out(), left);
+      out = std::copy_n(buffer.data(), prefix.first, out);
+      return specs.pad(out, padding - left);
     }
-    const auto limit = (specs.precision < 0)
-                           ? (std::numeric_limits<std::size_t>::max)()
-                           : static_cast<std::size_t>(specs.precision);
+    const auto limit = specs.precision;
     auto state = render_state{limit};
     auto padding = std::size_t{0};
-    if (specs.width != 0 || specs.precision >= 0) {
+    if (specs.width != 0 ||
+        specs.precision != (std::numeric_limits<std::size_t>::max)()) {
       auto measuring = render_state{limit};
       const auto width = measure(value, measuring);
       if (static_cast<std::size_t>(specs.width) > width)
         padding = static_cast<std::size_t>(specs.width) - width;
       if (width == 0 && padding == 0) return ctx.out();
     }
-    const auto left = specs.align() == fmt::align::right    ? padding
-                      : specs.align() == fmt::align::center ? padding / 2
-                                                            : 0;
+    const auto left = specs.alignment == '>'   ? padding
+                      : specs.alignment == '^' ? padding / 2
+                                               : 0;
     if (limit == 0) state.stopped = true;
     const auto initial = get_terminal_state();
     auto& terminal = get_terminal_state();
@@ -473,7 +427,36 @@ template <typename Char> struct styled_text_formatter {
                           left, padding - left);
     return transition(initial, terminal, out);
   }
-};  // styled-text formatter
+};  // styled_text_renderer
+
+template <typename Char>
+struct styled_text_formatter : styled_text_renderer<Char> {
+  tree_format_specs<Char> specs;
+  constexpr auto parse(fmt::parse_context<Char>& ctx) -> decltype(ctx.begin()) {
+    return specs.parse(ctx, fmt::report_error);
+  }
+  constexpr void set_debug_format(bool set = true) { specs.debug = set; }
+  template <typename Context>
+  auto format(const basic_styled_text<Char>& value, Context& ctx) const
+      -> decltype(ctx.out()) {
+    return this->format_with_specs(value, ctx,
+                                   specs.resolve(ctx, fmt::report_error));
+  }
+};
+template <typename Char>
+struct standard_styled_text_formatter : styled_text_renderer<Char> {
+  tree_format_specs<Char> specs;
+  constexpr auto parse(std::basic_format_parse_context<Char>& ctx)
+      -> decltype(ctx.begin()) {
+    return specs.parse(ctx, standard_format_error);
+  }
+  template <typename Context>
+  auto format(const basic_styled_text<Char>& value, Context& ctx) const
+      -> decltype(ctx.out()) {
+    return this->format_with_specs(value, ctx,
+                                   specs.resolve(ctx, standard_format_error));
+  }
+};
 }  // namespace detail
 
 namespace detail {
@@ -598,5 +581,12 @@ template <typename Char>
 struct formatter<tjg::basic_styled_text<Char>, Char>
     : tjg::detail::styled_text_formatter<Char> {};
 FMT_END_NAMESPACE
+
+namespace std {
+template <typename Char>
+  requires(same_as<Char, char> || same_as<Char, wchar_t>)
+struct formatter<tjg::basic_styled_text<Char>, Char>
+    : tjg::detail::standard_styled_text_formatter<Char> {};
+}  // namespace std
 
 #endif  // FMT_STYLED_TEXT_H_

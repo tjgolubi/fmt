@@ -12,6 +12,7 @@
 
 #include "color.h"
 #include "ostream.h"
+#include "tree_format_specs.h"
 #include "xchar.h"
 
 #ifndef FMT_MODULE
@@ -94,18 +95,17 @@ auto operator<<(std::basic_ostream<Char>& os,
     -> std::basic_ostream<Char>& {
   typename std::basic_ostream<Char>::sentry sentry{os};
   if (!sentry) return os;
-  auto specs = fmt::format_specs{};
+  auto specs = detail::tree_format_specs<Char>{};
   const auto width = os.width();
   const auto max_int = (std::numeric_limits<int>::max)();
   if (width > max_int)
     fmt::report_error("styled text stream width is too large");
   if (width > 0) specs.width = static_cast<int>(width);
   const auto fill = os.fill();
-  specs.set_fill(fmt::basic_string_view<Char>{&fill, 1});
-  specs.set_align((os.flags() & std::ios_base::adjustfield) ==
-                          std::ios_base::left
-                      ? fmt::align::left
-                      : fmt::align::right);
+  specs.set_fill(std::basic_string_view<Char>{&fill, 1});
+  specs.alignment =
+      (os.flags() & std::ios_base::adjustfield) == std::ios_base::left ? '<'
+                                                                       : '>';
   os.width(0);
   auto buffer = basic_memory_buffer<Char>{};
   auto out = std::back_inserter(buffer);

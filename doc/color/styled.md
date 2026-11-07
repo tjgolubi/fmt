@@ -3,7 +3,9 @@
 ## Structured styled text
 
 Use `styled_text` to compose text with independently styled parts. Include
-`<fmt/styled_text.h>` and format the result with `{}`.
+`<fmt/styled_text.h>` and format the result with `{}` using `std::format` or
+`std::format_to`. The {fmt} adapter remains available and shares the renderer.
+Use `{:?}` with either backend for tree inspection.
 
 ### Concatenation preserves each part's style
 
@@ -216,7 +218,9 @@ example, `"caf\xc3\xa9"` has width 4 and `"\xe7\x95\x8c"` has width 2.
 Wide strings use code-unit counts, matching this version's wide-string formatter.
 Styles add no width, and empty text has width zero.
 
-This is {fmt}'s width estimate, not full terminal or grapheme measurement.
+The extension owns its UTF-8 decoder and the retained Unicode 16 wide/fullwidth
+table. These preserve the previous code-point width estimates; full terminal
+and grapheme measurement remain future work.
 Each leaf is measured independently; keep UTF-8 code points within a single
 leaf. Raw escape sequences inside text are not recognized or excluded.
 Each leaf must contain complete UTF-8 code points for width and precision to

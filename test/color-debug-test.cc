@@ -12,9 +12,13 @@ namespace {
 template <typename T>
 void check_output(const T& value, const std::string& expected) {
   EXPECT_EQ(fmt::format(FMT_STRING("{}"), value), expected);
+  EXPECT_EQ(std::format("{}", value), expected);
+  EXPECT_EQ(std::format("{:?}", value), expected);
   EXPECT_EQ(fmt::format(FMT_STRING("{:?}"), value), expected);
   EXPECT_EQ(fmt::format(FMT_COMPILE("{}"), value), expected);
   const auto wide = std::wstring(expected.begin(), expected.end());
+  EXPECT_EQ(std::format(L"{}", value), wide);
+  EXPECT_EQ(std::format(L"{:?}", value), wide);
   EXPECT_EQ(fmt::format(FMT_STRING(L"{}"), value), wide);
   EXPECT_EQ(fmt::format(FMT_STRING(L"{:?}"), value), wide);
   std::ostringstream os;
@@ -168,6 +172,7 @@ TEST(color_debug_test, tree_layout) {
       "  }\n"
       "}\n"};
   EXPECT_EQ(fmt::format("{:?}", tree), expected);
+  EXPECT_EQ(std::format("{:?}", tree), expected);
   EXPECT_EQ(fmt::format(FMT_COMPILE("{:?}"), tree), expected);
   EXPECT_EQ(fmt::formatted_size("{:?}", tree), expected.size());
   char output[512] = {};

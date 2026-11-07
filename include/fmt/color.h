@@ -11,6 +11,8 @@
 #define FMT_COLOR_H_
 
 #include <algorithm>
+#include <concepts>
+#include <format>
 #include <iterator>
 #include <string_view>
 #include <type_traits>
@@ -2671,12 +2673,97 @@ template <typename T, typename Char> struct style_value_formatter {
   }
 };
 
+[[noreturn]] inline void standard_format_error(const char* message) {
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
+  throw std::format_error(message);
+#else
+  (void)message;
+  std::abort();
+#endif
+}
+
+// Delegate string specifications to the standard formatter. Our value notation
+// uses ? as an unquoted alias for s, so omit only that final presentation mark.
+// A temporary parse context needs the original context's dynamic argument IDs.
+template <typename Char>
+class standard_value_specs
+    : public std::formatter<std::basic_string_view<Char>, Char> {
+  using base = std::formatter<std::basic_string_view<Char>, Char>;
+  // These are value notations, so ranges must not enable string quoting.
+  constexpr void set_debug_format() noexcept {}
+
+ public:
+  constexpr auto parse(std::basic_format_parse_context<Char>& ctx) ->
+      typename std::basic_format_parse_context<Char>::iterator {
+    const auto first = ctx.begin();
+    auto end = first;
+    auto depth = std::size_t{0};
+    for (; end != ctx.end(); ++end) {
+      if (*end == Char('{')) {
+        ++depth;
+      } else if (*end == Char('}')) {
+        if (depth == 0) break;
+        --depth;
+      }
+    }
+    if (end == first || *(end - 1) != Char('?')) return base::parse(ctx);
+    const auto stop = end - 1;
+    if (stop != first && (*(stop - 1) == Char('s') || *(stop - 1) == Char('?')))
+      standard_format_error("invalid style value presentation");
+
+    auto first_auto = std::size_t{0};
+    auto has_auto = false;
+    for (auto it = first; it != stop; ++it) {
+      if (*it != Char('{')) continue;
+      auto ref = it + 1;
+      if (ref != stop && *ref == Char('}')) {
+        const auto id = ctx.next_arg_id();
+        if (!has_auto) first_auto = id;
+        has_auto = true;
+      } else {
+        auto id = std::size_t{0};
+        const auto digits = ref;
+        while (ref != stop && *ref >= Char('0') && *ref <= Char('9')) {
+          const auto digit = static_cast<std::size_t>(*ref++ - Char('0'));
+          if (id > ((std::numeric_limits<std::size_t>::max)() - digit) / 10)
+            standard_format_error("dynamic argument index is too large");
+          id = id * 10 + digit;
+        }
+        if (ref == digits || ref == stop || *ref != Char('}'))
+          standard_format_error("invalid dynamic argument index");
+        ctx.check_arg_id(id);
+      }
+      it = ref;
+    }
+    const auto spec = std::basic_string_view<Char>{first, stop};
+    auto native = std::basic_format_parse_context<Char>{
+        spec, (std::numeric_limits<std::size_t>::max)()};
+    if (has_auto) {
+      for (std::size_t id = 0; id < first_auto; ++id) native.next_arg_id();
+    }
+    if (base::parse(native) != native.end())
+      standard_format_error("invalid style value specification");
+    return end;
+  }
+};
+
+template <typename T, typename Char>
+struct standard_style_value_formatter : standard_value_specs<Char> {
+  template <typename FormatContext>
+  auto format(const T& value, FormatContext& ctx) const -> decltype(ctx.out()) {
+    auto buffer = basic_memory_buffer<Char, 64>{};
+    write_style_value<Char>(std::back_inserter(buffer), value);
+    return std::formatter<std::basic_string_view<Char>, Char>::format(
+        std::basic_string_view<Char>{buffer.data(), buffer.size()}, ctx);
+  }
+};
+
 }  // namespace detail
 
 namespace detail {
 /// Formats a styled argument using the underlying type's format specifications.
-template <typename T, typename Char>
-struct styled_arg_formatter : fmt::formatter<T, Char> {
+template <typename T, typename Char, typename Formatter>
+struct basic_styled_arg_formatter : Formatter {
   template <typename FormatContext>
   auto format(const detail::styled_arg<T>& arg, FormatContext& ctx) const
       -> decltype(ctx.out()) {
@@ -2689,12 +2776,16 @@ struct styled_arg_formatter : fmt::formatter<T, Char> {
     auto out = std::copy(sgr.data(), sgr.data() + sgr.size(), ctx.out());
     ctx.advance_to(out);
     get_terminal_state() = text_style{effective}.absolute(false);
-    out = fmt::formatter<T, Char>::format(arg.value, ctx);
+    out = Formatter::format(arg.value, ctx);
     sgr.clear();
     detail::append_sgr_transition(sgr, initial, get_terminal_state());
     return std::copy(sgr.data(), sgr.data() + sgr.size(), out);
   }
-};  // styled_arg_formatter
+};  // basic_styled_arg_formatter
+
+template <typename T, typename Char>
+using styled_arg_formatter =
+    basic_styled_arg_formatter<T, Char, fmt::formatter<T, Char>>;
 
 }  // namespace detail
 
@@ -2930,6 +3021,51 @@ FMT_END_NAMESPACE
 
 FMT_BEGIN_EXPORT
 namespace std {
+
+template <typename Char>
+  requires(same_as<Char, char> || same_as<Char, wchar_t>)
+struct formatter<tjg::no_color_t, Char>
+    : tjg::detail::standard_style_value_formatter<tjg::no_color_t, Char> {};
+
+template <typename Char>
+  requires(same_as<Char, char> || same_as<Char, wchar_t>)
+struct formatter<tjg::rgb, Char>
+    : tjg::detail::standard_style_value_formatter<tjg::rgb, Char> {};
+
+template <typename Char>
+  requires(same_as<Char, char> || same_as<Char, wchar_t>)
+struct formatter<tjg::term_color, Char>
+    : tjg::detail::standard_style_value_formatter<tjg::term_color, Char> {};
+
+template <typename Char>
+  requires(same_as<Char, char> || same_as<Char, wchar_t>)
+struct formatter<tjg::gray_color, Char>
+    : tjg::detail::standard_style_value_formatter<tjg::gray_color, Char> {};
+
+template <typename Char>
+  requires(same_as<Char, char> || same_as<Char, wchar_t>)
+struct formatter<tjg::cube_color, Char>
+    : tjg::detail::standard_style_value_formatter<tjg::cube_color, Char> {};
+
+template <typename Char>
+  requires(same_as<Char, char> || same_as<Char, wchar_t>)
+struct formatter<tjg::color_t, Char>
+    : tjg::detail::standard_style_value_formatter<tjg::color_t, Char> {};
+
+template <typename Char>
+  requires(same_as<Char, char> || same_as<Char, wchar_t>)
+struct formatter<tjg::text_style, Char>
+    : tjg::detail::standard_style_value_formatter<tjg::text_style, Char> {};
+
+template <typename Char>
+  requires(same_as<Char, char> || same_as<Char, wchar_t>)
+struct formatter<tjg::emphasis, Char>
+    : tjg::detail::standard_style_value_formatter<tjg::emphasis, Char> {};
+
+template <typename T, typename Char>
+  requires formattable<const T, Char>
+struct formatter<tjg::detail::styled_arg<T>, Char>
+    : tjg::detail::basic_styled_arg_formatter<T, Char, formatter<T, Char>> {};
 
 template <> struct hash<tjg::rgb> {
   auto operator()(tjg::rgb value) const noexcept -> size_t {

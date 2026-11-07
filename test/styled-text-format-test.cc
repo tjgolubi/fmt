@@ -9,10 +9,14 @@
 
 namespace {
 auto render(const tjg::styled_text& value) -> std::string {
-  return fmt::format(FMT_STRING("{}"), value);
+  const auto expected = fmt::format(FMT_STRING("{}"), value);
+  EXPECT_EQ(std::format("{}", value), expected);
+  return expected;
 }
 auto render(const tjg::wstyled_text& value) -> std::wstring {
-  return fmt::format(FMT_STRING(L"{}"), value);
+  const auto expected = fmt::format(FMT_STRING(L"{}"), value);
+  EXPECT_EQ(std::format(L"{}", value), expected);
+  return expected;
 }
 template<typename Char>
 auto chars(const char* value) -> std::basic_string<Char> {
@@ -588,9 +592,11 @@ TEST(styled_text_format_test, unicode_precision) {
       "\xff!", std::string{"a\0b", 3}};
   for (const auto& sample : samples) {
     const auto tree = tjg::styled_text{"x"} + tjg::styled_text{sample} + "later";
-    for (int precision = 0; precision < 12; ++precision)
-      EXPECT_EQ(fmt::format(FMT_STRING("{:*^14.{}}"), tree, precision),
-                fmt::format(FMT_STRING("{:*^14.{}}"), "x" + sample + "later", precision));
+    for (int precision = 0; precision < 12; ++precision) {
+      const auto expected = fmt::format(FMT_STRING("{:*^14.{}}"), "x" + sample + "later", precision);
+      EXPECT_EQ(fmt::format(FMT_STRING("{:*^14.{}}"), tree, precision), expected);
+      EXPECT_EQ(std::format("{:*^14.{}}", tree, precision), expected);
+    }
   }
   // A wide code point that cannot fit stops the traversal, including later leaves.
   const auto tree = tjg::styled_text{"a"} + "\xe7\x95\x8c" + "b";
@@ -669,4 +675,79 @@ template <typename Char> void check_defaults_and_overrides() {
 TEST(styled_text_format_test, defaults_and_recursive_overrides) {
   check_defaults_and_overrides<char>();
   check_defaults_and_overrides<wchar_t>();
+}
+
+TEST(styled_text_format_test, standard_tree_specs_and_debug) {
+  const auto tree = tjg::bold(tjg::styled_text{"hello "} +
+      tjg::styled_text{"world", tjg::fg(tjg::term_color::blue)});
+  for (const char* spec : {"{}", "{:s}", "{:>15}", "{:*^15.9}", "{:.0}",
+                           "{:*>8.0}", "{:?}", "{:>20.12?}"}) {
+    EXPECT_EQ(std::vformat(spec, std::make_format_args(tree)),
+              fmt::vformat(spec, fmt::make_format_args(tree)));
+  }
+  EXPECT_EQ(std::format("{:>{}.{}s} {}", tree, 12, 9, 42),
+            fmt::format(FMT_STRING("{:>{}.{}s} {}"), tree, 12, 9, 42));
+  EXPECT_EQ(std::format("{0:*^{1}.{2}?}", tree, 15, 9),
+            fmt::format(FMT_STRING("{0:*^{1}.{2}?}"), tree, 15, 9));
+  const auto wide = tjg::underline(tjg::wstyled_text{L"wide"} + L" tree");
+  EXPECT_EQ(std::format(L"{:*^15.6}", wide),
+            fmt::format(FMT_STRING(L"{:*^15.6}"), wide));
+  EXPECT_EQ(std::format(L"{:?}", wide), fmt::format(FMT_STRING(L"{:?}"), wide));
+  EXPECT_EQ(std::formatted_size("{}", tree), std::format("{}", tree).size());
+  char output[256] = {};
+  const auto end = std::format_to(output, "{:*>12.9}", tree);
+  EXPECT_EQ(std::string(output, end), std::format("{:*>12.9}", tree));
+  const auto result = std::format_to_n(output, 7, "{}", tree);
+  EXPECT_EQ(result.size, static_cast<std::ptrdiff_t>(std::formatted_size("{}", tree)));
+  EXPECT_EQ(std::string(output, output + 7), std::format("{}", tree).substr(0,7));
+}
+
+TEST(styled_text_format_test, standard_tree_inherits_and_restores_style) {
+  const auto outer = tjg::underline(tjg::bg(tjg::gray_color{12}));
+  const auto tree = tjg::styled_text{"a"} +
+      tjg::styled_text{"b", tjg::fg(tjg::term_color::red)} +
+      tjg::absolute(tjg::bold("c")) + "d";
+  auto red = outer; red.fg(tjg::term_color::red);
+  check_states(std::format("{}", tjg::styled(tree, outer)), std::string{"abcd"},
+               {outer, red, tjg::bold(), outer});
+  EXPECT_EQ(tjg::get_terminal_state(), tjg::text_style{});
+  const auto empty = tjg::absolute(tjg::styled_text{});
+  EXPECT_EQ(std::format("{}", empty), "");
+  EXPECT_EQ(std::format("{:.0}", tree), "");
+  EXPECT_EQ(std::format("{:>4.0}", tree), "    ");
+  auto width = -1;
+  EXPECT_THROW((void)std::vformat("{:>{}}", std::make_format_args(tree, width)),
+               std::format_error);
+  EXPECT_EQ(tjg::get_terminal_state(), tjg::text_style{});
+  for (const char* spec : {"{:08}", "{:+}", "{:.}", "{:d}", "{:s?}"}) {
+    EXPECT_THROW((void)std::vformat(spec, std::make_format_args(tree)), std::format_error);
+  }
+}
+
+namespace {
+struct tree_throwing_output {
+  using difference_type = std::ptrdiff_t;
+  int* remaining = nullptr;
+  auto operator*() -> tree_throwing_output& { return *this; }
+  auto operator++() -> tree_throwing_output& { return *this; }
+  auto operator++(int) -> tree_throwing_output { return *this; }
+  auto operator=(char) -> tree_throwing_output& {
+    if (--*remaining == 0) throw std::runtime_error("output failed");
+    return *this;
+  }
+};
+}
+TEST(styled_text_format_test, standard_tree_output_failure_restores_state) {
+  tjg::detail::style_scope scope{};
+  const auto outer = tjg::underline();
+  tjg::get_terminal_state() = outer;
+  const auto tree = tjg::bold(std::string(4000, 'x'));
+  int remaining = 20;
+  EXPECT_THROW(std::format_to(tree_throwing_output{&remaining}, "{}", tree), std::runtime_error);
+  EXPECT_EQ(tjg::get_terminal_state(), outer);
+}
+TEST(styled_text_format_test, legacy_named_dynamic_specs) {
+  const auto tree = tjg::styled_text{"hello world"};
+  EXPECT_EQ(fmt::format(FMT_STRING("{:>{width}.{prec}}"), tree,
+                       fmt::arg("width", 9), fmt::arg("prec", 5)), "    hello");
 }

@@ -7,7 +7,8 @@ formatted strings or output.
 On `ref/CPP20`, the extension API lives in namespace `tjg` and targets C++23.
 Text utilities and SGR helpers use `std::basic_string_view`, including
 `std::string_view` and `std::wstring_view`. Formatting adapters still use the
-{fmt} engine for specifications, Unicode width, and format errors. `tjg::color_t` stores an
+{fmt} engine where formatting adapters remain. Owning-tree specifications,
+UTF-8 decoding, width estimates, and debug escaping are extension-owned. `tjg::color_t` stores an
 unspecified color, an RGB value, or a terminal, cube, or gray palette color
 in one public type.
 
@@ -182,6 +183,37 @@ sequences in their result. For format string syntax, see the
 
 [SGR]: https://en.wikipedia.org/wiki/ANSI_escape_code#Select_Graphic_Rendition_parameters
 
+
+## Standard formatting
+
+Include `<fmt/color.h>` to use colors, `color_t`, `text_style`, `emphasis`,
+and borrowed `styled` arguments with `std::format` and `std::format_to`.
+Both narrow and wide formatting are supported.
+
+```cpp
+#include <format>
+#include <fmt/color.h>
+
+auto color = std::format("{}", tjg::color::red); // "#ff0000"
+auto style = std::format("{:?}", tjg::bold());  // "b"
+auto names = std::format("{}", tjg::emphasis::bold); // "{bold}"
+auto text = std::format("{:04}", tjg::styled(42, tjg::bold()));
+// Bold "0042", followed by restoration of the enclosing style.
+```
+
+Readable values retain the same unquoted notation for `{}` and `{:?}`.
+Standard string fill, alignment, width, precision, and dynamic arguments apply.
+`styled` uses its underlying type's standard formatter, including padding and
+numeric specifications. Nested styled fields inherit and restore the shared
+terminal state; absolute fields temporarily replace it. The wrapper still
+borrows its value, so stored wrappers need a surviving referent.
+
+Include `<fmt/styled_text.h>` for standard formatting of owning `styled_text`
+and `wstyled_text` trees, including nested styles, padding, truncation, dynamic
+specifications, and `?` tree inspection. The standard and {fmt} adapters share
+one renderer. Existing {fmt} adapters and style-taking output functions remain
+available. Standard
+formatting reports specification errors through `std::format_error`.
 
 ## Memory buffer
 

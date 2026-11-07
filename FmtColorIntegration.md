@@ -6,6 +6,11 @@ headers and matching library, or its header-only target. The complete styling
 API on `ref/CPP20` uses namespace `tjg` and targets C++23. The formatting
 engine remains in namespace `fmt`, and existing header paths are retained.
 
+Colors, styles, emphasis, and borrowed `styled` values also support
+`std::format` and `std::format_to`; include `<fmt/color.h>`. Include
+`<fmt/styled_text.h>` for standard formatting of owning narrow/wide trees.
+The existing {fmt} adapters and style-taking output functions remain available.
+
 ## Select the headers
 
 | Header                      | Use                                                        |
