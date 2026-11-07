@@ -4,7 +4,10 @@ Include `<fmt/color.h>` to combine foreground and background colors with
 emphasis attributes, style individual formatting arguments, and produce
 formatted strings or output.
 
-On `ref/CPP20`, the extension API lives in namespace `tjg` and targets C++23. `tjg::color_t` stores an
+On `ref/CPP20`, the extension API lives in namespace `tjg` and targets C++23.
+Text utilities and SGR helpers use `std::basic_string_view`, including
+`std::string_view` and `std::wstring_view`. Formatting adapters still use the
+{fmt} engine for specifications, Unicode width, and format errors. `tjg::color_t` stores an
 unspecified color, an RGB value, or a terminal, cube, or gray palette color
 in one public type.
 

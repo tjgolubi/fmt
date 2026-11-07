@@ -92,7 +92,7 @@ are not `noexcept`.
     options:
       color_reference: true
 
-`tjg::sgr_reset<Char>` returns a `fmt::basic_string_view<Char>` containing
+`tjg::sgr_reset<Char>` returns a `std::basic_string_view<Char>` containing
 the four-character sequence `\x1b[0m`. `Char` defaults to `char`; specify
 `wchar_t` for a wide-character view. The view refers to static storage and
 remains valid for the lifetime of the program. The function allocates no
@@ -131,14 +131,14 @@ selected `FMT_COLOR_COMPACT_SGR` mode, and the trailing reset restores terminal
 defaults rather than an enclosing style. The function leaves its inputs
 unchanged, can allocate, and is not `noexcept`.
 
-The character template accepts `fmt::basic_string_view<Char>` and returns
+The character template accepts `std::basic_string_view<Char>` and returns
 `std::basic_string<Char>`. A narrow convenience overload accepts arguments
-convertible to `fmt::string_view`, including string literals and `std::string`.
+convertible to `std::string_view`, including string literals and `std::string`.
 For wide text, supply a view or specify the character type explicitly:
 
 ```cpp
 auto wide_message = tjg::wrap_sgr<wchar_t>(style, L"Result: {42}");
-auto wide_view    = fmt::basic_string_view<wchar_t>{L"message"};
+auto wide_view    = std::basic_string_view<wchar_t>{L"message"};
 auto another      = tjg::wrap_sgr(style, wide_view);
 ```
 
@@ -170,13 +170,13 @@ Use the returned string's `size` for the actual opening length.
 
 ## `vformat`
 
-::: vformat(text_style, string_view, format_args)
+::: vformat(text_style, std::string_view, format_args)
     options:
       color_reference: true
 
 ## `vformat_to`
 
-::: vformat_to(OutputIt, text_style, string_view, format_args)
+::: vformat_to(OutputIt, text_style, std::string_view, format_args)
     options:
       color_reference: true
 

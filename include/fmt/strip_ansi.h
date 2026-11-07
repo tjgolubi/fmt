@@ -3,6 +3,7 @@
 #define FMT_STRIP_ANSI_H_
 
 #include <string>
+#include <string_view>
 
 #include "styled_text.h"
 
@@ -14,7 +15,7 @@ struct ansi_escape_scan {
 };
 
 template <typename Char>
-auto scan_ansi_escape(fmt::basic_string_view<Char> input, std::size_t start)
+auto scan_ansi_escape(std::basic_string_view<Char> input, std::size_t start)
     -> ansi_escape_scan {
   auto pos = start + 1;
   if (pos == input.size()) return {pos, false};
@@ -69,7 +70,7 @@ auto scan_ansi_escape(fmt::basic_string_view<Char> input, std::size_t start)
  * terminal editing or sanitize text.
  */
 template <typename Char>
-FMT_NODISCARD auto strip_ansi(fmt::basic_string_view<Char> input)
+FMT_NODISCARD auto strip_ansi(std::basic_string_view<Char> input)
     -> std::basic_string<Char> {
   auto result = std::basic_string<Char>{};
   for (std::size_t pos = 0; pos < input.size();) {
@@ -86,11 +87,11 @@ FMT_NODISCARD auto strip_ansi(fmt::basic_string_view<Char> input)
   return result;
 }
 
-FMT_NODISCARD inline auto strip_ansi(fmt::string_view input) -> std::string {
+FMT_NODISCARD inline auto strip_ansi(std::string_view input) -> std::string {
   return strip_ansi<char>(input);
 }
 
-FMT_NODISCARD inline auto strip_ansi(fmt::basic_string_view<wchar_t> input)
+FMT_NODISCARD inline auto strip_ansi(std::basic_string_view<wchar_t> input)
     -> std::wstring {
   return strip_ansi<wchar_t>(input);
 }
@@ -101,7 +102,7 @@ struct styled_text_ansi_stripper {
     if (text._is_branch) {
       for (auto& child : text._data.children) strip(child);
     } else if (text._data.text) {
-      auto stripped = tjg::strip_ansi<Char>(fmt::basic_string_view<Char>{
+      auto stripped = tjg::strip_ansi<Char>(std::basic_string_view<Char>{
           text._data.text->data(), text._data.text->size()});
       if (stripped == *text._data.text) return;
       if (stripped.empty())

@@ -7,6 +7,7 @@
 #include <memory>
 #include <new>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -21,17 +22,18 @@ template <typename Char> struct styled_text_formatter;
 // Match ordinary string formatting: UTF-8 display width for char, code-unit
 // count for other character types.
 template <typename Char>
-auto styled_text_width(fmt::basic_string_view<Char> text) noexcept
+auto styled_text_width(std::basic_string_view<Char> text) noexcept
     -> std::size_t {
   return text.size();
 }
 
-inline auto styled_text_width(fmt::string_view text) noexcept -> std::size_t {
+inline auto styled_text_width(std::string_view text) noexcept -> std::size_t {
   auto width = std::size_t{0};
-  fmt::detail::for_each_codepoint(text, [&](uint32_t cp, fmt::string_view) {
-    width += fmt::detail::display_width_of(cp);
-    return true;
-  });
+  fmt::detail::for_each_codepoint(fmt::string_view{text.data(), text.size()},
+                                  [&](uint32_t cp, auto) {
+                                    width += fmt::detail::display_width_of(cp);
+                                    return true;
+                                  });
   return width;
 }
 
@@ -47,7 +49,7 @@ struct styled_text_prefix {
 };
 
 template <typename Char>
-auto styled_text_take(fmt::basic_string_view<Char> text,
+auto styled_text_take(std::basic_string_view<Char> text,
                       styled_text_render_state& state) -> styled_text_prefix {
   const auto size = (std::min)(text.size(), state.remaining);
   state.remaining -= size;
@@ -55,12 +57,12 @@ auto styled_text_take(fmt::basic_string_view<Char> text,
   return {size, size};
 }
 
-inline auto styled_text_take(fmt::string_view text,
+inline auto styled_text_take(std::string_view text,
                              styled_text_render_state& state)
     -> styled_text_prefix {
   auto result = styled_text_prefix{0, 0};
   fmt::detail::for_each_codepoint(
-      text, [&](uint32_t cp, fmt::string_view bytes) {
+      fmt::string_view{text.data(), text.size()}, [&](uint32_t cp, auto bytes) {
         const auto width = fmt::detail::display_width_of(cp);
         if (width > state.remaining) {
           state.stopped = true;
@@ -242,7 +244,7 @@ template <typename Char> class basic_styled_text {
   FMT_NODISCARD auto display_width() const noexcept -> std::size_t {
     if (!_is_branch)
       return _data.text
-                 ? detail::styled_text_width(fmt::basic_string_view<Char>{
+                 ? detail::styled_text_width(std::basic_string_view<Char>{
                        _data.text->data(), _data.text->size()})
                  : 0;
     return branch_display_width(_data.children);
@@ -297,7 +299,7 @@ namespace detail {
 template <typename Char, typename OutIter>
 FMT_NODISCARD FMT_CONSTEXPR inline auto copy(const std::basic_string<Char>& str,
                                              OutIter out) -> OutIter {
-  return fmt::detail::copy<Char>(fmt::basic_string_view<Char>{str}, out);
+  return std::copy(str.begin(), str.end(), out);
 }
 
 }  // namespace detail
@@ -336,9 +338,10 @@ template <typename Char> struct styled_text_formatter {
     }
     if (!node._is_branch) {
       const auto text = node._data.text
-                            ? fmt::basic_string_view<Char>{*node._data.text}
-                            : fmt::basic_string_view<Char>{};
-      out = fmt::detail::write_escaped_string(out, text);
+                            ? std::basic_string_view<Char>{*node._data.text}
+                            : std::basic_string_view<Char>{};
+      out = fmt::detail::write_escaped_string(
+          out, fmt::basic_string_view<Char>{text.data(), text.size()});
       if (indent != 0) *out++ = Char('\n');
       return out;
     }
@@ -358,7 +361,7 @@ template <typename Char> struct styled_text_formatter {
     if (!node._is_branch) {
       const auto& text = *node._data.text;
       return detail::styled_text_take(
-                 fmt::basic_string_view<Char>{text.data(), text.size()}, state)
+                 std::basic_string_view<Char>{text.data(), text.size()}, state)
           .width;
     }
     auto width = std::size_t{0};
@@ -406,11 +409,10 @@ template <typename Char> struct styled_text_formatter {
     } else if (!node.empty() && !state.stopped) {
       const auto& text = *node._data.text;
       const auto prefix = detail::styled_text_take(
-          fmt::basic_string_view<Char>{text.data(), text.size()}, state);
+          std::basic_string_view<Char>{text.data(), text.size()}, state);
       if (prefix.size != 0) {
         out = transition(effective, terminal, out);
-        out = fmt::detail::copy<Char>(text.data(), text.data() + prefix.size,
-                                      out);
+        out = std::copy(text.data(), text.data() + prefix.size, out);
       }
     }
     if (right != 0) {
@@ -481,7 +483,9 @@ auto to_styled_text(basic_styled_text<Char> text) -> basic_styled_text<Char> {
 }
 
 template <
-    typename S, typename Char = fmt::detail::char_t<S>,
+    typename S,
+    typename Char = typename decltype(std::basic_string_view{
+        std::declval<S&>()})::value_type,
     FMT_ENABLE_IF(std::is_constructible<basic_styled_text<Char>, S&&>::value)>
 auto to_styled_text(S&& text) -> basic_styled_text<Char> {
   return basic_styled_text<Char>{std::forward<S>(text)};

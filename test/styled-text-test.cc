@@ -576,3 +576,11 @@ TEST(styled_text_test, narrow_overlay_boundaries_and_underlay) {
 TEST(styled_text_test, wide_overlay_boundaries_and_underlay) {
   check_overlay_boundaries_and_underlay<wchar_t>();
 }
+
+TEST(styled_text_test, standard_character_deduction) {
+  const char* narrow = "text";
+  const wchar_t* wide = L"wide";
+  EXPECT_EQ(tjg::bold(narrow).plain_text(), "text");
+  EXPECT_EQ(tjg::underline(wide).plain_text(), L"wide");
+  EXPECT_EQ(tjg::bold(std::string{"owned"}).plain_text(), "owned");
+}

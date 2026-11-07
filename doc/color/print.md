@@ -29,13 +29,13 @@ Include `<fmt/color.h>` to use these output overloads. See
 
 ## vprint
 
-::: vprint(FILE*, text_style, string_view, format_args)
+::: vprint(FILE*, text_style, std::string_view, format_args)
     options:
       color_reference: true
 
 ## vprintln
 
-::: vprintln(FILE*, text_style, string_view, format_args)
+::: vprintln(FILE*, text_style, std::string_view, format_args)
     options:
       color_reference: true
 

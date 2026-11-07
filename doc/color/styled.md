@@ -461,7 +461,7 @@ with complete ESC-prefixed ANSI sequences removed:
 auto plain = tjg::strip_ansi("\x1b[31mred\x1b[0m"); // "red"
 ```
 
-The character-generic function accepts `basic_string_view<Char>`; convenience
+The character-generic function accepts `std::basic_string_view<Char>`; convenience
 overloads accept narrow/wide literals and standard strings. It recognizes CSI,
 OSC, DCS, SOS, PM, APC, and ordinary ESC sequences by syntax. Private and
 unknown commands are removed too, without validating parameter meanings. OSC

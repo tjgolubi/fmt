@@ -211,7 +211,7 @@ auto format_in_style(tjg::text_style style, const char* pattern, const T&... arg
     -> std::basic_string<Char> {
   auto buffer = tjg::basic_memory_buffer<Char>{};
   const auto text = chars<Char>(pattern);
-  tjg::detail::vformat_to(buffer, style, fmt::basic_string_view<Char>{text},
+  tjg::detail::vformat_to(buffer, style, std::basic_string_view<Char>{text},
       fmt::make_format_args<fmt::buffered_context<Char>>(args...));
   return {buffer.data(), buffer.size()};
 }

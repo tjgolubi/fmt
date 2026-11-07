@@ -171,3 +171,14 @@ TEST(parse_styled_text_test, enclosing_style) {
       tjg::to_sgr(outer, bold) + tjg::to_sgr(tjg::text_style{}, outer);
   EXPECT_EQ(tjg::format(outer, FMT_STRING("{}"), parsed), expected);
 }
+
+TEST(parse_styled_text_test, standard_view_slice_owns_text) {
+  auto input = std::string{"!\x1b[31m"} + std::string{"a\0b", 3} + "?";
+  const auto view = std::string_view{input}.substr(1, input.size() - 2);
+  const auto parsed = tjg::parse_styled_text(view);
+  input.assign(200, 'x');
+  EXPECT_EQ(parsed.plain_text(), (std::string{"a\0b", 3}));
+  EXPECT_EQ(parsed.style().fg(), tjg::color_t{tjg::term_color::red});
+  EXPECT_EQ(tjg::parse_styled_text(std::wstring_view{L"wide"}).plain_text(),
+            L"wide");
+}

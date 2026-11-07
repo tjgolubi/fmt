@@ -2580,11 +2580,11 @@ void check_wrap_sgr(const tjg::text_style& style, const std::string& text,
   const auto original_style = style;
   const auto original_text = text;
   EXPECT_EQ(tjg::wrap_sgr(style, text), expected);
-  EXPECT_EQ(tjg::wrap_sgr<char>(style, fmt::string_view{text.data(), text.size()}),
+  EXPECT_EQ(tjg::wrap_sgr<char>(style, std::string_view{text.data(), text.size()}),
             expected);
   const auto wide_text = std::wstring{text.begin(), text.end()};
   EXPECT_EQ(tjg::wrap_sgr<wchar_t>(
-                style, fmt::basic_string_view<wchar_t>{wide_text.data(),
+                style, std::basic_string_view<wchar_t>{wide_text.data(),
                                                      wide_text.size()}),
             (std::wstring{expected.begin(), expected.end()}));
   EXPECT_EQ(style, original_style);
@@ -2598,7 +2598,7 @@ TEST(color_test, wrap_sgr) {
                 "the convenience overload must return std::string");
   static_assert(std::is_same<decltype(tjg::wrap_sgr<wchar_t>(
                                 tjg::text_style{},
-                                fmt::basic_string_view<wchar_t>{L"text"})),
+                                std::basic_string_view<wchar_t>{L"text"})),
                              std::wstring>::value,
                 "wide wrapping must return std::wstring");
   EXPECT_EQ(tjg::wrap_sgr(tjg::text_style{tjg::emphasis::bold}, "literal"),
@@ -2631,9 +2631,9 @@ TEST(color_test, wrap_sgr_empty) {
   const tjg::text_style styles[] = {tjg::text_style{},
                                     tjg::text_style{tjg::emphasis::bold}};
   for (const auto& style : styles) {
-    EXPECT_EQ(tjg::wrap_sgr(style, fmt::string_view{}), "");
+    EXPECT_EQ(tjg::wrap_sgr(style, std::string_view{}), "");
     EXPECT_EQ(tjg::wrap_sgr(style, ""), "");
-    EXPECT_EQ(tjg::wrap_sgr<wchar_t>(style, fmt::basic_string_view<wchar_t>{}),
+    EXPECT_EQ(tjg::wrap_sgr<wchar_t>(style, std::basic_string_view<wchar_t>{}),
               L"");
     EXPECT_EQ(tjg::wrap_sgr<wchar_t>(style, L""), L"");
   }
@@ -2718,3 +2718,11 @@ TEST(color_test, text_style_underlay_constexpr) {
   static_assert(member == result, "member and free underlay agree");
 }
 #endif
+
+TEST(color_test, standard_sgr_reset_view) {
+  static_assert(std::is_same_v<decltype(tjg::sgr_reset()), std::string_view>);
+  static_assert(std::is_same_v<decltype(tjg::sgr_reset<wchar_t>()),
+                               std::wstring_view>);
+  static_assert(tjg::sgr_reset() == std::string_view{"\x1b[0m"});
+  static_assert(tjg::sgr_reset<wchar_t>() == std::wstring_view{L"\x1b[0m"});
+}

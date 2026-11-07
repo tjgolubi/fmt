@@ -8,13 +8,13 @@ constexpr auto check_constexpr_iterators(const Char (&input)[N],
                                        const Char (&expected)[M]) -> bool {
   Char encoded[128] = {};
   const auto end = tjg::backslash_escape_to(
-      encoded, fmt::basic_string_view<Char>{input, N - 1});
+      encoded, std::basic_string_view<Char>{input, N - 1});
   if (end != encoded + M - 1) return false;
   for (size_t i = 0; i < M - 1; ++i)
     if (encoded[i] != expected[i]) return false;
   Char decoded[128] = {};
   const auto decoded_end = tjg::backslash_unescape_to(
-      decoded, fmt::basic_string_view<Char>{expected, M - 1});
+      decoded, std::basic_string_view<Char>{expected, M - 1});
   if (decoded_end != decoded + N - 1) return false;
   for (size_t i = 0; i < N - 1; ++i)
     if (decoded[i] != input[i]) return false;
@@ -30,14 +30,14 @@ constexpr auto check_constexpr_decoding() -> bool {
   char output[64] = {};
   const char input[] = "\\123\\x1b\\\'\\?";
   const auto end = tjg::backslash_unescape_to(
-      output, fmt::string_view{input, sizeof(input) - 1});
+      output, std::string_view{input, sizeof(input) - 1});
   const char expected[] = "S\x1b\'?";
   if (end != output + sizeof(expected) - 1) return false;
   for (size_t i = 0; i < sizeof(expected) - 1; ++i)
     if (output[i] != expected[i]) return false;
   char empty[1] = {};
-  return tjg::backslash_escape_to(empty, fmt::string_view{"", 0}) == empty &&
-         tjg::backslash_unescape_to(empty, fmt::string_view{"", 0}) == empty;
+  return tjg::backslash_escape_to(empty, std::string_view{"", 0}) == empty &&
+         tjg::backslash_unescape_to(empty, std::string_view{"", 0}) == empty;
 }
 static_assert(check_constexpr_decoding(),
               "constexpr octal, hex, quotes, question mark, and empty input");

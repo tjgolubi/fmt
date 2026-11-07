@@ -364,7 +364,7 @@ FMT_END_NAMESPACE
 
 namespace tjg {
 FMT_BEGIN_EXPORT
-inline auto vformat(text_style ts, fmt::wstring_view fmt,
+inline auto vformat(text_style ts, std::wstring_view fmt,
                     fmt::wformat_args args) -> std::wstring {
   auto buf = basic_memory_buffer<wchar_t>();
   detail::vformat_to(buf, ts, fmt, args);
@@ -374,7 +374,8 @@ inline auto vformat(text_style ts, fmt::wstring_view fmt,
 template <typename... T>
 inline auto format(text_style ts, fmt::wformat_string<T...> fmt, T&&... args)
     -> std::wstring {
-  return tjg::vformat(ts, fmt.get(), fmt::make_wformat_args(args...));
+  return tjg::vformat(ts, std::wstring_view{fmt.get().data(), fmt.get().size()},
+                      fmt::make_wformat_args(args...));
 }
 
 FMT_END_EXPORT

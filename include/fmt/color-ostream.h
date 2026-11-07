@@ -8,6 +8,8 @@
 #ifndef FMT_COLOR_OSTREAM_H_
 #define FMT_COLOR_OSTREAM_H_
 
+#include <string_view>
+
 #include "color.h"
 #include "ostream.h"
 #include "xchar.h"
@@ -24,12 +26,12 @@ template <typename Char> class basic_styled_text;
 namespace detail {
 
 template <typename Char> struct color_ostream_types {
-  using string_view = fmt::basic_string_view<Char>;
+  using string_view = std::basic_string_view<Char>;
   using format_args = fmt::basic_format_args<fmt::buffered_context<Char>>;
 };
 
 inline void write_color_buffer(std::ostream& os, const memory_buffer& buf) {
-  fmt::print(os, FMT_STRING("{}"), fmt::string_view(buf.data(), buf.size()));
+  fmt::print(os, FMT_STRING("{}"), std::string_view(buf.data(), buf.size()));
 }
 
 template <typename Char, std::size_t SIZE>
@@ -153,14 +155,18 @@ void vprintln(std::basic_ostream<Char>& os, text_style ts,
 template <typename... T>
 void print(std::ostream& os, text_style ts, fmt::format_string<T...> fmt,
            T&&... args) {
-  tjg::vprint(os, ts, fmt.get(), fmt::make_format_args(args...));
+  tjg::vprint(os, ts,
+              std::basic_string_view{fmt.get().data(), fmt.get().size()},
+              fmt::make_format_args(args...));
 }
 
 /// Prints styled formatted text to a wide stream.
 template <typename... T>
 void print(std::wostream& os, text_style ts, fmt::wformat_string<T...> fmt,
            T&&... args) {
-  tjg::vprint(os, ts, fmt.get(), fmt::make_wformat_args(args...));
+  tjg::vprint(os, ts,
+              std::basic_string_view{fmt.get().data(), fmt.get().size()},
+              fmt::make_wformat_args(args...));
 }
 
 /**
@@ -170,14 +176,18 @@ void print(std::wostream& os, text_style ts, fmt::wformat_string<T...> fmt,
 template <typename... T>
 void println(std::ostream& os, text_style ts, fmt::format_string<T...> fmt,
              T&&... args) {
-  tjg::vprintln(os, ts, fmt.get(), fmt::make_format_args(args...));
+  tjg::vprintln(os, ts,
+                std::basic_string_view{fmt.get().data(), fmt.get().size()},
+                fmt::make_format_args(args...));
 }
 
 /// Prints styled formatted text to a wide stream, followed by a newline.
 template <typename... T>
 void println(std::wostream& os, text_style ts, fmt::wformat_string<T...> fmt,
              T&&... args) {
-  tjg::vprintln(os, ts, fmt.get(), fmt::make_wformat_args(args...));
+  tjg::vprintln(os, ts,
+                std::basic_string_view{fmt.get().data(), fmt.get().size()},
+                fmt::make_wformat_args(args...));
 }
 
 namespace detail {

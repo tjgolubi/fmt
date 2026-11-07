@@ -2,6 +2,8 @@
 #ifndef FMT_PARSE_STYLED_TEXT_H_
 #define FMT_PARSE_STYLED_TEXT_H_
 
+#include <string_view>
+
 #include "styled_text.h"
 
 namespace tjg {
@@ -9,7 +11,7 @@ namespace tjg {
 namespace detail {
 
 template <typename Char>
-auto sgr_number(fmt::basic_string_view<Char> input, unsigned& value) -> bool {
+auto sgr_number(std::basic_string_view<Char> input, unsigned& value) -> bool {
   value = 0;
   for (auto c : input) {
     if (c < Char('0') || c > Char('9')) return false;
@@ -22,12 +24,12 @@ auto sgr_number(fmt::basic_string_view<Char> input, unsigned& value) -> bool {
 }  // sgr_number
 
 template <typename Char> struct sgr_fields {
-  fmt::basic_string_view<Char> input{};
+  std::basic_string_view<Char> input{};
   std::size_t position{0};
 
-  explicit sgr_fields(fmt::basic_string_view<Char> value) : input{value} {}
+  explicit sgr_fields(std::basic_string_view<Char> value) : input{value} {}
 
-  auto next(fmt::basic_string_view<Char>& field) -> bool {
+  auto next(std::basic_string_view<Char>& field) -> bool {
     if (position > input.size()) return false;
     const auto start = position;
     while (position < input.size() && input[position] != Char(';')) ++position;
@@ -37,7 +39,7 @@ template <typename Char> struct sgr_fields {
   }
 
   auto number(unsigned& value) -> bool {
-    auto field = fmt::basic_string_view<Char>{};
+    auto field = std::basic_string_view<Char>{};
     return next(field) && sgr_number(field, value);
   }
 };  // sgr_fields
@@ -49,7 +51,7 @@ inline auto sgr_index_color(unsigned index) -> color_t {
 }
 
 template <typename Char>
-auto apply_sgr(fmt::basic_string_view<Char> parameters, text_style& style)
+auto apply_sgr(std::basic_string_view<Char> parameters, text_style& style)
     -> bool {
   // Validate atomically before the caller commits the resulting style.
   for (auto c : parameters) {
@@ -57,12 +59,12 @@ auto apply_sgr(fmt::basic_string_view<Char> parameters, text_style& style)
       return false;
   }
   auto fields = sgr_fields<Char>{parameters};
-  auto field = fmt::basic_string_view<Char>{};
+  auto field = std::basic_string_view<Char>{};
   while (fields.next(field)) {
     auto colon = std::size_t{0};
     while (colon < field.size() && field[colon] != Char(':')) ++colon;
     unsigned code = 0;
-    if (!sgr_number(fmt::basic_string_view<Char>{field.data(), colon}, code))
+    if (!sgr_number(std::basic_string_view<Char>{field.data(), colon}, code))
       return false;
     if (colon != field.size()) {
       // Colon subparameters belong to this field, never to following
@@ -74,7 +76,7 @@ auto apply_sgr(fmt::basic_string_view<Char> parameters, text_style& style)
         if (i != field.size() && field[i] != Char(':')) continue;
         unsigned value = 0;
         if (!sgr_number(
-                fmt::basic_string_view<Char>{field.data() + start, i - start},
+                std::basic_string_view<Char>{field.data() + start, i - start},
                 value)) {
           return false;
         }
@@ -175,7 +177,7 @@ auto apply_sgr(fmt::basic_string_view<Char> parameters, text_style& style)
 
 // Preserve non-SGR escape sequences as opaque text, including OSC/DCS payloads.
 template <typename Char>
-auto sgr_escape_end(fmt::basic_string_view<Char> input, std::size_t start)
+auto sgr_escape_end(std::basic_string_view<Char> input, std::size_t start)
     -> std::size_t {
   auto pos = start + 1;
   if (pos == input.size()) return pos;
@@ -226,7 +228,7 @@ auto sgr_escape_end(fmt::basic_string_view<Char> input, std::size_t start)
  * ignored. This parses appearance, not an exact escape-byte round trip.
  */
 template <typename Char>
-FMT_NODISCARD auto parse_styled_text(fmt::basic_string_view<Char> input)
+FMT_NODISCARD auto parse_styled_text(std::basic_string_view<Char> input)
     -> basic_styled_text<Char> {
   auto result = basic_styled_text<Char>{};
   auto group = basic_styled_text<Char>{};
@@ -265,7 +267,7 @@ FMT_NODISCARD auto parse_styled_text(fmt::basic_string_view<Char> input)
     if (end >= pos + 3 && input[pos + 1] == Char('[') &&
         input[end - 1] == Char('m') &&
         detail::apply_sgr(
-            fmt::basic_string_view<Char>{input.data() + pos + 2, end - pos - 3},
+            std::basic_string_view<Char>{input.data() + pos + 2, end - pos - 3},
             next)) {
       style = next;
     } else {
@@ -282,13 +284,13 @@ FMT_NODISCARD auto parse_styled_text(fmt::basic_string_view<Char> input)
   return result;
 }  // parse_styled_text
 
-FMT_NODISCARD inline auto parse_styled_text(fmt::string_view input)
+FMT_NODISCARD inline auto parse_styled_text(std::string_view input)
     -> styled_text {
   return parse_styled_text<char>(input);
 }
 
 FMT_NODISCARD inline auto parse_styled_text(
-    fmt::basic_string_view<wchar_t> input) -> wstyled_text {
+    std::basic_string_view<wchar_t> input) -> wstyled_text {
   return parse_styled_text<wchar_t>(input);
 }
 

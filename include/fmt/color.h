@@ -10,7 +10,10 @@
 #ifndef FMT_COLOR_H_
 #define FMT_COLOR_H_
 
+#include <algorithm>
 #include <iterator>
+#include <string_view>
+#include <type_traits>
 
 #include "format.h"
 #include "memory_buffer.h"
@@ -1876,12 +1879,12 @@ constexpr auto sgr_reset_length = std::size_t{4};
 
 /**
  * Returns the ANSI SGR sequence that resets colors and emphasis to terminal
- * defaults. The returned fmt::detail::view refers to static storage. `Char`
+ * defaults. The returned view refers to static storage. `Char`
  * defaults to `char`.
  */
 template <typename Char = char>
 FMT_NODISCARD constexpr auto sgr_reset() noexcept
-    -> fmt::basic_string_view<Char> {
+    -> std::basic_string_view<Char> {
   static constexpr Char reset[] = {'\x1b', '[', '0', 'm'};
   return {reset, sgr_reset_length};
 }
@@ -1903,12 +1906,12 @@ constexpr Char sgr_reset_storage<Char>::value[sgr_reset_length];
 
 /**
  * Returns the ANSI SGR sequence that resets colors and emphasis to terminal
- * defaults. The returned fmt::detail::view refers to static storage. `Char`
+ * defaults. The returned view refers to static storage. `Char`
  * defaults to `char`.
  */
 template <typename Char = char>
 FMT_NODISCARD constexpr auto sgr_reset() noexcept
-    -> fmt::basic_string_view<Char> {
+    -> std::basic_string_view<Char> {
   return {detail::sgr_reset_storage<Char>::value, sgr_reset_length};
 }
 
@@ -2106,7 +2109,7 @@ FMT_CONSTEXPR auto make_emphasis(emphasis em) noexcept
 template <typename Buffer, typename Char = typename Buffer::value_type>
 FMT_CONSTEXPR20 inline void reset_color(Buffer& buffer) {
   constexpr auto reset_color = sgr_reset<Char>();
-  buffer.append(reset_color.begin(), reset_color.end());
+  buffer.append(reset_color.data(), reset_color.data() + reset_color.size());
 }
 
 template <typename T> struct styled_arg : fmt::detail::view {
@@ -2181,15 +2184,16 @@ class style_scope {
 };  // style_scope
 
 template <typename Buffer, typename Char = typename Buffer::value_type>
-void vformat_to(Buffer& buf, text_style ts, fmt::basic_string_view<Char> fmt,
+void vformat_to(Buffer& buf, text_style ts, std::basic_string_view<Char> fmt,
                 fmt::basic_format_args<fmt::buffered_context<Char>> args) {
   style_scope scope{};
   append_sgr(buf, ts);
   get_terminal_state() = text_style{ts}.absolute(false);
+  const auto pattern = fmt::basic_string_view<Char>{fmt.data(), fmt.size()};
   if constexpr (std::is_base_of_v<fmt::detail::buffer<Char>, Buffer>) {
-    vformat_to(buf, fmt, args);
+    vformat_to(buf, pattern, args);
   } else {
-    vformat_to(std::back_inserter(buf), fmt, args);
+    vformat_to(std::back_inserter(buf), pattern, args);
   }
   if (ts != text_style()) reset_color(buf);
 }  // vformat_to
@@ -2343,7 +2347,7 @@ FMT_NODISCARD inline auto to_sgr(text_style target, const text_style& initial)
  */
 template <typename Char = char>
 FMT_NODISCARD inline auto wrap_sgr(const text_style& ts,
-                                   fmt::basic_string_view<Char> sv)
+                                   std::basic_string_view<Char> sv)
     -> std::basic_string<Char> {
   if (sv.size() == 0) return {};
   if (ts.empty()) return {sv.data(), sv.size()};
@@ -2356,7 +2360,7 @@ FMT_NODISCARD inline auto wrap_sgr(const text_style& ts,
 }  // wrap_sgr
 
 /// Narrow-character convenience overload of `wrap_sgr()`.
-FMT_NODISCARD inline auto wrap_sgr(const text_style& ts, fmt::string_view sv)
+FMT_NODISCARD inline auto wrap_sgr(const text_style& ts, std::string_view sv)
     -> std::string {
   return wrap_sgr<char>(ts, sv);
 }
@@ -2369,11 +2373,11 @@ FMT_NODISCARD inline auto wrap_sgr(const text_style& ts, fmt::string_view sv)
  * specified foreground, background, and emphasis, and followed by an SGR reset
  * to terminal defaults.
  */
-inline void vprint(FILE* f, text_style ts, fmt::string_view fmt,
+inline void vprint(FILE* f, text_style ts, std::string_view fmt,
                    fmt::format_args args) {
   auto buf = memory_buffer();
   detail::vformat_to(buf, ts, fmt, args);
-  fmt::print(f, FMT_STRING("{}"), fmt::string_view(buf.data(), buf.size()));
+  fmt::print(f, FMT_STRING("{}"), std::string_view(buf.data(), buf.size()));
 }
 
 /**
@@ -2391,7 +2395,8 @@ inline void vprint(FILE* f, text_style ts, fmt::string_view fmt,
  */
 template <typename... T>
 void print(FILE* f, text_style ts, fmt::format_string<T...> fmt, T&&... args) {
-  vprint(f, ts, fmt.str, fmt::vargs<T...>{{args...}});
+  vprint(f, ts, std::string_view{fmt.str.data(), fmt.str.size()},
+         fmt::vargs<T...>{{args...}});
 }
 
 /**
@@ -2419,12 +2424,12 @@ void print(text_style ts, fmt::format_string<T...> fmt, T&&... args) {
  * specified foreground, background, and emphasis, and followed by an SGR reset
  * to terminal defaults. The newline follows the reset.
  */
-inline void vprintln(FILE* f, text_style ts, fmt::string_view fmt,
+inline void vprintln(FILE* f, text_style ts, std::string_view fmt,
                      fmt::format_args args) {
   auto buf = memory_buffer();
   detail::vformat_to(buf, ts, fmt, args);
   buf.push_back('\n');
-  fmt::print(f, FMT_STRING("{}"), fmt::string_view(buf.data(), buf.size()));
+  fmt::print(f, FMT_STRING("{}"), std::string_view(buf.data(), buf.size()));
 }
 
 /**
@@ -2443,7 +2448,8 @@ inline void vprintln(FILE* f, text_style ts, fmt::string_view fmt,
 template <typename... T>
 void println(FILE* f, text_style ts, fmt::format_string<T...> fmt,
              T&&... args) {
-  vprintln(f, ts, fmt.str, fmt::vargs<T...>{{args...}});
+  vprintln(f, ts, std::string_view{fmt.str.data(), fmt.str.size()},
+           fmt::vargs<T...>{{args...}});
 }
 
 /**
@@ -2472,7 +2478,7 @@ void println(text_style ts, fmt::format_string<T...> fmt, T&&... args) {
  * specified foreground, background, and emphasis, and followed by an SGR reset
  * to terminal defaults.
  */
-inline auto vformat(text_style ts, fmt::string_view fmt, fmt::format_args args)
+inline auto vformat(text_style ts, std::string_view fmt, fmt::format_args args)
     -> std::string {
   auto buf = memory_buffer();
   detail::vformat_to(buf, ts, fmt, args);
@@ -2499,7 +2505,8 @@ inline auto vformat(text_style ts, fmt::string_view fmt, fmt::format_args args)
 template <typename... T>
 inline auto format(text_style ts, fmt::format_string<T...> fmt, T&&... args)
     -> std::string {
-  return tjg::vformat(ts, fmt.str, fmt::vargs<T...>{{args...}});
+  return tjg::vformat(ts, std::string_view{fmt.str.data(), fmt.str.size()},
+                      fmt::vargs<T...>{{args...}});
 }
 
 /**
@@ -2512,7 +2519,7 @@ inline auto format(text_style ts, fmt::format_string<T...> fmt, T&&... args)
  */
 template <typename OutputIt,
           FMT_ENABLE_IF(fmt::detail::is_output_iterator<OutputIt, char>::value)>
-auto vformat_to(OutputIt out, text_style ts, fmt::string_view fmt,
+auto vformat_to(OutputIt out, text_style ts, std::string_view fmt,
                 fmt::format_args args) -> OutputIt {
   auto&& buf = fmt::detail::get_buffer<char>(out);
   detail::vformat_to(static_cast<fmt::detail::buffer<char>&>(buf), ts, fmt,
@@ -2538,7 +2545,8 @@ template <typename OutputIt, typename... T,
           FMT_ENABLE_IF(fmt::detail::is_output_iterator<OutputIt, char>::value)>
 inline auto format_to(OutputIt out, text_style ts, fmt::format_string<T...> fmt,
                       T&&... args) -> OutputIt {
-  return vformat_to(out, ts, fmt.str, fmt::vargs<T...>{{args...}});
+  return vformat_to(out, ts, std::string_view{fmt.str.data(), fmt.str.size()},
+                    fmt::vargs<T...>{{args...}});
 }
 
 namespace detail {
@@ -2678,14 +2686,13 @@ struct styled_arg_formatter : fmt::formatter<T, Char> {
     detail::style_scope scope{};
     auto sgr = basic_memory_buffer<Char, sgr_max_length>{};
     detail::append_sgr_transition(sgr, effective, initial);
-    auto out =
-        fmt::detail::copy<Char>(sgr.data(), sgr.data() + sgr.size(), ctx.out());
+    auto out = std::copy(sgr.data(), sgr.data() + sgr.size(), ctx.out());
     ctx.advance_to(out);
     get_terminal_state() = text_style{effective}.absolute(false);
     out = fmt::formatter<T, Char>::format(arg.value, ctx);
     sgr.clear();
     detail::append_sgr_transition(sgr, initial, get_terminal_state());
-    return fmt::detail::copy<Char>(sgr.data(), sgr.data() + sgr.size(), out);
+    return std::copy(sgr.data(), sgr.data() + sgr.size(), out);
   }
 };  // styled_arg_formatter
 
@@ -2715,8 +2722,8 @@ struct styled_arg_formatter : fmt::formatter<T, Char> {
  */
 template <typename T>
 constexpr auto styled(const T& value, text_style ts)
-    -> detail::styled_arg<fmt::remove_cvref_t<T>> {
-  return detail::styled_arg<fmt::remove_cvref_t<T>>{value, ts};
+    -> detail::styled_arg<std::remove_cvref_t<T>> {
+  return detail::styled_arg<std::remove_cvref_t<T>>{value, ts};
 }
 
 /**

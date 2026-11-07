@@ -127,3 +127,11 @@ TEST(strip_ansi_test, styled_text) {
   check_styled_text<char>();
   check_styled_text<wchar_t>();
 }
+
+TEST(strip_ansi_test, standard_view_slices) {
+  const auto input = std::string{"!\x1b[31m"} + std::string{"a\0b", 3} + "?";
+  const auto view = std::string_view{input}.substr(1, input.size() - 2);
+  EXPECT_EQ(tjg::strip_ansi(view), (std::string{"a\0b", 3}));
+  EXPECT_EQ(tjg::strip_ansi(std::wstring_view{L"!\x1b[31mwide?"}.substr(1, 9)),
+            L"wide");
+}
