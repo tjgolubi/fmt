@@ -1,3 +1,4 @@
+#include <print>
 
 #include "fmt/color.h"
 #include "fmt/styled_text.h"
@@ -40,7 +41,7 @@ void print_row(styled_text service, styled_text status,
 }
 
 int main() {
-  fmt::println("SYSTEM HEALTH DASHBOARD\n");
+  std::println("SYSTEM HEALTH DASHBOARD\n");
 
   // Column headings inherit bold and underline from the row.
   print_row("Service", "Status", "Latency", "Notes", tjg::bold().underline());

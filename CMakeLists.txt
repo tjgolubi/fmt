@@ -283,6 +283,7 @@ foreach (
   color-ostream.h
   color.h
   styled_text.h
+  format_support.h
   text_support.h
   tree_format_specs.h
   parse_styled_text.h

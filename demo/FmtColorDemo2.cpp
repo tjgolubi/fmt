@@ -1,6 +1,6 @@
 #include <fmt/color.h>
 #include <fmt/styled_text.h>
-#include <fmt/format.h>
+#include <print>
 
 int main() {
   using namespace tjg;
@@ -16,16 +16,16 @@ int main() {
       + " | " + absolute(underline("reset+underline only"))
       + " | " + reverse(overlay(fg(red), "reverse red"));
 
-  fmt::println("{}", line);
+  std::println("{}", line);
 
   auto line2 = "This is part1.  " + line + "  This is part2.";
   constexpr auto surrounding = fg(white).bg(gray_color{12}).strike();
 
   // Defaults preserve each part's explicit colors and absolute scopes.
-  fmt::println("Underlay:");
-  fmt::println("{}", underlay(surrounding, line2));
+  std::println("Underlay:");
+  std::println("{}", underlay(surrounding, line2));
 
   // Overrides replace colors throughout relative parts; absolute scopes stay.
-  fmt::println("Overlay:");
-  fmt::println("{}", overlay(surrounding, line2));
+  std::println("Overlay:");
+  std::println("{}", overlay(surrounding, line2));
 }

@@ -1,18 +1,18 @@
 // Escape control characters for inspection and decode backslash escapes.
-#ifndef FMT_BACKSLASH_H_
-#define FMT_BACKSLASH_H_
+#ifndef TJG_BACKSLASH_H_
+#define TJG_BACKSLASH_H_
 
 #include <iterator>
 #include <string>
 #include <string_view>
 
-#include "format.h"
+#include "format_support.h"
 
 namespace tjg {
 
 namespace detail {
 
-template <typename Char> FMT_CONSTEXPR auto backslash_hex_digit(Char c) -> int {
+template <typename Char> constexpr auto backslash_hex_digit(Char c) -> int {
   if (c >= Char('0') && c <= Char('9')) return c - Char('0');
   if (c >= Char('a') && c <= Char('f')) return c - Char('a') + 10;
   if (c >= Char('A') && c <= Char('F')) return c - Char('A') + 10;
@@ -31,8 +31,8 @@ template <typename Char> FMT_CONSTEXPR auto backslash_hex_digit(Char c) -> int {
  * The output must not invalidate or overwrite unread input.
  */
 template <typename OutputIt, typename Char>
-FMT_CONSTEXPR auto backslash_escape_to(OutputIt out,
-                                       std::basic_string_view<Char> input)
+constexpr auto backslash_escape_to(OutputIt out,
+                                   std::basic_string_view<Char> input)
     -> OutputIt {
   for (auto c : input) {
     auto escape = Char{};
@@ -78,8 +78,8 @@ FMT_CONSTEXPR auto backslash_escape_to(OutputIt out,
  * The output must not invalidate or overwrite unread input.
  */
 template <typename OutputIt, typename Char>
-FMT_CONSTEXPR auto backslash_unescape_to(OutputIt out,
-                                         std::basic_string_view<Char> input)
+constexpr auto backslash_unescape_to(OutputIt out,
+                                     std::basic_string_view<Char> input)
     -> OutputIt {
   while (input.size() != 0) {
     if (input[0] != Char('\\')) {
@@ -87,7 +87,8 @@ FMT_CONSTEXPR auto backslash_unescape_to(OutputIt out,
       input.remove_prefix(1);
       continue;
     }
-    if (input.size() < 2) fmt::report_error("incomplete backslash escape");
+    if (input.size() < 2)
+      detail::standard_format_error("incomplete backslash escape");
     auto c = Char{};
     auto length = std::size_t{2};
     if (input[1] >= Char('0') && input[1] <= Char('7')) {
@@ -97,7 +98,8 @@ FMT_CONSTEXPR auto backslash_unescape_to(OutputIt out,
         value = value * 8 + static_cast<int>(input[length] - Char('0'));
         ++length;
       }
-      if (value > 255) fmt::report_error("octal escape is out of range");
+      if (value > 255)
+        detail::standard_format_error("octal escape is out of range");
       *out++ = static_cast<Char>(value);
       input.remove_prefix(length);
       continue;
@@ -120,12 +122,13 @@ FMT_CONSTEXPR auto backslash_unescape_to(OutputIt out,
           input.size() >= 4 ? detail::backslash_hex_digit(input[2]) : -1;
       const auto low =
           input.size() >= 4 ? detail::backslash_hex_digit(input[3]) : -1;
-      if (high < 0 || low < 0) fmt::report_error("invalid hexadecimal escape");
+      if (high < 0 || low < 0)
+        detail::standard_format_error("invalid hexadecimal escape");
       c = static_cast<Char>(high * 16 + low);
       length = 4;
       break;
     }
-    default: fmt::report_error("unknown backslash escape");
+    default: detail::standard_format_error("unknown backslash escape");
     }
     *out++ = c;
     input.remove_prefix(length);
@@ -136,34 +139,34 @@ FMT_CONSTEXPR auto backslash_unescape_to(OutputIt out,
 // Fixed character-type overloads allow string literals and std::basic_string
 // arguments without explicit template arguments.
 template <typename OutputIt>
-FMT_CONSTEXPR auto backslash_escape_to(OutputIt out, std::string_view input)
+constexpr auto backslash_escape_to(OutputIt out, std::string_view input)
     -> OutputIt {
   return backslash_escape_to<OutputIt, char>(out, input);
 }
 
 template <typename OutputIt>
-FMT_CONSTEXPR auto backslash_escape_to(OutputIt out,
-                                       std::basic_string_view<wchar_t> input)
+constexpr auto backslash_escape_to(OutputIt out,
+                                   std::basic_string_view<wchar_t> input)
     -> OutputIt {
   return backslash_escape_to<OutputIt, wchar_t>(out, input);
 }
 
 template <typename OutputIt>
-FMT_CONSTEXPR auto backslash_unescape_to(OutputIt out, std::string_view input)
+constexpr auto backslash_unescape_to(OutputIt out, std::string_view input)
     -> OutputIt {
   return backslash_unescape_to<OutputIt, char>(out, input);
 }
 
 template <typename OutputIt>
-FMT_CONSTEXPR auto backslash_unescape_to(OutputIt out,
-                                         std::basic_string_view<wchar_t> input)
+constexpr auto backslash_unescape_to(OutputIt out,
+                                     std::basic_string_view<wchar_t> input)
     -> OutputIt {
   return backslash_unescape_to<OutputIt, wchar_t>(out, input);
 }
 
 /** Returns an owning string using the same escaping as backslash_escape_to. */
 template <typename Char>
-FMT_NODISCARD FMT_CONSTEXPR_STRING auto backslash_escape(
+[[nodiscard]] constexpr auto backslash_escape(
     std::basic_string_view<Char> input) -> std::basic_string<Char> {
   auto result = std::basic_string<Char>{};
   backslash_escape_to(std::back_inserter(result), input);
@@ -173,33 +176,33 @@ FMT_NODISCARD FMT_CONSTEXPR_STRING auto backslash_escape(
 /** Returns an owning string using the same decoding as backslash_unescape_to.
  */
 template <typename Char>
-FMT_NODISCARD FMT_CONSTEXPR_STRING auto backslash_unescape(
+[[nodiscard]] constexpr auto backslash_unescape(
     std::basic_string_view<Char> input) -> std::basic_string<Char> {
   auto result = std::basic_string<Char>{};
   backslash_unescape_to(std::back_inserter(result), input);
   return result;
 }
 
-FMT_NODISCARD FMT_CONSTEXPR_STRING inline auto backslash_escape(
-    std::string_view input) -> std::string {
+[[nodiscard]] constexpr inline auto backslash_escape(std::string_view input)
+    -> std::string {
   return backslash_escape<char>(input);
 }
 
-FMT_NODISCARD FMT_CONSTEXPR_STRING inline auto backslash_escape(
+[[nodiscard]] constexpr inline auto backslash_escape(
     std::basic_string_view<wchar_t> input) -> std::wstring {
   return backslash_escape<wchar_t>(input);
 }
 
-FMT_NODISCARD FMT_CONSTEXPR_STRING inline auto backslash_unescape(
-    std::string_view input) -> std::string {
+[[nodiscard]] constexpr inline auto backslash_unescape(std::string_view input)
+    -> std::string {
   return backslash_unescape<char>(input);
 }
 
-FMT_NODISCARD FMT_CONSTEXPR_STRING inline auto backslash_unescape(
+[[nodiscard]] constexpr inline auto backslash_unescape(
     std::basic_string_view<wchar_t> input) -> std::wstring {
   return backslash_unescape<wchar_t>(input);
 }
 
 }  // namespace tjg
 
-#endif  // FMT_BACKSLASH_H_
+#endif  // TJG_BACKSLASH_H_

@@ -3,38 +3,37 @@
 // Copyright (c) 2018 - present, Victor Zverovich and {fmt} contributors
 // All rights reserved.
 //
-// For the license information refer to format.h.
+// For the license information refer to LICENSE.
 
 // Currently being refactored by Terry Golubiewski.
 
-#ifndef FMT_COLOR_H_
-#define FMT_COLOR_H_
+#ifndef TJG_COLOR_H_
+#define TJG_COLOR_H_
 
 #include <algorithm>
+#include <cassert>
+#include <compare>
 #include <concepts>
+#include <cstdint>
+#include <cstdio>
 #include <format>
+#include <functional>
 #include <iterator>
+#include <limits>
+#include <print>
+#include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 
-#include "format.h"
+#include "format_support.h"
 #include "memory_buffer.h"
 
-#ifndef FMT_MODULE
-#  include <functional>  // std::hash
-#endif
-
-#if defined(__cpp_impl_three_way_comparison) && \
-    __cpp_impl_three_way_comparison >= 201907L && FMT_HAS_INCLUDE(<compare>)
-#  include <compare>
-#endif
-
-#ifndef FMT_COLOR_COMPACT_SGR
-#  define FMT_COLOR_COMPACT_SGR 0
+#ifndef TJG_COLOR_COMPACT_SGR
+#  define TJG_COLOR_COMPACT_SGR 0
 #endif
 
 namespace tjg {
-FMT_BEGIN_EXPORT
 
 /// A narrowing static_cast.
 template <typename T, typename U>
@@ -64,12 +63,12 @@ template <> struct underlying_type<no_color_t> {
   using type = unsigned;
 };
 
-FMT_NODISCARD constexpr auto to_underlying(no_color_t) noexcept -> unsigned {
+[[nodiscard]] constexpr auto to_underlying(no_color_t) noexcept -> unsigned {
   return 0u;
 }
 
 /// The unspecified-color value.
-FMT_INLINE_VARIABLE constexpr no_color_t no_color{};
+inline constexpr no_color_t no_color{};
 
 /**
  * The eight normal and eight bright colors of the terminal's palette.
@@ -106,7 +105,7 @@ template <> struct underlying_type<term_color> {
   using type = int8_t;
 };
 
-FMT_NODISCARD constexpr auto to_underlying(term_color x) noexcept -> int8_t {
+[[nodiscard]] constexpr auto to_underlying(term_color x) noexcept -> int8_t {
   return enum_cast<int8_t>(x);
 }
 /**
@@ -132,60 +131,20 @@ template <> struct underlying_type<emphasis> {
   using type = uint8_t;
 };
 
-FMT_NODISCARD constexpr auto to_underlying(emphasis x) noexcept -> uint8_t {
+[[nodiscard]] constexpr auto to_underlying(emphasis x) noexcept -> uint8_t {
   return enum_cast<uint8_t>(x);
 }
 
-FMT_NODISCARD
+[[nodiscard]]
 constexpr inline auto operator|(emphasis lhs, emphasis rhs) noexcept
     -> emphasis {
   return enum_cast<emphasis>(to_underlying(lhs) | to_underlying(rhs));
 }
 
-FMT_CONSTEXPR inline auto operator|=(emphasis& lhs, emphasis rhs) noexcept
+constexpr inline auto operator|=(emphasis& lhs, emphasis rhs) noexcept
     -> emphasis& {
   return lhs = lhs | rhs;
 }
-
-#if defined(__cpp_lib_three_way_comparison) && \
-    __cpp_lib_three_way_comparison >= 201907L
-
-#  define FMT_COLOR_COMPARISONS(C)                                         \
-    FMT_PRAGMA_CLANG(diagnostic push)                                      \
-    FMT_PRAGMA_CLANG(diagnostic ignored "-Wzero-as-null-pointer-constant") \
-    FMT_NODISCARD constexpr auto operator<=>(const C&) const noexcept      \
-        -> std::strong_ordering = default;                                 \
-    FMT_PRAGMA_CLANG(diagnostic pop)
-
-#else
-
-#  define FMT_COLOR_COMPARISONS(C)                                       \
-    FMT_NODISCARD constexpr auto operator==(const C& rhs) const noexcept \
-        -> bool {                                                        \
-      return to_underlying(*this) == to_underlying(rhs);                 \
-    }                                                                    \
-    FMT_NODISCARD constexpr auto operator!=(const C& rhs) const noexcept \
-        -> bool {                                                        \
-      return to_underlying(*this) != to_underlying(rhs);                 \
-    }                                                                    \
-    FMT_NODISCARD constexpr auto operator<(const C& rhs) const noexcept  \
-        -> bool {                                                        \
-      return to_underlying(*this) < to_underlying(rhs);                  \
-    }                                                                    \
-    FMT_NODISCARD constexpr auto operator<=(const C& rhs) const noexcept \
-        -> bool {                                                        \
-      return to_underlying(*this) <= to_underlying(rhs);                 \
-    }                                                                    \
-    FMT_NODISCARD constexpr auto operator>(const C& rhs) const noexcept  \
-        -> bool {                                                        \
-      return to_underlying(*this) > to_underlying(rhs);                  \
-    }                                                                    \
-    FMT_NODISCARD constexpr auto operator>=(const C& rhs) const noexcept \
-        -> bool {                                                        \
-      return to_underlying(*this) >= to_underlying(rhs);                 \
-    }
-
-#endif
 
 /// An RGB color with red, green, and blue components in the range 0-255.
 struct rgb {
@@ -197,14 +156,14 @@ struct rgb {
   chan_type b = 0;  ///< Blue  component
 
  private:
-  FMT_NODISCARD constexpr auto value() const noexcept -> value_type {
+  [[nodiscard]] constexpr auto value() const noexcept -> value_type {
     return (value_type{r} << 16) | (value_type{g} << 8) | (value_type{b} << 0);
   }
 
-  FMT_NODISCARD static constexpr auto check_arg(int v) noexcept -> chan_type {
+  [[nodiscard]] static constexpr auto check_arg(int v) noexcept -> chan_type {
     return (v >= 0 && v <= 255)
                ? narrow_cast<chan_type>(v)
-               : (FMT_ASSERT(false, "rgb::rgb: channel out of range"),
+               : (assert((false) && ("rgb::rgb: channel out of range")),
                   narrow_cast<chan_type>(v < 0 ? 0 : 255));
   }
 
@@ -232,13 +191,16 @@ struct rgb {
   constexpr rgb(term_color clr) noexcept;
 
   /// Returns a numeric value for the color as 0x00RRGGBB.
-  FMT_NODISCARD
-  constexpr explicit operator value_type() const noexcept { return value(); }
+  [[nodiscard]]
+  constexpr explicit operator value_type() const noexcept {
+    return value();
+  }
 
-  FMT_COLOR_COMPARISONS(rgb)
+  [[nodiscard]] constexpr auto operator<=>(const rgb&) const noexcept
+      -> std::strong_ordering = default;
 
   /// Combines another color.
-  FMT_CONSTEXPR auto operator|=(rgb rhs) noexcept -> rgb& {
+  constexpr auto operator|=(rgb rhs) noexcept -> rgb& {
     r |= rhs.r;
     g |= rhs.g;
     b |= rhs.b;
@@ -246,7 +208,7 @@ struct rgb {
   }
 
   /// Combines two colors.
-  FMT_NODISCARD
+  [[nodiscard]]
   friend constexpr auto operator|(rgb lhs, rgb rhs) noexcept -> rgb {
     return rgb{narrow_cast<chan_type>(lhs.r | rhs.r),
                narrow_cast<chan_type>(lhs.g | rhs.g),
@@ -259,35 +221,35 @@ template <> struct underlying_type<rgb> {
   using type = rgb::value_type;
 };
 
-FMT_NODISCARD constexpr auto to_underlying(rgb x) noexcept -> rgb::value_type {
+[[nodiscard]] constexpr auto to_underlying(rgb x) noexcept -> rgb::value_type {
   return x.value();
 }
 
 namespace color {
 
 // The agreed Xterm-default RGB mapping for terminal palette indices 0-15.
-constexpr FMT_INLINE_VARIABLE rgb term_black{0, 0, 0};
-constexpr FMT_INLINE_VARIABLE rgb term_red{205, 0, 0};
-constexpr FMT_INLINE_VARIABLE rgb term_green{0, 205, 0};
-constexpr FMT_INLINE_VARIABLE rgb term_yellow{205, 205, 0};
-constexpr FMT_INLINE_VARIABLE rgb term_blue{0, 0, 238};
-constexpr FMT_INLINE_VARIABLE rgb term_magenta{205, 0, 205};
-constexpr FMT_INLINE_VARIABLE rgb term_cyan{0, 205, 205};
-constexpr FMT_INLINE_VARIABLE rgb term_white{229, 229, 229};
-constexpr FMT_INLINE_VARIABLE rgb term_bright_black{127, 127, 127};
-constexpr FMT_INLINE_VARIABLE rgb term_bright_red{255, 0, 0};
-constexpr FMT_INLINE_VARIABLE rgb term_bright_green{0, 255, 0};
-constexpr FMT_INLINE_VARIABLE rgb term_bright_yellow{255, 255, 0};
-constexpr FMT_INLINE_VARIABLE rgb term_bright_blue{92, 92, 255};
-constexpr FMT_INLINE_VARIABLE rgb term_bright_magenta{255, 0, 255};
-constexpr FMT_INLINE_VARIABLE rgb term_bright_cyan{0, 255, 255};
-constexpr FMT_INLINE_VARIABLE rgb term_bright_white{255, 255, 255};
+constexpr inline rgb term_black{0, 0, 0};
+constexpr inline rgb term_red{205, 0, 0};
+constexpr inline rgb term_green{0, 205, 0};
+constexpr inline rgb term_yellow{205, 205, 0};
+constexpr inline rgb term_blue{0, 0, 238};
+constexpr inline rgb term_magenta{205, 0, 205};
+constexpr inline rgb term_cyan{0, 205, 205};
+constexpr inline rgb term_white{229, 229, 229};
+constexpr inline rgb term_bright_black{127, 127, 127};
+constexpr inline rgb term_bright_red{255, 0, 0};
+constexpr inline rgb term_bright_green{0, 255, 0};
+constexpr inline rgb term_bright_yellow{255, 255, 0};
+constexpr inline rgb term_bright_blue{92, 92, 255};
+constexpr inline rgb term_bright_magenta{255, 0, 255};
+constexpr inline rgb term_bright_cyan{0, 255, 255};
+constexpr inline rgb term_bright_white{255, 255, 255};
 
 }  // namespace color
 
 namespace detail {
 
-FMT_INLINE_VARIABLE constexpr rgb term_color_palette[16] = {
+inline constexpr rgb term_color_palette[16] = {
     // 0–7 normal
     color::term_black, color::term_red, color::term_green, color::term_yellow,
     color::term_blue, color::term_magenta, color::term_cyan, color::term_white,
@@ -302,28 +264,15 @@ constexpr auto checked_term_index(term_color clr) noexcept -> int8_t {
   return (to_underlying(clr) >= 0 &&
           to_underlying(clr) <= to_underlying(term_color::bright_white))
              ? to_underlying(clr)
-             : (FMT_ASSERT(false, "rgb::rgb: terminal color out of range"),
+             : (assert((false) && ("rgb::rgb: terminal color out of range")),
                 to_underlying(clr));
 }
 
 }  // namespace detail
 
-FMT_END_EXPORT
-
-#if FMT_USE_CONSTEXPR
-
 constexpr inline rgb::rgb(term_color clr) noexcept {
   *this = detail::term_color_palette[detail::checked_term_index(clr)];
 }
-
-#else
-
-constexpr inline rgb::rgb(term_color clr) noexcept
-    : rgb{detail::term_color_palette[detail::checked_term_index(clr)]} {}
-
-#endif
-
-FMT_BEGIN_EXPORT
 
 /// A zero-based gray palette index from 0 to 23, rendered at palette
 /// index + 232.
@@ -338,11 +287,11 @@ struct gray_color {
     return rgb{level, level, level};
   }
 
-  FMT_NODISCARD static constexpr chan_type check_arg(int v) noexcept {
+  [[nodiscard]] static constexpr chan_type check_arg(int v) noexcept {
     return (v >= 0 && v < 24)
                ? narrow_cast<chan_type>(v)
-               : (FMT_ASSERT(false,
-                             "gray_color::gray_color: index out of range"),
+               : (assert((false) &&
+                         ("gray_color::gray_color: index out of range")),
                   narrow_cast<chan_type>(v < 0 ? 0 : 23));
   }
 
@@ -352,16 +301,17 @@ struct gray_color {
   /// Constructs gray index zero, whose RGB equivalent is {8, 8, 8}.
   constexpr gray_color() noexcept = default;
   constexpr gray_color(const gray_color&) noexcept = default;
-  FMT_CONSTEXPR gray_color& operator=(const gray_color&) noexcept = default;
+  constexpr gray_color& operator=(const gray_color&) noexcept = default;
 
-  FMT_COLOR_COMPARISONS(gray_color)
+  [[nodiscard]] constexpr auto operator<=>(const gray_color&) const noexcept
+      -> std::strong_ordering = default;
 
   /// Constructs a gray index in the range 0-23.
   /// Asserts on invalid values; clamps them when assertions are disabled.
   constexpr explicit gray_color(int v) noexcept : _value{check_arg(v)} {}
 
   /// Converts to RGB, with each channel equal to 8 + 10 * index.
-  FMT_NODISCARD constexpr operator rgb() const noexcept {
+  [[nodiscard]] constexpr operator rgb() const noexcept {
     return make_rgb(narrow_cast<rgb::chan_type>(10 * _value + 8));
   }
 
@@ -371,15 +321,14 @@ template <> struct underlying_type<gray_color> {
   using type = gray_color::value_type;
 };
 
-FMT_NODISCARD
+[[nodiscard]]
 constexpr auto to_underlying(gray_color v) noexcept -> gray_color::value_type {
   return static_cast<gray_color::value_type>(v._value);
 }
 
 namespace detail {
 
-FMT_INLINE_VARIABLE constexpr rgb::chan_type cube_levels[6] = {0,   95,  135,
-                                                               175, 215, 255};
+inline constexpr rgb::chan_type cube_levels[6] = {0, 95, 135, 175, 215, 255};
 }  // namespace detail
 
 /// A 6x6x6 palette color with channel indices 0-5 and a combined index 0-215.
@@ -392,24 +341,24 @@ struct cube_color {
   chan_type _g = 0;
   chan_type _b = 0;
 
-  FMT_NODISCARD
+  [[nodiscard]]
   static constexpr auto check_arg(int v) noexcept -> chan_type {
     return (v >= 0 && v < 6)
                ? narrow_cast<chan_type>(v)
-               : (FMT_ASSERT(false,
-                             "cube_color::cube_color: channel out of range"),
+               : (assert((false) &&
+                         ("cube_color::cube_color: channel out of range")),
                   narrow_cast<chan_type>(v < 0 ? 0 : 5));
   }
 
-  FMT_NODISCARD static constexpr auto check_index(unsigned v) noexcept
+  [[nodiscard]] static constexpr auto check_index(unsigned v) noexcept
       -> value_type {
     return v <= 215 ? narrow_cast<value_type>(v)
-                    : (FMT_ASSERT(false,
-                                  "cube_color::cube_color: index out of range"),
+                    : (assert((false) &&
+                              ("cube_color::cube_color: index out of range")),
                        value_type{215});
   }
 
-  FMT_NODISCARD constexpr value_type value() const noexcept {
+  [[nodiscard]] constexpr value_type value() const noexcept {
     return narrow_cast<value_type>(36 * _r + 6 * _g + _b);
   }
 
@@ -417,26 +366,26 @@ struct cube_color {
 
  public:
   /// Returns the red channel index, from 0 to 5.
-  FMT_NODISCARD constexpr auto r() const noexcept -> int { return _r; };
+  [[nodiscard]] constexpr auto r() const noexcept -> int { return _r; };
   /// Returns the green channel index, from 0 to 5.
-  FMT_NODISCARD constexpr auto g() const noexcept -> int { return _g; };
+  [[nodiscard]] constexpr auto g() const noexcept -> int { return _g; };
   /// Returns the blue channel index, from 0 to 5.
-  FMT_NODISCARD constexpr auto b() const noexcept -> int { return _b; };
+  [[nodiscard]] constexpr auto b() const noexcept -> int { return _b; };
 
   /// Sets the red index; asserts on invalid input and clamps to 0-5.
-  FMT_CONSTEXPR auto r(int v) noexcept -> cube_color& {
+  constexpr auto r(int v) noexcept -> cube_color& {
     _r = check_arg(v);
     return *this;
   }
 
   /// Sets the green index; asserts on invalid input and clamps to 0-5.
-  FMT_CONSTEXPR auto g(int v) noexcept -> cube_color& {
+  constexpr auto g(int v) noexcept -> cube_color& {
     _g = check_arg(v);
     return *this;
   }
 
   /// Sets the blue index; asserts on invalid input and clamps to 0-5.
-  FMT_CONSTEXPR auto b(int v) noexcept -> cube_color& {
+  constexpr auto b(int v) noexcept -> cube_color& {
     _b = check_arg(v);
     return *this;
   }
@@ -444,9 +393,10 @@ struct cube_color {
   /// Constructs cube index zero, with all channel indices zero.
   constexpr cube_color() noexcept = default;
   constexpr cube_color(const cube_color&) noexcept = default;
-  FMT_CONSTEXPR cube_color& operator=(const cube_color&) noexcept = default;
+  constexpr cube_color& operator=(const cube_color&) noexcept = default;
 
-  FMT_COLOR_COMPARISONS(cube_color)
+  [[nodiscard]] constexpr auto operator<=>(const cube_color&) const noexcept
+      -> std::strong_ordering = default;
 
   /// Constructs channel indices 0-5.
   /// Asserts on invalid values; clamps them when assertions are disabled.
@@ -460,7 +410,7 @@ struct cube_color {
                    check_index(value) % 6} {}
 
   /// Converts channel indices to RGB levels {0, 95, 135, 175, 215, 255}.
-  FMT_NODISCARD constexpr operator rgb() const noexcept {
+  [[nodiscard]] constexpr operator rgb() const noexcept {
     return rgb{detail::cube_levels[_r], detail::cube_levels[_g],
                detail::cube_levels[_b]};
   }
@@ -471,7 +421,7 @@ template <> struct underlying_type<cube_color> {
   using type = cube_color::value_type;
 };
 
-FMT_NODISCARD
+[[nodiscard]]
 constexpr cube_color::value_type to_underlying(cube_color x) noexcept {
   return x.value();
 }
@@ -496,29 +446,18 @@ struct all_colors<First, Rest...>
 
 }  // namespace detail
 
-#if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
-    __cpp_concepts >= 201907L
-
 /// Identifies types that can be used directly as color values.
 template <typename T>
 concept Color = detail::is_color<T>::value;
 
-#endif
-
 /// Returns a plain color's fixed RGB equivalent without changing the argument.
-#if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
-    __cpp_concepts >= 201907L
 template <Color T>
-#else
-template <typename T,
-          typename std::enable_if<detail::is_color<T>::value, int>::type = 0>
-#endif
-FMT_NODISCARD constexpr auto to_rgb(T color) noexcept -> rgb {
+[[nodiscard]] constexpr auto to_rgb(T color) noexcept -> rgb {
   return rgb(color);
 }
 
 /// Preserves an unspecified color rather than converting it to RGB black.
-FMT_NODISCARD constexpr auto to_rgb(no_color_t) noexcept -> no_color_t {
+[[nodiscard]] constexpr auto to_rgb(no_color_t) noexcept -> no_color_t {
   return no_color_t{};
 }
 
@@ -604,43 +543,36 @@ class color_t {
   color_t& operator=(const color_t&) = default;
   color_t& operator=(color_t&&) = default;
 
-#if defined(__cpp_lib_three_way_comparison) && \
-    __cpp_lib_three_way_comparison >= 201907L
   // A union cannot use memberwise defaulted comparisons. Compare the packed
   // values so ordering agrees with the older-language implementation.
-  FMT_NODISCARD constexpr auto operator==(const color_t& rhs) const noexcept
+  [[nodiscard]] constexpr auto operator==(const color_t& rhs) const noexcept
       -> bool {
     return to_underlying(*this) == to_underlying(rhs);
   }
 
-  FMT_NODISCARD constexpr auto operator<=>(const color_t& rhs) const noexcept
+  [[nodiscard]] constexpr auto operator<=>(const color_t& rhs) const noexcept
       -> std::strong_ordering {
     return to_underlying(*this) <=> to_underlying(rhs);
   }
-#else
-  FMT_COLOR_COMPARISONS(color_t)
-#endif
 
   // Trivial union copy assignment starts the corresponding member lifetime.
   // These overloads also permit assignment from the currently held member.
   /// Replaces the active alternative with an unspecified color.
-  FMT_CONSTEXPR color_t& operator=(no_color_t v) noexcept {
+  constexpr color_t& operator=(no_color_t v) noexcept {
     return *this = color_t{v};
   }
   /// Replaces the active alternative with an RGB color.
-  FMT_CONSTEXPR color_t& operator=(rgb v) noexcept {
-    return *this = color_t{v};
-  }
+  constexpr color_t& operator=(rgb v) noexcept { return *this = color_t{v}; }
   /// Replaces the active alternative with a terminal palette color.
-  FMT_CONSTEXPR color_t& operator=(term_color v) noexcept {
+  constexpr color_t& operator=(term_color v) noexcept {
     return *this = color_t{v};
   }
   /// Replaces the active alternative with a cube palette color.
-  FMT_CONSTEXPR color_t& operator=(cube_color v) noexcept {
+  constexpr color_t& operator=(cube_color v) noexcept {
     return *this = color_t{v};
   }
   /// Replaces the active alternative with a gray palette color.
-  FMT_CONSTEXPR color_t& operator=(gray_color v) noexcept {
+  constexpr color_t& operator=(gray_color v) noexcept {
     return *this = color_t{v};
   }
 
@@ -650,7 +582,7 @@ class color_t {
   }
 
  private:
-  FMT_CONSTEXPR auto promote_to_rgb() noexcept -> color_t& {
+  constexpr auto promote_to_rgb() noexcept -> color_t& {
     switch (_kind) {
     default:
     case kind::none: return *this = rgb{};
@@ -673,7 +605,7 @@ class color_t {
    * Terminal colors use the fixed Xterm-default RGB palette, which may differ
    * from the user's terminal theme. This operation does not average colors.
    */
-  FMT_CONSTEXPR auto operator|=(color_t rhs) noexcept -> color_t& {
+  constexpr auto operator|=(color_t rhs) noexcept -> color_t& {
     if (rhs._kind == kind::none) return *this;
     if (_kind == kind::none) return *this = rhs;
     promote_to_rgb();
@@ -687,8 +619,8 @@ class color_t {
    * Uses the same unspecified-color handling, RGB promotion, and bitwise-OR
    * rules as `operator|=`.
    */
-  FMT_NODISCARD
-  friend FMT_CONSTEXPR auto operator|(color_t lhs, color_t rhs) noexcept
+  [[nodiscard]]
+  friend constexpr auto operator|(color_t lhs, color_t rhs) noexcept
       -> color_t {
     return lhs |= rhs;
   }
@@ -699,7 +631,7 @@ template <> struct underlying_type<color_t::kind> {
   using type = uint8_t;
 };
 
-FMT_NODISCARD
+[[nodiscard]]
 constexpr auto to_underlying(color_t::kind x) noexcept -> uint8_t {
   return enum_cast<uint8_t>(x);
 }
@@ -776,13 +708,13 @@ template <class T> constexpr bool holds_alternative(const color_t& c) noexcept {
 template <class T> constexpr T& get(color_t& c) {
   return holds_alternative<T>(c)
              ? detail::color_access<T>::ref(c)
-             : (fmt::report_error("wrong color_t alternative"),
+             : (detail::standard_format_error("wrong color_t alternative"),
                 detail::color_access<T>::ref(c));
 }
 template <class T> constexpr const T& get(const color_t& c) {
   return holds_alternative<T>(c)
              ? detail::color_access<T>::ref(c)
-             : (fmt::report_error("wrong color_t alternative"),
+             : (detail::standard_format_error("wrong color_t alternative"),
                 detail::color_access<T>::ref(c));
 }
 template <class T> constexpr T&& get(color_t&& c) {
@@ -877,7 +809,6 @@ constexpr auto visit(Visitor&& visitor, Color&& color)
                    decltype(std::forward<Visitor>(visitor)(
                        get<gray_color>(std::forward<Color>(color))))>::value,
       "color visitor must have the same return type for every alternative");
-#if FMT_USE_CONSTEXPR
   switch (enum_cast<kind>(color.index())) {
   case kind::rgb:
     return std::forward<Visitor>(visitor)(get<rgb>(std::forward<Color>(color)));
@@ -895,22 +826,6 @@ constexpr auto visit(Visitor&& visitor, Color&& color)
     return std::forward<Visitor>(visitor)(
         get<no_color_t>(std::forward<Color>(color)));
   }
-#else
-  return color.index() == to_underlying(kind::rgb)
-             ? std::forward<Visitor>(visitor)(
-                   get<rgb>(std::forward<Color>(color)))
-         : color.index() == to_underlying(kind::term)
-             ? std::forward<Visitor>(visitor)(
-                   get<term_color>(std::forward<Color>(color)))
-         : color.index() == to_underlying(kind::cube)
-             ? std::forward<Visitor>(visitor)(
-                   get<cube_color>(std::forward<Color>(color)))
-         : color.index() == to_underlying(kind::gray)
-             ? std::forward<Visitor>(visitor)(
-                   get<gray_color>(std::forward<Color>(color)))
-             : std::forward<Visitor>(visitor)(
-                   get<no_color_t>(std::forward<Color>(color)));
-#endif
 }  // visit
 
 namespace detail {
@@ -930,7 +845,7 @@ struct to_rgb_visitor {
  * Returns a color variant holding the fixed RGB equivalent of a specified
  * color. An unspecified color remains unspecified. The argument is unchanged.
  */
-FMT_NODISCARD constexpr auto to_rgb(color_t color) noexcept -> color_t {
+[[nodiscard]] constexpr auto to_rgb(color_t color) noexcept -> color_t {
   return tjg::visit(detail::to_rgb_visitor{}, color);
 }
 
@@ -956,7 +871,6 @@ namespace detail {
 // Decode valid packed colors produced by text_style using color_t::kind tags.
 constexpr auto unpack_color(color_t::value_type value) -> color_t {
   using kind = color_t::kind;
-#if FMT_USE_CONSTEXPR
   switch (enum_cast<kind>(value >> 24)) {
   case kind::rgb:  return color_t{rgb{value & 0x00ffffff}};
   case kind::term: return color_t{enum_cast<term_color>(value & 0xff)};
@@ -965,17 +879,6 @@ constexpr auto unpack_color(color_t::value_type value) -> color_t {
   case kind::none:
   default:         return color_t{no_color};
   }
-#else
-  return (value >> 24) == to_underlying(kind::rgb)
-             ? color_t{rgb{value & 0x00ffffff}}
-         : (value >> 24) == to_underlying(kind::term)
-             ? color_t{enum_cast<term_color>(value & 0xff)}
-         : (value >> 24) == to_underlying(kind::cube)
-             ? color_t{cube_color{value & 0xff}}
-         : (value >> 24) == to_underlying(kind::gray)
-             ? color_t{gray_color{static_cast<int>(value & 0xff)}}
-             : color_t{no_color};
-#endif
 }  // unpack_color
 
 template <typename T>
@@ -1053,29 +956,15 @@ constexpr auto blend_accumulate(blend_state state, First first,
  * Accepts rgb, term_color, cube_color, and gray_color, converting each to RGB.
  * Each argument has equal weight. Fractional channels are rounded down after
  * summing all arguments. The arguments are unchanged.
- * Supports constant evaluation in C++11 and later.
+ * Supports constant evaluation.
  */
-#if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
-    __cpp_concepts >= 201907L
 template <Color First, Color Second, Color... Colors>
-#else
-template <
-    typename First, typename Second, typename... Colors,
-    typename std::enable_if<detail::all_colors<First, Second, Colors...>::value,
-                            int>::type = 0>
-#endif
-FMT_NODISCARD constexpr auto blend(First first, Second second,
+[[nodiscard]] constexpr auto blend(First first, Second second,
                                    Colors... rest) noexcept -> rgb {
-#if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
-    __cpp_concepts >= 201907L
   detail::blend_state state;
   const rgb colors[] = {rgb(first), rgb(second), rgb(rest)...};
   for (auto color : colors) state = state.add(color, color_t{color});
   return state.average();
-#else
-  return detail::blend_accumulate(detail::blend_state{}, first, second, rest...)
-      .average();
-#endif
 }
 
 /**
@@ -1084,31 +973,17 @@ FMT_NODISCARD constexpr auto blend(First first, Second second,
  * Accepts color_t and plain colors. No specified colors produce no_color;
  * one specified color retains its kind and value; two or more produce RGB.
  * Fractional channels are rounded down after summing all specified colors.
- * The arguments are unchanged. Supports constant evaluation in C++11 and later.
+ * The arguments are unchanged. Supports constant evaluation.
  */
-#if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
-    __cpp_concepts >= 201907L
 template <typename Second, typename... Colors>
   requires(detail::is_blend_color<Second>::value &&
            (detail::is_blend_color<Colors>::value && ...))
-#else
-template <
-    typename Second, typename... Colors,
-    typename std::enable_if<detail::all_blend_colors<Second, Colors...>::value,
-                            int>::type = 0>
-#endif
-FMT_NODISCARD constexpr auto blend(color_t first, Second second,
+[[nodiscard]] constexpr auto blend(color_t first, Second second,
                                    Colors... rest) noexcept -> color_t {
-#if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
-    __cpp_concepts >= 201907L
   detail::blend_state state;
   const color_t colors[] = {first, color_t{second}, color_t{rest}...};
   for (auto color : colors) state = state.add(color);
   return state.result();
-#else
-  return detail::blend_accumulate(detail::blend_state{}, first, second, rest...)
-      .result();
-#endif
 }
 
 /**
@@ -1227,7 +1102,7 @@ class text_style {
                (value_type{to_underlying(emp)} << emph_shift)} {}
 
   /// Returns true if no colors, emphasis, or absolute flag are set.
-  FMT_NODISCARD constexpr auto empty() const noexcept -> bool {
+  [[nodiscard]] constexpr auto empty() const noexcept -> bool {
     return style_ == 0;
   }
 
@@ -1235,7 +1110,7 @@ class text_style {
    * Clears both colors, all emphasis, and absolute, restoring an empty style.
    * Returns a reference to this style for chaining.
    */
-  FMT_CONSTEXPR auto clear() noexcept -> text_style& {
+  constexpr auto clear() noexcept -> text_style& {
     style_ = 0;
     return *this;
   }
@@ -1246,7 +1121,7 @@ class text_style {
    * Unspecified colors select terminal defaults and unset emphasis is cleared.
    * Absolute does not prevent explicit modification of this style.
    */
-  FMT_CONSTEXPR auto absolute(bool enable = true) noexcept -> text_style& {
+  constexpr auto absolute(bool enable = true) noexcept -> text_style& {
     if (enable)
       style_ |= abs_mask;
     else
@@ -1255,7 +1130,7 @@ class text_style {
   }
 
   /// Returns true if this style resets the terminal before applying attributes.
-  FMT_NODISCARD constexpr auto is_absolute() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_absolute() const noexcept -> bool {
     return ((style_ & abs_mask) != 0);
   }
 
@@ -1267,7 +1142,7 @@ class text_style {
    * style's colors unchanged. Emphasis bits are combined by OR. The result is
    * absolute if either input is absolute; explicit overlays remain allowed.
    */
-  FMT_CONSTEXPR auto overlay(const text_style& other) noexcept -> text_style& {
+  constexpr auto overlay(const text_style& other) noexcept -> text_style& {
     if (other == *this || other.empty()) return *this;
 
     if (empty()) return *this = other;
@@ -1287,7 +1162,7 @@ class text_style {
    * OR. The result is absolute if either input is absolute; explicit underlays
    * remain allowed.
    */
-  FMT_CONSTEXPR auto underlay(const text_style& other) noexcept -> text_style& {
+  constexpr auto underlay(const text_style& other) noexcept -> text_style& {
     if (other == *this || other.empty()) return *this;
 
     if (empty()) return *this = other;
@@ -1311,7 +1186,7 @@ class text_style {
    * Terminal colors are converted using the fixed Xterm-default RGB palette,
    * which may differ from the user's terminal theme.
    */
-  FMT_CONSTEXPR auto operator|=(text_style rhs) noexcept -> text_style& {
+  constexpr auto operator|=(text_style rhs) noexcept -> text_style& {
     constexpr auto mask = value_type{disc_mask & ~1U};
     constexpr auto promotion_mask =
         (mask << (fg_shift + color_bits)) | (mask << (bg_shift + color_bits));
@@ -1333,39 +1208,39 @@ class text_style {
    * Uses the same color promotion, RGB bitwise-OR, and emphasis combination
    * rules as `operator|=`.
    */
-  FMT_NODISCARD
-  friend FMT_CONSTEXPR auto operator|(text_style lhs, text_style rhs) noexcept
+  [[nodiscard]]
+  friend constexpr auto operator|(text_style lhs, text_style rhs) noexcept
       -> text_style {
     return lhs |= rhs;
   }
 
   /// Returns true if a foreground color is specified.
-  FMT_NODISCARD constexpr auto has_fg() const noexcept -> bool {
+  [[nodiscard]] constexpr auto has_fg() const noexcept -> bool {
     return ((style_ & fg_disc_mask) != 0);
   }
 
   /// Returns true if a background color is specified.
-  FMT_NODISCARD constexpr auto has_bg() const noexcept -> bool {
+  [[nodiscard]] constexpr auto has_bg() const noexcept -> bool {
     return ((style_ & bg_disc_mask) != 0);
   }
 
   /// Returns true if at least one emphasis attribute is set.
-  FMT_NODISCARD constexpr auto has_emph() const noexcept -> bool {
+  [[nodiscard]] constexpr auto has_emph() const noexcept -> bool {
     return ((style_ & emph_mask) != 0);
   }
 
   /// Returns true if a foreground color is specified.
-  FMT_NODISCARD constexpr auto has_foreground() const noexcept -> bool {
+  [[nodiscard]] constexpr auto has_foreground() const noexcept -> bool {
     return has_fg();
   }
 
   /// Returns true if a background color is specified.
-  FMT_NODISCARD constexpr auto has_background() const noexcept -> bool {
+  [[nodiscard]] constexpr auto has_background() const noexcept -> bool {
     return has_bg();
   }
 
   /// Returns true if at least one emphasis attribute is set.
-  FMT_NODISCARD constexpr auto has_emphasis() const noexcept -> bool {
+  [[nodiscard]] constexpr auto has_emphasis() const noexcept -> bool {
     return has_emph();
   }
 
@@ -1373,7 +1248,7 @@ class text_style {
    * Returns the foreground color, preserving its kind and value.
    * The result can be passed to `fg()` or `bg()`.
    */
-  FMT_NODISCARD
+  [[nodiscard]]
   constexpr auto fg() const noexcept -> color_t {
     using value_t = color_t::value_type;
     return detail::unpack_color(
@@ -1384,7 +1259,7 @@ class text_style {
    * Returns the background color, preserving its kind and value.
    * The result can be passed to `fg()` or `bg()`.
    */
-  FMT_NODISCARD
+  [[nodiscard]]
   constexpr auto bg() const noexcept -> color_t {
     using value_t = color_t::value_type;
     return detail::unpack_color(
@@ -1392,7 +1267,7 @@ class text_style {
   }
 
   /// Returns the combined emphasis bit mask.
-  FMT_NODISCARD constexpr auto emph() const noexcept -> emphasis {
+  [[nodiscard]] constexpr auto emph() const noexcept -> emphasis {
     return enum_cast<emphasis>((style_ & emph_mask) >> emph_shift);
   }
 
@@ -1400,7 +1275,7 @@ class text_style {
    * Returns the foreground color, preserving its kind and value.
    * The result can be passed to `fg()` or `bg()`.
    */
-  FMT_NODISCARD constexpr auto get_foreground() const noexcept -> color_t {
+  [[nodiscard]] constexpr auto get_foreground() const noexcept -> color_t {
     return fg();
   }
 
@@ -1408,12 +1283,12 @@ class text_style {
    * Returns the background color, preserving its kind and value.
    * The result can be passed to `fg()` or `bg()`.
    */
-  FMT_NODISCARD constexpr auto get_background() const noexcept -> color_t {
+  [[nodiscard]] constexpr auto get_background() const noexcept -> color_t {
     return bg();
   }
 
   /// Returns the combined emphasis bit mask, or `emphasis{}` if none is set.
-  FMT_NODISCARD constexpr auto get_emphasis() const noexcept -> emphasis {
+  [[nodiscard]] constexpr auto get_emphasis() const noexcept -> emphasis {
     return emph();
   }
 
@@ -1424,7 +1299,7 @@ class text_style {
    * does not store a terminal reset. Preserves the background color and
    * emphasis attributes.
    */
-  FMT_CONSTEXPR auto fg(color_t color) noexcept -> text_style& {
+  constexpr auto fg(color_t color) noexcept -> text_style& {
     style_ =
         (style_ & ~fg_mask) | (value_type{to_underlying(color)} << fg_shift);
     return *this;
@@ -1437,7 +1312,7 @@ class text_style {
    * does not store a terminal reset. Preserves the foreground color and
    * emphasis attributes.
    */
-  FMT_CONSTEXPR auto bg(color_t color) noexcept -> text_style& {
+  constexpr auto bg(color_t color) noexcept -> text_style& {
     style_ =
         (style_ & ~bg_mask) | (value_type{to_underlying(color)} << bg_shift);
     return *this;
@@ -1448,14 +1323,13 @@ class text_style {
    * Only the bits in `em` remain enabled; `emphasis{}` clears all attributes.
    * Preserves both colors. Bold and faint remain independent bits.
    */
-  FMT_CONSTEXPR auto emph(emphasis em) noexcept -> text_style& {
+  constexpr auto emph(emphasis em) noexcept -> text_style& {
     style_ = (style_ & ~emph_mask) | (enum_cast<value_type>(em) << emph_shift);
     return *this;
   }
 
  private:
-  FMT_CONSTEXPR auto set(emphasis em, bool enable = true) noexcept
-      -> text_style& {
+  constexpr auto set(emphasis em, bool enable = true) noexcept -> text_style& {
     auto mask = enum_cast<value_type>(em) << emph_shift;
     style_ = enable ? (style_ | mask) : (style_ & ~mask);
     return *this;
@@ -1463,102 +1337,103 @@ class text_style {
 
  public:
   /// Enables bold if `enable` is true, or disables it otherwise.
-  FMT_CONSTEXPR auto bold(bool enable = true) noexcept -> text_style& {
+  constexpr auto bold(bool enable = true) noexcept -> text_style& {
     return set(emphasis::bold, enable);
   }
 
   /// Enables faint if `enable` is true, or disables it otherwise.
-  FMT_CONSTEXPR auto faint(bool enable = true) noexcept -> text_style& {
+  constexpr auto faint(bool enable = true) noexcept -> text_style& {
     return set(emphasis::faint, enable);
   }
 
   /// Enables italic if `enable` is true, or disables it otherwise.
-  FMT_CONSTEXPR auto italic(bool enable = true) noexcept -> text_style& {
+  constexpr auto italic(bool enable = true) noexcept -> text_style& {
     return set(emphasis::italic, enable);
   }
 
   /// Enables underline if `enable` is true, or disables it otherwise.
-  FMT_CONSTEXPR auto underline(bool enable = true) noexcept -> text_style& {
+  constexpr auto underline(bool enable = true) noexcept -> text_style& {
     return set(emphasis::underline, enable);
   }
 
   /// Enables blink if `enable` is true, or disables it otherwise.
-  FMT_CONSTEXPR auto blink(bool enable = true) noexcept -> text_style& {
+  constexpr auto blink(bool enable = true) noexcept -> text_style& {
     return set(emphasis::blink, enable);
   }
 
   /// Enables reverse if `enable` is true, or disables it otherwise.
-  FMT_CONSTEXPR auto reverse(bool enable = true) noexcept -> text_style& {
+  constexpr auto reverse(bool enable = true) noexcept -> text_style& {
     return set(emphasis::reverse, enable);
   }
 
   /// Enables conceal if `enable` is true, or disables it otherwise.
-  FMT_CONSTEXPR auto conceal(bool enable = true) noexcept -> text_style& {
+  constexpr auto conceal(bool enable = true) noexcept -> text_style& {
     return set(emphasis::conceal, enable);
   }
 
   /// Enables strikethrough if `enable` is true, or disables it otherwise.
-  FMT_CONSTEXPR auto strike(bool enable = true) noexcept -> text_style& {
+  constexpr auto strike(bool enable = true) noexcept -> text_style& {
     return set(emphasis::strike, enable);
   }
 
  private:
-  FMT_NODISCARD constexpr auto is_enabled(emphasis em) const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_enabled(emphasis em) const noexcept -> bool {
     return ((style_ & (enum_cast<value_type>(em) << emph_shift)) != 0);
   }
 
  public:
   /// Returns true if bold is enabled, or false if it is unset.
-  FMT_NODISCARD constexpr auto is_bold() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_bold() const noexcept -> bool {
     return is_enabled(emphasis::bold);
   }
 
   /// Returns true if faint is enabled, or false if it is unset.
-  FMT_NODISCARD constexpr auto is_faint() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_faint() const noexcept -> bool {
     return is_enabled(emphasis::faint);
   }
 
   /// Returns true if italic is enabled, or false if it is unset.
-  FMT_NODISCARD constexpr auto is_italic() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_italic() const noexcept -> bool {
     return is_enabled(emphasis::italic);
   }
 
   /// Returns true if underline is enabled, or false if it is unset.
-  FMT_NODISCARD constexpr auto is_underline() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_underline() const noexcept -> bool {
     return is_enabled(emphasis::underline);
   }
 
   /// Returns true if blink is enabled, or false if it is unset.
-  FMT_NODISCARD constexpr auto is_blink() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_blink() const noexcept -> bool {
     return is_enabled(emphasis::blink);
   }
 
   /// Returns true if reverse is enabled, or false if it is unset.
-  FMT_NODISCARD constexpr auto is_reverse() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_reverse() const noexcept -> bool {
     return is_enabled(emphasis::reverse);
   }
 
   /// Returns true if conceal is enabled, or false if it is unset.
-  FMT_NODISCARD constexpr auto is_conceal() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_conceal() const noexcept -> bool {
     return is_enabled(emphasis::conceal);
   }
 
   /// Returns true if strikethrough is enabled, or false if it is unset.
-  FMT_NODISCARD constexpr auto is_strike() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_strike() const noexcept -> bool {
     return is_enabled(emphasis::strike);
   }
 
   /// Alias for `strike()`, retained for backward compatibility.
-  FMT_CONSTEXPR auto strikethrough(bool enable = true) noexcept -> text_style& {
+  constexpr auto strikethrough(bool enable = true) noexcept -> text_style& {
     return strike(enable);
   }
 
   /// Alias for `is_strike()`, retained for backward compatibility.
-  FMT_NODISCARD constexpr auto is_strikethrough() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_strikethrough() const noexcept -> bool {
     return is_strike();
   }
 
-  FMT_COLOR_COMPARISONS(text_style)
+  [[nodiscard]] constexpr auto operator<=>(const text_style&) const noexcept
+      -> std::strong_ordering = default;
 
  private:
   constexpr explicit text_style(value_type style) noexcept : style_{style} {}
@@ -1580,7 +1455,7 @@ inline auto get_terminal_state() noexcept -> text_style& {
 
 /// Returns a copy of `style` marked absolute, preserving its colors and
 /// emphasis.
-FMT_NODISCARD FMT_CONSTEXPR inline auto absolute(text_style style) noexcept
+[[nodiscard]] constexpr inline auto absolute(text_style style) noexcept
     -> text_style {
   return style.absolute();
 }
@@ -1589,14 +1464,14 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto absolute(text_style style) noexcept
  * Returns a style with only bold enabled when `enable` is true (the default),
  * or an empty style otherwise. Both color channels are unspecified.
  */
-FMT_NODISCARD constexpr inline auto bold(bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto bold(bool enable = true) noexcept
     -> text_style {
   return text_style{enable ? emphasis::bold : emphasis{}};
 }
 
 /// Returns a copy of `style` with bold enabled or disabled by `enable`.
-FMT_NODISCARD FMT_CONSTEXPR inline auto bold(text_style style,
-                                             bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto bold(text_style style,
+                                         bool enable = true) noexcept
     -> text_style {
   return style.bold(enable);
 }
@@ -1605,14 +1480,14 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto bold(text_style style,
  * Returns a style with only faint enabled when `enable` is true (the default),
  * or an empty style otherwise. Both color channels are unspecified.
  */
-FMT_NODISCARD constexpr inline auto faint(bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto faint(bool enable = true) noexcept
     -> text_style {
   return text_style{enable ? emphasis::faint : emphasis{}};
 }
 
 /// Returns a copy of `style` with faint enabled or disabled by `enable`.
-FMT_NODISCARD FMT_CONSTEXPR inline auto faint(text_style style,
-                                              bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto faint(text_style style,
+                                          bool enable = true) noexcept
     -> text_style {
   return style.faint(enable);
 }
@@ -1621,14 +1496,14 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto faint(text_style style,
  * Returns a style with only italic enabled when `enable` is true (the default),
  * or an empty style otherwise. Both color channels are unspecified.
  */
-FMT_NODISCARD constexpr inline auto italic(bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto italic(bool enable = true) noexcept
     -> text_style {
   return text_style{enable ? emphasis::italic : emphasis{}};
 }
 
 /// Returns a copy of `style` with italic enabled or disabled by `enable`.
-FMT_NODISCARD FMT_CONSTEXPR inline auto italic(text_style style,
-                                               bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto italic(text_style style,
+                                           bool enable = true) noexcept
     -> text_style {
   return style.italic(enable);
 }
@@ -1637,14 +1512,14 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto italic(text_style style,
  * Returns a style with only underline enabled when `enable` is true (the
  * default), or an empty style otherwise. Both color channels are unspecified.
  */
-FMT_NODISCARD constexpr inline auto underline(bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto underline(bool enable = true) noexcept
     -> text_style {
   return text_style{enable ? emphasis::underline : emphasis{}};
 }
 
 /// Returns a copy of `style` with underline enabled or disabled by `enable`.
-FMT_NODISCARD FMT_CONSTEXPR inline auto underline(text_style style,
-                                                  bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto underline(text_style style,
+                                              bool enable = true) noexcept
     -> text_style {
   return style.underline(enable);
 }
@@ -1653,14 +1528,14 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto underline(text_style style,
  * Returns a style with only blink enabled when `enable` is true (the default),
  * or an empty style otherwise. Both color channels are unspecified.
  */
-FMT_NODISCARD constexpr inline auto blink(bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto blink(bool enable = true) noexcept
     -> text_style {
   return text_style{enable ? emphasis::blink : emphasis{}};
 }
 
 /// Returns a copy of `style` with blink enabled or disabled by `enable`.
-FMT_NODISCARD FMT_CONSTEXPR inline auto blink(text_style style,
-                                              bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto blink(text_style style,
+                                          bool enable = true) noexcept
     -> text_style {
   return style.blink(enable);
 }
@@ -1669,14 +1544,14 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto blink(text_style style,
  * Returns a style with only reverse enabled when `enable` is true (the
  * default), or an empty style otherwise. Both color channels are unspecified.
  */
-FMT_NODISCARD constexpr inline auto reverse(bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto reverse(bool enable = true) noexcept
     -> text_style {
   return text_style{enable ? emphasis::reverse : emphasis{}};
 }
 
 /// Returns a copy of `style` with reverse enabled or disabled by `enable`.
-FMT_NODISCARD FMT_CONSTEXPR inline auto reverse(text_style style,
-                                                bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto reverse(text_style style,
+                                            bool enable = true) noexcept
     -> text_style {
   return style.reverse(enable);
 }
@@ -1685,14 +1560,14 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto reverse(text_style style,
  * Returns a style with only conceal enabled when `enable` is true (the
  * default), or an empty style otherwise. Both color channels are unspecified.
  */
-FMT_NODISCARD constexpr inline auto conceal(bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto conceal(bool enable = true) noexcept
     -> text_style {
   return text_style{enable ? emphasis::conceal : emphasis{}};
 }
 
 /// Returns a copy of `style` with conceal enabled or disabled by `enable`.
-FMT_NODISCARD FMT_CONSTEXPR inline auto conceal(text_style style,
-                                                bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto conceal(text_style style,
+                                            bool enable = true) noexcept
     -> text_style {
   return style.conceal(enable);
 }
@@ -1701,14 +1576,14 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto conceal(text_style style,
  * Returns a style with only strike enabled when `enable` is true (the default),
  * or an empty style otherwise. Both color channels are unspecified.
  */
-FMT_NODISCARD constexpr inline auto strike(bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto strike(bool enable = true) noexcept
     -> text_style {
   return text_style{enable ? emphasis::strike : emphasis{}};
 }
 
 /// Returns a copy of `style` with strike enabled or disabled by `enable`.
-FMT_NODISCARD FMT_CONSTEXPR inline auto strike(text_style style,
-                                               bool enable = true) noexcept
+[[nodiscard]] constexpr inline auto strike(text_style style,
+                                           bool enable = true) noexcept
     -> text_style {
   return style.strike(enable);
 }
@@ -1719,8 +1594,8 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto strike(text_style style,
  * preserve their kinds; unspecified channels retain the base colors.
  * Emphasis bits are combined by OR. The result is absolute if either input is.
  */
-FMT_NODISCARD FMT_CONSTEXPR inline auto overlay(text_style base,
-                                                text_style overrides) noexcept
+[[nodiscard]] constexpr inline auto overlay(text_style base,
+                                            text_style overrides) noexcept
     -> text_style {
   return base.overlay(overrides);
 }
@@ -1731,8 +1606,8 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto overlay(text_style base,
  * channels and preserve their kinds. Other channels retain the base colors.
  * Emphasis bits are combined by OR. The result is absolute if either input is.
  */
-FMT_NODISCARD FMT_CONSTEXPR inline auto underlay(text_style base,
-                                                 text_style defaults) noexcept
+[[nodiscard]] constexpr inline auto underlay(text_style base,
+                                             text_style defaults) noexcept
     -> text_style {
   return base.underlay(defaults);
 }
@@ -1741,7 +1616,7 @@ template <> struct underlying_type<text_style> {
   using type = text_style::value_type;
 };
 
-FMT_NODISCARD constexpr inline auto to_underlying(text_style value) noexcept
+[[nodiscard]] constexpr inline auto to_underlying(text_style value) noexcept
     -> text_style::value_type {
   return value.style_;
 }
@@ -1763,9 +1638,8 @@ constexpr auto checked_blend_style(const text_style& style) noexcept
     -> const text_style& {
   return !style.is_absolute() || (style.has_fg() && style.has_bg())
              ? style
-             : (FMT_ASSERT(false,
-                           "cannot blend an absolute style with "
-                           "terminal-default colors"),
+             : (assert((false) && ("cannot blend an absolute style with "
+                                   "terminal-default colors")),
                 style);
 }
 
@@ -1820,33 +1694,18 @@ constexpr auto blend_styles_accumulate(style_blend_state state, First first,
  * terminal-default colors have unknown RGB values. Violations assert. When
  * assertions are disabled, unspecified channels contribute nothing and the
  * absolute flag is still discarded.
- * Supports constant evaluation in C++11 and later.
+ * Supports constant evaluation.
  */
-#if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
-    __cpp_concepts >= 201907L
 template <typename First, typename Second, typename... Styles>
   requires(detail::is_text_style<First>::value &&
            detail::is_text_style<Second>::value &&
            (detail::is_text_style<Styles>::value && ...))
-#else
-template <typename First, typename Second, typename... Styles,
-          typename std::enable_if<
-              detail::all_text_styles<First, Second, Styles...>::value,
-              int>::type = 0>
-#endif
-FMT_NODISCARD constexpr auto blend(First first, Second second,
+[[nodiscard]] constexpr auto blend(First first, Second second,
                                    Styles... rest) noexcept -> text_style {
-#if FMT_CPLUSPLUS > 202002L && defined(__cpp_concepts) && \
-    __cpp_concepts >= 201907L
   detail::style_blend_state state;
   const text_style styles[] = {first, second, rest...};
   for (auto style : styles) state = state.add(style);
   return state.result();
-#else
-  return detail::blend_styles_accumulate(detail::style_blend_state{}, first,
-                                         second, rest...)
-      .result();
-#endif
 }
 
 /**
@@ -1854,7 +1713,7 @@ FMT_NODISCARD constexpr auto blend(First first, Second second,
  * color, and no emphasis. Accepts any color value through implicit conversion
  * to `color_t`.
  */
-FMT_NODISCARD
+[[nodiscard]]
 constexpr inline auto fg(color_t foreground) noexcept -> text_style {
   return text_style{text_style::value_type{to_underlying(foreground)}
                     << text_style::fg_shift};
@@ -1865,7 +1724,7 @@ constexpr inline auto fg(color_t foreground) noexcept -> text_style {
  * color, and no emphasis. Accepts any color value through implicit conversion
  * to `color_t`.
  */
-FMT_NODISCARD
+[[nodiscard]]
 constexpr inline auto bg(color_t background) noexcept -> text_style {
   return text_style{text_style::value_type{to_underlying(background)}
                     << text_style::bg_shift};
@@ -1885,7 +1744,7 @@ constexpr auto sgr_reset_length = std::size_t{4};
  * defaults to `char`.
  */
 template <typename Char = char>
-FMT_NODISCARD constexpr auto sgr_reset() noexcept
+[[nodiscard]] constexpr auto sgr_reset() noexcept
     -> std::basic_string_view<Char> {
   static constexpr Char reset[] = {'\x1b', '[', '0', 'm'};
   return {reset, sgr_reset_length};
@@ -1899,7 +1758,7 @@ template <typename Char> struct sgr_reset_storage {
   static constexpr Char value[sgr_reset_length] = {'\x1b', '[', '0', 'm'};
 };
 
-#  if FMT_CPLUSPLUS < 201703L
+#  if __cplusplus < 201703L
 template <typename Char>
 constexpr Char sgr_reset_storage<Char>::value[sgr_reset_length];
 #  endif
@@ -1912,7 +1771,7 @@ constexpr Char sgr_reset_storage<Char>::value[sgr_reset_length];
  * defaults to `char`.
  */
 template <typename Char = char>
-FMT_NODISCARD constexpr auto sgr_reset() noexcept
+[[nodiscard]] constexpr auto sgr_reset() noexcept
     -> std::basic_string_view<Char> {
   return {detail::sgr_reset_storage<Char>::value, sgr_reset_length};
 }
@@ -1921,7 +1780,7 @@ FMT_NODISCARD constexpr auto sgr_reset() noexcept
 
 namespace detail {
 
-#if FMT_COLOR_COMPACT_SGR
+#if TJG_COLOR_COMPACT_SGR
 
 constexpr const char* decimal_strings[256] = {
     "0",   "1",   "2",   "3",   "4",   "5",   "6",   "7",   "8",   "9",   "10",
@@ -1985,27 +1844,27 @@ template <typename Char> class ansi_color_escape {
   Char buffer[20] = {};
   size_t size = 0;
 
-  FMT_CONSTEXPR void append(char c) noexcept {
+  constexpr void append(char c) noexcept {
     buffer[size++] = narrow_cast<Char>(c);
   }
 
-  FMT_CONSTEXPR void append(const char* s) noexcept {
+  constexpr void append(const char* s) noexcept {
     while (*s) append(*s++);
   }
 
-  FMT_CONSTEXPR void append(const char* s, char c) noexcept {
+  constexpr void append(const char* s, char c) noexcept {
     append(s);
     append(c);
   }
 
-  FMT_CONSTEXPR void append(uint8_t n, char c) noexcept {
+  constexpr void append(uint8_t n, char c) noexcept {
     append(decimal_strings[n]);
     append(c);
   }
 
-  FMT_CONSTEXPR void append(no_color_t, bool) noexcept {}
+  constexpr void append(no_color_t, bool) noexcept {}
 
-  FMT_CONSTEXPR void append(term_color clr, bool is_bg) noexcept {
+  constexpr void append(term_color clr, bool is_bg) noexcept {
     constexpr auto BrightBlack =
         static_cast<int>(to_underlying(term_color::bright_black));
     auto value = static_cast<int>(to_underlying(clr));
@@ -2022,7 +1881,7 @@ template <typename Char> class ansi_color_escape {
     append(';');
   }
 
-  FMT_CONSTEXPR void append(rgb clr, bool is_bg) noexcept {
+  constexpr void append(rgb clr, bool is_bg) noexcept {
     append("38;2;");
     if (is_bg) buffer[0] = Char{'4'};
     append(clr.r, ';');
@@ -2030,14 +1889,14 @@ template <typename Char> class ansi_color_escape {
     append(clr.b, ';');
   }
 
-  FMT_CONSTEXPR void append(cube_color clr, bool is_bg) noexcept {
+  constexpr void append(cube_color clr, bool is_bg) noexcept {
     append("38;5;");
     if (is_bg) buffer[0] = Char{'4'};
     auto index = narrow_cast<uint8_t>(to_underlying(clr) + 16);
     append(index, ';');
   }
 
-  FMT_CONSTEXPR void append(gray_color clr, bool is_bg) noexcept {
+  constexpr void append(gray_color clr, bool is_bg) noexcept {
     append("38;5;");
     if (is_bg) buffer[0] = Char{'4'};
     auto index = narrow_cast<uint8_t>(to_underlying(clr) + 232);
@@ -2049,20 +1908,20 @@ template <typename Char> class ansi_color_escape {
     bool is_bg;
 
     // Avoid copying the empty union member during MSVC constant evaluation.
-    FMT_CONSTEXPR void operator()(const no_color_t&) const noexcept {}
+    constexpr void operator()(const no_color_t&) const noexcept {}
 
     template <typename Color>
-    FMT_CONSTEXPR void operator()(Color clr) const noexcept {
+    constexpr void operator()(Color clr) const noexcept {
       escape.append(clr, is_bg);
     }
   };
 
  public:
-  FMT_CONSTEXPR ansi_color_escape(color_t text_color, bool is_bg) noexcept {
+  constexpr ansi_color_escape(color_t text_color, bool is_bg) noexcept {
     tjg::visit(color_visitor{*this, is_bg}, text_color);
   }
 
-  FMT_CONSTEXPR ansi_color_escape(emphasis em) noexcept {
+  constexpr ansi_color_escape(emphasis em) noexcept {
     unsigned bits = to_underlying(em);
     if (bits == 0) return;
 
@@ -2075,53 +1934,52 @@ template <typename Char> class ansi_color_escape {
     }
   }
 
-  FMT_NODISCARD constexpr auto empty() const noexcept -> bool {
+  [[nodiscard]] constexpr auto empty() const noexcept -> bool {
     return (size == 0);
   }
 
   constexpr operator const Char*() const noexcept { return buffer; }
 
-  FMT_NODISCARD constexpr auto begin() const noexcept -> const Char* {
+  [[nodiscard]] constexpr auto begin() const noexcept -> const Char* {
     return buffer;
   }
 
-  FMT_NODISCARD constexpr auto end() const noexcept -> const Char* {
+  [[nodiscard]] constexpr auto end() const noexcept -> const Char* {
     return buffer + size;
   }
 };  // ansi_color_escape
 
 template <typename Char>
-FMT_CONSTEXPR auto make_foreground_color(color_t foreground) noexcept
+constexpr auto make_foreground_color(color_t foreground) noexcept
     -> ansi_color_escape<Char> {
   return ansi_color_escape<Char>(foreground, false);
 }
 
 template <typename Char>
-FMT_CONSTEXPR auto make_background_color(color_t background) noexcept
+constexpr auto make_background_color(color_t background) noexcept
     -> ansi_color_escape<Char> {
   return ansi_color_escape<Char>(background, true);
 }
 
 template <typename Char>
-FMT_CONSTEXPR auto make_emphasis(emphasis em) noexcept
-    -> ansi_color_escape<Char> {
+constexpr auto make_emphasis(emphasis em) noexcept -> ansi_color_escape<Char> {
   return ansi_color_escape<Char>(em);
 }
 
 template <typename Buffer, typename Char = typename Buffer::value_type>
-FMT_CONSTEXPR20 inline void reset_color(Buffer& buffer) {
+constexpr inline void reset_color(Buffer& buffer) {
   constexpr auto reset_color = sgr_reset<Char>();
   buffer.append(reset_color.data(), reset_color.data() + reset_color.size());
 }
 
-template <typename T> struct styled_arg : fmt::detail::view {
+template <typename T> struct styled_arg {
   const T& value;
   text_style style;
   constexpr styled_arg(const T& v, text_style s) : value{v}, style{s} {}
 };  // styled_arg
 
 template <typename Buffer, typename Char = typename Buffer::value_type>
-FMT_CONSTEXPR20 void append_sgr_raw(Buffer& buf, text_style ts) {
+constexpr void append_sgr_raw(Buffer& buf, text_style ts) {
   if (ts.empty()) return;
   if (ts.is_absolute()) {
     buf.push_back(Char('0'));
@@ -2135,10 +1993,10 @@ FMT_CONSTEXPR20 void append_sgr_raw(Buffer& buf, text_style ts) {
   buf.append(background.begin(), background.end());
 }  // append_sgr_raw
 
-#if FMT_COLOR_COMPACT_SGR
+#if TJG_COLOR_COMPACT_SGR
 
 template <typename Buffer, typename Char = typename Buffer::value_type>
-FMT_CONSTEXPR20 void append_sgr(Buffer& buf, text_style ts) {
+constexpr void append_sgr(Buffer& buf, text_style ts) {
   if (ts.empty()) return;
   buf.push_back(static_cast<Char>('\x1b'));
   buf.push_back(static_cast<Char>('['));
@@ -2149,8 +2007,7 @@ FMT_CONSTEXPR20 void append_sgr(Buffer& buf, text_style ts) {
 #else
 
 template <typename Buffer, typename Char = typename Buffer::value_type>
-FMT_CONSTEXPR20 void append_sgr(Buffer& buf,
-                                const ansi_color_escape<Char>& sgr) {
+constexpr void append_sgr(Buffer& buf, const ansi_color_escape<Char>& sgr) {
   if (sgr.empty()) return;
   buf.push_back(static_cast<Char>('\x1b'));
   buf.push_back(static_cast<Char>('['));
@@ -2159,7 +2016,7 @@ FMT_CONSTEXPR20 void append_sgr(Buffer& buf,
 }  // append_sgr
 
 template <typename Buffer, typename Char = typename Buffer::value_type>
-FMT_CONSTEXPR20 void append_sgr(Buffer& buf, text_style ts) {
+constexpr void append_sgr(Buffer& buf, text_style ts) {
   if (ts.empty()) return;
   if (ts.is_absolute()) reset_color(buf);
   auto emphasis = make_emphasis<Char>(ts.emph());
@@ -2185,18 +2042,20 @@ class style_scope {
   void operator=(const style_scope&) = delete;
 };  // style_scope
 
+template <typename Char>
+using format_context =
+    std::conditional_t<std::same_as<Char, char>, std::format_context,
+                       std::wformat_context>;
+template <typename Char>
+using format_args = std::basic_format_args<format_context<Char>>;
+
 template <typename Buffer, typename Char = typename Buffer::value_type>
-void vformat_to(Buffer& buf, text_style ts, std::basic_string_view<Char> fmt,
-                fmt::basic_format_args<fmt::buffered_context<Char>> args) {
+void vformat_to(Buffer& buf, text_style ts,
+                std::basic_string_view<Char> pattern, format_args<Char> args) {
   style_scope scope{};
   append_sgr(buf, ts);
   get_terminal_state() = text_style{ts}.absolute(false);
-  const auto pattern = fmt::basic_string_view<Char>{fmt.data(), fmt.size()};
-  if constexpr (std::is_base_of_v<fmt::detail::buffer<Char>, Buffer>) {
-    vformat_to(buf, pattern, args);
-  } else {
-    vformat_to(std::back_inserter(buf), pattern, args);
-  }
+  std::vformat_to(std::back_inserter(buf), pattern, args);
   if (ts != text_style()) reset_color(buf);
 }  // vformat_to
 
@@ -2213,7 +2072,7 @@ void vformat_to(Buffer& buf, text_style ts, std::basic_string_view<Char> fmt,
  * the leading reset selects terminal defaults for those channels.
  */
 template <typename Char = char>
-FMT_NODISCARD inline auto to_sgr(const text_style& ts)
+[[nodiscard]] inline auto to_sgr(const text_style& ts)
     -> std::basic_string<Char> {
   if (ts.empty()) return {};
   auto buf = basic_memory_buffer<Char, sgr_max_length>{};
@@ -2221,19 +2080,19 @@ FMT_NODISCARD inline auto to_sgr(const text_style& ts)
   return {buf.data(), buf.size()};
 }
 
-#if FMT_COLOR_COMPACT_SGR
+#if TJG_COLOR_COMPACT_SGR
 
 namespace detail {
 
 template <typename Buffer, typename Char = typename Buffer::value_type>
-FMT_CONSTEXPR20 void append_transition_code(Buffer& buf, uint8_t code) {
+constexpr void append_transition_code(Buffer& buf, uint8_t code) {
   for (auto cp = decimal_strings[code]; *cp; ++cp) buf.push_back(Char(*cp));
   buf.push_back(Char(';'));
 }
 
 template <typename Buffer, typename Char = typename Buffer::value_type>
-FMT_CONSTEXPR20 void append_transition(Buffer& buf, text_style target,
-                                       text_style initial) {
+constexpr void append_transition(Buffer& buf, text_style target,
+                                 text_style initial) {
   auto before = static_cast<unsigned>(to_underlying(initial.emph()));
   auto after = static_cast<unsigned>(to_underlying(target.emph()));
   auto removed = before & ~after;
@@ -2272,8 +2131,8 @@ FMT_CONSTEXPR20 void append_transition(Buffer& buf, text_style target,
 }  // append_transition
 
 template <typename Buffer, typename Char = typename Buffer::value_type>
-FMT_CONSTEXPR20 void append_sgr_transition(Buffer& buf, text_style target,
-                                           text_style initial) {
+constexpr void append_sgr_transition(Buffer& buf, text_style target,
+                                     text_style initial) {
   if (target.is_absolute()) return append_sgr(buf, target);
   initial.absolute(false);
   if (target == initial) return;
@@ -2301,12 +2160,12 @@ FMT_CONSTEXPR20 void append_sgr_transition(Buffer& buf, text_style target,
  * initial state. Otherwise returns an empty string when no changes are needed.
  *
  * For relative targets, uses one unpadded sequence, independently of
- * `FMT_COLOR_COMPACT_SGR`, choosing the shorter of selective changes and reset
+ * `TJG_COLOR_COMPACT_SGR`, choosing the shorter of selective changes and reset
  * followed by the target attributes.
  * Equal lengths prefer selective changes. `Char` defaults to `char`.
  */
 template <typename Char = char>
-FMT_NODISCARD inline auto to_sgr(const text_style& target,
+[[nodiscard]] inline auto to_sgr(const text_style& target,
                                  const text_style& initial)
     -> std::basic_string<Char> {
   auto buf = basic_memory_buffer<Char, sgr_max_length>{};
@@ -2319,8 +2178,8 @@ FMT_NODISCARD inline auto to_sgr(const text_style& target,
 namespace detail {
 
 template <typename Buffer, typename Char = typename Buffer::value_type>
-FMT_CONSTEXPR20 void append_sgr_transition(Buffer& buf, text_style target,
-                                           text_style initial) {
+constexpr void append_sgr_transition(Buffer& buf, text_style target,
+                                     text_style initial) {
   if (!target.is_absolute()) {
     initial.absolute(false);
     if (target == initial) return;
@@ -2332,7 +2191,7 @@ FMT_CONSTEXPR20 void append_sgr_transition(Buffer& buf, text_style target,
 }  // namespace detail
 
 template <typename Char = char>
-FMT_NODISCARD inline auto to_sgr(text_style target, const text_style& initial)
+[[nodiscard]] inline auto to_sgr(text_style target, const text_style& initial)
     -> std::basic_string<Char> {
   auto buf = basic_memory_buffer<Char, sgr_max_length>{};
   detail::append_sgr_transition(buf, target, initial);
@@ -2348,7 +2207,7 @@ FMT_NODISCARD inline auto to_sgr(text_style target, const text_style& initial)
  * The reset restores terminal defaults, not a previously active style.
  */
 template <typename Char = char>
-FMT_NODISCARD inline auto wrap_sgr(const text_style& ts,
+[[nodiscard]] inline auto wrap_sgr(const text_style& ts,
                                    std::basic_string_view<Char> sv)
     -> std::basic_string<Char> {
   if (sv.size() == 0) return {};
@@ -2362,7 +2221,7 @@ FMT_NODISCARD inline auto wrap_sgr(const text_style& ts,
 }  // wrap_sgr
 
 /// Narrow-character convenience overload of `wrap_sgr()`.
-FMT_NODISCARD inline auto wrap_sgr(const text_style& ts, std::string_view sv)
+[[nodiscard]] inline auto wrap_sgr(const text_style& ts, std::string_view sv)
     -> std::string {
   return wrap_sgr<char>(ts, sv);
 }
@@ -2376,10 +2235,10 @@ FMT_NODISCARD inline auto wrap_sgr(const text_style& ts, std::string_view sv)
  * to terminal defaults.
  */
 inline void vprint(FILE* f, text_style ts, std::string_view fmt,
-                   fmt::format_args args) {
+                   std::format_args args) {
   auto buf = memory_buffer();
   detail::vformat_to(buf, ts, fmt, args);
-  fmt::print(f, FMT_STRING("{}"), std::string_view(buf.data(), buf.size()));
+  std::print(f, "{}", std::string_view(buf.data(), buf.size()));
 }
 
 /**
@@ -2396,9 +2255,8 @@ inline void vprint(FILE* f, text_style ts, std::string_view fmt,
  *                "Elapsed time: {0:.2f} seconds", 1.23);
  */
 template <typename... T>
-void print(FILE* f, text_style ts, fmt::format_string<T...> fmt, T&&... args) {
-  vprint(f, ts, std::string_view{fmt.str.data(), fmt.str.size()},
-         fmt::vargs<T...>{{args...}});
+void print(FILE* f, text_style ts, std::format_string<T...> fmt, T&&... args) {
+  vprint(f, ts, fmt.get(), std::make_format_args(args...));
 }
 
 /**
@@ -2415,7 +2273,7 @@ void print(FILE* f, text_style ts, fmt::format_string<T...> fmt, T&&... args) {
  *                "Elapsed time: {0:.2f} seconds", 1.23);
  */
 template <typename... T>
-void print(text_style ts, fmt::format_string<T...> fmt, T&&... args) {
+void print(text_style ts, std::format_string<T...> fmt, T&&... args) {
   return print(stdout, ts, fmt, std::forward<T>(args)...);
 }
 
@@ -2427,11 +2285,11 @@ void print(text_style ts, fmt::format_string<T...> fmt, T&&... args) {
  * to terminal defaults. The newline follows the reset.
  */
 inline void vprintln(FILE* f, text_style ts, std::string_view fmt,
-                     fmt::format_args args) {
+                     std::format_args args) {
   auto buf = memory_buffer();
   detail::vformat_to(buf, ts, fmt, args);
   buf.push_back('\n');
-  fmt::print(f, FMT_STRING("{}"), std::string_view(buf.data(), buf.size()));
+  std::print(f, "{}", std::string_view(buf.data(), buf.size()));
 }
 
 /**
@@ -2448,10 +2306,9 @@ inline void vprintln(FILE* f, text_style ts, std::string_view fmt,
  *                  "Elapsed time: {0:.2f} seconds", 1.23);
  */
 template <typename... T>
-void println(FILE* f, text_style ts, fmt::format_string<T...> fmt,
+void println(FILE* f, text_style ts, std::format_string<T...> fmt,
              T&&... args) {
-  vprintln(f, ts, std::string_view{fmt.str.data(), fmt.str.size()},
-           fmt::vargs<T...>{{args...}});
+  vprintln(f, ts, fmt.get(), std::make_format_args(args...));
 }
 
 /**
@@ -2468,7 +2325,7 @@ void println(FILE* f, text_style ts, fmt::format_string<T...> fmt,
  *                  "Elapsed time: {0:.2f} seconds", 1.23);
  */
 template <typename... T>
-void println(text_style ts, fmt::format_string<T...> fmt, T&&... args) {
+void println(text_style ts, std::format_string<T...> fmt, T&&... args) {
   return println(stdout, ts, fmt, std::forward<T>(args)...);
 }
 
@@ -2480,7 +2337,7 @@ void println(text_style ts, fmt::format_string<T...> fmt, T&&... args) {
  * specified foreground, background, and emphasis, and followed by an SGR reset
  * to terminal defaults.
  */
-inline auto vformat(text_style ts, std::string_view fmt, fmt::format_args args)
+inline auto vformat(text_style ts, std::string_view fmt, std::format_args args)
     -> std::string {
   auto buf = memory_buffer();
   detail::vformat_to(buf, ts, fmt, args);
@@ -2505,10 +2362,9 @@ inline auto vformat(text_style ts, std::string_view fmt, fmt::format_args args)
  * ```
  */
 template <typename... T>
-inline auto format(text_style ts, fmt::format_string<T...> fmt, T&&... args)
+inline auto format(text_style ts, std::format_string<T...> fmt, T&&... args)
     -> std::string {
-  return tjg::vformat(ts, std::string_view{fmt.str.data(), fmt.str.size()},
-                      fmt::vargs<T...>{{args...}});
+  return tjg::vformat(ts, fmt.get(), std::make_format_args(args...));
 }
 
 /**
@@ -2519,14 +2375,20 @@ inline auto format(text_style ts, fmt::format_string<T...> fmt, T&&... args)
  * specified foreground, background, and emphasis, and followed by an SGR reset
  * to terminal defaults.
  */
-template <typename OutputIt,
-          FMT_ENABLE_IF(fmt::detail::is_output_iterator<OutputIt, char>::value)>
-auto vformat_to(OutputIt out, text_style ts, std::string_view fmt,
-                fmt::format_args args) -> OutputIt {
-  auto&& buf = fmt::detail::get_buffer<char>(out);
-  detail::vformat_to(static_cast<fmt::detail::buffer<char>&>(buf), ts, fmt,
-                     args);
-  return fmt::detail::get_iterator(buf, out);
+template <std::output_iterator<const char&> OutputIt>
+auto vformat_to(OutputIt out, text_style ts, std::string_view pattern,
+                std::format_args args) -> OutputIt {
+  detail::style_scope scope{};
+  auto sgr = basic_memory_buffer<char, sgr_max_length>{};
+  detail::append_sgr(sgr, ts);
+  out = std::copy(sgr.data(), sgr.data() + sgr.size(), out);
+  get_terminal_state() = text_style{ts}.absolute(false);
+  out = std::vformat_to(std::move(out), pattern, args);
+  if (ts != text_style()) {
+    const auto reset = sgr_reset();
+    out = std::copy(reset.begin(), reset.end(), out);
+  }
+  return out;
 }
 
 /**
@@ -2540,15 +2402,49 @@ auto vformat_to(OutputIt out, text_style ts, std::string_view fmt,
  * **Example**:
  *
  *     std::vector<char> out;
- *     fmt::format_to(std::back_inserter(out),
+ *     tjg::format_to(std::back_inserter(out),
  *                    tjg::bold().fg(tjg::color::red), "{}", 42);
  */
-template <typename OutputIt, typename... T,
-          FMT_ENABLE_IF(fmt::detail::is_output_iterator<OutputIt, char>::value)>
-inline auto format_to(OutputIt out, text_style ts, fmt::format_string<T...> fmt,
+template <std::output_iterator<const char&> OutputIt, typename... T>
+inline auto format_to(OutputIt out, text_style ts, std::format_string<T...> fmt,
                       T&&... args) -> OutputIt {
-  return vformat_to(out, ts, std::string_view{fmt.str.data(), fmt.str.size()},
-                    fmt::vargs<T...>{{args...}});
+  return vformat_to(out, ts, fmt.get(), std::make_format_args(args...));
+}
+
+inline auto vformat(text_style ts, std::wstring_view pattern,
+                    std::wformat_args args) -> std::wstring {
+  auto buf = basic_memory_buffer<wchar_t>{};
+  detail::vformat_to(buf, ts, pattern, args);
+  return {buf.data(), buf.size()};
+}
+
+template <typename... T>
+inline auto format(text_style ts, std::wformat_string<T...> pattern,
+                   T&&... args) -> std::wstring {
+  return tjg::vformat(ts, pattern.get(), std::make_wformat_args(args...));
+}
+
+template <std::output_iterator<const wchar_t&> OutputIt>
+auto vformat_to(OutputIt out, text_style ts, std::wstring_view pattern,
+                std::wformat_args args) -> OutputIt {
+  detail::style_scope scope{};
+  auto sgr = basic_memory_buffer<wchar_t, sgr_max_length>{};
+  detail::append_sgr(sgr, ts);
+  out = std::copy(sgr.data(), sgr.data() + sgr.size(), out);
+  get_terminal_state() = text_style{ts}.absolute(false);
+  out = std::vformat_to(std::move(out), pattern, args);
+  if (ts != text_style()) {
+    const auto reset = sgr_reset<wchar_t>();
+    out = std::copy(reset.begin(), reset.end(), out);
+  }
+  return out;
+}
+
+template <std::output_iterator<const wchar_t&> OutputIt, typename... T>
+auto format_to(OutputIt out, text_style ts, std::wformat_string<T...> pattern,
+               T&&... args) -> OutputIt {
+  return tjg::vformat_to(std::move(out), ts, pattern.get(),
+                         std::make_wformat_args(args...));
 }
 
 namespace detail {
@@ -2581,7 +2477,8 @@ auto write_style_value(OutputIt out, color_t value) -> OutputIt {
                                         "bright_blue",  "bright_magenta",
                                         "bright_cyan",  "bright_white"};
     const auto index = to_underlying(tjg::get<term_color>(value));
-    if (index < 0 || index >= 16) fmt::report_error("invalid terminal color");
+    if (index < 0 || index >= 16)
+      detail::standard_format_error("invalid terminal color");
     return write_color_ascii<Char>(out, names[index]);
   }
   case color_t::kind::cube: {
@@ -2642,44 +2539,6 @@ auto write_emphasis(OutputIt out, emphasis value) -> OutputIt {
 template <typename Char, typename OutputIt>
 auto write_style_value(OutputIt out, emphasis value) -> OutputIt {
   return write_emphasis<Char>(out, value);
-}
-
-template <typename T, typename Char> struct style_value_formatter {
- private:
-  fmt::detail::dynamic_format_specs<Char> _specs;
-
- public:
-  FMT_CONSTEXPR auto parse(fmt::parse_context<Char>& ctx) -> const Char* {
-    if (ctx.begin() == ctx.end() || *ctx.begin() == Char('}'))
-      return ctx.begin();
-    return fmt::detail::parse_format_specs(ctx.begin(), ctx.end(), _specs, ctx,
-                                           fmt::detail::type::string_type);
-  }
-
-  template <typename FormatContext>
-  auto format(const T& value, FormatContext& ctx) const -> decltype(ctx.out()) {
-    auto specs = fmt::format_specs{_specs};
-    fmt::detail::handle_dynamic_spec(specs.dynamic_width(), specs.width,
-                                     _specs.width_ref, ctx);
-    fmt::detail::handle_dynamic_spec(specs.dynamic_precision(), specs.precision,
-                                     _specs.precision_ref, ctx);
-    // Both ordinary and debug presentation use the same unquoted notation.
-    specs.set_type(fmt::presentation_type::string);
-    auto buffer = basic_memory_buffer<Char, 64>{};
-    write_style_value<Char>(std::back_inserter(buffer), value);
-    return fmt::detail::write<Char>(
-        ctx.out(), fmt::basic_string_view<Char>{buffer.data(), buffer.size()},
-        specs);
-  }
-};
-
-[[noreturn]] inline void standard_format_error(const char* message) {
-#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
-  throw std::format_error(message);
-#else
-  (void)message;
-  std::abort();
-#endif
 }
 
 // Delegate string specifications to the standard formatter. Our value notation
@@ -2783,10 +2642,6 @@ struct basic_styled_arg_formatter : Formatter {
   }
 };  // basic_styled_arg_formatter
 
-template <typename T, typename Char>
-using styled_arg_formatter =
-    basic_styled_arg_formatter<T, Char, fmt::formatter<T, Char>>;
-
 }  // namespace detail
 
 /** Returns a formatting argument that applies text style `ts` to `value` using
@@ -2807,7 +2662,7 @@ using styled_arg_formatter =
  *
  * **Example**:
  *
- *     fmt::print("Elapsed time: {0:.2f} seconds",
+ *     std::print("Elapsed time: {0:.2f} seconds",
  *                tjg::styled(1.23, tjg::fg(tjg::color::green)
  *                                      .bg(tjg::color::midnight_blue)));
  */
@@ -2824,202 +2679,151 @@ constexpr auto styled(const T& value, text_style ts)
  * independently of the terminal palette. Pass a value to `fg()` or `bg()`.
  */
 namespace color {
-constexpr FMT_INLINE_VARIABLE rgb alice_blue{240, 248, 255};
-constexpr FMT_INLINE_VARIABLE rgb antique_white{250, 235, 215};
-constexpr FMT_INLINE_VARIABLE rgb aqua{0, 255, 255};
-constexpr FMT_INLINE_VARIABLE rgb aquamarine{127, 255, 212};
-constexpr FMT_INLINE_VARIABLE rgb azure{240, 255, 255};
-constexpr FMT_INLINE_VARIABLE rgb beige{245, 245, 220};
-constexpr FMT_INLINE_VARIABLE rgb bisque{255, 228, 196};
-constexpr FMT_INLINE_VARIABLE rgb black{0, 0, 0};
-constexpr FMT_INLINE_VARIABLE rgb blanched_almond{255, 235, 205};
-constexpr FMT_INLINE_VARIABLE rgb blue{0, 0, 255};
-constexpr FMT_INLINE_VARIABLE rgb blue_violet{138, 43, 226};
-constexpr FMT_INLINE_VARIABLE rgb brown{165, 42, 42};
-constexpr FMT_INLINE_VARIABLE rgb burly_wood{222, 184, 135};
-constexpr FMT_INLINE_VARIABLE rgb cadet_blue{95, 158, 160};
-constexpr FMT_INLINE_VARIABLE rgb chartreuse{127, 255, 0};
-constexpr FMT_INLINE_VARIABLE rgb chocolate{210, 105, 30};
-constexpr FMT_INLINE_VARIABLE rgb coral{255, 127, 80};
-constexpr FMT_INLINE_VARIABLE rgb cornflower_blue{100, 149, 237};
-constexpr FMT_INLINE_VARIABLE rgb cornsilk{255, 248, 220};
-constexpr FMT_INLINE_VARIABLE rgb crimson{220, 20, 60};
-constexpr FMT_INLINE_VARIABLE rgb cyan{0, 255, 255};
-constexpr FMT_INLINE_VARIABLE rgb dark_blue{0, 0, 139};
-constexpr FMT_INLINE_VARIABLE rgb dark_cyan{0, 139, 139};
-constexpr FMT_INLINE_VARIABLE rgb dark_golden_rod{184, 134, 11};
-constexpr FMT_INLINE_VARIABLE rgb dark_gray{169, 169, 169};
-constexpr FMT_INLINE_VARIABLE rgb dark_green{0, 100, 0};
-constexpr FMT_INLINE_VARIABLE rgb dark_khaki{189, 183, 107};
-constexpr FMT_INLINE_VARIABLE rgb dark_magenta{139, 0, 139};
-constexpr FMT_INLINE_VARIABLE rgb dark_olive_green{85, 107, 47};
-constexpr FMT_INLINE_VARIABLE rgb dark_orange{255, 140, 0};
-constexpr FMT_INLINE_VARIABLE rgb dark_orchid{153, 50, 204};
-constexpr FMT_INLINE_VARIABLE rgb dark_red{139, 0, 0};
-constexpr FMT_INLINE_VARIABLE rgb dark_salmon{233, 150, 122};
-constexpr FMT_INLINE_VARIABLE rgb dark_sea_green{143, 188, 143};
-constexpr FMT_INLINE_VARIABLE rgb dark_slate_blue{72, 61, 139};
-constexpr FMT_INLINE_VARIABLE rgb dark_slate_gray{47, 79, 79};
-constexpr FMT_INLINE_VARIABLE rgb dark_turquoise{0, 206, 209};
-constexpr FMT_INLINE_VARIABLE rgb dark_violet{148, 0, 211};
-constexpr FMT_INLINE_VARIABLE rgb deep_pink{255, 20, 147};
-constexpr FMT_INLINE_VARIABLE rgb deep_sky_blue{0, 191, 255};
-constexpr FMT_INLINE_VARIABLE rgb dim_gray{105, 105, 105};
-constexpr FMT_INLINE_VARIABLE rgb dodger_blue{30, 144, 255};
-constexpr FMT_INLINE_VARIABLE rgb fire_brick{178, 34, 34};
-constexpr FMT_INLINE_VARIABLE rgb floral_white{255, 250, 240};
-constexpr FMT_INLINE_VARIABLE rgb forest_green{34, 139, 34};
-constexpr FMT_INLINE_VARIABLE rgb fuchsia{255, 0, 255};
-constexpr FMT_INLINE_VARIABLE rgb gainsboro{220, 220, 220};
-constexpr FMT_INLINE_VARIABLE rgb ghost_white{248, 248, 255};
-constexpr FMT_INLINE_VARIABLE rgb gold{255, 215, 0};
-constexpr FMT_INLINE_VARIABLE rgb golden_rod{218, 165, 32};
-constexpr FMT_INLINE_VARIABLE rgb gray{128, 128, 128};
-constexpr FMT_INLINE_VARIABLE rgb green{0, 128, 0};
-constexpr FMT_INLINE_VARIABLE rgb green_yellow{173, 255, 47};
-constexpr FMT_INLINE_VARIABLE rgb honey_dew{240, 255, 240};
-constexpr FMT_INLINE_VARIABLE rgb hot_pink{255, 105, 180};
-constexpr FMT_INLINE_VARIABLE rgb indian_red{205, 92, 92};
-constexpr FMT_INLINE_VARIABLE rgb indigo{75, 0, 130};
-constexpr FMT_INLINE_VARIABLE rgb ivory{255, 255, 240};
-constexpr FMT_INLINE_VARIABLE rgb khaki{240, 230, 140};
-constexpr FMT_INLINE_VARIABLE rgb lavender{230, 230, 250};
-constexpr FMT_INLINE_VARIABLE rgb lavender_blush{255, 240, 245};
-constexpr FMT_INLINE_VARIABLE rgb lawn_green{124, 252, 0};
-constexpr FMT_INLINE_VARIABLE rgb lemon_chiffon{255, 250, 205};
-constexpr FMT_INLINE_VARIABLE rgb light_blue{173, 216, 230};
-constexpr FMT_INLINE_VARIABLE rgb light_coral{240, 128, 128};
-constexpr FMT_INLINE_VARIABLE rgb light_cyan{224, 255, 255};
-constexpr FMT_INLINE_VARIABLE rgb light_golden_rod_yellow{250, 250, 210};
-constexpr FMT_INLINE_VARIABLE rgb light_gray{211, 211, 211};
-constexpr FMT_INLINE_VARIABLE rgb light_green{144, 238, 144};
-constexpr FMT_INLINE_VARIABLE rgb light_pink{255, 182, 193};
-constexpr FMT_INLINE_VARIABLE rgb light_salmon{255, 160, 122};
-constexpr FMT_INLINE_VARIABLE rgb light_sea_green{32, 178, 170};
-constexpr FMT_INLINE_VARIABLE rgb light_sky_blue{135, 206, 250};
-constexpr FMT_INLINE_VARIABLE rgb light_slate_gray{119, 136, 153};
-constexpr FMT_INLINE_VARIABLE rgb light_steel_blue{176, 196, 222};
-constexpr FMT_INLINE_VARIABLE rgb light_yellow{255, 255, 224};
-constexpr FMT_INLINE_VARIABLE rgb lime{0, 255, 0};
-constexpr FMT_INLINE_VARIABLE rgb lime_green{50, 205, 50};
-constexpr FMT_INLINE_VARIABLE rgb linen{250, 240, 230};
-constexpr FMT_INLINE_VARIABLE rgb magenta{255, 0, 255};
-constexpr FMT_INLINE_VARIABLE rgb maroon{128, 0, 0};
-constexpr FMT_INLINE_VARIABLE rgb medium_aquamarine{102, 205, 170};
-constexpr FMT_INLINE_VARIABLE rgb medium_blue{0, 0, 205};
-constexpr FMT_INLINE_VARIABLE rgb medium_orchid{186, 85, 211};
-constexpr FMT_INLINE_VARIABLE rgb medium_purple{147, 112, 219};
-constexpr FMT_INLINE_VARIABLE rgb medium_sea_green{60, 179, 113};
-constexpr FMT_INLINE_VARIABLE rgb medium_slate_blue{123, 104, 238};
-constexpr FMT_INLINE_VARIABLE rgb medium_spring_green{0, 250, 154};
-constexpr FMT_INLINE_VARIABLE rgb medium_turquoise{72, 209, 204};
-constexpr FMT_INLINE_VARIABLE rgb medium_violet_red{199, 21, 133};
-constexpr FMT_INLINE_VARIABLE rgb midnight_blue{25, 25, 112};
-constexpr FMT_INLINE_VARIABLE rgb mint_cream{245, 255, 250};
-constexpr FMT_INLINE_VARIABLE rgb misty_rose{255, 228, 225};
-constexpr FMT_INLINE_VARIABLE rgb moccasin{255, 228, 181};
-constexpr FMT_INLINE_VARIABLE rgb navajo_white{255, 222, 173};
-constexpr FMT_INLINE_VARIABLE rgb navy{0, 0, 128};
-constexpr FMT_INLINE_VARIABLE rgb old_lace{253, 245, 230};
-constexpr FMT_INLINE_VARIABLE rgb olive{128, 128, 0};
-constexpr FMT_INLINE_VARIABLE rgb olive_drab{107, 142, 35};
-constexpr FMT_INLINE_VARIABLE rgb orange{255, 165, 0};
-constexpr FMT_INLINE_VARIABLE rgb orange_red{255, 69, 0};
-constexpr FMT_INLINE_VARIABLE rgb orchid{218, 112, 214};
-constexpr FMT_INLINE_VARIABLE rgb pale_golden_rod{238, 232, 170};
-constexpr FMT_INLINE_VARIABLE rgb pale_green{152, 251, 152};
-constexpr FMT_INLINE_VARIABLE rgb pale_turquoise{175, 238, 238};
-constexpr FMT_INLINE_VARIABLE rgb pale_violet_red{219, 112, 147};
-constexpr FMT_INLINE_VARIABLE rgb papaya_whip{255, 239, 213};
-constexpr FMT_INLINE_VARIABLE rgb peach_puff{255, 218, 185};
-constexpr FMT_INLINE_VARIABLE rgb peru{205, 133, 63};
-constexpr FMT_INLINE_VARIABLE rgb pink{255, 192, 203};
-constexpr FMT_INLINE_VARIABLE rgb plum{221, 160, 221};
-constexpr FMT_INLINE_VARIABLE rgb powder_blue{176, 224, 230};
-constexpr FMT_INLINE_VARIABLE rgb purple{128, 0, 128};
-constexpr FMT_INLINE_VARIABLE rgb rebecca_purple{102, 51, 153};
-constexpr FMT_INLINE_VARIABLE rgb red{255, 0, 0};
-constexpr FMT_INLINE_VARIABLE rgb rosy_brown{188, 143, 143};
-constexpr FMT_INLINE_VARIABLE rgb royal_blue{65, 105, 225};
-constexpr FMT_INLINE_VARIABLE rgb saddle_brown{139, 69, 19};
-constexpr FMT_INLINE_VARIABLE rgb salmon{250, 128, 114};
-constexpr FMT_INLINE_VARIABLE rgb sandy_brown{244, 164, 96};
-constexpr FMT_INLINE_VARIABLE rgb sea_green{46, 139, 87};
-constexpr FMT_INLINE_VARIABLE rgb sea_shell{255, 245, 238};
-constexpr FMT_INLINE_VARIABLE rgb sienna{160, 82, 45};
-constexpr FMT_INLINE_VARIABLE rgb silver{192, 192, 192};
-constexpr FMT_INLINE_VARIABLE rgb sky_blue{135, 206, 235};
-constexpr FMT_INLINE_VARIABLE rgb slate_blue{106, 90, 205};
-constexpr FMT_INLINE_VARIABLE rgb slate_gray{112, 128, 144};
-constexpr FMT_INLINE_VARIABLE rgb snow{255, 250, 250};
-constexpr FMT_INLINE_VARIABLE rgb spring_green{0, 255, 127};
-constexpr FMT_INLINE_VARIABLE rgb steel_blue{70, 130, 180};
-constexpr FMT_INLINE_VARIABLE rgb tan{210, 180, 140};
-constexpr FMT_INLINE_VARIABLE rgb teal{0, 128, 128};
-constexpr FMT_INLINE_VARIABLE rgb thistle{216, 191, 216};
-constexpr FMT_INLINE_VARIABLE rgb tomato{255, 99, 71};
-constexpr FMT_INLINE_VARIABLE rgb turquoise{64, 224, 208};
-constexpr FMT_INLINE_VARIABLE rgb violet{238, 130, 238};
-constexpr FMT_INLINE_VARIABLE rgb wheat{245, 222, 179};
-constexpr FMT_INLINE_VARIABLE rgb white{255, 255, 255};
-constexpr FMT_INLINE_VARIABLE rgb white_smoke{245, 245, 245};
-constexpr FMT_INLINE_VARIABLE rgb yellow{255, 255, 0};
-constexpr FMT_INLINE_VARIABLE rgb yellow_green{154, 205, 50};
+constexpr inline rgb alice_blue{240, 248, 255};
+constexpr inline rgb antique_white{250, 235, 215};
+constexpr inline rgb aqua{0, 255, 255};
+constexpr inline rgb aquamarine{127, 255, 212};
+constexpr inline rgb azure{240, 255, 255};
+constexpr inline rgb beige{245, 245, 220};
+constexpr inline rgb bisque{255, 228, 196};
+constexpr inline rgb black{0, 0, 0};
+constexpr inline rgb blanched_almond{255, 235, 205};
+constexpr inline rgb blue{0, 0, 255};
+constexpr inline rgb blue_violet{138, 43, 226};
+constexpr inline rgb brown{165, 42, 42};
+constexpr inline rgb burly_wood{222, 184, 135};
+constexpr inline rgb cadet_blue{95, 158, 160};
+constexpr inline rgb chartreuse{127, 255, 0};
+constexpr inline rgb chocolate{210, 105, 30};
+constexpr inline rgb coral{255, 127, 80};
+constexpr inline rgb cornflower_blue{100, 149, 237};
+constexpr inline rgb cornsilk{255, 248, 220};
+constexpr inline rgb crimson{220, 20, 60};
+constexpr inline rgb cyan{0, 255, 255};
+constexpr inline rgb dark_blue{0, 0, 139};
+constexpr inline rgb dark_cyan{0, 139, 139};
+constexpr inline rgb dark_golden_rod{184, 134, 11};
+constexpr inline rgb dark_gray{169, 169, 169};
+constexpr inline rgb dark_green{0, 100, 0};
+constexpr inline rgb dark_khaki{189, 183, 107};
+constexpr inline rgb dark_magenta{139, 0, 139};
+constexpr inline rgb dark_olive_green{85, 107, 47};
+constexpr inline rgb dark_orange{255, 140, 0};
+constexpr inline rgb dark_orchid{153, 50, 204};
+constexpr inline rgb dark_red{139, 0, 0};
+constexpr inline rgb dark_salmon{233, 150, 122};
+constexpr inline rgb dark_sea_green{143, 188, 143};
+constexpr inline rgb dark_slate_blue{72, 61, 139};
+constexpr inline rgb dark_slate_gray{47, 79, 79};
+constexpr inline rgb dark_turquoise{0, 206, 209};
+constexpr inline rgb dark_violet{148, 0, 211};
+constexpr inline rgb deep_pink{255, 20, 147};
+constexpr inline rgb deep_sky_blue{0, 191, 255};
+constexpr inline rgb dim_gray{105, 105, 105};
+constexpr inline rgb dodger_blue{30, 144, 255};
+constexpr inline rgb fire_brick{178, 34, 34};
+constexpr inline rgb floral_white{255, 250, 240};
+constexpr inline rgb forest_green{34, 139, 34};
+constexpr inline rgb fuchsia{255, 0, 255};
+constexpr inline rgb gainsboro{220, 220, 220};
+constexpr inline rgb ghost_white{248, 248, 255};
+constexpr inline rgb gold{255, 215, 0};
+constexpr inline rgb golden_rod{218, 165, 32};
+constexpr inline rgb gray{128, 128, 128};
+constexpr inline rgb green{0, 128, 0};
+constexpr inline rgb green_yellow{173, 255, 47};
+constexpr inline rgb honey_dew{240, 255, 240};
+constexpr inline rgb hot_pink{255, 105, 180};
+constexpr inline rgb indian_red{205, 92, 92};
+constexpr inline rgb indigo{75, 0, 130};
+constexpr inline rgb ivory{255, 255, 240};
+constexpr inline rgb khaki{240, 230, 140};
+constexpr inline rgb lavender{230, 230, 250};
+constexpr inline rgb lavender_blush{255, 240, 245};
+constexpr inline rgb lawn_green{124, 252, 0};
+constexpr inline rgb lemon_chiffon{255, 250, 205};
+constexpr inline rgb light_blue{173, 216, 230};
+constexpr inline rgb light_coral{240, 128, 128};
+constexpr inline rgb light_cyan{224, 255, 255};
+constexpr inline rgb light_golden_rod_yellow{250, 250, 210};
+constexpr inline rgb light_gray{211, 211, 211};
+constexpr inline rgb light_green{144, 238, 144};
+constexpr inline rgb light_pink{255, 182, 193};
+constexpr inline rgb light_salmon{255, 160, 122};
+constexpr inline rgb light_sea_green{32, 178, 170};
+constexpr inline rgb light_sky_blue{135, 206, 250};
+constexpr inline rgb light_slate_gray{119, 136, 153};
+constexpr inline rgb light_steel_blue{176, 196, 222};
+constexpr inline rgb light_yellow{255, 255, 224};
+constexpr inline rgb lime{0, 255, 0};
+constexpr inline rgb lime_green{50, 205, 50};
+constexpr inline rgb linen{250, 240, 230};
+constexpr inline rgb magenta{255, 0, 255};
+constexpr inline rgb maroon{128, 0, 0};
+constexpr inline rgb medium_aquamarine{102, 205, 170};
+constexpr inline rgb medium_blue{0, 0, 205};
+constexpr inline rgb medium_orchid{186, 85, 211};
+constexpr inline rgb medium_purple{147, 112, 219};
+constexpr inline rgb medium_sea_green{60, 179, 113};
+constexpr inline rgb medium_slate_blue{123, 104, 238};
+constexpr inline rgb medium_spring_green{0, 250, 154};
+constexpr inline rgb medium_turquoise{72, 209, 204};
+constexpr inline rgb medium_violet_red{199, 21, 133};
+constexpr inline rgb midnight_blue{25, 25, 112};
+constexpr inline rgb mint_cream{245, 255, 250};
+constexpr inline rgb misty_rose{255, 228, 225};
+constexpr inline rgb moccasin{255, 228, 181};
+constexpr inline rgb navajo_white{255, 222, 173};
+constexpr inline rgb navy{0, 0, 128};
+constexpr inline rgb old_lace{253, 245, 230};
+constexpr inline rgb olive{128, 128, 0};
+constexpr inline rgb olive_drab{107, 142, 35};
+constexpr inline rgb orange{255, 165, 0};
+constexpr inline rgb orange_red{255, 69, 0};
+constexpr inline rgb orchid{218, 112, 214};
+constexpr inline rgb pale_golden_rod{238, 232, 170};
+constexpr inline rgb pale_green{152, 251, 152};
+constexpr inline rgb pale_turquoise{175, 238, 238};
+constexpr inline rgb pale_violet_red{219, 112, 147};
+constexpr inline rgb papaya_whip{255, 239, 213};
+constexpr inline rgb peach_puff{255, 218, 185};
+constexpr inline rgb peru{205, 133, 63};
+constexpr inline rgb pink{255, 192, 203};
+constexpr inline rgb plum{221, 160, 221};
+constexpr inline rgb powder_blue{176, 224, 230};
+constexpr inline rgb purple{128, 0, 128};
+constexpr inline rgb rebecca_purple{102, 51, 153};
+constexpr inline rgb red{255, 0, 0};
+constexpr inline rgb rosy_brown{188, 143, 143};
+constexpr inline rgb royal_blue{65, 105, 225};
+constexpr inline rgb saddle_brown{139, 69, 19};
+constexpr inline rgb salmon{250, 128, 114};
+constexpr inline rgb sandy_brown{244, 164, 96};
+constexpr inline rgb sea_green{46, 139, 87};
+constexpr inline rgb sea_shell{255, 245, 238};
+constexpr inline rgb sienna{160, 82, 45};
+constexpr inline rgb silver{192, 192, 192};
+constexpr inline rgb sky_blue{135, 206, 235};
+constexpr inline rgb slate_blue{106, 90, 205};
+constexpr inline rgb slate_gray{112, 128, 144};
+constexpr inline rgb snow{255, 250, 250};
+constexpr inline rgb spring_green{0, 255, 127};
+constexpr inline rgb steel_blue{70, 130, 180};
+constexpr inline rgb tan{210, 180, 140};
+constexpr inline rgb teal{0, 128, 128};
+constexpr inline rgb thistle{216, 191, 216};
+constexpr inline rgb tomato{255, 99, 71};
+constexpr inline rgb turquoise{64, 224, 208};
+constexpr inline rgb violet{238, 130, 238};
+constexpr inline rgb wheat{245, 222, 179};
+constexpr inline rgb white{255, 255, 255};
+constexpr inline rgb white_smoke{245, 245, 245};
+constexpr inline rgb yellow{255, 255, 0};
+constexpr inline rgb yellow_green{154, 205, 50};
 }  // namespace color
 
-FMT_END_EXPORT
 }  // namespace tjg
 
-FMT_BEGIN_NAMESPACE
-FMT_BEGIN_EXPORT
-/// Formats an unspecified color as `no_color`.
-template <typename Char>
-struct formatter<tjg::no_color_t, Char>
-    : tjg::detail::style_value_formatter<tjg::no_color_t, Char> {};
-
-/// Formats an RGB color as `#rrggbb`, without a named-color lookup.
-template <typename Char>
-struct formatter<tjg::rgb, Char>
-    : tjg::detail::style_value_formatter<tjg::rgb, Char> {};
-
-/// Formats a terminal color using its enum name.
-template <typename Char>
-struct formatter<tjg::term_color, Char>
-    : tjg::detail::style_value_formatter<tjg::term_color, Char> {};
-
-/// Formats a gray color as `grayN`, where N is its index.
-template <typename Char>
-struct formatter<tjg::gray_color, Char>
-    : tjg::detail::style_value_formatter<tjg::gray_color, Char> {};
-
-/// Formats a cube color as `cubeRGB`, with channel indices from 0 to 5.
-template <typename Char>
-struct formatter<tjg::cube_color, Char>
-    : tjg::detail::style_value_formatter<tjg::cube_color, Char> {};
-
-/// Formats the active color alternative, preserving its kind.
-template <typename Char>
-struct formatter<tjg::color_t, Char>
-    : tjg::detail::style_value_formatter<tjg::color_t, Char> {};
-
-/// Formats a style as optional absolute/emphasis characters and fg/bg colors.
-template <typename Char>
-struct formatter<tjg::text_style, Char>
-    : tjg::detail::style_value_formatter<tjg::text_style, Char> {};
-
-/// Formats set emphasis names in braces, or `{}` when no bits are set.
-template <typename Char>
-struct formatter<tjg::emphasis, Char>
-    : tjg::detail::style_value_formatter<tjg::emphasis, Char> {};
-
-template <typename T, typename Char>
-struct formatter<tjg::detail::styled_arg<T>, Char>
-    : tjg::detail::styled_arg_formatter<T, Char> {};
-
-FMT_END_EXPORT
-FMT_END_NAMESPACE
-
-FMT_BEGIN_EXPORT
 namespace std {
 
 template <typename Char>
@@ -3063,9 +2867,10 @@ struct formatter<tjg::emphasis, Char>
     : tjg::detail::standard_style_value_formatter<tjg::emphasis, Char> {};
 
 template <typename T, typename Char>
-  requires formattable<const T, Char>
+  requires formattable<decay_t<const T>, Char>
 struct formatter<tjg::detail::styled_arg<T>, Char>
-    : tjg::detail::basic_styled_arg_formatter<T, Char, formatter<T, Char>> {};
+    : tjg::detail::basic_styled_arg_formatter<
+          T, Char, formatter<decay_t<const T>, Char>> {};
 
 template <> struct hash<tjg::rgb> {
   auto operator()(tjg::rgb value) const noexcept -> size_t {
@@ -3086,8 +2891,5 @@ template <> struct hash<tjg::text_style> {
 };
 
 }  // namespace std
-FMT_END_EXPORT
 
-#undef FMT_COLOR_COMPARISONS
-
-#endif  // FMT_COLOR_H_
+#endif  // TJG_COLOR_H_

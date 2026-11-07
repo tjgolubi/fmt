@@ -43,9 +43,9 @@ the slash; with background alone, begin with `/`. With neither, omit the color
 component. An empty style displays `{}`; an absolute-only style displays `=`.
 
 ```cpp
-fmt::format("{}", tjg::text_style{});                  // "{}"
-fmt::format("{}", tjg::bg(tjg::gray_color{12}));        // "/gray12"
-fmt::format("{:?}", tjg::absolute(tjg::bold().underline()
+std::format("{}", tjg::text_style{});                  // "{}"
+std::format("{}", tjg::bg(tjg::gray_color{12}));        // "/gray12"
+std::format("{:?}", tjg::absolute(tjg::bold().underline()
     .fg(tjg::term_color::bright_red).bg(tjg::rgb{26, 43, 60})));
 // "=b_ bright_red/#1a2b3c"
 ```
@@ -110,9 +110,7 @@ supports constant evaluation under the same conditions as the member setter.
 For example, `auto red = tjg::absolute(tjg::fg(tjg::color::red));`.
 
 The member `absolute(bool enable = true)` returns `text_style&`; `is_absolute()`
-queries the flag. The setter is `noexcept` and supports constant evaluation in
-C++14 and later on supported compilers; the query is `constexpr` in C++11 and
-later.  The flag uses bit 62 without increasing the style's size. Absolute
+queries the flag. Both are `noexcept` and support constant evaluation.  The flag uses bit 62 without increasing the style's size. Absolute
 styles can still be explicitly modified using setters, overlays, and
 composition.
 
@@ -143,7 +141,7 @@ style.overlay(other);
 // Emphasis: bold and underline. The value of other is unchanged.
 ```
 
-The operation is `noexcept` and supports constant evaluation in C++14 and later
+The operation is `noexcept` and supports constant evaluation in C++23 and later
 on supported compilers. It changes the style value without emitting ANSI output.
 Use component setters to clear a color or remove attributes.
 
@@ -151,7 +149,7 @@ The free function `tjg::overlay(base, overrides)` returns a new `text_style`
 with the same precedence rules, leaving both inputs unchanged. The second
 argument supplies the overriding colors; reversing the arguments can change
 the result. Like the member, it is `noexcept` and supports constant evaluation
-in C++14 and later on supported compilers, with runtime use available in C++11.
+in C++23 and later on supported compilers.
 
 ```cpp
 const auto base = tjg::text_style{tjg::term_color::red, tjg::gray_color{12},
@@ -176,8 +174,8 @@ explicitly modifies a style value; it performs no inheritance or ANSI output.
 The member is `noexcept` and returns `text_style&` for chaining.
 
 The free `tjg::underlay(base, defaults)` returns the combined style without
-modifying either input. Both forms support constant evaluation in C++14 and
-later on supported compilers, with runtime use available in C++11.
+modifying either input. Both forms support constant evaluation in C++23 and
+later on supported compilers.
 
 ```cpp
 constexpr auto base = tjg::fg(tjg::color::yellow);
@@ -250,12 +248,12 @@ constexpr auto mixed = tjg::blend(first, second, third);
 ```
 
 The function leaves its inputs unchanged, is `noexcept`, and supports constant
-evaluation in C++11 and later. The result is always relative. Blending only
+evaluation in C++23 and later. The result is always relative. Blending only
 empty styles returns an empty style. All arguments must be styles; use a
 `text_style` constructor to combine colors and emphasis before blending.
 
 Each absolute input must specify both foreground and background colors: a
-terminal-default color has an unknown RGB value. `FMT_ASSERT` checks this
+terminal-default color has an unknown RGB value. `assert` checks this
 precondition for every input. With assertions disabled, unspecified channels
 contribute nothing and the result still discards the absolute flag.
 
@@ -264,11 +262,11 @@ contribute nothing and the result still discards the absolute flag.
 `empty` returns `true` when both colors are unspecified, no emphasis is set,
 and absolute is disabled. A specified black color or an absolute-only reset
 makes a style nonempty.
-The query is `const`, `noexcept`, and `constexpr` in C++11 and later.
+The query is `const`, `noexcept`, and `constexpr` in C++23 and later.
 
 `clear` removes both colors, all emphasis, and the absolute flag, restoring the
 default-constructed state. It is `noexcept` and returns `text_style&` for
-chaining. It supports constant evaluation in C++14 and later on supported
+chaining. It supports constant evaluation in C++23 and later on supported
 compilers. Clearing a style changes the value; it does not emit an ANSI reset.
 
 ```cpp
@@ -365,7 +363,7 @@ bool is_strike()    const noexcept;
 Each query returns whether its attribute is enabled. Unset attributes return
 `false`, including every attribute of an empty style. Queries preserve the
 style. These queries and the component getters support constant evaluation
-in C++11 and later.
+in C++23 and later.
 
 ### Attribute setters
 
@@ -385,7 +383,7 @@ Each setter enables its attribute by default, or disables it when passed
 and returns `text_style&` for chaining. Bold and faint are independent:
 enabling or disabling either leaves the other unchanged. Rendering emits both
 when both are enabled; their combined appearance depends on the terminal.
-Attribute and component setters support constant evaluation in C++14 and
+Attribute and component setters support constant evaluation in C++23 and
 later on supported compilers.
 
 The aliases `strikethrough` and `is_strikethrough` forward to `strike`
@@ -421,14 +419,14 @@ Call a function without arguments, or with `true`, to create a style containing
 only that emphasis attribute. Both color channels are unspecified. Passing
 `false` returns an empty style with no colors or attributes. The Boolean
 parameter defaults to `true`; these factories support constant evaluation in
-C++11 and later.
+C++23 and later.
 
 ```cpp
 constexpr auto heading = tjg::bold();
 constexpr auto plain   = tjg::bold(false); // Empty style.
 bool use_bold = true;                      // For example, a user preference.
-fmt::println("{}", tjg::styled(42, tjg::bold(use_bold)));
-fmt::println("{}", tjg::styled("Heading", tjg::bold()));
+std::println("{}", tjg::styled(42, tjg::bold(use_bold)));
+std::println("{}", tjg::styled("Heading", tjg::bold()));
 ```
 
 ::: bold(bool)
@@ -480,8 +478,8 @@ auto bold_only = tjg::underline(bold_underlined, false);
 
 Use these overloads when deriving a style from a reusable base. The member
 call `style.underline()` modifies `style`; `tjg::underline(style)` returns a
-new value. The style-copy overloads support constant evaluation in C++14 and
-later on supported compilers, with runtime use available in C++11.
+new value. The style-copy overloads support constant evaluation in C++23 and
+later on supported compilers.
 
 ::: bold(text_style, bool)
     options:
@@ -558,16 +556,14 @@ attributes |= tjg::emphasis::underline;
 auto style = tjg::text_style{attributes};
 ```
 
-Both operators are `noexcept`. `operator|` supports constant evaluation in
-C++11 and later; the mutating `operator|=` supports it in C++14 and later on
-supported compilers, with runtime use available in C++11.
+Both operators are `noexcept` and support constant evaluation.
 
 ## Foreground and background
 
 `fg` and `bg` provide a convenient way to create a `text_style` without
 calling a constructor directly. When passed a color value from namespace `tjg`,
 argument-dependent lookup (ADL) finds these functions, so you can omit the
-`fmt::` prefix: for example, `fg(tjg::color::red)` instead of
+`std::` prefix: for example, `fg(tjg::color::red)` instead of
 `tjg::text_style{tjg::color::red}`.
 
 ::: fg(color_t)

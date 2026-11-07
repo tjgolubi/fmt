@@ -1,5 +1,6 @@
+#include "standard-format-test.h"
 #include "fmt/parse_styled_text.h"
-#include "fmt/xchar.h"
+
 #include "gtest-extra.h"
 
 namespace {
@@ -60,7 +61,7 @@ void check_sgr() {
   for (unsigned i = 0; i < 16; ++i) {
     const auto fg = i < 8 ? 30 + i : 90 + i - 8;
     const auto bg = i < 8 ? 40 + i : 100 + i - 8;
-    const auto sequence = fmt::format("\x1b[{};{}m", fg, bg);
+    const auto sequence = std::format("\x1b[{};{}m", fg, bg);
     check(sequence.c_str(), tjg::text_style{static_cast<tjg::term_color>(i),
                                            static_cast<tjg::term_color>(i)});
   }
@@ -69,7 +70,7 @@ void check_sgr() {
     if (i < 16) color = static_cast<tjg::term_color>(i);
     else if (i < 232) color = tjg::cube_color{i - 16};
     else color = tjg::gray_color{static_cast<int>(i - 232)};
-    const auto sequence = fmt::format("\x1b[38;5;{};48;5;{}m", i, i);
+    const auto sequence = std::format("\x1b[38;5;{};48;5;{}m", i, i);
     check(sequence.c_str(), tjg::text_style{color, color});
   }
   const auto rgb = tjg::text_style{tjg::rgb{1, 2, 255}, tjg::rgb{254, 0, 3}};
@@ -110,12 +111,12 @@ TEST(parse_styled_text_test, overloads_and_round_trip) {
   for (unsigned mask = 0; mask < 256; ++mask) {
     auto source = tjg::styled_text{"a", tjg::text_style{static_cast<tjg::emphasis>(mask)}} +
         tjg::styled_text{"b", tjg::fg(tjg::rgb{12, 34, 56})} + "c";
-    const auto rendered = fmt::format(FMT_STRING("{}"), source);
+    const auto rendered = std::format("{}", source);
     const auto parsed = tjg::parse_styled_text(rendered);
     EXPECT_EQ(parsed.plain_text(), "abc");
     // Rendering may split a combined reset and color sequence. Preserve the
     // parsed text, styles, and reset-group boundaries, not the escape bytes.
-    const auto rerendered = fmt::format(FMT_STRING("{}"), parsed);
+    const auto rerendered = std::format("{}", parsed);
     EXPECT_EQ(tjg::parse_styled_text(rerendered), parsed);
   }
 }
@@ -161,15 +162,15 @@ TEST(parse_styled_text_test, reset_boundaries) {
 
 TEST(parse_styled_text_test, enclosing_style) {
   const auto outer = tjg::underline();
-  EXPECT_EQ(tjg::format(outer, FMT_STRING("A{}B"), tjg::parse_styled_text("plain")),
-            tjg::format(outer, FMT_STRING("AplainB")));
+  EXPECT_EQ(tjg::format(outer, "A{}B", tjg::parse_styled_text("plain")),
+            tjg::format(outer, "AplainB"));
   const auto parsed = tjg::parse_styled_text("a\x1b[mb\x1b[1mc");
   const auto bold = tjg::bold();
   const auto expected = tjg::to_sgr(outer) + "a" +
       tjg::to_sgr(tjg::absolute(tjg::text_style{}), outer) + "b" +
       tjg::to_sgr(bold, tjg::text_style{}) + "c" +
       tjg::to_sgr(outer, bold) + tjg::to_sgr(tjg::text_style{}, outer);
-  EXPECT_EQ(tjg::format(outer, FMT_STRING("{}"), parsed), expected);
+  EXPECT_EQ(tjg::format(outer, "{}", parsed), expected);
 }
 
 TEST(parse_styled_text_test, standard_view_slice_owns_text) {

@@ -5,54 +5,54 @@ Include `<fmt/color.h>` to use these output overloads. See
 
 ## print to a stream
 
-::: print(FILE*, text_style, format_string<T...>, T&&...)
+::: print(FILE*, text_style, std::format_string<T...>, T&&...)
     options:
       color_reference: true
 
 ## print to stdout
 
-::: print(text_style, format_string<T...>, T&&...)
+::: print(text_style, std::format_string<T...>, T&&...)
     options:
       color_reference: true
 
 ## println to a stream
 
-::: println(FILE*, text_style, format_string<T...>, T&&...)
+::: println(FILE*, text_style, std::format_string<T...>, T&&...)
     options:
       color_reference: true
 
 ## println to stdout
 
-::: println(text_style, format_string<T...>, T&&...)
+::: println(text_style, std::format_string<T...>, T&&...)
     options:
       color_reference: true
 
 ## vprint
 
-::: vprint(FILE*, text_style, std::string_view, format_args)
+::: vprint(FILE*, text_style, std::string_view, std::format_args)
     options:
       color_reference: true
 
 ## vprintln
 
-::: vprintln(FILE*, text_style, std::string_view, format_args)
+::: vprintln(FILE*, text_style, std::string_view, std::format_args)
     options:
       color_reference: true
 
-The `v` functions accept an argument pack created with `fmt::make_format_args`.
+The `v` functions accept an argument pack created with `std::make_format_args`.
 The referenced arguments must remain alive while the pack is used.
 
 ```cpp
 int result = 42;
-auto args = fmt::make_format_args(result);
+auto args = std::make_format_args(result);
 tjg::vprintln(stdout, tjg::fg(tjg::color::green), "Result: {}", args);
 ```
 
 ## Styled ostream output
 
 Include `<fmt/color-ostream.h>` to use the styled `std::ostream` overloads.
-This bridge includes both `<fmt/color.h>` and `<fmt/ostream.h>`; the two
-existing headers remain independent.
+This bridge includes `<fmt/color.h>` and standard ostream support. It does not
+include the {fmt} engine.
 
 ```cpp
 #include <fmt/color-ostream.h>
@@ -67,12 +67,12 @@ The style applies to the entire formatted message. An empty style emits no
 SGR sequences. A nonempty style ends with a reset to terminal defaults, which
 does not restore an enclosing style. `println` places its newline after the
 reset. Stream state and exception handling follow the existing ostream output
-functions. These overloads support C++11 and later. `print` and `println`
+functions. These overloads require C++23 and standard-library formatting support. `print` and `println`
 provide separate overloads for `std::ostream&` and `std::wostream&`;
 `vprint` and `vprintln` take `std::basic_ostream<Char>&`.
 The format string and argument pack must match the stream character type.
 Use narrow format strings for narrow streams and wide format strings for wide
-streams. Including the bridge also includes `<fmt/xchar.h>` for wide formatting.
+streams. Wide formatting is available without `<fmt/xchar.h>`.
 
 
 ```cpp
@@ -82,28 +82,28 @@ tjg::print(wide, style, L"Result: {:04x}", 42);
 tjg::println(wide, style, L"Status: {}", L"done");
 
 int result = 42;
-auto args = fmt::make_wformat_args(result);
+auto args = std::make_wformat_args(result);
 tjg::vprint(wide, style, L"Result: {}", args);
 tjg::vprintln(wide, style, L"Result: {}", args);
 ```
 
-The formatted-output functions use fmt format specifications and leave stream
+The formatted-output functions use standard format specifications and leave stream
 formatting settings such as field width and numeric base unchanged. Wide and
 narrow output follow the same styling, newline, and reset rules.
 
-::: print(std::ostream&, text_style, format_string<T...>, T&&...)
+::: print(std::ostream&, text_style, std::format_string<T...>, T&&...)
     options:
       color_reference: true
 
-::: print(std::wostream&, text_style, wformat_string<T...>, T&&...)
+::: print(std::wostream&, text_style, std::wformat_string<T...>, T&&...)
     options:
       color_reference: true
 
-::: println(std::ostream&, text_style, format_string<T...>, T&&...)
+::: println(std::ostream&, text_style, std::format_string<T...>, T&&...)
     options:
       color_reference: true
 
-::: println(std::wostream&, text_style, wformat_string<T...>, T&&...)
+::: println(std::wostream&, text_style, std::wformat_string<T...>, T&&...)
     options:
       color_reference: true
 
@@ -119,8 +119,8 @@ narrow output follow the same styling, newline, and reset rules.
 
 With `<fmt/color-ostream.h>`, insert the result of `tjg::styled(value, style)`
 directly into a stream. The operator returns the same stream by reference for
-chaining and supports both `std::ostream` and `std::wostream` in C++11 and later.
-The value must support insertion into that stream; a fmt formatter is not
+chaining and supports both `std::ostream` and `std::wostream` in C++23 and later.
+The value must support insertion into that stream; a standard formatter is not
 required.
 
 ```cpp
@@ -146,7 +146,7 @@ behavior. Strings are inserted literally, without interpreting braces as format
 fields.
 
 A nonempty style emits opening SGR sequences selected by
-[`FMT_COLOR_COMPACT_SGR`](format.md#to_sgr), followed by the value and a reset
+[`TJG_COLOR_COMPACT_SGR`](format.md#to_sgr), followed by the value and a reset
 to terminal defaults. An empty style simply inserts the value and emits no
 reset. Inserting an empty string with a nonempty style still emits the opening
 sequences and reset. A reset does not restore an enclosing style.

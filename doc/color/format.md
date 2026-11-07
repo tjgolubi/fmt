@@ -26,7 +26,7 @@ auto sgr      = tjg::to_sgr(style);
 auto wide_sgr = tjg::to_sgr<wchar_t>(style);
 ```
 
-The output depends on the `FMT_COLOR_COMPACT_SGR` compiler definition:
+The output depends on the `TJG_COLOR_COMPACT_SGR` compiler definition:
 
 | Definition | Output for the example                  |
 | ---------- | --------------------------------------- |
@@ -36,8 +36,7 @@ The output depends on the `FMT_COLOR_COMPACT_SGR` compiler definition:
 `0` is the default.
 
 Here `\x1b` denotes the actual ESC character. Set the definition consistently
-when compiling the application and its libraries. Both modes support C++11
-and later. The function can allocate and is not `noexcept`.
+when compiling the application and its libraries. The extension requires C++23. The function can allocate and is not `noexcept`.
 
 Use `to_sgr` when managing terminal state yourself. Use the styled formatting
 or printing functions to wrap text in styling followed by a terminal reset.
@@ -66,7 +65,7 @@ auto transition = tjg::to_sgr(final_style, initial);
 ```
 
 For a relative final style, identical complete states emit nothing in either
-output mode. Changed states follow `FMT_COLOR_COMPACT_SGR`:
+output mode. Changed states follow `TJG_COLOR_COMPACT_SGR`:
 
 - Noncompact mode (`0`, the default) resets when the initial state is nondefault,
   then emits the final style's specified colors and emphasis, using separate
@@ -83,7 +82,7 @@ and value, preserving terminal palette semantics. Noncompact mode instead
 rebuilds the full requested state, with a reset when needed. Both modes produce
 the requested appearance.
 
-Both overloads support C++11 and wide characters; transitions can allocate and
+Both overloads support narrow and wide characters; transitions can allocate and
 are not `noexcept`.
 
 ## `sgr_reset`
@@ -96,7 +95,7 @@ are not `noexcept`.
 the four-character sequence `\x1b[0m`. `Char` defaults to `char`; specify
 `wchar_t` for a wide-character view. The view refers to static storage and
 remains valid for the lifetime of the program. The function allocates no
-memory, is `noexcept`, and supports constant evaluation in C++11 and later.
+memory, is `noexcept`, and supports constant evaluation in C++23 and later.
 Its output is the same in both SGR modes.
 
 Use the reset after manually styled text to restore terminal-default colors
@@ -127,7 +126,7 @@ auto message     = tjg::wrap_sgr(style, "Result: {42}");
 
 Empty text produces an empty string, even with a nonempty style. An empty
 style returns only the text. Otherwise, the opening sequences follow the
-selected `FMT_COLOR_COMPACT_SGR` mode, and the trailing reset restores terminal
+selected `TJG_COLOR_COMPACT_SGR` mode, and the trailing reset restores terminal
 defaults rather than an enclosing style. The function leaves its inputs
 unchanged, can allocate, and is not `noexcept`.
 
@@ -144,7 +143,7 @@ auto another      = tjg::wrap_sgr(style, wide_view);
 
 ## SGR length constants
 
-Both constants are `constexpr std::size_t` values available in C++11 and later:
+Both constants are `constexpr std::size_t` values available in C++23 and later:
 
 | Constant                | Value | Meaning                                                                     |
 | ----------------------- | ----- | --------------------------------------------------------------------------- |
@@ -158,34 +157,34 @@ Use the returned string's `size` for the actual opening length.
 
 ## `format`
 
-::: format(text_style, format_string<T...>, T&&...)
+::: format(text_style, std::format_string<T...>, T&&...)
     options:
       color_reference: true
 
 ## `format_to`
 
-::: format_to(OutputIt, text_style, format_string<T...>, T&&...)
+::: format_to(OutputIt, text_style, std::format_string<T...>, T&&...)
     options:
       color_reference: true
 
 ## `vformat`
 
-::: vformat(text_style, std::string_view, format_args)
+::: vformat(text_style, std::string_view, std::format_args)
     options:
       color_reference: true
 
 ## `vformat_to`
 
-::: vformat_to(OutputIt, text_style, std::string_view, format_args)
+::: vformat_to(OutputIt, text_style, std::string_view, std::format_args)
     options:
       color_reference: true
 
-The `v` functions accept an argument pack created with `fmt::make_format_args`.
+The `v` functions accept an argument pack created with `std::make_format_args`.
 The referenced arguments must remain alive while the pack is used.
 
 ```cpp
 int result   = 42;
-auto args    = fmt::make_format_args(result);
+auto args    = std::make_format_args(result);
 auto message = tjg::vformat(tjg::fg(tjg::color::green),
                             "Result: {}", args);
 ```

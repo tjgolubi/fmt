@@ -683,7 +683,7 @@ Example:
 
 See [Terminal Colors and Text Styles](color/index.md) for detailed documentation.
 
-::: tjg::print(text_style, format_string<T...>, T&&...)
+::: tjg::print(text_style, std::format_string<T...>, T&&...)
 
 ::: tjg::fg(color_t)
 

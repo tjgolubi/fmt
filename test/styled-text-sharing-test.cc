@@ -30,7 +30,7 @@ FMTCOLOR_TEST_NOINLINE void* operator new(size_t size) {
     if (size <= bookkeeping_size) ++bookkeeping_count;
   }
   void* ptr = std::malloc(size == 0 ? 1 : size);
-  if (!ptr) FMT_THROW(std::bad_alloc());
+  if (!ptr) throw std::bad_alloc();
   return ptr;
 }
 FMTCOLOR_TEST_NOINLINE void operator delete(void* ptr) noexcept {

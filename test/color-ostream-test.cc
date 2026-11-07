@@ -1,3 +1,4 @@
+#include "standard-format-test.h"
 // Formatting library for C++ - styled std::ostream tests
 //
 // Copyright (c) 2026 - present, Victor Zverovich and {fmt} contributors
@@ -69,7 +70,7 @@ TEST(color_ostream_test, insertion) {
   auto& result = (os << tjg::styled(text, style));
   EXPECT_EQ(&result, &os);
   result << ' ' << tjg::styled(42, tjg::emphasis::underline) << '!';
-#if FMT_COLOR_COMPACT_SGR == 1
+#if TJG_COLOR_COMPACT_SGR == 1
   const std::string opening = "\x1b[1;38;2;1;2;3;40m";
 #else
   const std::string opening = "\x1b[1m\x1b[38;2;001;002;003m\x1b[40m";
@@ -85,7 +86,7 @@ TEST(color_ostream_test, insertion_wide) {
   auto& result = (os << tjg::styled(text, style));
   EXPECT_EQ(&result, &os);
   result << L' ' << tjg::styled(42, tjg::emphasis::underline) << L'!';
-#if FMT_COLOR_COMPACT_SGR == 1
+#if TJG_COLOR_COMPACT_SGR == 1
   const std::wstring opening = L"\x1b[1;38;2;1;2;3;40m";
 #else
   const std::wstring opening = L"\x1b[1m\x1b[38;2;001;002;003m\x1b[40m";
@@ -149,7 +150,7 @@ TEST(color_ostream_test, wide_print_and_println) {
   const auto style = tjg::text_style{tjg::emphasis::bold, tjg::rgb{1, 2, 3},
                                     tjg::term_color::black};
   tjg::print(os, style, L"Result: {:04x} {}", 42, L"done");
-#if FMT_COLOR_COMPACT_SGR == 1
+#if TJG_COLOR_COMPACT_SGR == 1
   EXPECT_EQ(os.str(), L"\x1b[1;38;2;1;2;3;40mResult: 002a done\x1b[0m");
 #else
   EXPECT_EQ(os.str(),
@@ -170,7 +171,7 @@ TEST(color_ostream_test, wide_print_and_println) {
 TEST(color_ostream_test, wide_argument_packs) {
   std::wostringstream os;
   int value = 42;
-  auto args = fmt::make_wformat_args(value);
+  auto args = std::make_wformat_args(value);
   tjg::vprint(os, tjg::emphasis::bold, L"{:04}", args);
   EXPECT_EQ(os.str(), L"\x1b[1m0042\x1b[0m");
   os.str(L"");
@@ -194,8 +195,8 @@ TEST(color_ostream_test, wide_print_preserves_stream_formatting) {
 TEST(color_ostream_test, wide_formatting_error) {
   std::wostringstream os;
   os << L"original";
-  EXPECT_THROW(tjg::print(os, tjg::emphasis::bold, fmt::runtime(L"{")),
-               fmt::format_error);
+  EXPECT_THROW(tjg::vprint(os, tjg::emphasis::bold, L"{", std::make_wformat_args()),
+               std::format_error);
   EXPECT_EQ(os.str(), L"original");
 }
 
@@ -220,13 +221,13 @@ TEST(color_ostream_test, print) {
   const auto style = tjg::text_style{tjg::emphasis::bold, tjg::rgb{1, 2, 3},
                                     tjg::term_color::black};
   tjg::print(os, style, "Result: {:04x} {}", 42, "done");
-#if FMT_COLOR_COMPACT_SGR == 1
+#if TJG_COLOR_COMPACT_SGR == 1
   EXPECT_EQ(os.str(), "\x1b[1;38;2;1;2;3;40mResult: 002a done\x1b[0m");
 #else
   EXPECT_EQ(os.str(),
             "\x1b[1m\x1b[38;2;001;002;003m\x1b[40mResult: 002a done\x1b[0m");
 #endif
-  fmt::print(os, " plain");
+  os << " plain";
   EXPECT_EQ(os.str().substr(os.str().size() - 10), "\x1b[0m plain");
 }
 
@@ -239,7 +240,7 @@ TEST(color_ostream_test, println) {
 TEST(color_ostream_test, argument_packs) {
   std::ostringstream os;
   int value = 42;
-  auto args = fmt::make_format_args(value);
+  auto args = std::make_format_args(value);
   tjg::vprint(os, tjg::emphasis::bold, "{:04}", args);
   EXPECT_EQ(os.str(), "\x1b[1m0042\x1b[0m");
   os.str("");
@@ -269,7 +270,7 @@ TEST(color_ostream_test, literal_text_and_stream_state) {
   os << std::hex;
   const char text[] = "a\0{}b";
   tjg::print(os, tjg::emphasis::bold, "{} {}",
-             fmt::string_view(text, sizeof(text) - 1), 42);
+             std::string_view(text, sizeof(text) - 1), 42);
   const char expected[] = "\x1b[1ma\0{}b 42\x1b[0m";
   EXPECT_EQ(os.str(), std::string(expected, sizeof(expected) - 1));
   EXPECT_EQ(os.width(), 30);
@@ -287,8 +288,8 @@ TEST(color_ostream_test, long_output) {
 TEST(color_ostream_test, formatting_error) {
   std::ostringstream os;
   os << "original";
-  EXPECT_THROW(tjg::print(os, tjg::emphasis::bold, fmt::runtime("{")),
-               fmt::format_error);
+  EXPECT_THROW(tjg::vprint(os, tjg::emphasis::bold, "{", std::make_format_args()),
+               std::format_error);
   EXPECT_EQ(os.str(), "original");
 }
 

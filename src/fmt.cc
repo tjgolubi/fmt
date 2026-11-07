@@ -134,17 +134,12 @@ extern "C++" {
 // purview to be exported.
 #include "fmt/args.h"
 #include "fmt/chrono.h"
-FMT_BEGIN_EXPORT
-#include "fmt/memory_buffer.h"
-FMT_END_EXPORT
-#include "fmt/color.h"
 #include "fmt/compile.h"
 #include "fmt/enum.h"
 #include "fmt/format.h"
 #if FMT_OS
 #  include "fmt/os.h"
 #endif
-#include "fmt/color-ostream.h"
 #include "fmt/ostream.h"
 #include "fmt/printf.h"
 #include "fmt/ranges.h"

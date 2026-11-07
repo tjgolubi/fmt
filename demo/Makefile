@@ -1,6 +1,6 @@
 CXX = g++
 FMT_DIR = ..
-CPPFLAGS += -I$(FMT_DIR)/include -DFMT_HEADER_ONLY -DFMT_COLOR_COMPACT_SGR=1
+CPPFLAGS += -I$(FMT_DIR)/include -DTJG_COLOR_COMPACT_SGR=1
 CXXFLAGS += -std=c++23 -Wall -Wextra -Werror
 
 DEMOS = FmtColorDemo2 TableDemo

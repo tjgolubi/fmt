@@ -1,8 +1,9 @@
+#include "standard-format-test.h"
 #include "fmt/backslash.h"
 #include "gtest-extra.h"
 
 namespace {
-#if FMT_USE_CONSTEXPR
+#if 1
 template <typename Char, size_t N, size_t M>
 constexpr auto check_constexpr_iterators(const Char (&input)[N],
                                        const Char (&expected)[M]) -> bool {
@@ -43,7 +44,7 @@ static_assert(check_constexpr_decoding(),
               "constexpr octal, hex, quotes, question mark, and empty input");
 #endif
 
-#if FMT_USE_CONSTEXPR_STRING
+#if defined(__cpp_lib_constexpr_string) && __cpp_lib_constexpr_string >= 201907L
 constexpr auto check_constexpr_strings() -> bool {
   const auto encoded = tjg::backslash_escape("\x1b\n\x7f");
   const auto wide = tjg::backslash_escape(L"\x1b\n\x7f");
@@ -110,18 +111,18 @@ template <typename Char> void check_invalid_escapes() {
       "\\x{1b}", "\\o{33}", "\\\n"};
   for (auto spelling : malformed) {
     const auto input = text<Char>(spelling);
-    EXPECT_THROW((void)tjg::backslash_unescape(input), fmt::format_error);
+    EXPECT_THROW((void)tjg::backslash_unescape(input), std::format_error);
     auto output = text<Char>("prefix:");
     const auto prefixed = text<Char>("ok\\n") + input;
     EXPECT_THROW(tjg::backslash_unescape_to(std::back_inserter(output), prefixed),
-                 fmt::format_error);
+                 std::format_error);
     EXPECT_EQ(output, text<Char>("prefix:ok\n"));
     Char buffer[8] = {};
-    EXPECT_THROW(tjg::backslash_unescape_to(buffer, input), fmt::format_error);
+    EXPECT_THROW(tjg::backslash_unescape_to(buffer, input), std::format_error);
     EXPECT_EQ(buffer[0], Char{}); // The invalid escape writes nothing.
   }
   const auto nul_escape = std::basic_string<Char>{Char('\\'), Char{}};
-  EXPECT_THROW((void)tjg::backslash_unescape(nul_escape), fmt::format_error);
+  EXPECT_THROW((void)tjg::backslash_unescape(nul_escape), std::format_error);
   const auto nul_suffix = text<Char>("\\0") + Char('8');
   EXPECT_EQ(tjg::backslash_unescape(nul_suffix),
             (std::basic_string<Char>{Char{}, Char('8')}));

@@ -8,7 +8,6 @@
 #ifndef FMT_XCHAR_H_
 #define FMT_XCHAR_H_
 
-#include "color.h"
 #include "format.h"
 #include "ostream.h"
 #include "ranges.h"
@@ -361,24 +360,5 @@ template <typename T> inline auto to_wstring(const T& value) -> std::wstring {
 }
 FMT_END_EXPORT
 FMT_END_NAMESPACE
-
-namespace tjg {
-FMT_BEGIN_EXPORT
-inline auto vformat(text_style ts, std::wstring_view fmt,
-                    fmt::wformat_args args) -> std::wstring {
-  auto buf = basic_memory_buffer<wchar_t>();
-  detail::vformat_to(buf, ts, fmt, args);
-  return {buf.data(), buf.size()};
-}
-
-template <typename... T>
-inline auto format(text_style ts, fmt::wformat_string<T...> fmt, T&&... args)
-    -> std::wstring {
-  return tjg::vformat(ts, std::wstring_view{fmt.get().data(), fmt.get().size()},
-                      fmt::make_wformat_args(args...));
-}
-
-FMT_END_EXPORT
-}  // namespace tjg
 
 #endif  // FMT_XCHAR_H_

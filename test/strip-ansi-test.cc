@@ -1,3 +1,4 @@
+#include "standard-format-test.h"
 #include "fmt/strip_ansi.h"
 #include "gtest-extra.h"
 

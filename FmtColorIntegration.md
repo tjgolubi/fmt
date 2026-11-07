@@ -1,277 +1,103 @@
-# Using FmtColor from Make and CMake
+# Using TJG styling from Make and CMake
 
-FmtColor extends {fmt} with color and style values, owning styled text, SGR
-parsing, and ANSI stripping. Development is on `color-dev`. Use this fork's
-headers and matching library, or its header-only target. The complete styling
-API on `ref/CPP20` uses namespace `tjg` and targets C++23. The formatting
-engine remains in namespace `fmt`, and existing header paths are retained.
+On `ref/CPP20`, the styling extension is a standalone C++23 header library.
+It uses `std::format` and `std::print`, with public APIs in namespace `tjg`.
+Header paths remain under `fmt/`, but no {fmt} engine headers, compiled library,
+`FMT_HEADER_ONLY` definition, or {fmt} formatter adapters are required.
+The repository retains the original {fmt} library for unrelated consumers.
 
-Colors, styles, emphasis, and borrowed `styled` values also support
-`std::format` and `std::format_to`; include `<fmt/color.h>`. Include
-`<fmt/styled_text.h>` for standard formatting of owning narrow/wide trees.
-The existing {fmt} adapters and style-taking output functions remain available.
+A C++23 standard library with `<format>` and `<print>` is required. Development
+validation uses GCC 14.2 with compact SGR enabled.
 
 ## Select the headers
 
-| Header                      | Use                                                        |
-| --------------------------- | ---------------------------------------------------------- |
-| `<fmt/color.h>`             | Color/style values, styled arguments, and SGR helpers.     |
-| `<fmt/styled_text.h>`       | Owning narrow/wide text trees and their formatter.         |
-| `<fmt/parse_styled_text.h>` | Parse standard ANSI SGR into owned styled text.            |
-| `<fmt/strip_ansi.h>`        | Strip ANSI sequences from strings or styled-text leaves.   |
-| `<fmt/memory_buffer.h>`     | Standalone C++23 inline/growable buffer in namespace `tjg`. |
-| `<fmt/backslash.h>`         | Escape control characters or decode backslash escapes.     |
-| `<fmt/color-ostream.h>`     | Styled narrow/wide ostream output and stream insertion.    |
-| `<fmt/xchar.h>`             | Wide-character formatting and printing entry points.       |
+| Header | Use |
+| --- | --- |
+| `<fmt/color.h>` | Color/style values, styled arguments, SGR helpers, narrow/wide formatting, and narrow FILE printing. |
+| `<fmt/styled_text.h>` | Owning narrow/wide text trees and standard formatters. |
+| `<fmt/parse_styled_text.h>` | Parse standard ANSI SGR into owned styled text. |
+| `<fmt/strip_ansi.h>` | Strip ANSI sequences from strings or styled-text leaves. |
+| `<fmt/memory_buffer.h>` | Inline/growable buffer in namespace `tjg`. |
+| `<fmt/backslash.h>` | Escape control characters or decode backslash escapes. |
+| `<fmt/color-ostream.h>` | Styled narrow/wide ostream output and insertion. |
 
-The parser and stripper headers include `styled_text.h`, which includes
-`color.h`. Include the headers for the APIs your application uses. The
-[user guide](https://tjgolubi.github.io/fmt/color/index.html) covers their
-complete interfaces and behavior.
+The parser and stripper include `styled_text.h`, which includes `color.h`.
+Wide styling no longer needs `<fmt/xchar.h>`. Internal utilities are in
+`text_support.h` (UTF-8 decoding, width tables, and escaping),
+`tree_format_specs.h` (tree specifications), and `format_support.h` (errors).
 
 ## Select the SGR output mode
 
-There are two SGR output modes:
+Define `TJG_COLOR_COMPACT_SGR=1` to emit one SGR sequence per style, with decimal
+parameters without leading zeros. This replaces `FMT_COLOR_COMPACT_SGR`.
+Undefined or `0` retains the separate, zero-padded output mode, but this branch
+is validated only in compact mode.
 
-`FMT_COLOR_COMPACT_SGR` effect table:
-
-| Value | Output                                                                                                                             |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `0`   | Legacy output: separate SGR sequences for emphasis, foreground, and background, with three-digit RGB and indexed-color parameters. |
-| `1`   | Compact output: one SGR sequence per style, with decimal parameters that have no leading zeros.                                    |
-
-Both modes express the same terminal styling. Nested styled arguments and
-styled-text trees inherit and restore the enclosing formatting style. At the
-top level, that enclosing style is normally terminal defaults. An absolute
-styled-text node emits an SGR reset before applying its own style, unless there
-is no output. An explicit absolute target to `to_sgr(target, initial)` resets
-in both modes, even when the attributes already match.
-
-`tjg::to_sgr(style)` returns only the style's opening SGR sequences; it returns
-an empty string for an empty relative style. It does not append a reset.
-
-For bold text with RGB foreground `(1,2,3)` and terminal-black background,
-the opening sequences are:
-
-```text
-Legacy:  \x1b[1m\x1b[38;2;001;002;003m\x1b[40m
-Compact: \x1b[1;38;2;1;2;3;40m
-```
-
-Here `\x1b` denotes the actual ESC character.
-
-If `FMT_COLOR_COMPACT_SGR` is undefined, the effect is the same as `0`.
-
-## Build and install the library
-
-Run these commands from this fork's source directory in a Bash shell.
-The commands below use GCC, including the MSYS2 toolchain on Windows. Use a
-matching toolchain for the library and consuming application; do not mix an
-MSYS2 library with native MSVC objects. Native MSVC builds can use the same
-CMake targets with their matching installation.
-
-The development script builds the library and runs tests in either mode.
-The default build also generates documentation; the TaskWarrior build uses
-`FMT_DOC=OFF` and skips documentation generation:
-
-```bash
-./build.bash              # Legacy mode, in build/
-./build.bash taskwarrior  # Compact mode, in build/taskwarrior/
-```
-
-Both modes prepare the shared documentation-tool environment, even though
-TaskWarrior mode does not generate the guide. The script therefore requires
-the project's test and documentation tools. For an
-application-only installation, build the static library without those tools:
-
-```bash
-cmake -S . -B build/install \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_COMPILER=g++ \
-  -DFMT_TEST=OFF \
-  -DFMT_DOC=OFF \
-  -DFMT_INSTALL=ON \
-  -DBUILD_SHARED_LIBS=OFF \
-  -DCMAKE_INSTALL_LIBDIR=lib \
-  -DCMAKE_INSTALL_PREFIX="$HOME/.local/fmtcolor"
-cmake --build build/install --parallel 8
-cmake --install build/install
-```
-
-This installs headers, the static library, and CMake package files under the
-chosen prefix. The examples below use that prefix and a static installation.
-
-**Select the SGR mode when compiling the application.** The gated code lives
-in `color.h`; the same installed headers and compiled library support either
-mode. The installation does not automatically enable compact output in its
-consumers, even when it comes from `build/taskwarrior`.
+Use the same setting in every translation unit. The setting changes inline and
+template definitions; mixing settings violates the one-definition rule.
 
 ## Example application
-
-Save this as `hello.cpp` in a separate application directory:
-
-```cpp
-#include <fmt/color.h>
-
-int main() {
-  const auto style = tjg::fg(tjg::rgb{1, 2, 3})
-                         .bg(tjg::term_color::black).bold();
-  tjg::print(style, "Hello from FmtColor!\n");
-}
-```
-
-## Use a traditional Makefile
-
-Save the following as `Makefile` alongside `hello.cpp`. Recipe lines must
-start with a tab.
-
-```makefile
-CXX = g++
-FMT_PREFIX ?= $(HOME)/.local/fmtcolor
-COMPACT_SGR ?= 0
-BUILD_DIR := build/sgr-$(COMPACT_SGR)
-
-CPPFLAGS += -I$(FMT_PREFIX)/include -DFMT_COLOR_COMPACT_SGR=$(COMPACT_SGR)
-CXXFLAGS += -O2 -std=c++23
-LDFLAGS += -L$(FMT_PREFIX)/lib
-LDLIBS += -lfmt
-
-.PHONY: all
-all: $(BUILD_DIR)/hello
-
-$(BUILD_DIR)/hello: hello.cpp Makefile
-	mkdir -p $(BUILD_DIR)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) hello.cpp $(LDFLAGS) $(LDLIBS) -o $@
-```
-
-Build and run legacy output:
-
-```bash
-make COMPACT_SGR=0
-./build/sgr-0/hello
-```
-
-Build and run compact output:
-
-```bash
-make COMPACT_SGR=1
-./build/sgr-1/hello
-```
-
-For another installation location, add `FMT_PREFIX=/path/to/fmtcolor` to the
-`make` command. The separate output directories prevent reusing an executable
-compiled for the other mode. For a larger application, apply the definition
-to every source file that uses the styling header and link `-lfmt` after the
-application's object files.
-
-## Use CMake
-
-Save this as `CMakeLists.txt` alongside `hello.cpp`:
-
-```cmake
-cmake_minimum_required(VERSION 3.16)
-project(fmtcolor_hello LANGUAGES CXX)
-
-option(USE_COMPACT_SGR "Use compact FmtColor SGR output" OFF)
-
-find_package(fmt CONFIG REQUIRED)
-
-add_executable(hello hello.cpp)
-target_link_libraries(hello PRIVATE fmt::fmt)
-target_compile_features(hello PRIVATE cxx_std_23)
-target_compile_definitions(hello PRIVATE
-  FMT_COLOR_COMPACT_SGR=$<BOOL:${USE_COMPACT_SGR}>)
-```
-
-Build and run legacy output:
-
-```bash
-cmake -S . -B build/legacy \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_COMPILER=g++ \
-  -DCMAKE_PREFIX_PATH="$HOME/.local/fmtcolor" \
-  -DUSE_COMPACT_SGR=OFF
-cmake --build build/legacy --parallel 8
-./build/legacy/hello
-```
-
-Build and run compact output:
-
-```bash
-cmake -S . -B build/compact \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_COMPILER=g++ \
-  -DCMAKE_PREFIX_PATH="$HOME/.local/fmtcolor" \
-  -DUSE_COMPACT_SGR=ON
-cmake --build build/compact --parallel 8
-./build/compact/hello
-```
-
-`USE_COMPACT_SGR` is an option introduced by this example. It becomes the
-compiler definition `FMT_COLOR_COMPACT_SGR=0` or `1` through
-`target_compile_definitions`. Passing `-DFMT_COLOR_COMPACT_SGR=1` to CMake
-alone does not define the macro for the compiler.
-
-If CMake finds another installation, use
-`-Dfmt_DIR="$HOME/.local/fmtcolor/lib/cmake/fmt"` to select this package
-explicitly. On multi-configuration generators, add `--config Release` to the
-build command and run the executable from the generator's Release directory.
-
-For a library target whose public headers use FmtColor, use `PUBLIC` for both
-the link dependency and the compile definition so its consumers inherit them:
-
-```cmake
-target_link_libraries(my_library PUBLIC fmt::fmt)
-target_compile_definitions(my_library PUBLIC
-  FMT_COLOR_COMPACT_SGR=$<BOOL:${USE_COMPACT_SGR}>)
-```
-
-Use the same macro value throughout an application, including its libraries.
-The macro changes inline and template definitions in the header; mixing
-settings across translation units violates C++'s one-definition rule.
-
-## Header-only use
-
-The same two output modes also work without linking the compiled library.
-With Make, define `FMT_HEADER_ONLY=1` and omit `-lfmt`. With CMake, link
-`fmt::fmt-header-only` instead of `fmt::fmt`. Keep the SGR mode definition
-in either case.
-
-## Owning text, parsing, and stripping
-
-These APIs use the same library target and SGR-mode definition as the example
-above. This complete example can replace `hello.cpp`:
 
 ```cpp
 #include <fmt/parse_styled_text.h>
 #include <fmt/strip_ansi.h>
+#include <print>
 
 int main() {
+  const auto style = tjg::fg(tjg::rgb{1, 2, 3}).bold();
+  tjg::println(style, "Hello, {}!", "world");
   auto phrase = tjg::bold("Hello ")
       + tjg::overlay(tjg::fg(tjg::term_color::green), "world");
-  tjg::println(tjg::underline(), "{}", phrase);
-
+  std::println("{}", phrase);
   auto parsed = tjg::parse_styled_text("\x1b[31mred\x1b[0m");
-  fmt::println("{}", parsed);
-
-  auto text = tjg::bold("\x1b[31mred\x1b[0m");
-  auto clean = tjg::strip_ansi(text);
-  fmt::println("{} / {}", clean, clean.plain_text());
+  std::println("{} / {}", parsed, tjg::strip_ansi(parsed).plain_text());
 }
 ```
 
-The first line is underlined throughout: `Hello ` is also bold and `world` is
-green. The parser produces owned styled text from standard SGR; a reset protects
-all following parsed text from inheriting an enclosing style. Parsing preserves
-appearance rather than the original escape bytes.
+Style-taking `tjg::format`, `format_to`, `print`, and `println` accept standard
+format strings and use standard formatters. Their `v` counterparts take packs
+from `std::make_format_args` or `std::make_wformat_args`. Arguments referenced by
+packs must remain alive. Invalid specifications and malformed backslash escapes
+throw `std::format_error`. The standard library does not support named arguments;
+use positional dynamic width and precision, such as `"{0:>{1}.{2}}"`.
 
-The last line prints bold `red`, then plain ` / red`. Stripping a tree removes
-raw escapes while preserving its explicit styles and structure. Each leaf is
-processed separately; sequences spanning leaves are retained. To discard explicit
-styles, use `strip_ansi(text).plain_text()`. To scan all leaves as one string,
-use `strip_ansi(text.plain_text())` instead. Neither parsing nor stripping
-simulates terminal editing or provides security sanitization.
+A style-taking output call appends a terminal reset for a nonempty style.
+Nested `tjg::styled` arguments and owning trees inherit and restore their
+enclosing style. Shared terminal state assumes single-threaded use for now.
 
-For the complete nested-style demonstration, run `make -C demo run` from the
-library checkout. That demo uses header-only mode, compact SGR, and C++23;
-this branch uses C++23 throughout.
+## Use Make
+
+Save the example as `hello.cpp`. Point `TJG_ROOT` at this checkout:
+
+```makefile
+CXX = g++
+TJG_ROOT ?= /path/to/fmt
+CPPFLAGS += -I$(TJG_ROOT)/include -DTJG_COLOR_COMPACT_SGR=1
+CXXFLAGS += -O2 -std=c++23
+
+hello: hello.cpp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+```
+
+No `-lfmt` or header-only engine definition is needed. Run `make -C demo run`
+from the checkout for the full nested-style and table demonstrations.
+
+## Use CMake
+
+```cmake
+cmake_minimum_required(VERSION 3.20)
+project(tjg_hello LANGUAGES CXX)
+set(TJG_ROOT /path/to/fmt CACHE PATH "TJG checkout")
+add_executable(hello hello.cpp)
+target_include_directories(hello PRIVATE "${TJG_ROOT}/include")
+target_compile_features(hello PRIVATE cxx_std_23)
+target_compile_definitions(hello PRIVATE TJG_COLOR_COMPACT_SGR=1)
+```
+
+For a library whose public headers use TJG, propagate the include directory,
+C++23 feature, and SGR definition with `PUBLIC` instead of `PRIVATE`.
+
+The repository's existing CMake install also installs these headers. A full
+repository build still builds/tests the retained {fmt} engine; that is separate
+from the extension's requirements. `./build.bash` and `./build.bash taskwarrior`
+select C++23 compact SGR. CI remains disabled for `ref/CPP20`.

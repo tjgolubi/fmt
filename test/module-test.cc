@@ -320,12 +320,6 @@ TEST(module_test, sprintf) {
   EXPECT_EQ("42", fmt::sprintf("%d", 42));
 }
 
-TEST(module_test, color) {
-  EXPECT_EQ("\x1B[30m42\x1B[0m",
-            tjg::format(fg(tjg::terminal_color::black), "{}", 42));
-  EXPECT_EQ(L"\x1B[30m42\x1B[0m",
-            tjg::format(fg(tjg::terminal_color::black), L"{}", 42));
-}
 
 TEST(module_test, cstring_view) {
   auto s = "fmt";

@@ -1,5 +1,6 @@
+#include "standard-format-test.h"
 #include "fmt/color.h"
-#include "fmt/xchar.h"
+
 
 #include <format>
 #include <string>
@@ -96,14 +97,14 @@ TEST(color_std_format_test, styled_underlying_specs_and_padding) {
   const int integer = 42;
   const auto number = tjg::styled(integer, style);
   EXPECT_EQ(std::format("{:04x}", number),
-            fmt::format(FMT_STRING("{:04x}"), tjg::styled(integer, style)));
+            tjg::wrap_sgr(style, "002a"));
   EXPECT_EQ(std::format("{:>{}}", number, 8),
-            fmt::format(FMT_STRING("{:>{}}"), tjg::styled(integer, style), 8));
+            tjg::wrap_sgr(style, "      42"));
   EXPECT_EQ(std::format(L"{:04x}", number),
-            fmt::format(FMT_STRING(L"{:04x}"), tjg::styled(integer, style)));
+            tjg::wrap_sgr<wchar_t>(style, L"002a"));
   const auto word = tjg::styled("abcdef", style);
   EXPECT_EQ(std::format("{:*>8.3}", word),
-            fmt::format(FMT_STRING("{:*>8.3}"), tjg::styled("abcdef", style)));
+            tjg::wrap_sgr(style, "*****abc"));
   auto text = std::string{};
   std::format_to(std::back_inserter(text), "{}", number);
   EXPECT_EQ(text, std::format("{}", number));
@@ -136,7 +137,7 @@ TEST(color_std_format_test, nested_native_formatting_and_absolute_styles) {
   const int integer = 42;
   const auto inner = tjg::styled(integer, tjg::fg(tjg::term_color::red));
   const auto nested = tjg::styled(inner, outer);
-  EXPECT_EQ(std::format("{}", nested), fmt::format(FMT_STRING("{}"), tjg::styled(inner, outer)));
+  EXPECT_EQ(std::format("{}", nested), tjg::to_sgr(outer) + tjg::to_sgr(tjg::overlay(outer, tjg::fg(tjg::term_color::red)), outer) + "42" + tjg::to_sgr(outer, tjg::overlay(outer, tjg::fg(tjg::term_color::red))) + tjg::to_sgr(tjg::text_style{}, outer));
 }
 
 TEST(color_std_format_test, exception_restores_shared_state) {
@@ -151,4 +152,14 @@ TEST(color_std_format_test, exception_restores_shared_state) {
   EXPECT_THROW(std::format_to(std::back_inserter(output), "{}", value),
                std::format_error);
   EXPECT_EQ(tjg::get_terminal_state(), outer);
+}
+
+TEST(color_std_format_test, styled_character_arrays_use_c_string_semantics) {
+  const auto style = tjg::bold();
+  EXPECT_EQ(std::format("{}", tjg::styled("text", style)), "\x1b[1mtext\x1b[0m");
+  EXPECT_EQ(std::format(L"{}", tjg::styled(L"text", style)), L"\x1b[1mtext\x1b[0m");
+  const char text[] = "a\0b";
+  EXPECT_EQ(std::format("{}", tjg::styled(text, style)), "\x1b[1ma\x1b[0m");
+  const auto view = std::string_view{text, 3};
+  EXPECT_EQ(std::format("{}", tjg::styled(view, style)), std::string("\x1b[1ma\0b\x1b[0m", 11));
 }

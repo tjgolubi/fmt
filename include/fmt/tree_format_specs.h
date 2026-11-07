@@ -1,4 +1,4 @@
-// String specifications shared by the standard and {fmt} tree adapters.
+// String specifications for TJG styled-text formatting.
 #ifndef TJG_TREE_FORMAT_SPECS_H_
 #define TJG_TREE_FORMAT_SPECS_H_
 #include <concepts>
@@ -12,7 +12,6 @@ template <typename Char> struct tree_format_specs {
   std::size_t width = 0;
   std::size_t precision = (std::numeric_limits<std::size_t>::max)();
   int width_arg = -1, precision_arg = -1;
-  std::basic_string_view<Char> width_name{}, precision_name{};
   char alignment = '<';
   Char fill[4] = {Char(' ')};
   std::size_t fill_size = 1;
@@ -56,7 +55,7 @@ template <typename Char> struct tree_format_specs {
       }
       return value;
     };
-    auto argument = [&](std::basic_string_view<Char>& name) constexpr -> int {
+    auto argument = [&]() constexpr -> int {
       ++it;
       std::size_t id = 0;
       if (it != end && *it == Char('}'))
@@ -65,34 +64,23 @@ template <typename Char> struct tree_format_specs {
         id = number();
         ctx.check_arg_id(static_cast<int>(id));
       } else {
-        const auto first = it;
-        while (it != end &&
-               ((*it >= Char('a') && *it <= Char('z')) ||
-                (*it >= Char('A') && *it <= Char('Z')) || *it == Char('_') ||
-                (it != first && *it >= Char('0') && *it <= Char('9'))))
-          ++it;
-        if (it == first) fail("invalid argument name");
-        name = std::basic_string_view<Char>{first, it};
-        if constexpr (requires { ctx.check_arg_id(name); })
-          ctx.check_arg_id(name);
-        else
-          fail("named arguments are not supported by standard formatting");
+        fail("invalid dynamic argument index");
       }
       if (it == end || *it != Char('}')) fail("invalid dynamic specification");
       ++it;
       if (id > static_cast<unsigned>((std::numeric_limits<int>::max)()))
         fail("argument index is too large");
-      return name.empty() ? static_cast<int>(id) : -1;
+      return static_cast<int>(id);
     };
     if (it != end && *it == Char('0')) fail("invalid string format flag");
     if (it != end && *it >= Char('1') && *it <= Char('9'))
       width = number();
     else if (it != end && *it == Char('{'))
-      width_arg = argument(width_name);
+      width_arg = argument();
     if (it != end && *it == Char('.')) {
       ++it;
       if (it != end && *it == Char('{'))
-        precision_arg = argument(precision_name);
+        precision_arg = argument();
       else
         precision = number();
     }
@@ -105,7 +93,7 @@ template <typename Char> struct tree_format_specs {
   template <typename Context, typename Fail>
   auto resolve(Context& ctx, Fail fail) const -> tree_format_specs {
     auto result = *this;
-    auto get = [&](int id, std::basic_string_view<Char> name) -> std::size_t {
+    auto get = [&](int id) -> std::size_t {
       auto visitor = [&](auto value) -> std::size_t {
         using T = decltype(value);
         if constexpr (std::integral<T> && !std::same_as<T, bool> &&
@@ -125,18 +113,10 @@ template <typename Char> struct tree_format_specs {
         else
           return std::visit_format_arg(visitor, arg);
       };
-      if (!name.empty()) {
-        if constexpr (requires { ctx.arg(name); })
-          return visit(ctx.arg(name));
-        else
-          fail("named arguments are not supported by standard formatting");
-      }
       return visit(ctx.arg(id));
     };
-    if (width_arg >= 0 || !width_name.empty())
-      result.width = get(width_arg, width_name);
-    if (precision_arg >= 0 || !precision_name.empty())
-      result.precision = get(precision_arg, precision_name);
+    if (width_arg >= 0) result.width = get(width_arg);
+    if (precision_arg >= 0) result.precision = get(precision_arg);
     return result;
   }
   template <typename OutputIt>

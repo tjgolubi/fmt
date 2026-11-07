@@ -3,7 +3,7 @@ set -euo pipefail
 
 build_dir=build
 fmt_doc=ON
-cmake_args=()
+cmake_args=(-DCMAKE_CXX_FLAGS=-DTJG_COLOR_COMPACT_SGR=1)
 if (( $# > 1 )); then
   echo "Usage: $0 [taskwarrior]" >&2
   exit 2
@@ -13,7 +13,7 @@ case "${1:-}" in
   taskwarrior)
     build_dir=build/taskwarrior
     fmt_doc=OFF
-    cmake_args=(-DCMAKE_CXX_FLAGS=-DFMT_COLOR_COMPACT_SGR=1)
+    cmake_args=(-DCMAKE_CXX_FLAGS=-DTJG_COLOR_COMPACT_SGR=1)
     ;;
   *)
     echo "Usage: $0 [taskwarrior]" >&2
@@ -52,4 +52,4 @@ fi
 
 # For Clang/libc++, add `-DCMAKE_CXX_COMPILER=clang++`
 # and `-DCMAKE_CXX_FLAGS=-stdlib=libc++`.
-# Consumers use `fmt::fmt` or `fmt::fmt-header-only`; both propagate `cxx_std_11`.
+# TJG consumers need the extension headers and C++23; no fmt link is required.

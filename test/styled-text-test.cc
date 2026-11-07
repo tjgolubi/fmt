@@ -1,5 +1,6 @@
+#include "standard-format-test.h"
 #include "fmt/styled_text.h"
-#include "fmt/xchar.h"
+
 #include "gtest-extra.h"
 
 namespace {
@@ -496,14 +497,11 @@ TEST(styled_text_test, absolute_literal_overloads) {
 
 namespace {
 template<typename Char>
-void check_display_width(const std::basic_string<Char>& value) {
+void check_display_width(const std::basic_string<Char>& value, std::size_t expected_width) {
   using node = tjg::basic_styled_text<Char>;
   const auto leaf = node{value, tjg::bold()};
   const auto width = leaf.display_width();
-  const auto formatted = fmt::format(
-      fmt::runtime(text<Char>("{:>20}")), value);
-  // Ordinary formatting adds one space per missing display column.
-  EXPECT_EQ(formatted.size() - value.size(), std::size_t{20} - width);
+  EXPECT_EQ(width, expected_width);
   auto nested = tjg::underline(leaf + node{text<Char>("!")});
   EXPECT_EQ(nested.display_width(), width + 1);
   auto moved = node{std::move(nested)};
@@ -519,12 +517,14 @@ TEST(styled_text_test, display_width) {
   const std::string samples[] = {
       "", "ASCII", "caf\xc3\xa9", "\xe7\x95\x8c", "\xf0\x9f\x98\x80",
       "e\xcc\x81", "\xff", std::string{"a\0b", 3}, "\x1b[1mx\x1b[0m"};
-  for (const auto& sample : samples) check_display_width(sample);
+  const std::size_t widths[] = {0, 5, 4, 2, 2, 2, 1, 3, 9};
+  for (std::size_t i = 0; i < std::size(samples); ++i)
+    check_display_width(samples[i], widths[i]);
   EXPECT_EQ(tjg::styled_text{"caf\xc3\xa9"}.display_width(), std::size_t{4});
   EXPECT_EQ(tjg::styled_text{"\xe7\x95\x8c"}.display_width(), std::size_t{2});
-  check_display_width(std::wstring{L"wide"});
-  check_display_width(std::wstring{L"\u754c"});
-  check_display_width(std::wstring{L"e\u0301"});
+  check_display_width(std::wstring{L"wide"}, 4);
+  check_display_width(std::wstring{L"\u754c"}, 1);
+  check_display_width(std::wstring{L"e\u0301"}, 2);
 }
 
 

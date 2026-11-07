@@ -3,37 +3,29 @@
 // Copyright (c) 2026 - present, Victor Zverovich and {fmt} contributors
 // All rights reserved.
 //
-// For the license information refer to format.h.
+// For the license information refer to LICENSE.
 
-#ifndef FMT_COLOR_OSTREAM_H_
-#define FMT_COLOR_OSTREAM_H_
+#ifndef TJG_COLOR_OSTREAM_H_
+#define TJG_COLOR_OSTREAM_H_
 
+#include <limits>
+#include <ostream>
 #include <string_view>
 
 #include "color.h"
-#include "ostream.h"
 #include "tree_format_specs.h"
-#include "xchar.h"
-
-#ifndef FMT_MODULE
-#  include <limits>
-#endif
 
 namespace tjg {
-FMT_BEGIN_EXPORT
 
 template <typename Char> class basic_styled_text;
 
 namespace detail {
+template <typename Char> struct styled_text_renderer;
 
 template <typename Char> struct color_ostream_types {
   using string_view = std::basic_string_view<Char>;
-  using format_args = fmt::basic_format_args<fmt::buffered_context<Char>>;
+  using format_args = detail::format_args<Char>;
 };
-
-inline void write_color_buffer(std::ostream& os, const memory_buffer& buf) {
-  fmt::print(os, FMT_STRING("{}"), std::string_view(buf.data(), buf.size()));
-}
 
 template <typename Char, std::size_t SIZE>
 void write_color_buffer(std::basic_ostream<Char>& os,
@@ -70,10 +62,10 @@ auto operator<<(std::basic_ostream<Char>& os, emphasis value)
  * Stream width, fill, and alignment apply as for ordinary string insertion.
  */
 template <typename Char, typename T,
-          FMT_ENABLE_IF(detail::is_color<T>::value ||
-                        std::is_same<T, no_color_t>::value ||
-                        std::is_same<T, color_t>::value ||
-                        std::is_same<T, text_style>::value)>
+          std::enable_if_t<
+              detail::is_color<T>::value || std::is_same_v<T, no_color_t> ||
+                  std::is_same_v<T, color_t> || std::is_same_v<T, text_style>,
+              int> = 0>
 auto operator<<(std::basic_ostream<Char>& os, const T& value)
     -> std::basic_ostream<Char>& {
   auto buffer = basic_memory_buffer<Char, 64>{};
@@ -99,7 +91,7 @@ auto operator<<(std::basic_ostream<Char>& os,
   const auto width = os.width();
   const auto max_int = (std::numeric_limits<int>::max)();
   if (width > max_int)
-    fmt::report_error("styled text stream width is too large");
+    detail::standard_format_error("styled text stream width is too large");
   if (width > 0) specs.width = static_cast<int>(width);
   const auto fill = os.fill();
   specs.set_fill(std::basic_string_view<Char>{&fill, 1});
@@ -108,10 +100,13 @@ auto operator<<(std::basic_ostream<Char>& os,
                                                                        : '>';
   os.width(0);
   auto buffer = basic_memory_buffer<Char>{};
-  auto out = std::back_inserter(buffer);
-  auto ctx = fmt::basic_format_context<decltype(out), Char>{out, {}};
-  fmt::formatter<basic_styled_text<Char>, Char>::format_with_specs(value, ctx,
-                                                                   specs);
+  auto output = std::back_inserter(buffer);
+  struct output_context {
+    decltype(output) iterator;
+    auto out() { return iterator; }
+  };
+  auto ctx = output_context{output};
+  detail::styled_text_renderer<Char>::format_with_specs(value, ctx, specs);
   detail::write_color_buffer(os, buffer);
   return os;
 }
@@ -153,20 +148,16 @@ void vprintln(std::basic_ostream<Char>& os, text_style ts,
  *     tjg::print(os, tjg::text_style{tjg::emphasis::bold}, "Result: {}", 42);
  */
 template <typename... T>
-void print(std::ostream& os, text_style ts, fmt::format_string<T...> fmt,
+void print(std::ostream& os, text_style ts, std::format_string<T...> fmt,
            T&&... args) {
-  tjg::vprint(os, ts,
-              std::basic_string_view{fmt.get().data(), fmt.get().size()},
-              fmt::make_format_args(args...));
+  tjg::vprint(os, ts, fmt.get(), std::make_format_args(args...));
 }
 
 /// Prints styled formatted text to a wide stream.
 template <typename... T>
-void print(std::wostream& os, text_style ts, fmt::wformat_string<T...> fmt,
+void print(std::wostream& os, text_style ts, std::wformat_string<T...> fmt,
            T&&... args) {
-  tjg::vprint(os, ts,
-              std::basic_string_view{fmt.get().data(), fmt.get().size()},
-              fmt::make_wformat_args(args...));
+  tjg::vprint(os, ts, fmt.get(), std::make_wformat_args(args...));
 }
 
 /**
@@ -174,20 +165,16 @@ void print(std::wostream& os, text_style ts, fmt::wformat_string<T...> fmt,
  * A nonempty style ends with a reset to terminal defaults before the newline.
  */
 template <typename... T>
-void println(std::ostream& os, text_style ts, fmt::format_string<T...> fmt,
+void println(std::ostream& os, text_style ts, std::format_string<T...> fmt,
              T&&... args) {
-  tjg::vprintln(os, ts,
-                std::basic_string_view{fmt.get().data(), fmt.get().size()},
-                fmt::make_format_args(args...));
+  tjg::vprintln(os, ts, fmt.get(), std::make_format_args(args...));
 }
 
 /// Prints styled formatted text to a wide stream, followed by a newline.
 template <typename... T>
-void println(std::wostream& os, text_style ts, fmt::wformat_string<T...> fmt,
+void println(std::wostream& os, text_style ts, std::wformat_string<T...> fmt,
              T&&... args) {
-  tjg::vprintln(os, ts,
-                std::basic_string_view{fmt.get().data(), fmt.get().size()},
-                fmt::make_wformat_args(args...));
+  tjg::vprintln(os, ts, fmt.get(), std::make_wformat_args(args...));
 }
 
 namespace detail {
@@ -200,11 +187,11 @@ auto operator<<(std::basic_ostream<Char>& os, const styled_arg<T>& arg)
   const auto sgr = to_sgr<Char>(arg.style);
   os.write(sgr.data(), static_cast<std::streamsize>(sgr.size()));
   constexpr auto reset = sgr_reset<Char>();
-#if FMT_USE_EXCEPTIONS
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   try {
 #endif
     os << arg.value;
-#if FMT_USE_EXCEPTIONS
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   } catch (...) {
     try {
       os.write(reset.data(), static_cast<std::streamsize>(reset.size()));
@@ -219,7 +206,6 @@ auto operator<<(std::basic_ostream<Char>& os, const styled_arg<T>& arg)
 
 }  // namespace detail
 
-FMT_END_EXPORT
 }  // namespace tjg
 
-#endif  // FMT_COLOR_OSTREAM_H_
+#endif  // TJG_COLOR_OSTREAM_H_

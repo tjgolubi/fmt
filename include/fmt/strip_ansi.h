@@ -1,6 +1,6 @@
 // Remove syntactically complete ESC-prefixed ANSI control sequences.
-#ifndef FMT_STRIP_ANSI_H_
-#define FMT_STRIP_ANSI_H_
+#ifndef TJG_STRIP_ANSI_H_
+#define TJG_STRIP_ANSI_H_
 
 #include <string>
 #include <string_view>
@@ -70,7 +70,7 @@ auto scan_ansi_escape(std::basic_string_view<Char> input, std::size_t start)
  * terminal editing or sanitize text.
  */
 template <typename Char>
-FMT_NODISCARD auto strip_ansi(std::basic_string_view<Char> input)
+[[nodiscard]] auto strip_ansi(std::basic_string_view<Char> input)
     -> std::basic_string<Char> {
   auto result = std::basic_string<Char>{};
   for (std::size_t pos = 0; pos < input.size();) {
@@ -87,11 +87,11 @@ FMT_NODISCARD auto strip_ansi(std::basic_string_view<Char> input)
   return result;
 }
 
-FMT_NODISCARD inline auto strip_ansi(std::string_view input) -> std::string {
+[[nodiscard]] inline auto strip_ansi(std::string_view input) -> std::string {
   return strip_ansi<char>(input);
 }
 
-FMT_NODISCARD inline auto strip_ansi(std::basic_string_view<wchar_t> input)
+[[nodiscard]] inline auto strip_ansi(std::basic_string_view<wchar_t> input)
     -> std::wstring {
   return strip_ansi<wchar_t>(input);
 }
@@ -122,11 +122,11 @@ struct styled_text_ansi_stripper {
  * Does not modify the input; unchanged leaf strings remain shared.
  */
 template <typename Char>
-FMT_NODISCARD auto strip_ansi(basic_styled_text<Char> input)
+[[nodiscard]] auto strip_ansi(basic_styled_text<Char> input)
     -> basic_styled_text<Char> {
   detail::styled_text_ansi_stripper::strip(input);
   return input;
 }
 
 }  // namespace tjg
-#endif  // FMT_STRIP_ANSI_H_
+#endif  // TJG_STRIP_ANSI_H_

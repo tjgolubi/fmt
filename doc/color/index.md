@@ -6,8 +6,8 @@ formatted strings or output.
 
 On `ref/CPP20`, the extension API lives in namespace `tjg` and targets C++23.
 Text utilities and SGR helpers use `std::basic_string_view`, including
-`std::string_view` and `std::wstring_view`. Formatting adapters still use the
-{fmt} engine where formatting adapters remain. Owning-tree specifications,
+`std::string_view` and `std::wstring_view`. Formatting and printing use `std::format` and `std::print`; the extension
+requires no {fmt} headers or library beyond its retained `fmt/` header paths. Owning-tree specifications,
 UTF-8 decoding, width estimates, and debug escaping are extension-owned. `tjg::color_t` stores an
 unspecified color, an RGB value, or a terminal, cube, or gray palette color
 in one public type.
@@ -25,7 +25,7 @@ configuration.
 int main() {
   auto style = tjg::fg(tjg::color::forest_green).bold();
   tjg::println(style, "The result is {}.", 42);
-  fmt::println("The result is {}.",
+  std::println("The result is {}.",
                tjg::styled(42, tjg::fg(tjg::term_color::red)));
 }
 ```
@@ -210,10 +210,9 @@ borrows its value, so stored wrappers need a surviving referent.
 
 Include `<fmt/styled_text.h>` for standard formatting of owning `styled_text`
 and `wstyled_text` trees, including nested styles, padding, truncation, dynamic
-specifications, and `?` tree inspection. The standard and {fmt} adapters share
-one renderer. Existing {fmt} adapters and style-taking output functions remain
-available. Standard
-formatting reports specification errors through `std::format_error`.
+specifications, and `?` tree inspection. The extension uses standard formatting
+throughout; old {fmt} adapters are removed. Formatting reports specification
+errors through `std::format_error`.
 
 ## Memory buffer
 

@@ -2,8 +2,10 @@
 
 FmtColor extends [{fmt}](https://github.com/fmtlib/fmt) with color and text-style
 values, palette conversion and blending, fluent style controls, owning structured
-text, SGR parsing, and ANSI stripping. This fork retains {fmt}'s formatting engine
-and, on `ref/CPP20`, targets C++23 with extension APIs in namespace `tjg`.
+text, SGR parsing, and ANSI stripping. On `ref/CPP20`, the extension is a
+standalone C++23 header library using `std::format` and `std::print`, with APIs
+in namespace `tjg`. It requires no {fmt} library or formatting adapters.
+The repository still contains the original {fmt} engine and its own tests.
 Header paths remain under `fmt/`; the formatting engine retains namespace `fmt`.
 Development is on the `color-dev` branch; these extensions have not been
 accepted into upstream {fmt}.

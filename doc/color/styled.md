@@ -4,8 +4,7 @@
 
 Use `styled_text` to compose text with independently styled parts. Include
 `<fmt/styled_text.h>` and format the result with `{}` using `std::format` or
-`std::format_to`. The {fmt} adapter remains available and shares the renderer.
-Use `{:?}` with either backend for tree inspection.
+`std::format_to`. Use `{:?}` for tree inspection. No {fmt} adapter or library is needed.
 
 ### Concatenation preserves each part's style
 
@@ -18,7 +17,7 @@ styled parts.
 auto red_text = tjg::underlay(tjg::fg(tjg::color::red),
     "red text with " + tjg::bold("nested bold") + " still red");
 auto line = tjg::styled_text{"plain | "} + red_text + " | plain again";
-fmt::println("{}", line);
+std::println("{}", line);
 ```
 
 Expected output (followed by a newline):
@@ -52,7 +51,7 @@ auto words = tjg::styled_text{"red", tjg::fg(tjg::color::red)}
     + " " + tjg::styled_text{"blue", tjg::fg(tjg::color::blue)};
 auto defaults = tjg::fg(tjg::color::black).bg(tjg::color::light_gray);
 auto group = tjg::underlay(defaults, words);
-fmt::println("{}", group);
+std::println("{}", group);
 ```
 
 Expected output (followed by a newline):
@@ -81,7 +80,7 @@ subtrees. Use it when the supplied colors should replace explicit choices:
 
 ```cpp
 auto all_red = tjg::overlay(tjg::fg(tjg::color::red), words);
-fmt::println("{}", all_red);
+std::println("{}", all_red);
 ```
 
 Expected output (followed by a newline):
@@ -131,7 +130,7 @@ auto underline_only = tjg::absolute(tjg::underline("underline only"));
 auto sentence = tjg::styled_text{"before "} + underline_only + " after";
 auto decorated = tjg::strike(
     tjg::underlay(tjg::bg(tjg::gray_color{12}), sentence));
-fmt::println("{}", decorated);
+std::println("{}", decorated);
 ```
 
 Expected output (followed by a newline):
@@ -175,7 +174,7 @@ and precision, with optional `s` presentation. Width and precision may also be
 dynamic arguments. Debug presentation (`?`) is not supported.
 
 ```cpp
-tjg::println("{:*>12.9}", tjg::bold("hello " + tjg::styled_text{"world", tjg::fg(tjg::color::blue)}));
+std::println("{:*>12.9}", tjg::bold("hello " + tjg::styled_text{"world", tjg::fg(tjg::color::blue)}));
 // Three '*' characters followed by "hello wor", all bold; "wor" is blue.
 ```
 
@@ -183,7 +182,7 @@ Expected output (followed by a newline):
 
 <pre class="color-output"><span style="font-weight: bold">***hello <span style="color: #0000FF">wor</span></span></pre>
 
-Precision limits the whole tree rather than each leaf. Narrow text uses {fmt}'s
+Precision limits the whole tree rather than each leaf. Narrow text uses the extension's
 UTF-8 display-width estimate without splitting code points; wide text uses
 code-unit counts. If the next code point does not fit, later text is not
 printed. Width supplies padding after truncation. Padding receives the root
@@ -207,13 +206,13 @@ terminal escapes. Raw escapes are not interpreted or removed and can interfere
 with the expected appearance. Express styling through the API when composing
 styled text. Terminal support and themes can affect the displayed appearance.
 
-For wide text, use `wstyled_text` and include `<fmt/xchar.h>` for wide
-formatting entry points. The same composition and grouping rules apply.
+For wide text, use `wstyled_text`. Both character types are supported by the
+extension headers without `<fmt/xchar.h>`. The same composition and grouping rules apply.
 
 ### Measuring text width
 
 `text.display_width()` sums the widths of the leaf strings using the same rules
-as ordinary {fmt} string alignment. Narrow strings are decoded as UTF-8: for
+as the extension's retained Unicode width table. Narrow strings are decoded as UTF-8: for
 example, `"caf\xc3\xa9"` has width 4 and `"\xe7\x95\x8c"` has width 2.
 Wide strings use code-unit counts, matching this version's wide-string formatter.
 Styles add no width, and empty text has width zero.
@@ -233,13 +232,13 @@ Each node shows its [readable style](text-style.md#readable-style-output), a
 space, then either its quoted debug string or an opening `{` and newline.
 An empty node style and its following space are omitted. Children are indented
 two spaces per level; each closing `}` aligns with its node's style. Leaf
-strings use ordinary {fmt} debug escaping, including quotes, backslashes,
+strings use the extension's debug escaping, including quotes, backslashes,
 embedded nulls, and control characters.
 
 ```cpp
 auto text = tjg::bold(tjg::styled_text{"hello\n", tjg::fg(tjg::term_color::red)}
                       + (tjg::underline("world") + "!"));
-fmt::print("{:?}", text);
+std::print("{:?}", text);
 ```
 
 Output:
@@ -287,7 +286,7 @@ To truncate a tree, use the styled-text formatter with an explicit precision.
 Padding uses the effective root style, and generated SGR does not consume width.
 Field width resets to zero after insertion; precision, fill, and flags remain.
 Stream failures follow the stream's exception mask. For tree debug output on a
-stream, insert the string returned by `fmt::format("{:?}", text)`.
+stream, insert the string returned by `std::format("{:?}", text)`.
 
 ### Table demonstration
 
@@ -306,7 +305,7 @@ make -C demo TableDemo
 The demo Makefile uses C++23, header-only formatting, and compact SGR output.
 Run `make -C demo` to build both `FmtColorDemo2` and `TableDemo`,
 `make -C demo run` to run both, and `make -C demo clean` to remove both
-executables. The library itself supports C++11 and later.
+executables. The extension requires C++23.
 
 #### Apply column defaults beneath cell styles
 
@@ -399,7 +398,7 @@ wide input):
 
 ```cpp
 auto message = tjg::parse_styled_text("plain \x1b[31mred\x1b[0m plain");
-fmt::println("{}", message);
+std::println("{}", message);
 ```
 
 The parser follows the SGR state changes; it does not add an initial reset.
@@ -555,7 +554,7 @@ accepts one to three octal digits (`\0` through `\377`). Hex escapes consume
 exactly two digits; octal escapes consume at most three. Subsequent digits
 remain ordinary text.
 
-Unknown or malformed escapes throw `fmt::format_error`. This includes `\q`,
+Unknown or malformed escapes throw `std::format_error`. This includes `\q`,
 `\x`, `\xG1`, a trailing backslash, and octal values above 255. Unicode and
 braced numeric escapes are not supported and also throw. Decoding is one pass:
 a decoded backslash does not start another escape. Surrounding quotes are
@@ -576,12 +575,9 @@ tjg::backslash_escape_to(std::back_inserter(log), "\x1b[31mred\n");
 // log contains: Received: \e[31mred\n
 ```
 
-The iterator functions support constant evaluation from C++14 when the output
-iterator and input view support it. With this {fmt} implementation, use explicit
-pointer-and-length views before C++20. The owning-string functions support
-constant evaluation where {fmt} enables constexpr `std::basic_string` support
-(C++20 and later with a supported compiler and standard library). Any dynamic
-storage allocated during constant evaluation must be released within that
+The iterator and owning-string functions support constant evaluation when the
+standard library and output iterator support it. Any dynamic storage allocated
+during constant evaluation must be released within that
 constant evaluation; these functions can produce temporary strings for a
 compile-time check.
 
@@ -608,7 +604,7 @@ Expected output for the example above (without a trailing newline):
 <pre class="color-output">Elapsed time: <span style="color: #008000; background-color: #191970">1.23</span> seconds</pre>
 
 ```cpp
-fmt::println("Amount: {:>8.2f}",
+std::println("Amount: {:>8.2f}",
              tjg::styled(1.23, tjg::fg(tjg::color::green)));
 ```
 

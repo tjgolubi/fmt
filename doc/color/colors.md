@@ -106,10 +106,10 @@ appearance can differ from its fixed RGB counterpart.
       color_reference: true
 
 The three-channel constructor accepts `int` arguments and checks each against
-`0..255` before storing it as `uint8_t`. Invalid channels trigger `FMT_ASSERT`.
+`0..255` before storing it as `uint8_t`. Invalid channels trigger `assert`.
 When assertions are disabled, negative channels clamp to 0 and channels above
 255 clamp to 255. This constructor is `noexcept`; valid inputs are usable
-in C++11 constant expressions. Byte-valued arguments can be mixed with `int`
+in C++23 constant expressions. Byte-valued arguments can be mixed with `int`
 arguments; all three use the same checked constructor. The public `r`, `g`,
 and `b` members and `chan_type` are `uint8_t`.
 The packed `rgb(uint32_t)` constructor treats its argument as a bit
@@ -153,7 +153,7 @@ constexpr auto shade = tjg::to_rgb(tjg::color_t{tjg::gray_color{12}});
 ```
 
 All overloads leave their arguments unchanged, are `noexcept`, and support
-constant evaluation in C++11 and later. The plain-color overload accepts only
+constant evaluation in C++23 and later. The plain-color overload accepts only
 the four color types. Terminal conversion uses the fixed Xterm-default palette,
 not the terminal's current theme. See [Color variants](#color-variants) for
 accessing an RGB value held in a `color_t`.
@@ -164,7 +164,7 @@ accessing an RGB value held in a `color_t`.
 green, and blue components. `operator|=` updates its left operand and returns
 a reference to it. These operations do not average colors or perform alpha
 compositing. Both operations are `noexcept`. `operator|` supports constant
-evaluation in C++11; the mutating `operator|=` supports it in C++14 and later
+evaluation in C++23; the mutating `operator|=` supports it in C++23 and later
 on supported compilers.
 
 ```cpp
@@ -202,10 +202,9 @@ auto mixed = tjg::blend(tjg::term_color::red, tjg::cube_color{1, 2, 3},
 
 Blending requires at least two arguments and rejects non-color arguments during
 overload resolution. It is `noexcept` and supports constant evaluation in
-C++11 and later. In the C++23 implementation, the `tjg::Color` concept
+C++23 and later. The `tjg::Color` concept
 identifies the four plain color types, including const and reference forms;
-it excludes `color_t` and `no_color_t`. Earlier modes use equivalent trait
-constraints.
+it excludes `color_t` and `no_color_t`.
 
 The free function leaves its arguments unchanged. Passing a `color_t` or
 `no_color` selects [variant blending](#blending-color-variants) instead.
@@ -290,10 +289,10 @@ See the [gray palette swatches](named-colors.md#gray-palette-colors) for all
 
 `gray_color` selects one of the terminal's 24 gray levels. Its explicit
 constructor accepts an `int` zero-based index in the range 0–23; default
-construction selects index zero. Invalid indices trigger `FMT_ASSERT`. When
+construction selects index zero. Invalid indices trigger `assert`. When
 assertions are disabled, negative indices clamp to 0 and indices above 23
 clamp to 23. The index constructor is `noexcept`; valid inputs support
-constant evaluation in C++11 and later.
+constant evaluation in C++23 and later.
 
 ```cpp
 auto shade = tjg::gray_color{12};
@@ -320,7 +319,7 @@ See the [cube palette table](named-colors.md#cube-palette-colors) for all
 `cube_color` selects one of the 216 colors in the terminal's 6×6×6 color cube.
 Construct it from three `int` channel indices in the range 0–5, or explicitly
 from a single `unsigned` zero-based index in the range 0–215. Invalid inputs
-trigger `FMT_ASSERT`. When assertions are disabled, each channel clamps to
+trigger `assert`. When assertions are disabled, each channel clamps to
 `0..5`, and a single index above 215 clamps to 215 before channel decomposition.
 The single index is `36 * r + 6 * g + b`. Default construction selects index
 zero.
@@ -337,7 +336,7 @@ setters accept `int`, assert that the input is in `0..5`, and return
 `cube_color&` for chaining. With assertions disabled, an out-of-range value
 sets that channel to the nearest endpoint while preserving the other channels.
 Constructors and setters are `noexcept`. Valid construction supports constant
-evaluation in C++11 and later; setters support it in C++14 and later on
+evaluation in C++23 and later; setters support it in C++23 and later on
 supported compilers.
 
 The default assertion handler terminates on invalid input in assertion-enabled
@@ -360,11 +359,11 @@ Foreground uses SGR `38;5;n`; background uses `48;5;n`.
 
 Both palette types support equality and ordering by their zero-based indices.
 Their conversions to RGB are `noexcept` and support constant evaluation in
-C++11, as does terminal-to-RGB conversion.
+C++23, as does terminal-to-RGB conversion.
 
 Palette rendering uses the terminal's palette entries. RGB conversion uses
 fixed values, so a customized terminal palette can produce a different
-appearance. With `FMT_COLOR_COMPACT_SGR` undefined or `0`, palette indices in
+appearance. With `TJG_COLOR_COMPACT_SGR` undefined or `0`, palette indices in
 escape sequences use three decimal digits, including leading zeroes: cube
 index zero emits `38;5;016` for a foreground color. With the definition set to
 `1`, it emits `38;5;16`. See [SGR output modes](format.md#to_sgr).
@@ -395,7 +394,7 @@ They do not clear a color already present in another style when combined with
 ## Color variants
 
 `tjg::color_t` is a public value type for storing different kinds of color in
-one variable. It is available in C++11 and later and uses its own union-based
+one variable. It is available in C++23 and later and uses its own union-based
 implementation in every supported language mode; it does not require
 `std::variant`.
 
@@ -501,10 +500,10 @@ auto channels = tjg::get<tjg::rgb>(style.fg()); // Copies RGB before the tempora
 ```
 
 Const and mutable access, classification, and `index` support constant
-evaluation in C++11. Modifying a color through mutable access or assigning
-an alternative requires C++14 or later for constant evaluation on supported
+evaluation in C++23. Modifying a color through mutable access or assigning
+an alternative requires C++23 or later for constant evaluation on supported
 compilers. The free `fg` and `bg` style factories support constant
-evaluation in C++11.
+evaluation in C++23.
 
 ### Visitation
 
@@ -514,7 +513,7 @@ and forwards the visitor. The visitor must accept all five alternatives
 with exactly the same return type. Value, reference, and `void` results are
 supported; visitor exceptions propagate.
 
-A function object with overloads works in C++11:
+A function object with overloads works in C++23:
 
 ```cpp
 struct describe_color {
@@ -530,7 +529,7 @@ const char* description = tjg::visit(describe_color{}, accent); // "RGB"
 ```
 
 A visitor can instead use a templated call operator that accepts every
-alternative. In C++14 and later, a generic lambda is another option:
+alternative. In C++23 and later, a generic lambda is another option:
 
 ```cpp
 auto payload = tjg::visit([](const auto& value) -> uint32_t {
@@ -540,7 +539,7 @@ auto payload = tjg::visit([](const auto& value) -> uint32_t {
 
 The explicit return type gives every alternative the same result type.
 This example returns only the numeric payload, without the kind discriminator.
-Visitation supports C++11 constant evaluation when the visitor and color access
+Visitation supports C++23 constant evaluation when the visitor and color access
 do.
 
 ### Blending color variants
@@ -573,7 +572,7 @@ constexpr auto mixed = tjg::blend(tjg::cube_color{1, 2, 3},
 Palette conversion uses fixed RGB values, including the Xterm-default terminal
 palette. Channels are summed before division, with fractional results rounded
 down. The operation is `noexcept`, leaves its arguments unchanged, and supports
-constant evaluation in C++11 and later. It requires at least two arguments and
+constant evaluation in C++23 and later. It requires at least two arguments and
 rejects non-color arguments during overload resolution.
 
 ### Composition, comparisons, and numeric representation
@@ -633,7 +632,7 @@ and precision. Ostream insertion applies width, fill, and alignment as for an
 ordinary string; numeric flags do not change the notation.
 
 ```cpp
-fmt::format("{}", tjg::color::red);          // "#ff0000"
-fmt::format("{:>12?}", tjg::gray_color{12}); // "      gray12"
-fmt::format("{}", tjg::cube_color{5, 0, 3}); // "cube503"
+std::format("{}", tjg::color::red);          // "#ff0000"
+std::format("{:>12?}", tjg::gray_color{12}); // "      gray12"
+std::format("{}", tjg::cube_color{5, 0, 3}); // "cube503"
 ```

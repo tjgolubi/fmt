@@ -1,6 +1,6 @@
 // Owned structured styled text.
-#ifndef FMT_STYLED_TEXT_H_
-#define FMT_STYLED_TEXT_H_
+#ifndef TJG_STYLED_TEXT_H_
+#define TJG_STYLED_TEXT_H_
 
 #include <algorithm>
 #include <limits>
@@ -19,7 +19,6 @@ namespace tjg {
 namespace detail {
 struct styled_text_ansi_stripper;
 template <typename Char> struct styled_text_renderer;
-template <typename Char> struct styled_text_formatter;
 
 template <typename Char>
 auto styled_text_width(std::basic_string_view<Char> text) noexcept
@@ -72,11 +71,11 @@ template <typename Char> class basic_styled_text {
     ~storage() {}
   } _data;
 
-#if FMT_GCC_VERSION >= 1300 && FMT_GCC_VERSION < 1400
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ == 13
   // GCC 13 can report an inactive union member as uninitialized when this
   // vector move is inlined through concatenation. Keep leaf moves inline.
-  static FMT_NOINLINE void move_branch(branch* target,
-                                       branch& source) noexcept {
+  [[gnu::noinline]] static void move_branch(branch* target,
+                                            branch& source) noexcept {
     new (target) branch{std::move(source)};
   }
 #endif
@@ -90,7 +89,10 @@ template <typename Char> class basic_styled_text {
 
   // Avoid GCC 13/14 recursive-inlining warnings about the inactive union
   // member.
-  static FMT_NOINLINE auto branch_display_width(const branch& children) noexcept
+#if defined(__GNUC__)
+  [[gnu::noinline]]
+#endif
+  static auto branch_display_width(const branch& children) noexcept
       -> std::size_t {
     auto width = std::size_t{0};
     for (const auto& child : children) width += child.display_width();
@@ -129,7 +131,7 @@ template <typename Char> class basic_styled_text {
   basic_styled_text(basic_styled_text&& other) noexcept
       : _style{other._style}, _is_branch{other._is_branch} {
     if (_is_branch) {
-#if FMT_GCC_VERSION >= 1300 && FMT_GCC_VERSION < 1400
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ == 13
       move_branch(&_data.children, other._data.children);
 #else
       new (&_data.children) branch{std::move(other._data.children)};
@@ -200,18 +202,18 @@ template <typename Char> class basic_styled_text {
    * applying styles. Preserves embedded nulls and escapes without interpreting
    * them. Does not modify this value. Allocation can throw.
    */
-  FMT_NODISCARD auto plain_text() const -> string_type {
+  [[nodiscard]] auto plain_text() const -> string_type {
     auto result = string_type{};
     append_plain_text(result);
     return result;
   }
 
   /**
-   * Returns the sum of leaf widths using ordinary fmt string-formatting rules.
-   * Narrow leaves are decoded as UTF-8; other character types count code units.
-   * Styles do not contribute width. Raw escapes are not interpreted.
+   * Returns the sum of leaf widths using the extension's retained Unicode width
+   * table. Narrow leaves are decoded as UTF-8; other character types count code
+   * units. Styles do not contribute width. Raw escapes are not interpreted.
    */
-  FMT_NODISCARD auto display_width() const noexcept -> std::size_t {
+  [[nodiscard]] auto display_width() const noexcept -> std::size_t {
     if (!_is_branch)
       return _data.text
                  ? detail::styled_text_width(std::basic_string_view<Char>{
@@ -267,8 +269,8 @@ using wstyled_text = basic_styled_text<wchar_t>;
 namespace detail {
 
 template <typename Char, typename OutIter>
-FMT_NODISCARD FMT_CONSTEXPR inline auto copy(const std::basic_string<Char>& str,
-                                             OutIter out) -> OutIter {
+[[nodiscard]] constexpr inline auto copy(const std::basic_string<Char>& str,
+                                         OutIter out) -> OutIter {
   return std::copy(str.begin(), str.end(), out);
 }
 
@@ -430,20 +432,6 @@ template <typename Char> struct styled_text_renderer {
 };  // styled_text_renderer
 
 template <typename Char>
-struct styled_text_formatter : styled_text_renderer<Char> {
-  tree_format_specs<Char> specs;
-  constexpr auto parse(fmt::parse_context<Char>& ctx) -> decltype(ctx.begin()) {
-    return specs.parse(ctx, fmt::report_error);
-  }
-  constexpr void set_debug_format(bool set = true) { specs.debug = set; }
-  template <typename Context>
-  auto format(const basic_styled_text<Char>& value, Context& ctx) const
-      -> decltype(ctx.out()) {
-    return this->format_with_specs(value, ctx,
-                                   specs.resolve(ctx, fmt::report_error));
-  }
-};
-template <typename Char>
 struct standard_styled_text_formatter : styled_text_renderer<Char> {
   tree_format_specs<Char> specs;
   constexpr auto parse(std::basic_format_parse_context<Char>& ctx)
@@ -465,11 +453,11 @@ auto to_styled_text(basic_styled_text<Char> text) -> basic_styled_text<Char> {
   return text;
 }
 
-template <
-    typename S,
-    typename Char = typename decltype(std::basic_string_view{
-        std::declval<S&>()})::value_type,
-    FMT_ENABLE_IF(std::is_constructible<basic_styled_text<Char>, S&&>::value)>
+template <typename S,
+          typename Char = typename decltype(std::basic_string_view{
+              std::declval<S&>()})::value_type,
+          std::enable_if_t<
+              std::is_constructible_v<basic_styled_text<Char>, S&&>, int> = 0>
 auto to_styled_text(S&& text) -> basic_styled_text<Char> {
   return basic_styled_text<Char>{std::forward<S>(text)};
 }
@@ -485,7 +473,7 @@ auto to_styled_text(S&& text) -> basic_styled_text<Char> {
  * rvalues move it. Only the returned value is modified.
  */
 template <typename T>
-FMT_NODISCARD auto overlay(text_style overrides, T&& text)
+[[nodiscard]] auto overlay(text_style overrides, T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
   auto result = detail::to_styled_text(std::forward<T>(text));
   result.overlay(overrides);
@@ -499,7 +487,7 @@ FMT_NODISCARD auto overlay(text_style overrides, T&& text)
  * their styles. Only the returned value is modified.
  */
 template <typename T>
-FMT_NODISCARD auto underlay(text_style style, T&& text)
+[[nodiscard]] auto underlay(text_style style, T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
   auto result = detail::to_styled_text(std::forward<T>(text));
   result.underlay(style);
@@ -512,75 +500,68 @@ FMT_NODISCARD auto underlay(text_style style, T&& text)
  * Only the returned value is modified.
  */
 template <typename T>
-FMT_NODISCARD auto absolute(T&& text)
+[[nodiscard]] auto absolute(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
   return tjg::underlay(tjg::absolute(text_style{}), std::forward<T>(text));
 }
 
 /// Returns styled text with bold enabled on its root, preserving other style.
 template <typename T>
-FMT_NODISCARD auto bold(T&& text)
+[[nodiscard]] auto bold(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
   return tjg::underlay(tjg::bold(), std::forward<T>(text));
 }
 
 /// Returns styled text with faint enabled on its root, preserving other style.
 template <typename T>
-FMT_NODISCARD auto faint(T&& text)
+[[nodiscard]] auto faint(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
   return tjg::underlay(tjg::faint(), std::forward<T>(text));
 }
 
 /// Returns styled text with italic enabled on its root, preserving other style.
 template <typename T>
-FMT_NODISCARD auto italic(T&& text)
+[[nodiscard]] auto italic(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
   return tjg::underlay(tjg::italic(), std::forward<T>(text));
 }
 
 /// Enables underline on the returned root, preserving its other style.
 template <typename T>
-FMT_NODISCARD auto underline(T&& text)
+[[nodiscard]] auto underline(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
   return tjg::underlay(tjg::underline(), std::forward<T>(text));
 }
 
 /// Returns styled text with blink enabled on its root, preserving other style.
 template <typename T>
-FMT_NODISCARD auto blink(T&& text)
+[[nodiscard]] auto blink(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
   return tjg::underlay(tjg::blink(), std::forward<T>(text));
 }
 
 /// Enables reverse on the returned root, preserving its other style.
 template <typename T>
-FMT_NODISCARD auto reverse(T&& text)
+[[nodiscard]] auto reverse(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
   return tjg::underlay(tjg::reverse(), std::forward<T>(text));
 }
 
 /// Enables conceal on the returned root, preserving its other style.
 template <typename T>
-FMT_NODISCARD auto conceal(T&& text)
+[[nodiscard]] auto conceal(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
   return tjg::underlay(tjg::conceal(), std::forward<T>(text));
 }
 
 /// Returns styled text with strike enabled on its root, preserving other style.
 template <typename T>
-FMT_NODISCARD auto strike(T&& text)
+[[nodiscard]] auto strike(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
   return tjg::underlay(tjg::strike(), std::forward<T>(text));
 }
 
 }  // namespace tjg
-
-FMT_BEGIN_NAMESPACE
-// Adapt extension-owned trees to the existing formatting engine.
-template <typename Char>
-struct formatter<tjg::basic_styled_text<Char>, Char>
-    : tjg::detail::styled_text_formatter<Char> {};
-FMT_END_NAMESPACE
 
 namespace std {
 template <typename Char>
@@ -589,4 +570,4 @@ struct formatter<tjg::basic_styled_text<Char>, Char>
     : tjg::detail::standard_styled_text_formatter<Char> {};
 }  // namespace std
 
-#endif  // FMT_STYLED_TEXT_H_
+#endif  // TJG_STYLED_TEXT_H_

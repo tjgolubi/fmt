@@ -1,3 +1,4 @@
+#include "standard-format-test.h"
 // Formatting library for C++ - color tests
 //
 // Copyright (c) 2012 - present, Victor Zverovich and {fmt} contributors
@@ -18,7 +19,7 @@
 
 #include "gtest-extra.h"  // EXPECT_WRITE, EXPECT_THROW_MSG
 
-#if FMT_COLOR_COMPACT_SGR == 1
+#if TJG_COLOR_COMPACT_SGR == 1
 #  define FMT_SGR_EXPECTED(legacy, compact) compact
 #else
 #  define FMT_SGR_EXPECTED(legacy, compact) legacy
@@ -65,7 +66,7 @@ TEST(color_test, absolute_style_helper) {
   EXPECT_FALSE(source.is_absolute());
   EXPECT_EQ(tjg::absolute(expected), expected);
   EXPECT_EQ(tjg::absolute(tjg::text_style{}), tjg::text_style{}.absolute());
-#if FMT_USE_CONSTEXPR
+#if 1
   constexpr auto value = tjg::absolute(tjg::text_style{});
   static_assert(value.is_absolute(), "absolute helper supports constant evaluation");
 #endif
@@ -152,7 +153,7 @@ TEST(color_test, absolute_style_blend) {
   }
 }
 
-#if FMT_USE_CONSTEXPR
+#if 1
 TEST(color_test, absolute_style_constexpr) {
   constexpr auto reset = tjg::text_style{}.absolute();
   static_assert(reset.is_absolute() && !reset.empty(),
@@ -545,7 +546,7 @@ TEST(color_test, emphasis_or_assign) {
   EXPECT_EQ(value, emphasis::bold | emphasis::underline | emphasis::strike);
 }
 
-#if FMT_USE_CONSTEXPR
+#if 1
 constexpr auto check_emphasis_or_assign() -> bool {
   auto value = tjg::emphasis::bold;
   auto& result = (value |= tjg::emphasis::underline);
@@ -684,7 +685,7 @@ TEST(color_test, color_type_composition) {
                 "color composition must be noexcept");
   for (size_t i = 0; i != 5; ++i) {
     for (size_t j = 0; j != 5; ++j) {
-      SCOPED_TRACE(fmt::format("color kinds {} and {}", i, j));
+      SCOPED_TRACE(std::format("color kinds {} and {}", i, j));
       auto lhs = composition_samples[i].color;
       auto rhs = composition_samples[j].color;
       const auto expected = expected_composition(i, j);
@@ -846,7 +847,7 @@ TEST(color_test, text_style_overlay) {
   EXPECT_EQ(tjg::overlay(second, first), first);
 }
 
-#if FMT_USE_CONSTEXPR
+#if 1
 TEST(color_test, text_style_overlay_constexpr) {
   constexpr auto base = tjg::text_style{tjg::term_color::red,
                                        tjg::gray_color{12}, tjg::emphasis::bold};
@@ -884,7 +885,7 @@ TEST(color_test, text_style_color_composition) {
                 "style composition must be noexcept");
   for (size_t i = 0; i != 5; ++i) {
     for (size_t j = 0; j != 5; ++j) {
-      SCOPED_TRACE(fmt::format("style color kinds {} and {}", i, j));
+      SCOPED_TRACE(std::format("style color kinds {} and {}", i, j));
       const auto left = tjg::text_style{composition_samples[i].color,
                                        composition_samples[j].color,
                                        tjg::emphasis::bold};
@@ -1112,7 +1113,7 @@ TEST(color_test, sgr_transition_all_emphasis_pairs) {
         }
       }
       EXPECT_EQ(state, after) << "initial=" << before << " target=" << after;
-#if FMT_COLOR_COMPACT_SGR
+#if TJG_COLOR_COMPACT_SGR
       // Compact output stays combined and no longer than reset-and-rebuild.
       EXPECT_EQ(sgr.find('\x1b', 1), std::string::npos);
       size_t absolute_size = 4; // ESC [ 0 m
@@ -1235,15 +1236,15 @@ void check_color_access(T value) {
     EXPECT_EQ(tjg::get_if<T>(&const_other), nullptr);
     EXPECT_EQ(tjg::get_if<Index>(&other), nullptr);
     EXPECT_EQ(tjg::get_if<Index>(&const_other), nullptr);
-    EXPECT_THROW_MSG((void)tjg::get<T>(other), fmt::format_error,
+    EXPECT_THROW_MSG((void)tjg::get<T>(other), std::format_error,
                      "wrong color_t alternative");
-    EXPECT_THROW((void)tjg::get<T>(const_other), fmt::format_error);
-    EXPECT_THROW((void)tjg::get<T>(std::move(other)), fmt::format_error);
-    EXPECT_THROW((void)tjg::get<T>(std::move(const_other)), fmt::format_error);
-    EXPECT_THROW((void)tjg::get<Index>(other), fmt::format_error);
-    EXPECT_THROW((void)tjg::get<Index>(const_other), fmt::format_error);
-    EXPECT_THROW((void)tjg::get<Index>(std::move(other)), fmt::format_error);
-    EXPECT_THROW((void)tjg::get<Index>(std::move(const_other)), fmt::format_error);
+    EXPECT_THROW((void)tjg::get<T>(const_other), std::format_error);
+    EXPECT_THROW((void)tjg::get<T>(std::move(other)), std::format_error);
+    EXPECT_THROW((void)tjg::get<T>(std::move(const_other)), std::format_error);
+    EXPECT_THROW((void)tjg::get<Index>(other), std::format_error);
+    EXPECT_THROW((void)tjg::get<Index>(const_other), std::format_error);
+    EXPECT_THROW((void)tjg::get<Index>(std::move(other)), std::format_error);
+    EXPECT_THROW((void)tjg::get<Index>(std::move(const_other)), std::format_error);
   }
 }
 
@@ -1332,7 +1333,7 @@ struct color_throwing_visitor {
   template<typename T> void operator()(T&&) const { throw 42; }
 };
 
-#if FMT_USE_CONSTEXPR
+#if 1
 constexpr bool check_color_constexpr_assignment() {
   tjg::color_t color;
   color = tjg::rgb{1, 2, 3};
@@ -1371,7 +1372,7 @@ TEST(color_test, color_variant_access) {
   EXPECT_EQ(tjg::get<tjg::rgb>(color), (tjg::rgb{7, 5, 6}));
   EXPECT_EQ(tjg::get_if<2>(&color), nullptr);
   EXPECT_EQ(tjg::get_if<tjg::gray_color>(&color), nullptr);
-  EXPECT_THROW((void)tjg::get<2>(color), fmt::format_error);
+  EXPECT_THROW((void)tjg::get<2>(color), std::format_error);
 }
 
 TEST(color_test, color_variant_assignment) {
@@ -1482,7 +1483,7 @@ TEST(color_test, color_variant_constexpr) {
                     tjg::visit(color_kind_visitor{}, cube) == 3 &&
                     tjg::visit(color_kind_visitor{}, gray) == 4,
                 "visitation must be constexpr in C++11");
-#if FMT_USE_CONSTEXPR
+#if 1
   static_assert(check_color_constexpr_assignment(),
                 "replacement and mutable access must support constant evaluation");
 #endif
@@ -1781,7 +1782,7 @@ TEST(color_test, color_variant_blend) {
 
   for (size_t i = 0; i != 5; ++i) {
     for (size_t j = 0; j != 5; ++j) {
-      SCOPED_TRACE(fmt::format("blend kinds {} and {}", i, j));
+      SCOPED_TRACE(std::format("blend kinds {} and {}", i, j));
       const auto lhs = composition_samples[i].color;
       const auto rhs = composition_samples[j].color;
       const auto a = composition_samples[i].promoted;
@@ -1839,7 +1840,7 @@ TEST(color_test, text_style_blend) {
 
   for (size_t i = 0; i != 5; ++i) {
     for (size_t j = 0; j != 5; ++j) {
-      SCOPED_TRACE(fmt::format("style blend kinds {} and {}", i, j));
+      SCOPED_TRACE(std::format("style blend kinds {} and {}", i, j));
       const auto a = composition_samples[i].promoted;
       const auto b = composition_samples[j].promoted;
       const auto foreground = i == 0 ? composition_samples[j].color
@@ -1939,7 +1940,7 @@ TEST(color_test, text_style_color_constructor) {
   EXPECT_EQ((tjg::text_style{tjg::emphasis::bold, tjg::no_color,
                              tjg::term_color::black}),
             tjg::bg(tjg::term_color::black) | tjg::emphasis::bold);
-#if FMT_USE_CONSTEXPR
+#if 1
   constexpr auto style = tjg::text_style{tjg::color::coral,
                                          tjg::term_color::black,
                                          tjg::emphasis::bold};
@@ -2034,9 +2035,9 @@ TEST(color_test, emphasis_factories) {
   CHECK_EMPHASIS_FACTORY(conceal);
   CHECK_EMPHASIS_FACTORY(strike);
 #undef CHECK_EMPHASIS_FACTORY
-  EXPECT_EQ(fmt::format("{}", tjg::styled(42, tjg::bold())),
+  EXPECT_EQ(std::format("{}", tjg::styled(42, tjg::bold())),
             "\x1b[1m42\x1b[0m");
-  EXPECT_EQ(fmt::format("{}", tjg::styled(42, tjg::bold(false))), "42");
+  EXPECT_EQ(std::format("{}", tjg::styled(42, tjg::bold(false))), "42");
 }
 
 TEST(color_test, free_emphasis) {
@@ -2063,7 +2064,7 @@ TEST(color_test, free_emphasis) {
 #undef CHECK_FREE_EMPHASIS
 }
 
-#if FMT_USE_CONSTEXPR
+#if 1
 TEST(color_test, free_emphasis_constexpr) {
   constexpr auto base = tjg::text_style{tjg::cube_color{1, 2, 3},
                                        tjg::gray_color{12}};
@@ -2257,7 +2258,7 @@ TEST(color_test, fluent_presence) {
   EXPECT_FALSE(style.has_emph());
 }
 
-#if FMT_USE_CONSTEXPR
+#if 1
 TEST(color_test, fluent_constexpr) {
   constexpr auto all = tjg::text_style{}.bold().faint().italic().underline()
                           .blink().reverse().conceal().strike();
@@ -2381,7 +2382,7 @@ TEST(color_test, short_names_compatibility) {
                               tjg::terminal_color::black}));
   EXPECT_EQ(tjg::format(emphasis::strike, "strike"),
             "\x1b[9mstrike\x1b[0m");
-#if FMT_USE_CONSTEXPR
+#if 1
   constexpr auto cleared = text_style{}.strike().strikethrough(false);
   static_assert(!cleared.is_strike() && !cleared.is_strikethrough(),
                 "mixed setters must support constant evaluation");
@@ -2476,18 +2477,18 @@ TEST(color_test, format) {
             "\x1b[105mtbmagenta\x1b[0m");
   EXPECT_EQ(tjg::format(fg(tjg::terminal_color::red), "{}", "foo"),
             "\x1b[31mfoo\x1b[0m");
-  EXPECT_EQ(fmt::format("{}{}", tjg::styled("red", fg(tjg::color::red)),
+  EXPECT_EQ(std::format("{}{}", tjg::styled("red", fg(tjg::color::red)),
                         tjg::styled("bold", tjg::emphasis::bold)),
             FMT_SGR_EXPECTED(
                 "\x1b[38;2;255;000;000mred\x1b[0m\x1b[1mbold\x1b[0m",
                 "\x1b[38;2;255;0;0mred\x1b[0m\x1b[1mbold\x1b[0m"));
-  EXPECT_EQ(fmt::format("{}", tjg::styled("bar", fg(tjg::color::blue) |
+  EXPECT_EQ(std::format("{}", tjg::styled("bar", fg(tjg::color::blue) |
                                                      tjg::emphasis::underline)),
             FMT_SGR_EXPECTED(
                 "\x1b[4m\x1b[38;2;000;000;255mbar\x1b[0m",
                 "\x1b[4;38;2;0;0;255mbar\x1b[0m"));
   EXPECT_EQ(
-      fmt::format(
+      std::format(
           "{}", tjg::styled(
                     "all", tjg::emphasis::bold | tjg::emphasis::faint |
                                tjg::emphasis::italic |
@@ -2501,7 +2502,7 @@ TEST(color_test, format_to) {
   auto out = std::string();
   tjg::format_to(std::back_inserter(out), fg(tjg::rgb(255, 20, 30)),
                  "rgb(255,20,30){}{}{}", 1, 2, 3);
-  EXPECT_EQ(fmt::to_string(out),
+  EXPECT_EQ(std::string(out.data(), out.size()),
             FMT_SGR_EXPECTED(
                 "\x1b[38;2;255;020;030mrgb(255,20,30)123\x1b[0m",
                 "\x1b[38;2;255;20;30mrgb(255,20,30)123\x1b[0m"));
@@ -2530,7 +2531,7 @@ TEST(color_test, println) {
           "\x1b[1;38;2;0;0;255mblue/bold\x1b[0m\n"));
 }
 
-#if FMT_COLOR_COMPACT_SGR == 1
+#if TJG_COLOR_COMPACT_SGR == 1
 TEST(color_test, compact_sgr_combined_style) {
   const auto style = tjg::text_style{static_cast<tjg::emphasis>(0xff),
                                     tjg::rgb{0, 9, 255}, tjg::cube_color{0}};
@@ -2538,9 +2539,9 @@ TEST(color_test, compact_sgr_combined_style) {
       "\x1b[1;2;3;4;5;7;8;9;38;2;0;9;255;48;5;16m"};
   check_to_sgr(style, sgr);
   EXPECT_EQ(tjg::format(style, "value"), sgr + "value\x1b[0m");
-  EXPECT_EQ(fmt::format("{:>5}", tjg::styled(42, style)),
+  EXPECT_EQ(std::format("{:>5}", tjg::styled(42, style)),
             sgr + "   42\x1b[0m");
-  EXPECT_EQ(fmt::format("{}plain", tjg::styled("value", style)),
+  EXPECT_EQ(std::format("{}plain", tjg::styled("value", style)),
             sgr + "value\x1b[0mplain");
 
   // Appending a style must preserve existing buffer contents.
@@ -2554,7 +2555,7 @@ TEST(color_test, compact_sgr_combined_style) {
 TEST(color_test, compact_sgr_empty_and_single_components) {
   check_to_sgr(tjg::text_style{}, "");
   EXPECT_EQ(tjg::format(tjg::text_style{}, "plain"), "plain");
-  EXPECT_EQ(fmt::format("{:>5}", tjg::styled(42, tjg::text_style{})), "   42");
+  EXPECT_EQ(std::format("{:>5}", tjg::styled(42, tjg::text_style{})), "   42");
   check_to_sgr(tjg::text_style{tjg::emphasis::bold}, "\x1b[1m");
   check_to_sgr(tjg::fg(tjg::term_color::black), "\x1b[30m");
   check_to_sgr(tjg::bg(tjg::term_color::bright_white), "\x1b[107m");
@@ -2665,7 +2666,7 @@ TEST(color_test, absolute_style_sgr) {
   check_to_sgr(style, prefix);
   EXPECT_EQ(tjg::format(style, "text"), prefix + "text\x1b[0m");
   // Styled arguments honor the explicit absolute reset in both modes.
-  EXPECT_EQ(fmt::format("{}", tjg::styled("text", style)),
+  EXPECT_EQ(std::format("{}", tjg::styled("text", style)),
             prefix + "text\x1b[0m");
   EXPECT_EQ(tjg::wrap_sgr(reset, "text"), "\x1b[0mtext\x1b[0m");
   EXPECT_EQ(tjg::wrap_sgr<wchar_t>(reset, L"text"),
@@ -2707,7 +2708,7 @@ TEST(color_test, text_style_underlay) {
   }
 }
 
-#if FMT_USE_CONSTEXPR
+#if 1
 TEST(color_test, text_style_underlay_constexpr) {
   constexpr auto base = tjg::fg(tjg::term_color::yellow);
   constexpr auto defaults = tjg::fg(tjg::term_color::white).bg(tjg::term_color::blue);

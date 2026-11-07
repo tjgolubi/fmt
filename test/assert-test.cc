@@ -10,6 +10,7 @@
 // For the license information refer to format.h.
 
 #include "fmt/color.h"
+#include "fmt/format.h"
 #include "gtest/gtest.h"
 
 TEST(assert_test, fail) {

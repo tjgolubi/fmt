@@ -1,9 +1,10 @@
+#include "standard-format-test.h"
 #include <iomanip>
 #include <sstream>
 
 #include "fmt/color-ostream.h"
-#include "fmt/compile.h"
-#include "fmt/ranges.h"
+
+
 #include "fmt/strip_ansi.h"
 #include "fmt/styled_text.h"
 #include "gtest-extra.h"
@@ -11,16 +12,11 @@
 namespace {
 template <typename T>
 void check_output(const T& value, const std::string& expected) {
-  EXPECT_EQ(fmt::format(FMT_STRING("{}"), value), expected);
   EXPECT_EQ(std::format("{}", value), expected);
   EXPECT_EQ(std::format("{:?}", value), expected);
-  EXPECT_EQ(fmt::format(FMT_STRING("{:?}"), value), expected);
-  EXPECT_EQ(fmt::format(FMT_COMPILE("{}"), value), expected);
   const auto wide = std::wstring(expected.begin(), expected.end());
   EXPECT_EQ(std::format(L"{}", value), wide);
   EXPECT_EQ(std::format(L"{:?}", value), wide);
-  EXPECT_EQ(fmt::format(FMT_STRING(L"{}"), value), wide);
-  EXPECT_EQ(fmt::format(FMT_STRING(L"{:?}"), value), wide);
   std::ostringstream os;
   os << value;
   EXPECT_EQ(os.str(), expected);
@@ -48,7 +44,7 @@ TEST(color_debug_test, color_notation) {
   }
   for (int i = 0; i < 24; ++i) {
     const auto color = tjg::gray_color{i};
-    const auto expected = fmt::format("gray{}", i);
+    const auto expected = std::format("gray{}", i);
     check_output(color, expected);
     check_output(tjg::color_t{color}, expected);
   }
@@ -56,7 +52,7 @@ TEST(color_debug_test, color_notation) {
     for (int g = 0; g < 6; ++g) {
       for (int b = 0; b < 6; ++b) {
         const auto color = tjg::cube_color{r, g, b};
-        const auto expected = fmt::format("cube{}{}{}", r, g, b);
+        const auto expected = std::format("cube{}{}{}", r, g, b);
         check_output(color, expected);
         check_output(tjg::color_t{color}, expected);
       }
@@ -115,27 +111,28 @@ TEST(color_debug_test, emphasis_notation) {
                "{bold underline strike}");
   check_output(static_cast<emphasis>(255),
                "{bold faint italic underline blink reverse conceal strike}");
-  EXPECT_EQ(fmt::format("{:*>8}", emphasis::bold), "**{bold}");
-  EXPECT_EQ(fmt::format(L"{:*<8?}", emphasis::faint), L"{faint}*");
-  EXPECT_EQ(fmt::format("{0:>{1}.{2}s}", emphasis::bold, 5, 3), "  {bo");
-  EXPECT_EQ(
-      fmt::format("{}", std::vector<emphasis>{emphasis{}, emphasis::bold}),
-      "[{}, {bold}]");
+  EXPECT_EQ(std::format("{:*>8}", emphasis::bold), "**{bold}");
+  EXPECT_EQ(std::format(L"{:*<8?}", emphasis::faint), L"{faint}*");
+  EXPECT_EQ(std::format("{0:>{1}.{2}s}", emphasis::bold, 5, 3), "  {bo");
+#if defined(__cpp_lib_format_ranges)
+  EXPECT_EQ(std::format("{}", std::vector<emphasis>{emphasis{}, emphasis::bold}), "[{}, {bold}]");
+#endif
 #if FMT_USE_EXCEPTIONS
-  EXPECT_THROW((void)fmt::format(fmt::runtime("{:d}"), emphasis::bold),
-               fmt::format_error);
+  EXPECT_THROW((void)runtime_format("{:d}", emphasis::bold),
+               std::format_error);
 #endif
 }
 
 TEST(color_debug_test, string_specifications) {
   const auto red = tjg::term_color::red;
-  EXPECT_EQ(fmt::format("{:*>8?}", red), "*****red");
-  EXPECT_EQ(fmt::format("{:.3}", tjg::rgb{1, 2, 3}), "#01");
-  EXPECT_EQ(fmt::format("{0:*^{1}.{2}?}", red, 7, 2), "**re***");
-  EXPECT_EQ(fmt::format(L"{:*>8?}", red), L"*****red");
-  EXPECT_EQ(fmt::format("{:>4}", tjg::bold()), "   b");
-  EXPECT_EQ(fmt::format("{}", std::vector<tjg::color_t>{red, tjg::no_color}),
-            "[red, no_color]");
+  EXPECT_EQ(std::format("{:*>8?}", red), "*****red");
+  EXPECT_EQ(std::format("{:.3}", tjg::rgb{1, 2, 3}), "#01");
+  EXPECT_EQ(std::format("{0:*^{1}.{2}?}", red, 7, 2), "**re***");
+  EXPECT_EQ(std::format(L"{:*>8?}", red), L"*****red");
+  EXPECT_EQ(std::format("{:>4}", tjg::bold()), "   b");
+#if defined(__cpp_lib_format_ranges)
+  EXPECT_EQ(std::format("{}", std::vector<tjg::color_t>{red, tjg::no_color}), "[red, no_color]");
+#endif
   std::ostringstream os;
   os << std::hex << std::uppercase << std::setfill('*') << std::setw(10)
      << tjg::rgb{171, 205, 239};
@@ -146,18 +143,18 @@ TEST(color_debug_test, string_specifications) {
   os << std::left << std::setw(8) << tjg::bold();
   EXPECT_EQ(os.str(), "***#abcdefb*******");
 #if FMT_USE_EXCEPTIONS
-  EXPECT_THROW((void)fmt::format(fmt::runtime("{:x}"), red), fmt::format_error);
-  EXPECT_THROW((void)fmt::format(fmt::runtime("{:+}"), tjg::bold()),
-               fmt::format_error);
-  EXPECT_THROW((void)fmt::format(fmt::runtime("{:>{}}"), red, -1),
-               fmt::format_error);
+  EXPECT_THROW((void)runtime_format("{:x}", red), std::format_error);
+  EXPECT_THROW((void)runtime_format("{:+}", tjg::bold()),
+               std::format_error);
+  EXPECT_THROW((void)runtime_format("{:>{}}", red, -1),
+               std::format_error);
 #endif
 }
 
 TEST(color_debug_test, tree_layout) {
   check_output(tjg::text_style{}, "{}");
-  EXPECT_EQ(fmt::format("{:?}", tjg::styled_text{}), "\"\"");
-  EXPECT_EQ(fmt::format("{:?}", tjg::bold("hello")), "b \"hello\"");
+  EXPECT_EQ(std::format("{:?}", tjg::styled_text{}), "\"\"");
+  EXPECT_EQ(std::format("{:?}", tjg::bold("hello")), "b \"hello\"");
   const auto child =
       tjg::underline("world") +
       tjg::absolute(tjg::styled_text{"!", tjg::bg(tjg::cube_color{5, 0, 3})});
@@ -171,37 +168,35 @@ TEST(color_debug_test, tree_layout) {
       "    = /cube503 \"!\"\n"
       "  }\n"
       "}\n"};
-  EXPECT_EQ(fmt::format("{:?}", tree), expected);
   EXPECT_EQ(std::format("{:?}", tree), expected);
-  EXPECT_EQ(fmt::format(FMT_COMPILE("{:?}"), tree), expected);
-  EXPECT_EQ(fmt::formatted_size("{:?}", tree), expected.size());
+  EXPECT_EQ(std::formatted_size("{:?}", tree), expected.size());
   char output[512] = {};
-  const auto end = fmt::format_to(&output[0], "{:?}", tree);
+  const auto end = std::format_to(&output[0], "{:?}", tree);
   EXPECT_EQ(std::string(output, end), expected);
-  const auto bounded = fmt::format_to_n(output, 7, "{:?}", tree);
+  const auto bounded = std::format_to_n(output, 7, "{:?}", tree);
   EXPECT_EQ(bounded.size, expected.size());
   EXPECT_EQ(std::string(output, output + 7), expected.substr(0, 7));
-  EXPECT_EQ(fmt::format("{:>10.4?}", tree), "      b {\n");
+  EXPECT_EQ(std::format("{:>10.4?}", tree), "      b {\n");
 }
 
 TEST(color_debug_test, tree_strings_and_stored_styles) {
   const auto raw = std::string{"a\0\n\t\"\\\x1b", 8};
-  EXPECT_EQ(fmt::format("{:?}", tjg::styled_text{raw}),
-            fmt::format("{:?}", raw));
+  EXPECT_EQ(std::format("{:?}", tjg::styled_text{raw}),
+            "\"a\\x00\\n\\t\\\"\\\\\\x1b\\x00\"");
   const auto wide = std::wstring{L"a\0\n\t\"\\\x1b", 8};
-  EXPECT_EQ(fmt::format(L"{:?}", tjg::wstyled_text{wide}),
-            fmt::format(L"{:?}", wide));
+  EXPECT_EQ(std::format(L"{:?}", tjg::wstyled_text{wide}),
+            L"\"a\\x00\\n\\t\\\"\\\\\\x1b\\x00\"");
   const auto tree = tjg::bold(tjg::styled_text{"a"} + tjg::underline("b"));
   const auto copy = tree;
-  EXPECT_EQ(fmt::format("{:?}", tree), "b {\n  \"a\"\n  _ \"b\"\n}\n");
+  EXPECT_EQ(std::format("{:?}", tree), "b {\n  \"a\"\n  _ \"b\"\n}\n");
   EXPECT_EQ(tree, copy);
   const auto wtree = tjg::bold(tjg::wstyled_text{L"a"} + tjg::underline(L"b"));
-  EXPECT_EQ(fmt::format(L"{:?}", wtree), L"b {\n  \"a\"\n  _ \"b\"\n}\n");
+  EXPECT_EQ(std::format(L"{:?}", wtree), L"b {\n  \"a\"\n  _ \"b\"\n}\n");
   const auto empty_children =
       tjg::strip_ansi(tjg::styled_text{"\x1b[m"} + tjg::bold("\x1b[m"));
-  EXPECT_EQ(fmt::format("{:?}", empty_children), "{\n  \"\"\n  b \"\"\n}\n");
+  EXPECT_EQ(std::format("{:?}", empty_children), "{\n  \"\"\n  b \"\"\n}\n");
   auto moved = tjg::styled_text{"old"};
   const auto owner = std::move(moved);
-  EXPECT_EQ(fmt::format("{:?}", moved), "\"\"");
-  EXPECT_EQ(fmt::format("{:?}", owner), "\"old\"");
+  EXPECT_EQ(std::format("{:?}", moved), "\"\"");
+  EXPECT_EQ(std::format("{:?}", owner), "\"old\"");
 }

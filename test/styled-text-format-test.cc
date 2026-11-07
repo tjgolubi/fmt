@@ -1,6 +1,7 @@
+#include "standard-format-test.h"
 #include "fmt/styled_text.h"
-#include "fmt/compile.h"
-#include "fmt/xchar.h"
+
+
 #include "fmt/color-ostream.h"
 #include "gtest-extra.h"
 
@@ -9,14 +10,10 @@
 
 namespace {
 auto render(const tjg::styled_text& value) -> std::string {
-  const auto expected = fmt::format(FMT_STRING("{}"), value);
-  EXPECT_EQ(std::format("{}", value), expected);
-  return expected;
+  return std::format("{}", value);
 }
 auto render(const tjg::wstyled_text& value) -> std::wstring {
-  const auto expected = fmt::format(FMT_STRING(L"{}"), value);
-  EXPECT_EQ(std::format(L"{}", value), expected);
-  return expected;
+  return std::format(L"{}", value);
 }
 template<typename Char>
 auto chars(const char* value) -> std::basic_string<Char> {
@@ -187,18 +184,18 @@ TEST(styled_text_format_test, plain_empty_and_output_iterators) {
   EXPECT_EQ(render(tjg::styled_text{}), "");
   EXPECT_EQ(render(tjg::styled_text{"", tjg::bold()}), "");
   EXPECT_EQ(render(tjg::styled_text{"literal {}"}), "literal {}");
-  EXPECT_EQ(fmt::format(FMT_STRING("{:}"), tjg::styled_text{"plain"}), "plain");
+  EXPECT_EQ(std::format("{:}", tjg::styled_text{"plain"}), "plain");
   EXPECT_EQ(render(tjg::wstyled_text{L"wide"}), L"wide");
-  EXPECT_EQ(fmt::format(FMT_STRING("before{}after{}"), tjg::bold("x"), 42),
+  EXPECT_EQ(std::format("before{}after{}", tjg::bold("x"), 42),
             "before\x1b[1mx\x1b[0mafter42");
   auto output = std::vector<char>{'p'};
-  fmt::format_to(std::back_inserter(output), FMT_STRING("{}!"), tjg::bold("x"));
+  std::format_to(std::back_inserter(output), "{}!", tjg::bold("x"));
   EXPECT_EQ((std::string{output.begin(), output.end()}), "p\x1b[1mx\x1b[0m!");
   const auto binary = std::string{"a\0{}b", 5};
   EXPECT_EQ(render(tjg::styled_text{binary}), binary);
   const auto long_text = std::string(2000, 'x');
   EXPECT_EQ(render(tjg::bold(long_text)), "\x1b[1m" + long_text + "\x1b[0m");
-  EXPECT_EQ(fmt::format(FMT_COMPILE("before{}after"), tjg::bold("x")),
+  EXPECT_EQ(std::format("before{}after", tjg::bold("x")),
             "before\x1b[1mx\x1b[0mafter");
   const auto raw = std::string{"\x1b[4mraw\x1b[24m"};
   EXPECT_EQ(render(tjg::styled_text{raw}), raw);
@@ -216,7 +213,7 @@ auto format_in_style(tjg::text_style style, const char* pattern, const T&... arg
   auto buffer = tjg::basic_memory_buffer<Char>{};
   const auto text = chars<Char>(pattern);
   tjg::detail::vformat_to(buffer, style, std::basic_string_view<Char>{text},
-      fmt::make_format_args<fmt::buffered_context<Char>>(args...));
+      std::make_format_args<tjg::detail::format_context<Char>>(args...));
   return {buffer.data(), buffer.size()};
 }
 
@@ -280,62 +277,61 @@ struct color_context_nested {};
 struct color_context_throwing {};
 struct terminal_state_nested {};
 
-FMT_BEGIN_NAMESPACE
-template<> struct formatter<color_context_nested> : nested_formatter<int> {
+namespace std {
+template<> struct formatter<color_context_nested> : formatter<string_view> {
   template<typename Context>
   auto format(color_context_nested, Context& ctx) const
       -> decltype(ctx.out()) {
-    return write(ctx, "a", tjg::styled(42, tjg::fg(tjg::term_color::red)), "z");
+    const auto text = std::format("a{}z", tjg::styled(42, tjg::fg(tjg::term_color::red)));
+    return formatter<string_view>::format(text, ctx);
   }
 };
 template<> struct formatter<terminal_state_nested> : formatter<int> {
   template<typename Context>
   auto format(terminal_state_nested, Context& ctx) const -> decltype(ctx.out()) {
-    return fmt::format_to(ctx.out(), FMT_STRING("a{}z"),
+    return std::format_to(ctx.out(), "a{}z",
                          tjg::styled(42, tjg::fg(tjg::term_color::red)));
   }
 };
 template<> struct formatter<color_context_throwing> : formatter<int> {
   template<typename Context>
   auto format(color_context_throwing, Context& ctx) const -> decltype(ctx.out()) {
-    report_error("color context test");
+    throw format_error("color context test");
     return ctx.out();
   }
 };
-FMT_END_NAMESPACE
+}
 
 TEST(styled_text_format_test, nested_buffer_context_inherits_style) {
   const auto outer = tjg::underline();
   const auto red = tjg::underline(tjg::fg(tjg::term_color::red));
-  check_states(tjg::format(outer, FMT_STRING("{}"), color_context_nested{}),
+  check_states(tjg::format(outer, "{}", color_context_nested{}),
                std::string{"a42z"}, {outer, red, red, outer});
   // Nonzero outer width creates a separate buffer context. Its custom child
   // must still inherit underline, even though the complete text exceeds width.
-  check_states(tjg::format(outer, FMT_STRING("{:>1}"), color_context_nested{}),
+  check_states(tjg::format(outer, "{:>1}", color_context_nested{}),
                std::string{"a42z"}, {outer, red, red, outer});
   const auto nested = color_context_nested{};
   const auto wrapped = tjg::styled(nested, outer);
-  check_states(fmt::format(FMT_COMPILE("{:>1}"), wrapped),
+  check_states(std::format("{:>1}", wrapped),
                std::string{"a42z"}, {outer, red, red, outer});
 }
 
 TEST(styled_text_format_test, separate_format_call_inherits_shared_state) {
   const auto outer = tjg::underline();
   const auto red = tjg::underline(tjg::fg(tjg::term_color::red));
-  check_states(tjg::format(outer, FMT_STRING("{}"), terminal_state_nested{}),
+  check_states(tjg::format(outer, "{}", terminal_state_nested{}),
                std::string{"a42z"}, {outer, red, red, outer});
   EXPECT_EQ(tjg::get_terminal_state(), tjg::text_style{});
 #if FMT_USE_EXCEPTIONS
-  EXPECT_THROW((void)tjg::format(outer, FMT_STRING("{}"),
+  EXPECT_THROW((void)tjg::format(outer, "{}",
                                 tjg::styled(color_context_throwing{}, red)),
-               fmt::format_error);
+               std::format_error);
   EXPECT_EQ(tjg::get_terminal_state(), tjg::text_style{});
 #endif
 }
 
 TEST(styled_text_format_test, terminal_state_is_shared_and_exception_safe) {
-  auto buffer = fmt::memory_buffer{};
-  auto ctx = fmt::format_context{fmt::appender{buffer}, {}};
   tjg::detail::style_scope scope{};
   auto& terminal = tjg::get_terminal_state();
   EXPECT_EQ(terminal, tjg::text_style{});
@@ -343,21 +339,15 @@ TEST(styled_text_format_test, terminal_state_is_shared_and_exception_safe) {
   terminal = outer;
   const auto number = 42;
   auto inner = tjg::styled(number, tjg::fg(tjg::term_color::red));
-  auto formatter = fmt::formatter<decltype(inner)>{};
-  auto parse_inner = fmt::parse_context<char>{fmt::string_view{}};
-  formatter.parse(parse_inner);
-  ctx.advance_to(formatter.format(inner, ctx));
+  (void)std::format("{}", inner);
   EXPECT_EQ(&tjg::get_terminal_state(), &terminal);
   const auto wide_text = tjg::styled(42, tjg::fg(tjg::term_color::red));
-  EXPECT_FALSE(fmt::format(FMT_STRING(L"{}"), wide_text).empty());
+  EXPECT_FALSE(std::format(L"{}", wide_text).empty());
   EXPECT_EQ(tjg::get_terminal_state(), outer);
 #if FMT_USE_EXCEPTIONS
   const auto value = color_context_throwing{};
   auto styled = tjg::styled(value, tjg::bold());
-  auto throwing = fmt::formatter<decltype(styled)>{};
-  auto parse = fmt::parse_context<char>{fmt::string_view{}};
-  throwing.parse(parse);
-  EXPECT_THROW((void)throwing.format(styled, ctx), fmt::format_error);
+  EXPECT_THROW((void)std::format("{}", styled), std::format_error);
   EXPECT_EQ(tjg::get_terminal_state(), outer);
 #endif
 }
@@ -369,38 +359,38 @@ TEST(styled_text_format_test, enclosing_format_context) {
   const auto red = tjg::fg(tjg::term_color::bright_red);
   const auto expected = std::vector<tjg::text_style>{
       outer, tjg::underline(red), tjg::underline(red), outer};
-  check_states(tjg::format(outer, FMT_STRING("a{}z"), tjg::styled(42, red)),
+  check_states(tjg::format(outer, "a{}z", tjg::styled(42, red)),
                std::string{"a42z"}, expected);
-  check_states(tjg::format(outer, FMT_STRING("a{}z"),
+  check_states(tjg::format(outer, "a{}z",
                           tjg::overlay(red, std::to_string(42))),
                std::string{"a42z"}, expected);
   std::ostringstream os{};
-  tjg::print(os, outer, FMT_STRING("a{}z"), tjg::styled(42, red));
+  tjg::print(os, outer, "a{}z", tjg::styled(42, red));
   check_states(os.str(), std::string{"a42z"}, expected);
   std::wostringstream wide{};
-  tjg::println(wide, outer, FMT_STRING(L"a{:}z"), tjg::styled(42, red));
+  tjg::println(wide, outer, L"a{:}z", tjg::styled(42, red));
   check_states(wide.str(), std::wstring{L"a42z\n"},
                {outer, tjg::underline(red), tjg::underline(red), outer, {}});
-  EXPECT_WRITE(stdout, tjg::print(outer, FMT_STRING("a{}z"),
+  EXPECT_WRITE(stdout, tjg::print(outer, "a{}z",
                                  tjg::styled(42, red)),
       format_in_style<char>(outer, "a{}z", tjg::styled(42, red)));
   auto output = std::vector<char>{};
-  tjg::format_to(std::back_inserter(output), outer, FMT_STRING("a{}z"),
+  tjg::format_to(std::back_inserter(output), outer, "a{}z",
                  tjg::overlay(red, "42"));
   check_states(std::string{output.begin(), output.end()}, std::string{"a42z"},
                expected);
   // Independent operations begin at defaults, even after styled output.
-  EXPECT_EQ(fmt::format(FMT_STRING("{}"), 42), "42");
+  EXPECT_EQ(std::format("{}", 42), "42");
 }
 
 TEST(styled_text_format_test, compiled_nested_style_and_pointer_output) {
   const auto inner = tjg::bold("x");
   const auto wrapped = tjg::styled(inner, tjg::underline());
   const auto both = tjg::underline(tjg::bold());
-  check_states(fmt::format(FMT_COMPILE("a{}z"), wrapped),
+  check_states(std::format("a{}z", wrapped),
                std::string{"axz"}, {{}, both, {}});
   auto buffer = std::string(128, '\0');
-  const auto end = fmt::format_to(&buffer[0], FMT_COMPILE("a{:>3}z"), wrapped);
+  const auto end = std::format_to(&buffer[0], "a{:>3}z", wrapped);
   buffer.resize(static_cast<size_t>(end - &buffer[0]));
   check_states(buffer, std::string{"a  xz"},
                {{}, both, both, both, {}});
@@ -409,7 +399,7 @@ TEST(styled_text_format_test, compiled_nested_style_and_pointer_output) {
 TEST(styled_text_format_test, unsupported_specifications) {
 #if FMT_USE_EXCEPTIONS
   const auto value = tjg::bold("text");
-  EXPECT_THROW((void)fmt::format(fmt::runtime("{:+}"), value), fmt::format_error);
+  EXPECT_THROW((void)runtime_format("{:+}", value), std::format_error);
 #endif
 }
 
@@ -480,7 +470,7 @@ TEST(styled_text_format_test, stream_insertion_wide_and_utf8) {
   const auto tree = tjg::bold(tjg::styled_text{"\xe6\x9d\xb1\xe4\xba\xac"} + "abc");
   std::ostringstream utf8;
   utf8 << std::left << std::setprecision(3) << std::setw(9) << tree;
-  EXPECT_EQ(utf8.str(), fmt::format("{:<9}", tree));
+  EXPECT_EQ(utf8.str(), std::format("{:<9}", tree));
   check_states(utf8.str(), std::string{"\xe6\x9d\xb1\xe4\xba\xac" "abc  "},
                {style, style, style, style, style, style, style, style, style,
                 style, style});
@@ -548,13 +538,13 @@ void check_string_specifications() {
                     node{chars<Char>("f")};
   for (const auto spec : specifications) {
     const auto pattern = chars<Char>(spec);
-    EXPECT_EQ(fmt::format(fmt::runtime(pattern), tree),
-              fmt::format(fmt::runtime(pattern), plain));
-    EXPECT_EQ(fmt::format(fmt::runtime(pattern), node{}),
-              fmt::format(fmt::runtime(pattern), std::basic_string<Char>{}));
+    EXPECT_EQ(runtime_format(pattern, tree),
+              runtime_format(pattern, plain));
+    EXPECT_EQ(runtime_format(pattern, node{}),
+              runtime_format(pattern, std::basic_string<Char>{}));
   }
-  EXPECT_EQ(fmt::format(fmt::runtime(chars<Char>("{:>{}.{}}")), tree, 8, 3),
-            fmt::format(fmt::runtime(chars<Char>("{:>{}.{}}")), plain, 8, 3));
+  EXPECT_EQ(runtime_format(chars<Char>("{:>{}.{}}"), tree, 8, 3),
+            runtime_format(chars<Char>("{:>{}.{}}"), plain, 8, 3));
   const auto root = tjg::fg(tjg::term_color::red);
   const auto child = tjg::bold(root);
   const auto absolute = tjg::underline();
@@ -563,11 +553,11 @@ void check_string_specifications() {
       node{chars<Char>("ef")};
   styled.style(root);
   const auto saved = styled;
-  check_states(fmt::format(fmt::runtime(chars<Char>("{:*^8.3}")), styled),
+  check_states(runtime_format(chars<Char>("{:*^8.3}"), styled),
       chars<Char>("**abc***"), {root, root, child, child, absolute, root, root, root});
-  check_states(fmt::format(fmt::runtime(chars<Char>("{:>3.0}")), styled),
+  check_states(runtime_format(chars<Char>("{:>3.0}"), styled),
       chars<Char>("   "), {root, root, root});
-  check_states(fmt::format(fmt::runtime(chars<Char>("{:>3}")), node{std::basic_string<Char>{}, root}),
+  check_states(runtime_format(chars<Char>("{:>3}"), node{std::basic_string<Char>{}, root}),
       chars<Char>("   "), {root, root, root});
   EXPECT_EQ(styled, saved);
 }
@@ -576,36 +566,52 @@ void check_string_specifications() {
 TEST(styled_text_format_test, string_specifications) {
   check_string_specifications<char>();
   check_string_specifications<wchar_t>();
-  EXPECT_EQ(fmt::format(FMT_COMPILE("{:>6.3}"), tjg::styled_text{"abcdef"}),
+  EXPECT_EQ(std::format("{:>6.3}", tjg::styled_text{"abcdef"}),
             "   abc");
   auto output = std::vector<char>{};
-  fmt::format_to(std::back_inserter(output), FMT_STRING("{:>6.3}"),
+  std::format_to(std::back_inserter(output), "{:>6.3}",
                  tjg::styled_text{"abcdef"});
   EXPECT_EQ((std::string{output.begin(), output.end()}), "   abc");
-  EXPECT_EQ(fmt::format(FMT_STRING("{0:>{1}.{2}}"), tjg::styled_text{"abcdef"}, 6, 3),
+  EXPECT_EQ(std::format("{0:>{1}.{2}}", tjg::styled_text{"abcdef"}, 6, 3),
             "   abc");
 }
 
 TEST(styled_text_format_test, unicode_precision) {
-  const std::string samples[] = {
-      "caf\xc3\xa9", "\xe7\x95\x8c!", "\xf0\x9f\x98\x80!", "e\xcc\x81",
-      "\xff!", std::string{"a\0b", 3}};
-  for (const auto& sample : samples) {
-    const auto tree = tjg::styled_text{"x"} + tjg::styled_text{sample} + "later";
-    for (int precision = 0; precision < 12; ++precision) {
-      const auto expected = fmt::format(FMT_STRING("{:*^14.{}}"), "x" + sample + "later", precision);
-      EXPECT_EQ(fmt::format(FMT_STRING("{:*^14.{}}"), tree, precision), expected);
-      EXPECT_EQ(std::format("{:*^14.{}}", tree, precision), expected);
-    }
+  struct unicode_case {
+    std::string text;
+    int precision;
+    std::string prefix;
+    std::size_t width;
+  };
+  // Explicit code-point expectations retain our width contract independently
+  // of the standard library's grapheme-aware string formatter.
+  const unicode_case cases[] = {
+      {"caf\xc3\xa9", 3, "caf", 3},
+      {"caf\xc3\xa9", 4, "caf\xc3\xa9", 4},
+      {"\xe7\x95\x8c!", 1, "", 0},
+      {"\xe7\x95\x8c!", 2, "\xe7\x95\x8c", 2},
+      {"\xe7\x95\x8c!", 3, "\xe7\x95\x8c!", 3},
+      {"\xf0\x9f\x98\x80!", 1, "", 0},
+      {"\xf0\x9f\x98\x80!", 2, "\xf0\x9f\x98\x80", 2},
+      {"e\xcc\x81", 1, "e", 1},
+      {"e\xcc\x81", 2, "e\xcc\x81", 2},
+      {"\xff!", 1, "\xff", 1},
+      {std::string{"a\0b", 3}, 2, std::string{"a\0", 2}, 2}};
+  for (const auto& sample : cases) {
+    const auto tree = tjg::styled_text{"x"} + tjg::styled_text{sample.text} + "later";
+    const auto padding = std::size_t{14} - 1 - sample.width;
+    const auto expected = std::string(padding / 2, '*') + "x" + sample.prefix +
+                          std::string(padding - padding / 2, '*');
+    EXPECT_EQ(std::format("{:*^14.{}}", tree, sample.precision + 1), expected);
   }
   // A wide code point that cannot fit stops the traversal, including later leaves.
   const auto tree = tjg::styled_text{"a"} + "\xe7\x95\x8c" + "b";
-  EXPECT_EQ(fmt::format(FMT_STRING("{:.2}"), tree), "a");
-  EXPECT_EQ(fmt::format(FMT_STRING("{:\xc2\xb7^5.1}"), tree),
-            fmt::format(FMT_STRING("{:\xc2\xb7^5.1}"), "a"));
+  EXPECT_EQ(std::format("{:.2}", tree), "a");
+  EXPECT_EQ(std::format("{:\xc2\xb7^5.1}", tree),
+            std::format("{:\xc2\xb7^5.1}", "a"));
 #if FMT_USE_EXCEPTIONS
-  EXPECT_THROW((void)fmt::format(fmt::runtime("{:>{}}"), tree, -1), fmt::format_error);
-  EXPECT_THROW((void)fmt::format(fmt::runtime("{:.{}}"), tree, -1), fmt::format_error);
+  EXPECT_THROW((void)runtime_format("{:>{}}", tree, -1), std::format_error);
+  EXPECT_THROW((void)runtime_format("{:.{}}", tree, -1), std::format_error);
 #endif
 }
 
@@ -621,13 +627,13 @@ void check_deferred_transitions() {
       chars<Char>("tail"));
   const auto opening = tjg::to_sgr<Char>(inner, tjg::text_style{});
   const auto reset = tjg::to_sgr<Char>(tjg::text_style{}, inner);
-  EXPECT_EQ(fmt::format(fmt::runtime(chars<Char>("{:.1}")), tree),
+  EXPECT_EQ(runtime_format(chars<Char>("{:.1}"), tree),
             opening + chars<Char>("a") + reset);
   const auto padded = opening + chars<Char>("a") +
       tjg::to_sgr<Char>(root, inner) + chars<Char>("  ") +
       tjg::to_sgr<Char>(tjg::text_style{}, root);
-  EXPECT_EQ(fmt::format(fmt::runtime(chars<Char>("{:<3.1}")), tree), padded);
-  EXPECT_EQ(fmt::format(fmt::runtime(chars<Char>("{:.0}")), tree),
+  EXPECT_EQ(runtime_format(chars<Char>("{:<3.1}"), tree), padded);
+  EXPECT_EQ(runtime_format(chars<Char>("{:.0}"), tree),
             std::basic_string<Char>{});
 
   // The enclosing group never prints: only its absolute child needs an entry.
@@ -636,7 +642,7 @@ void check_deferred_transitions() {
       node{chars<Char>("abc")})) + chars<Char>("later"));
   auto relative = absolute;
   relative.absolute(false);
-  EXPECT_EQ(fmt::format(fmt::runtime(chars<Char>("{:.1}")), group),
+  EXPECT_EQ(runtime_format(chars<Char>("{:.1}"), group),
       tjg::to_sgr<Char>(absolute, tjg::text_style{}) + chars<Char>("a") +
       tjg::to_sgr<Char>(tjg::text_style{}, relative));
 }
@@ -666,9 +672,9 @@ template <typename Char> void check_defaults_and_overrides() {
                {white, white, tjg::fg(tc::red), tjg::text_style{}});
   const auto leaf = node{chars<Char>("A"), tjg::fg(tc::yellow)};
   const auto branch = leaf + node{chars<Char>("B")};
-  check_states(fmt::format(fmt::runtime(chars<Char>("{:.1}")),
+  check_states(runtime_format(chars<Char>("{:.1}"),
                           tjg::underlay(defaults, leaf)), chars<Char>("A"), {yellow});
-  check_states(fmt::format(fmt::runtime(chars<Char>("{:.1}")),
+  check_states(runtime_format(chars<Char>("{:.1}"),
                           tjg::underlay(defaults, branch)), chars<Char>("A"), {yellow});
 }
 }  // namespace
@@ -680,19 +686,21 @@ TEST(styled_text_format_test, defaults_and_recursive_overrides) {
 TEST(styled_text_format_test, standard_tree_specs_and_debug) {
   const auto tree = tjg::bold(tjg::styled_text{"hello "} +
       tjg::styled_text{"world", tjg::fg(tjg::term_color::blue)});
-  for (const char* spec : {"{}", "{:s}", "{:>15}", "{:*^15.9}", "{:.0}",
-                           "{:*>8.0}", "{:?}", "{:>20.12?}"}) {
-    EXPECT_EQ(std::vformat(spec, std::make_format_args(tree)),
-              fmt::vformat(spec, fmt::make_format_args(tree)));
-  }
+  const auto rendered = std::string{"\x1b[1mhello \x1b[34mworld\x1b[0m"};
+  EXPECT_EQ(std::format("{}", tree), rendered);
+  EXPECT_EQ(std::format("{:s}", tree), rendered);
+  EXPECT_EQ(std::format("{:>15}", tree), "\x1b[1m    hello \x1b[34mworld\x1b[0m");
+  EXPECT_EQ(std::format("{:*^15.9}", tree),
+            "\x1b[1m***hello \x1b[34mwor\x1b[39m***\x1b[0m");
+  EXPECT_EQ(std::format("{:.0}", tree), "");
+  EXPECT_EQ(std::format("{:*>8.0}", tree), "\x1b[1m********\x1b[0m");
+  EXPECT_EQ(std::format("{:?}", tree), "b {\n  \"hello \"\n  blue \"world\"\n}\n");
   EXPECT_EQ(std::format("{:>{}.{}s} {}", tree, 12, 9, 42),
-            fmt::format(FMT_STRING("{:>{}.{}s} {}"), tree, 12, 9, 42));
-  EXPECT_EQ(std::format("{0:*^{1}.{2}?}", tree, 15, 9),
-            fmt::format(FMT_STRING("{0:*^{1}.{2}?}"), tree, 15, 9));
+            "\x1b[1m   hello \x1b[34mwor\x1b[0m 42");
+  EXPECT_EQ(std::format("{0:*^{1}.{2}?}", tree, 15, 9), "***b {\n  \"he***");
   const auto wide = tjg::underline(tjg::wstyled_text{L"wide"} + L" tree");
-  EXPECT_EQ(std::format(L"{:*^15.6}", wide),
-            fmt::format(FMT_STRING(L"{:*^15.6}"), wide));
-  EXPECT_EQ(std::format(L"{:?}", wide), fmt::format(FMT_STRING(L"{:?}"), wide));
+  EXPECT_EQ(std::format(L"{:*^15.6}", wide), L"\x1b[4m****wide t*****\x1b[0m");
+  EXPECT_EQ(std::format(L"{:?}", wide), L"_ {\n  \"wide\"\n  \" tree\"\n}\n");
   EXPECT_EQ(std::formatted_size("{}", tree), std::format("{}", tree).size());
   char output[256] = {};
   const auto end = std::format_to(output, "{:*>12.9}", tree);
@@ -746,8 +754,8 @@ TEST(styled_text_format_test, standard_tree_output_failure_restores_state) {
   EXPECT_THROW(std::format_to(tree_throwing_output{&remaining}, "{}", tree), std::runtime_error);
   EXPECT_EQ(tjg::get_terminal_state(), outer);
 }
-TEST(styled_text_format_test, legacy_named_dynamic_specs) {
+TEST(styled_text_format_test, named_dynamic_specs_are_rejected) {
   const auto tree = tjg::styled_text{"hello world"};
-  EXPECT_EQ(fmt::format(FMT_STRING("{:>{width}.{prec}}"), tree,
-                       fmt::arg("width", 9), fmt::arg("prec", 5)), "    hello");
+  EXPECT_THROW((void)runtime_format("{:>{width}.{prec}}", tree, 9, 5),
+               std::format_error);
 }

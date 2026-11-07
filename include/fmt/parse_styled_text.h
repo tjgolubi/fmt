@@ -1,6 +1,6 @@
 // Parse ordinary ANSI SGR into owned styled text.
-#ifndef FMT_PARSE_STYLED_TEXT_H_
-#define FMT_PARSE_STYLED_TEXT_H_
+#ifndef TJG_PARSE_STYLED_TEXT_H_
+#define TJG_PARSE_STYLED_TEXT_H_
 
 #include <string_view>
 
@@ -228,7 +228,7 @@ auto sgr_escape_end(std::basic_string_view<Char> input, std::size_t start)
  * ignored. This parses appearance, not an exact escape-byte round trip.
  */
 template <typename Char>
-FMT_NODISCARD auto parse_styled_text(std::basic_string_view<Char> input)
+[[nodiscard]] auto parse_styled_text(std::basic_string_view<Char> input)
     -> basic_styled_text<Char> {
   auto result = basic_styled_text<Char>{};
   auto group = basic_styled_text<Char>{};
@@ -284,16 +284,16 @@ FMT_NODISCARD auto parse_styled_text(std::basic_string_view<Char> input)
   return result;
 }  // parse_styled_text
 
-FMT_NODISCARD inline auto parse_styled_text(std::string_view input)
+[[nodiscard]] inline auto parse_styled_text(std::string_view input)
     -> styled_text {
   return parse_styled_text<char>(input);
 }
 
-FMT_NODISCARD inline auto parse_styled_text(
+[[nodiscard]] inline auto parse_styled_text(
     std::basic_string_view<wchar_t> input) -> wstyled_text {
   return parse_styled_text<wchar_t>(input);
 }
 
 }  // namespace tjg
 
-#endif  // FMT_PARSE_STYLED_TEXT_H_
+#endif  // TJG_PARSE_STYLED_TEXT_H_
