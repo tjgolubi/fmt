@@ -125,7 +125,7 @@ and followed by an SGR reset to terminal defaults. An empty style adds no
 sequences of its own. `println` and `vprintln` append their newline after
 the reset.
 
-The formatting context carries the enclosing style through replacement fields.
+A shared terminal style carries the enclosing style through replacement fields.
 Relative styled arguments and structured text inherit missing colors and combine
 emphasis with that style. Each field restores the enclosing style afterward:
 
@@ -161,11 +161,16 @@ See the [table demonstration](styled.md#table-demonstration) for a complete
 example combining column defaults, row emphasis, absolute spans, UTF-8 display
 widths, and fixed-width formatting, with build and run instructions.
 
-Style state belongs to one formatting operation. A separate `format` or
-`format_to` call starts with its own context, even when given the same output
-iterator. Custom formatters that directly delegate to another formatter using
-their existing context preserve its style. Raw SGR embedded in strings and
-terminal styling established outside the operation are not tracked.
+`get_terminal_state` returns a reference to one function-local static
+`text_style` in `color.h`, initially terminal defaults. Styled formatting saves
+and restores that value, including on exceptions. Nested `format` and
+`format_to` calls share the active style even when they construct a new
+formatting context. Formatting contexts carry no terminal state.
+
+This implementation is single-threaded, with no mutex or thread-local state.
+Styled formatting runs at runtime, including with compiled format strings;
+it cannot be constant-evaluated because it accesses mutable static storage.
+Raw SGR embedded in strings and external terminal styling are not tracked.
 
 The [output functions](print.md) emit escape sequences even when output is
 redirected to a file. The [formatting functions](format.md) store those

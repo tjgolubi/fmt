@@ -456,9 +456,9 @@ template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
                       : specs.align() == align::center ? padding / 2
                                                        : 0;
     if (limit == 0) state.stopped = true;
-    const auto initial = detail::style_context::get(ctx);
-    auto terminal = initial;
-    detail::style_scope<FormatContext> scope{ctx};
+    const auto initial = get_terminal_state();
+    auto& terminal = get_terminal_state();
+    detail::style_scope scope{};
     auto out = write_node(value, initial, terminal, ctx.out(), state, specs,
                           left, padding - left);
     return transition(initial, terminal, out);

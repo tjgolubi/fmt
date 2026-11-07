@@ -143,16 +143,17 @@ it resumes both surrounding properties.
 ### Formatting and plain text
 
 Formatting leaves the value unchanged. Relative roots inherit the enclosing
-formatting context's colors and emphasis. After the complete replacement field,
-the enclosing style is restored. Without an outer style, the context starts at
-terminal defaults.
+shared terminal state's colors and emphasis. After the complete replacement field,
+the enclosing style is restored. The shared state initially assumes terminal
+defaults. See the [shared-state rules](index.md) for single-threaded use and
+nested formatting calls.
 
 The formatter tracks the last style emitted to the terminal separately from
 the enclosing group style. Relative groups emit no SGR on entry or exit.
 Immediately before writing a leaf's text or padding, it emits the transition
 from the recorded terminal state to the required style. Successive leaves
 therefore transition directly without first restoring intermediate group
-styles. At field completion, it restores the enclosing formatting context's
+styles. At field completion, it restores the enclosing shared
 style from the last emitted state.
 
 ```cpp
@@ -189,7 +190,7 @@ their own text. Relative transitions are emitted only before text or padding.
 Absolute nodes reset before applying their styles, unless there is no output.
 Truncation stops traversal of later text and nodes. It does not emit
 intermediate group restorations; after any right padding, the field transitions
-directly from its last emitted style to the enclosing context style.
+directly from its last emitted style to the enclosing shared style.
 
 Use `plain_text` when you need an independent string containing just the stored
 text, without applying the styles:
@@ -612,7 +613,7 @@ Expected output (followed by a newline):
 <pre class="color-output">Amount: <span style="color: #008000">    1.23</span></pre>
 
 The width and precision apply to the number, including padding inside the styled
-span. Relative styles inherit the enclosing context; absolute styles replace
+span. Relative styles inherit the shared terminal state; absolute styles replace
 it for this value and always emit an explicit reset in both SGR modes, even
 when the enclosing state already has the same attributes. Both restore the
 enclosing style afterward. For examples, see

@@ -274,6 +274,7 @@ void check_context_styles() {
 
 struct color_context_nested {};
 struct color_context_throwing {};
+struct terminal_state_nested {};
 
 FMT_BEGIN_NAMESPACE
 template<> struct formatter<color_context_nested> : nested_formatter<int> {
@@ -281,6 +282,13 @@ template<> struct formatter<color_context_nested> : nested_formatter<int> {
   auto format(color_context_nested, Context& ctx) const
       -> decltype(ctx.out()) {
     return write(ctx, "a", fmt::styled(42, fmt::fg(fmt::term_color::red)), "z");
+  }
+};
+template<> struct formatter<terminal_state_nested> : formatter<int> {
+  template<typename Context>
+  auto format(terminal_state_nested, Context& ctx) const -> decltype(ctx.out()) {
+    return fmt::format_to(ctx.out(), FMT_STRING("a{}z"),
+                         fmt::styled(42, fmt::fg(fmt::term_color::red)));
   }
 };
 template<> struct formatter<color_context_throwing> : formatter<int> {
@@ -307,21 +315,38 @@ TEST(styled_text_format_test, nested_buffer_context_inherits_style) {
                std::string{"a42z"}, {outer, red, red, outer});
 }
 
-TEST(styled_text_format_test, context_state_is_local_and_exception_safe) {
+TEST(styled_text_format_test, separate_format_call_inherits_shared_state) {
+  const auto outer = fmt::underline();
+  const auto red = fmt::underline(fmt::fg(fmt::term_color::red));
+  check_states(fmt::format(outer, FMT_STRING("{}"), terminal_state_nested{}),
+               std::string{"a42z"}, {outer, red, red, outer});
+  EXPECT_EQ(fmt::get_terminal_state(), fmt::text_style{});
+#if FMT_USE_EXCEPTIONS
+  EXPECT_THROW((void)fmt::format(outer, FMT_STRING("{}"),
+                                fmt::styled(color_context_throwing{}, red)),
+               fmt::format_error);
+  EXPECT_EQ(fmt::get_terminal_state(), fmt::text_style{});
+#endif
+}
+
+TEST(styled_text_format_test, terminal_state_is_shared_and_exception_safe) {
   auto buffer = fmt::memory_buffer{};
   auto ctx = fmt::format_context{fmt::appender{buffer}, {}};
-  EXPECT_EQ(fmt::detail::color_context::get(ctx), uint64_t{0});
+  fmt::detail::style_scope scope{};
+  auto& terminal = fmt::get_terminal_state();
+  EXPECT_EQ(terminal, fmt::text_style{});
   const auto outer = fmt::underline(fmt::bg(fmt::term_color::blue));
-  fmt::detail::style_context::set(ctx, outer);
+  terminal = outer;
   const auto number = 42;
   auto inner = fmt::styled(number, fmt::fg(fmt::term_color::red));
   auto formatter = fmt::formatter<decltype(inner)>{};
   auto parse_inner = fmt::parse_context<char>{fmt::string_view{}};
   formatter.parse(parse_inner);
   ctx.advance_to(formatter.format(inner, ctx));
-  auto ordinary = fmt::format_context{fmt::appender{buffer}, {}};
-  EXPECT_EQ(fmt::detail::color_context::get(ordinary), uint64_t{0});
-  EXPECT_EQ(fmt::detail::style_context::get(ctx), outer);
+  EXPECT_EQ(&fmt::get_terminal_state(), &terminal);
+  const auto wide_text = fmt::styled(42, fmt::fg(fmt::term_color::red));
+  EXPECT_FALSE(fmt::format(FMT_STRING(L"{}"), wide_text).empty());
+  EXPECT_EQ(fmt::get_terminal_state(), outer);
 #if FMT_USE_EXCEPTIONS
   const auto value = color_context_throwing{};
   auto styled = fmt::styled(value, fmt::bold());
@@ -329,7 +354,7 @@ TEST(styled_text_format_test, context_state_is_local_and_exception_safe) {
   auto parse = fmt::parse_context<char>{fmt::string_view{}};
   throwing.parse(parse);
   EXPECT_THROW((void)throwing.format(styled, ctx), fmt::format_error);
-  EXPECT_EQ(fmt::detail::style_context::get(ctx), outer);
+  EXPECT_EQ(fmt::get_terminal_state(), outer);
 #endif
 }
 

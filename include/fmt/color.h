@@ -1101,10 +1101,6 @@ FMT_NODISCARD constexpr auto blend(color_t first, Second second,
 #endif
 }
 
-namespace detail {
-struct style_context;
-}
-
 /**
  * A text style consisting of optional foreground and background colors and a
  * set of emphasis attributes. Each color may be RGB or a terminal palette
@@ -1169,7 +1165,6 @@ class text_style {
 
  private:
   value_type style_ = 0;
-  friend struct detail::style_context;
 
   static constexpr auto color_bits = 24;
   static constexpr auto disc_bits = 3;
@@ -1562,6 +1557,16 @@ class text_style {
   friend constexpr auto fg(color_t foreground) noexcept -> text_style;
   friend constexpr auto bg(color_t background) noexcept -> text_style;
 };  // text_style
+
+/**
+ * Returns the shared terminal style state. Formatting saves and restores this
+ * value across nested calls. This state is single-threaded and is not protected
+ * by a mutex. Raw terminal escapes and external terminal state are not tracked.
+ */
+inline auto get_terminal_state() noexcept -> text_style& {
+  static auto state = text_style{};
+  return state;
+}
 
 /// Returns a copy of `style` marked absolute, preserving its colors and
 /// emphasis.
@@ -2155,34 +2160,14 @@ FMT_CONSTEXPR20 void append_sgr(buffer<Char>& buf, text_style ts) {
 
 #endif
 
-// Convert the context's private packed value without exposing an integer
-// constructor on text_style. Context state is always a complete, relative
-// value.
-struct style_context {
-  template <typename Context>
-  static FMT_CONSTEXPR auto get(const Context& ctx) noexcept -> text_style {
-    auto result = text_style{};
-    result.style_ = color_context::get(ctx);
-    return result;
-  }
-
-  template <typename Context>
-  static FMT_CONSTEXPR void set(Context& ctx, text_style style) noexcept {
-    color_context::set(ctx, to_underlying(style.absolute(false)));
-  }
-
-};  // style_context
-
-template <typename Context> class style_scope {
-  Context& _context;
-  uint64_t _saved;
+class style_scope {
+  text_style _saved;
 
  public:
-  FMT_CONSTEXPR explicit style_scope(Context& ctx) noexcept
-      : _context{ctx}, _saved{color_context::get(ctx)} {}
+  style_scope() noexcept : _saved{get_terminal_state()} {}
 
-  // Restore context metadata on exceptions; partial output may remain.
-  FMT_CONSTEXPR20 ~style_scope() { color_context::set(_context, _saved); }
+  // Restore shared state on exceptions; partial output may remain.
+  ~style_scope() { get_terminal_state() = _saved; }
 
   style_scope(const style_scope&) = delete;
   void operator=(const style_scope&) = delete;
@@ -2191,8 +2176,10 @@ template <typename Context> class style_scope {
 template <typename Char>
 void vformat_to(buffer<Char>& buf, text_style ts, basic_string_view<Char> fmt,
                 basic_format_args<buffered_context<Char>> args) {
+  style_scope scope{};
   append_sgr(buf, ts);
-  vformat_to(buf, fmt, args, {}, to_underlying(text_style{ts}.absolute(false)));
+  get_terminal_state() = text_style{ts}.absolute(false);
+  vformat_to(buf, fmt, args);
   if (ts != text_style()) reset_color<Char>(buf);
 }  // vformat_to
 
@@ -2707,22 +2694,21 @@ struct formatter<emphasis, Char>
 template <typename T, typename Char>
 struct formatter<detail::styled_arg<T>, Char> : formatter<T, Char> {
   template <typename FormatContext>
-  FMT_CONSTEXPR auto format(const detail::styled_arg<T>& arg,
-                            FormatContext& ctx) const -> decltype(ctx.out()) {
-    const auto initial = detail::style_context::get(ctx);
+  auto format(const detail::styled_arg<T>& arg, FormatContext& ctx) const
+      -> decltype(ctx.out()) {
+    const auto initial = get_terminal_state();
     const auto effective =
         arg.style.is_absolute() ? arg.style : fmt::overlay(initial, arg.style);
-    detail::style_scope<FormatContext> scope{ctx};
+    detail::style_scope scope{};
     auto sgr = basic_memory_buffer<Char, sgr_max_length>{};
     detail::append_sgr_transition(sgr, effective, initial);
     auto out =
         detail::copy<Char>(sgr.data(), sgr.data() + sgr.size(), ctx.out());
     ctx.advance_to(out);
-    detail::style_context::set(ctx, effective);
+    get_terminal_state() = text_style{effective}.absolute(false);
     out = formatter<T, Char>::format(arg.value, ctx);
     sgr.clear();
-    detail::append_sgr_transition(sgr, initial,
-                                  detail::style_context::get(ctx));
+    detail::append_sgr_transition(sgr, initial, get_terminal_state());
     return detail::copy<Char>(sgr.data(), sgr.data() + sgr.size(), out);
   }
 };  // formatter
@@ -2737,10 +2723,10 @@ struct formatter<detail::styled_arg<T>, Char> : formatter<T, Char> {
  * temporary value can be used in an immediate formatting call, but storing the
  * result does not extend that temporary's lifetime.
  *
- * Relative styles inherit the enclosing formatting context's missing colors
+ * Relative styles inherit the shared terminal state's missing colors
  * and combine emphasis. Absolute styles use terminal defaults for unspecified
  * components. After the value, including padding, the enclosing style is
- * restored. Ordinary formatting starts from terminal defaults; styling already
+ * restored. Shared state initially assumes terminal defaults; styling already
  * active outside this formatting operation and raw escapes are not tracked.
  *
  * **Example**:

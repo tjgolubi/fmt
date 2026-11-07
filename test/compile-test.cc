@@ -287,7 +287,7 @@ TEST(compile_test, constexpr_formatted_size) {
   FMT_CONSTEXPR20 size_t array_size = fmt::formatted_size(
       FMT_COMPILE("{}"), fmt::join(std::array<int, 3>{1, 2, 3}, ","));
   EXPECT_EQ(array_size, 5);
-  FMT_CONSTEXPR20 size_t styled_size = fmt::formatted_size(
+  const size_t styled_size = fmt::formatted_size(
       FMT_COMPILE("{}"),
       fmt::styled(std::array{1, 2, 3}, fmt::bg(fmt::color::green)));
 #if FMT_COLOR_COMPACT_SGR == 1
