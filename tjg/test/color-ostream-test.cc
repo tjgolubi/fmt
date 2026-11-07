@@ -11,7 +11,7 @@
 #include <iomanip>
 #include <sstream>
 
-#include "gtest-extra.h"
+#include "test-support.h"
 
 TEST(color_ostream_test, emphasis_insertion) {
   using tjg::emphasis;
@@ -310,7 +310,7 @@ TEST(color_ostream_test, stream_failure) {
                std::ios_base::failure);
 }
 
-#if FMT_USE_EXCEPTIONS
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
 namespace {
 struct insertion_error {};
 struct reset_error {};

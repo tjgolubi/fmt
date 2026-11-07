@@ -3,7 +3,7 @@
 #include <iterator>
 #include <string>
 
-#include "gtest-extra.h"
+#include "test-support.h"
 
 TEST(memory_buffer_test, inline_storage_and_growth) {
   tjg::basic_memory_buffer<char, 4> buffer;

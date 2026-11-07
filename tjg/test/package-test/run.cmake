@@ -31,7 +31,7 @@ run("${CMAKE_COMMAND}" -S "${source}/tjg" -B "${package_build}"
     -G "${TJG_GENERATOR}" "-DCMAKE_MAKE_PROGRAM=${TJG_MAKE_PROGRAM}"
     "-DCMAKE_CXX_COMPILER=${TJG_CXX_COMPILER}" -DCMAKE_BUILD_TYPE=Debug
     "-DCMAKE_INSTALL_PREFIX=${prefix}" -DTJG_INSTALL=ON
-    -DTJG_COLOR_COMPACT_SGR=ON)
+    -DTJG_COLOR_COMPACT_SGR=ON -DTJG_TEST=OFF)
 run("${CMAKE_COMMAND}" --build "${package_build}" --config Debug)
 run("${CMAKE_COMMAND}" --install "${package_build}" --config Debug)
 if (EXISTS "${prefix}/include/fmt")
@@ -40,7 +40,7 @@ endif ()
 file(RENAME "${prefix}" "${relocated}")
 
 # The consumer sets no language standard, include path, or SGR definition itself.
-run("${CMAKE_COMMAND}" -S "${TJG_SOURCE_DIR}/test/tjg-package-test"
+run("${CMAKE_COMMAND}" -S "${TJG_SOURCE_DIR}/tjg/test/package-test"
     -B "${consumer_build}" -G "${TJG_GENERATOR}"
     "-DCMAKE_MAKE_PROGRAM=${TJG_MAKE_PROGRAM}"
     "-DCMAKE_CXX_COMPILER=${TJG_CXX_COMPILER}" -DCMAKE_BUILD_TYPE=Debug

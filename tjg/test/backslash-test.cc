@@ -1,9 +1,8 @@
 #include "standard-format-test.h"
 #include "tjg/backslash.h"
-#include "gtest-extra.h"
+#include "test-support.h"
 
 namespace {
-#if 1
 template <typename Char, size_t N, size_t M>
 constexpr auto check_constexpr_iterators(const Char (&input)[N],
                                        const Char (&expected)[M]) -> bool {
@@ -42,7 +41,6 @@ constexpr auto check_constexpr_decoding() -> bool {
 }
 static_assert(check_constexpr_decoding(),
               "constexpr octal, hex, quotes, question mark, and empty input");
-#endif
 
 #if defined(__cpp_lib_constexpr_string) && __cpp_lib_constexpr_string >= 201907L
 constexpr auto check_constexpr_strings() -> bool {
@@ -102,7 +100,7 @@ TEST(backslash_test, examples) {
   check_examples<wchar_t>();
 }
 
-#if FMT_USE_EXCEPTIONS
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
 namespace {
 template <typename Char> void check_invalid_escapes() {
   const char* malformed[] = {

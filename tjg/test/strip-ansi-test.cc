@@ -1,6 +1,6 @@
 #include "standard-format-test.h"
 #include "tjg/strip_ansi.h"
-#include "gtest-extra.h"
+#include "test-support.h"
 
 namespace {
 template<typename Char>

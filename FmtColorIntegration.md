@@ -150,3 +150,24 @@ not export TJG APIs. `./build.bash` and `./build.bash taskwarrior` run the full
 repository tests with C++23 and compact SGR. CI stays disabled for `ref/CPP20`.
 The package test copies only TJG sources/headers, installs and relocates them,
 and builds a separate consumer using `find_package(tjg)`.
+
+## Run only TJG tests
+
+All TJG test sources, helpers, and registrations live in `tjg/test/`. Configure
+that package directly to build and run its full suite without configuring,
+building, or linking the FMT library:
+
+```bash
+cmake -S tjg -B build/tjg-tests \
+  -DTJG_TEST=ON -DTJG_WERROR=ON -DTJG_COLOR_COMPACT_SGR=ON \
+  -DCMAKE_CXX_STANDARD=23 -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/tjg-tests --parallel 4
+ctest --test-dir build/tjg-tests --output-on-failure
+```
+
+Tests use the checkout's vendored Google Test sources, or an installed
+`GTest` CMake package when those sources are unavailable. Neither path needs
+FMT's library or test harness. `TJG_TEST` defaults to `OFF` for the standalone
+package; the top-level repository build defaults it to the `FMT_TEST` setting.
+When both suites are configured, `ctest --test-dir build -L tjg` selects only
+TJG tests. All validation on this branch uses C++23 or later and compact SGR.

@@ -5,6 +5,8 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 option(TJG_INSTALL "Generate TJG install rules." ON)
+option(TJG_TEST "Build TJG tests." OFF)
+option(TJG_WERROR "Treat TJG test warnings as errors." OFF)
 option(TJG_COLOR_COMPACT_SGR "Use compact ANSI SGR output." ON)
 
 add_library(tjg INTERFACE)
@@ -33,4 +35,14 @@ if (TJG_INSTALL)
           DESTINATION "${TJG_CMAKE_DIR}" COMPONENT tjg)
   install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE"
           DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/tjg" COMPONENT tjg)
+endif ()
+
+if (TJG_TEST)
+  if (NOT CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 23)
+  elseif (CMAKE_CXX_STANDARD LESS 23)
+    message(FATAL_ERROR "TJG tests require C++23 or later")
+  endif ()
+  enable_testing()
+  add_subdirectory(test)
 endif ()

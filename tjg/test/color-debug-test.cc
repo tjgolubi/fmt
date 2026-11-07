@@ -7,7 +7,7 @@
 
 #include "tjg/strip_ansi.h"
 #include "tjg/styled_text.h"
-#include "gtest-extra.h"
+#include "test-support.h"
 
 namespace {
 template <typename T>
@@ -117,7 +117,7 @@ TEST(color_debug_test, emphasis_notation) {
 #if defined(__cpp_lib_format_ranges)
   EXPECT_EQ(std::format("{}", std::vector<emphasis>{emphasis{}, emphasis::bold}), "[{}, {bold}]");
 #endif
-#if FMT_USE_EXCEPTIONS
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   EXPECT_THROW((void)runtime_format("{:d}", emphasis::bold),
                std::format_error);
 #endif
@@ -142,7 +142,7 @@ TEST(color_debug_test, string_specifications) {
   EXPECT_EQ(os.flags() & std::ios_base::basefield, std::ios_base::hex);
   os << std::left << std::setw(8) << tjg::bold();
   EXPECT_EQ(os.str(), "***#abcdefb*******");
-#if FMT_USE_EXCEPTIONS
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   EXPECT_THROW((void)runtime_format("{:x}", red), std::format_error);
   EXPECT_THROW((void)runtime_format("{:+}", tjg::bold()),
                std::format_error);

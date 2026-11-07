@@ -10,7 +10,6 @@
 
 #define I 42  // simulate https://en.cppreference.com/w/c/numeric/complex/I
 #include "fmt/chrono.h"
-#include "tjg/color.h"
 #include "fmt/format.h"
 #include "fmt/ostream.h"
 #include "fmt/ranges.h"
@@ -41,17 +40,6 @@ void test_chrono() {
   (void)fmt::format(FMT_STRING(L"{}"), std::chrono::seconds(42));
 }
 
-void test_text_style() {
-  tjg::print(fg(tjg::rgb(255, 20, 30)), FMT_STRING("{}"), "rgb(255,20,30)");
-  (void)tjg::format(fg(tjg::rgb(255, 20, 30)), FMT_STRING("{}"),
-                    "rgb(255,20,30)");
-
-  tjg::text_style ts = fg(tjg::rgb(255, 20, 30));
-  std::string out;
-  tjg::format_to(std::back_inserter(out), ts,
-                 FMT_STRING("rgb(255,20,30){}{}{}"), 1, 2, 3);
-}
-
 void test_range() {
   std::vector<char> hello = {'h', 'e', 'l', 'l', 'o'};
   (void)fmt::format(FMT_STRING("{}"), hello);
@@ -60,6 +48,5 @@ void test_range() {
 int main() {
   test_format_api();
   test_chrono();
-  test_text_style();
   test_range();
 }

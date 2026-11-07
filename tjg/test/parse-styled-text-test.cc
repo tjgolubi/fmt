@@ -1,7 +1,7 @@
 #include "standard-format-test.h"
 #include "tjg/parse_styled_text.h"
 
-#include "gtest-extra.h"
+#include "test-support.h"
 
 namespace {
 template<typename Char>

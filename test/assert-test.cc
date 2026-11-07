@@ -9,7 +9,6 @@
 //
 // For the license information refer to format.h.
 
-#include "tjg/color.h"
 #include "fmt/format.h"
 #include "gtest/gtest.h"
 
@@ -30,14 +29,3 @@ TEST(assert_test, dangling_else) {
     executed_else = true;
   EXPECT_TRUE(executed_else);
 }
-
-#if GTEST_HAS_DEATH_TEST && !defined(NDEBUG)
-TEST(assert_test, color_argument_ranges) {
-  EXPECT_DEATH((void)(tjg::rgb{-1, 0, 0}), "channel out of range");
-  EXPECT_DEATH((void)(tjg::gray_color{24}), "index out of range");
-  EXPECT_DEATH((void)(tjg::cube_color{0, 6, 0}), "channel out of range");
-  EXPECT_DEATH((void)(tjg::cube_color{216}), "index out of range");
-  tjg::cube_color color;
-  EXPECT_DEATH((void)color.b(-1), "channel out of range");
-}
-#endif

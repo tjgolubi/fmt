@@ -9,6 +9,8 @@ The repository still contains the original {fmt} engine and its own tests.
 TJG headers live under `include/tjg/` and are included as `<tjg/...>`.
 The standalone CMake project in `tjg/` exports `tjg::tjg`; the retained {fmt}
 engine remains under `include/fmt/` in namespace `fmt`.
+TJG tests and their own harness live in `tjg/test/`; the original FMT tests
+remain in `test/`. Configure `tjg/` with `-DTJG_TEST=ON` to run only TJG tests.
 Development is on the `color-dev` branch; these extensions have not been
 accepted into upstream {fmt}.
 

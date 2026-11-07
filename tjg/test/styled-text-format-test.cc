@@ -3,7 +3,7 @@
 
 
 #include "tjg/color-ostream.h"
-#include "gtest-extra.h"
+#include "test-support.h"
 
 #include <iomanip>
 #include <sstream>
@@ -323,7 +323,7 @@ TEST(styled_text_format_test, separate_format_call_inherits_shared_state) {
   check_states(tjg::format(outer, "{}", terminal_state_nested{}),
                std::string{"a42z"}, {outer, red, red, outer});
   EXPECT_EQ(tjg::get_terminal_state(), tjg::text_style{});
-#if FMT_USE_EXCEPTIONS
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   EXPECT_THROW((void)tjg::format(outer, "{}",
                                 tjg::styled(color_context_throwing{}, red)),
                std::format_error);
@@ -344,7 +344,7 @@ TEST(styled_text_format_test, terminal_state_is_shared_and_exception_safe) {
   const auto wide_text = tjg::styled(42, tjg::fg(tjg::term_color::red));
   EXPECT_FALSE(std::format(L"{}", wide_text).empty());
   EXPECT_EQ(tjg::get_terminal_state(), outer);
-#if FMT_USE_EXCEPTIONS
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   const auto value = color_context_throwing{};
   auto styled = tjg::styled(value, tjg::bold());
   EXPECT_THROW((void)std::format("{}", styled), std::format_error);
@@ -397,7 +397,7 @@ TEST(styled_text_format_test, compiled_nested_style_and_pointer_output) {
 }
 
 TEST(styled_text_format_test, unsupported_specifications) {
-#if FMT_USE_EXCEPTIONS
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   const auto value = tjg::bold("text");
   EXPECT_THROW((void)runtime_format("{:+}", value), std::format_error);
 #endif
@@ -498,7 +498,7 @@ TEST(styled_text_format_test, stream_insertion_failure) {
   std::ostream failing{&buffer};
   failing << tjg::bold("text");
   EXPECT_TRUE(failing.bad());
-#if FMT_USE_EXCEPTIONS
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   failing.clear();
   failing.exceptions(std::ios_base::badbit);
   EXPECT_THROW(failing << tjg::bold("text"), std::ios_base::failure);
@@ -609,7 +609,7 @@ TEST(styled_text_format_test, unicode_precision) {
   EXPECT_EQ(std::format("{:.2}", tree), "a");
   EXPECT_EQ(std::format("{:\xc2\xb7^5.1}", tree),
             std::format("{:\xc2\xb7^5.1}", "a"));
-#if FMT_USE_EXCEPTIONS
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   EXPECT_THROW((void)runtime_format("{:>{}}", tree, -1), std::format_error);
   EXPECT_THROW((void)runtime_format("{:.{}}", tree, -1), std::format_error);
 #endif

@@ -106,6 +106,10 @@ include(GNUInstallDirs) # CMAKE_INSTALL_INCLUDEDIR
 
 # TJG can also be configured and installed independently with -S tjg.
 option(TJG_INSTALL "Generate TJG install rules." ${FMT_INSTALL})
+option(TJG_TEST "Build TJG tests." ${FMT_TEST})
+if (TJG_TEST)
+  enable_testing()
+endif ()
 add_subdirectory(tjg)
 
 set_verbose(
