@@ -37,12 +37,12 @@ naming and API conventions.
 
 ## Implemented foundation
 
-The current `color-dev` tip is `6b5f4ce62381df7b4f72717f4ed7d5743f3ada6e`.
+The current `color-dev` tip is `bb58bf265d51faddb02293aa7342aabb65f630c5`.
 It includes the foundational styling contribution, owning styled-text formatter,
 format-context inheritance/restoration, Backslash utilities, underlay defaults,
 recursive overlays, the table demo, readable value formatters/inserters,
 styled-text debug views, and direct tree insertion with shared rendering. The complete
-fmt release supports C++11. The upstream baseline is `4ed35350`; see
+fmt release supports C++11. The upstream baseline is `47fcd357`; see
 [README.md](README.md#current-baseline). Source and tests establish behavior;
 private numeric representations are not stable contracts.
 
@@ -297,7 +297,7 @@ and exception-recovery rules are recorded below.
 
 The bridge supports C++11, header-only use, installation, and C++20 module
 export. All 41 current push-CI jobs and both guide-publication jobs passed
-for `6b5f4ce6`; see BuildAndTest.md for exact evidence. The separate historical compatibility result
+for `bb58bf26`; see BuildAndTest.md for exact evidence. The separate historical compatibility result
 at `21eba01b` does not validate the current header or bridge.
 
 ## Integrated styling helpers
@@ -385,11 +385,11 @@ C++17; and avoid copying the empty union member in the SGR visitor during MSVC
 constant evaluation. Tests explicitly initialize const stream-only values and
 avoid shadowing and self-assignment warnings.
 
-Current validation is scoped to `color-dev` at `6b5f4ce6`: all 41 push-CI
+Current validation is scoped to `color-dev` at `bb58bf26`: all 41 push-CI
 jobs and both guide-publication jobs passed on attempt 1. All 41 pr/color
 push-CI jobs passed on attempt 1 at the same commit. Upstream PR #5015 is
 closed and unmerged with recorded head `dd7180a8`.
-A full remote compact-SGR matrix is not claimed. Public Site version 50 shows
+A full remote compact-SGR matrix is not claimed. Public Site version 51 shows
 the current semantics, both demos, and exact source/CI evidence. See
 [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation)
 and [Website.md](Website.md#current-publication).
@@ -418,9 +418,10 @@ convenience as a major design goal.
 ## Integrated structured text and planned work
 
 Owning text, the corrected formatter, context inheritance/restoration, parser,
-and stripper form the foundational extension `35de08cc`; current `color-dev`
-at `6b5f4ce6` also includes formatting, Backslash, underlay, table, and output changes above
-upstream `4ed35350`. Continue from `color-dev`; earlier integration commits are
+and stripper form the foundational extension `e541cae2`; current `color-dev`
+at `bb58bf26` also includes formatting, Backslash, underlay, table, and output changes above
+upstream `47fcd357`. Continue from the rebased development baseline; inspect
+local checkout state first. Earlier integration commits are
 historical, not dependencies to replay. See StyledText.md for invariants and
 BuildAndTest.md for exact-SHA validation and remaining limits.
 
@@ -639,8 +640,8 @@ styled-text overload returns a new tree, preserving styles and structure while
 stripping leaves independently, including leaves that become empty. It never
 recognizes escape sequences spanning leaves. Flatten before stripping to scan
 across those boundaries, or call `plain_text` afterward to discard explicit styles.
-It neither simulates terminal editing nor sanitizes text. Both APIs are integrated
-in `color-dev` at `dd7180a8`.
+It neither simulates terminal editing nor sanitizes text. Both APIs are included
+in the accepted `color-dev` baseline `bb58bf26`.
 
 ### Independent-library buffer discussion
 
@@ -671,7 +672,8 @@ width-measurement helper. The agreed standard-context boundary remains unchanged
 
 ## Backslash escaping and unescaping
 
-Implemented in `<fmt/backslash.h>` and integrated into `color-dev` at `dd7180a8`:
+Implemented in `<fmt/backslash.h>`; the accepted rebased Backslash commit is
+`329b4c58`:
 
 - `backslash_escape(text)` and `backslash_unescape(text)` return owning
   `std::basic_string<Char>` values.

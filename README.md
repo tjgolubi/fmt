@@ -41,40 +41,50 @@ records remain available in Git history.
 
 ## Current baseline
 
-The development baseline and active library checkout are `color-dev` at
-`6b5f4ce62381df7b4f72717f4ed7d5743f3ada6e`, pushed with a clean tracked tree.
-The accepted history above upstream/main `4ed3535092a96ac9f56fab80df83416d51bcc78e`
-is the foundational styling extension `35de08cc`, formatting `d1ffcbca`,
-Backslash `dd7180a8`, underlay/overlay `0ba4e364`, table demo `10c4cd72`, and
-styling-value output and styled-text debug views `6b5f4ce6`. The latest squash
-includes named emphasis output, regression tests, guide updates and review,
-clang-format corrections, and the regenerated changelog.
-`feat/debug` and `doc/review` retain the candidate at `afb672c5`; it is already
-integrated into `color-dev` as the single output feature squash.
-Do not replay intermediate feature commits onto this baseline.
+The published development baseline is `color-dev` and `pr/color` at
+`bb58bf265d51faddb02293aa7342aabb65f630c5`, rebased by Terry onto upstream/main
+`47fcd357ab6a9583f2307d1f78fdd674060efe61` and pushed with `--force-with-lease`.
+The six accepted commits above that upstream baseline are foundational styling
+`e541cae2`, formatting `f30e886b`, Backslash `329b4c58`, underlay/overlay
+`40b024ce`, table demo `c0c277ec`, and output `bb58bf26`. `git range-diff`
+matched all six patches to the pre-rebase accepted history without changes.
+Do not replay old feature commits onto this baseline. Retained `feat/debug`
+and `doc/review` at `afb672c5` are pre-rebase history, not the current baseline.
+
+The cloud library checkout remains on local `color-dev` at pre-rebase
+`6b5f4ce62381df7b4f72717f4ed7d5743f3ada6e`, with a clean tracked tree.
+Its refreshed remote-tracking refs point to `bb58bf26`; the histories diverge
+(6 local-only and 12 remote-only commits). No local reset, rebase, or branch
+switch was performed. Synchronizing that checkout needs authorization;
+inspect its actual state before any later library work. Other machines may
+have different branch/worktree states and must be inspected independently.
 
 Verified November 7, 2026: **all 43 jobs passed** on `color-dev` for this exact SHA:
 Linux 18, Windows 13, macOS 9, documentation 1, and guide build/deployment 2.
 All color-dev runs passed on attempt 1. All 41 pr/color push-CI jobs passed
 on attempt 1 at the same SHA. No failed, cancelled, or pending jobs remain
 in the latest attempts. Guide publication runs only on color-dev.
-Local and GitHub SHAs match. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
+The remote tips and CI head SHAs match. See
+[BuildAndTest.md](BuildAndTest.md#current-color-dev-validation) for the rebased
+results; local checkout state is recorded above.
 
 `FmtColorChangeLog.md` was regenerated with git-cliff 2.14.2,
-`--offline --no-exec`, and the explicit range above `4ed35350` through the
-accepted history. It includes the output feature, table feature, and
-underlay/overlay breaking change, and is included in `6b5f4ce6`.
+`--offline --no-exec`, and the explicit accepted-history range before the
+rebase. It includes the output feature, table feature, and underlay/overlay
+breaking change; its contents were retained unchanged in `bb58bf26`.
+The upstream base for any newly authorized regeneration is now `47fcd357`.
 Do not regenerate automatically.
 No fork release number or tag has been assigned. Commits and pushes still need
 explicit authorization.
 
 ## Upstream contribution
 
-`pr/color` is pushed at the same `6b5f4ce6` commit as `color-dev`.
-The active library checkout remains `color-dev`. Verified November 7, 2026:
+`pr/color` is pushed at the same `bb58bf26` commit as `color-dev`.
+The cloud checkout remains on the pre-rebase local `color-dev` described above.
+Verified November 7, 2026:
 [upstream PR #5015](https://github.com/fmtlib/fmt/pull/5015) is closed and
 unmerged; its recorded head remains `dd7180a8`, distinct from the updated
-source branch. Website version 50 distinguishes these states.
+source branch. Website version 51 distinguishes these states.
 The fork's passing push CI does not establish upstream PR-only results or
 upstream acceptance. Fork README, publication, tooling, and workflow changes
 still require upstream review.
@@ -135,7 +145,7 @@ three octal digits with values up to 255. Unknown/malformed escapes, octal
 overflow, and trailing backslashes throw `fmt::format_error`. Iterator output
 written before an error remains. Decoding is one pass.
 
-The user guide includes a compact Markdown escape table. Website version 50
+The user guide includes a compact Markdown escape table. Website version 51
 presents these as implemented. CSV and TSV conversion remain outside scope.
 See [CppDesign.md](CppDesign.md#backslash-escaping-and-unescaping).
 
@@ -227,12 +237,12 @@ Do not claim that all original upstream tests pass unchanged.
 ## Public documentation and next work
 
 - [Project website](https://fmtcolor.tjgolubi.chatgpt.site): public version
-  **50**, with readable value output, tree debug views and insertion, both
-  working demos and ANSI displays/downloads, exact `6b5f4ce6` source links,
+  **51**, with readable value output, tree debug views and insertion, both
+  working demos and ANSI displays/downloads, exact `bb58bf26` source links,
   43 passing jobs, and the
   closed/unmerged upstream PR status and passing CI for both branches. Publication is confirmed; see Website.md.
 - [Generated user guide](https://tjgolubi.github.io/fmt/color/index.html):
-  build and deployment passed for `6b5f4ce6`, including the output APIs and
+  build and deployment passed for `bb58bf26`, including the output APIs and
   table walkthrough.
 - [Issues](https://github.com/tjgolubi/fmt/issues): bugs and follow-up work.
 

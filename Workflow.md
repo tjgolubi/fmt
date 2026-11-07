@@ -69,8 +69,10 @@ Terry authorized native Linux tools in the cloud; MSYS2 Git and PATH rules
 below apply to his Windows/MSYS2 checkouts. Use compact SGR for the StyledText
 experiments. The FmtColor baseline is the consolidated `color-dev`; owning
 text, formatter/context corrections, parser, and stripper are integrated. The
-active library checkout is `color-dev` at `6b5f4ce6`; `pr/color` is pushed at
-the same commit.
+remote development baseline is `color-dev` at `bb58bf26`, based on upstream
+`47fcd357`; `pr/color` is pushed at the same commit. The cloud library checkout
+remains on the pre-rebase local tip; see README.md for its inspected state.
+Do not reset or synchronize a diverged checkout without authorization.
 The separate `fix/StringViewCompare` branch from `main` does not replace the
 FmtColor baseline. Terry authorized removing the obsolete `feat/StyledText2`
 push exclusions from Linux, Windows, macOS, and doc; all four now use
@@ -166,7 +168,7 @@ history or infer permission for another rewrite.
    push. Verify the intended commit structure, matching local/GitHub full SHAs,
    and every applicable CI job for that SHA. The guide-publication workflow
    targets `color-dev`; build and deployment passed for the accepted baseline
-   `6b5f4ce6`. Candidate results do not replace final integration checks for
+   `bb58bf26`. Candidate results do not replace final integration checks for
    later SHAs.
 8. Publish an authorized website update before recording its confirmed
    publication in coordination documents. Update or close an issue only when
@@ -195,16 +197,17 @@ Mark deliberate breaks with `!` and a `BREAKING CHANGE:` footer. Describe actual
 effects without promising stable numeric or binary representations.
 
 `FmtColorChangeLog.md` is tracked on `color-dev`. Its current generation used
-git-cliff 2.14.2, `--offline --no-exec`, and accepted history above upstream
-`4ed35350` through the accepted output squash. The file is included in
-`6b5f4ce6`, with the foundational breaking change, formatting, Backslash,
+git-cliff 2.14.2, `--offline --no-exec`, and the accepted pre-rebase history
+through the output squash. The file was retained unchanged by the rebase and
+is included in `bb58bf26`, with the foundational breaking change, formatting, Backslash,
 underlay/overlay breaking change, table demo, and styling-value/tree-output entries.
 Do not regenerate it or edit upstream `ChangeLog.md` automatically.
 
 If changelog generation is explicitly requested, use git-cliff **2.14.2** with
 `--offline --no-exec` and an explicit accepted-history range after the upstream
-baseline. Exclude upstream and intermediate feature commits. `main..HEAD` is
-appropriate only while `main` points to the intended baseline. Inspect the
+baseline, currently `47fcd357`. Exclude upstream and intermediate feature
+commits. `main..HEAD` is appropriate only while `main` points to the intended
+baseline. Inspect the
 result and leave staging/amending/pushing to Terry unless separately authorized.
 
 The current template groups entries by commit type and orders them oldest first
@@ -242,7 +245,7 @@ branch; rebasing or refreshing its header requires authorization and fresh CI.
 
 Keeping production changes in `color.h` reduces rebase conflicts, but changes
 to supporting APIs, tests, documentation, or tooling can still require fixes.
-The current `color-dev` baseline is upstream `4ed35350`, recorded in README.md.
+The current `color-dev` baseline is upstream `47fcd357`, recorded in README.md.
 The compatibility branch still uses its historical `0fc31633` baseline. Inspect
 current refs before any later rebase; consolidation has already been performed
 on `color-dev` and grants no permission to rewrite other refs.

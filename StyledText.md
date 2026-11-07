@@ -7,18 +7,18 @@ Updated November 7, 2026.
 Owning text, formatter/context restoration, parsing, stripping, Backslash,
 underlay/overlay operations, readable value output, tree debug presentation,
 and direct styled-text insertion are integrated into `color-dev` at
-`6b5f4ce62381df7b4f72717f4ed7d5743f3ada6e`. The active library checkout is
-`color-dev`, clean and pushed. The baseline includes underlay `0ba4e364` and
-the table/guide commit `10c4cd72` and output squash `6b5f4ce6`, which includes
-the updated changelog, above the earlier foundation.
-`pr/color` now matches color-dev at `6b5f4ce6`; PR #5015 is closed and
+`bb58bf265d51faddb02293aa7342aabb65f630c5`, based on upstream `47fcd357`.
+The accepted rebased history includes underlay `40b024ce`, table/guide
+`c0c277ec`, and output `bb58bf26`, including the changelog. The cloud library
+checkout still has the pre-rebase local tip; see README.md before local work.
+`pr/color` now matches color-dev at `bb58bf26`; PR #5015 is closed and
 unmerged with recorded head `dd7180a8`.
 
 Verified November 7, 2026: all 41 push-CI jobs and both guide-publication jobs
-passed on color-dev attempt 1 for `6b5f4ce6`; all 41 pr/color push-CI jobs
+passed on color-dev attempt 1 for `bb58bf26`; all 41 pr/color push-CI jobs
 passed on attempt 1 at the same SHA. See
 [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
-Public Site version 50 includes the output APIs, both demos, current styling
+Public Site version 51 includes the output APIs, both demos, current styling
 semantics, the table's styled output, and exact source/CI links. Check CI on demand; do not
 cancel jobs or start periodic polling without instruction.
 
@@ -346,7 +346,7 @@ the Database explanation truncates after `CRITICAL!` with column-styled padding.
 compact SGR and accepts `FMT_DIR`/`CXX` overrides. The library remains C++11.
 The user guide contains a table walkthrough and colored expected output
 at `color/styled.html#table-demonstration`. The guide illustration adds one space after `東京 NAS` at Terry’s request;
-this is HTML display padding, not a demo/library change. Site version 50 shows the styled
+this is HTML display padding, not a demo/library change. Site version 51 shows the styled
 display and provides source and actual ANSI output downloads for both demos.
 
 The nested padding/precision guide example prints `***hello wor`, all bold with
