@@ -297,7 +297,6 @@ template<> struct formatter<color_context_throwing> : formatter<int> {
   template<typename Context>
   auto format(color_context_throwing, Context& ctx) const -> decltype(ctx.out()) {
     throw format_error("color context test");
-    return ctx.out();
   }
 };
 }
