@@ -707,16 +707,14 @@ template <class T> constexpr bool holds_alternative(const color_t& c) noexcept {
 
 /// Returns a reference to T, reporting an error if another kind is active.
 template <class T> constexpr T& get(color_t& c) {
-  return holds_alternative<T>(c)
-             ? detail::color_access<T>::ref(c)
-             : (detail::standard_format_error("wrong color_t alternative"),
-                detail::color_access<T>::ref(c));
+  if (!holds_alternative<T>(c))
+    detail::standard_format_error("wrong color_t alternative");
+  return detail::color_access<T>::ref(c);
 }
 template <class T> constexpr const T& get(const color_t& c) {
-  return holds_alternative<T>(c)
-             ? detail::color_access<T>::ref(c)
-             : (detail::standard_format_error("wrong color_t alternative"),
-                detail::color_access<T>::ref(c));
+  if (!holds_alternative<T>(c))
+    detail::standard_format_error("wrong color_t alternative");
+  return detail::color_access<T>::ref(c);
 }
 template <class T> constexpr T&& get(color_t&& c) {
   return std::move(get<T>(c));
