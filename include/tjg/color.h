@@ -28,6 +28,7 @@
 
 #include "format_support.h"
 #include "memory_buffer.h"
+#include "tree_format_specs.h"
 
 #ifndef TJG_COLOR_COMPACT_SGR
 #  define TJG_COLOR_COMPACT_SGR 0
@@ -2541,68 +2542,31 @@ auto write_style_value(OutputIt out, emphasis value) -> OutputIt {
   return write_emphasis<Char>(out, value);
 }
 
-// Delegate string specifications to the standard formatter. Our value notation
-// uses ? as an unquoted alias for s, so omit only that final presentation mark.
-// A temporary parse context needs the original context's dynamic argument IDs.
-template <typename Char>
-class standard_value_specs
-    : public std::formatter<std::basic_string_view<Char>, Char> {
-  using base = std::formatter<std::basic_string_view<Char>, Char>;
-  // These are value notations, so ranges must not enable string quoting.
-  constexpr void set_debug_format() noexcept {}
+// Parse the original context so argument IDs and its implementation-provided
+// checking information are preserved. '?' is an unquoted alias for 's'.
+template <typename Char> class standard_value_specs {
+  tree_format_specs<Char> _specs;
 
  public:
-  constexpr auto parse(std::basic_format_parse_context<Char>& ctx) ->
-      typename std::basic_format_parse_context<Char>::iterator {
-    const auto first = ctx.begin();
-    auto end = first;
-    auto depth = std::size_t{0};
-    for (; end != ctx.end(); ++end) {
-      if (*end == Char('{')) {
-        ++depth;
-      } else if (*end == Char('}')) {
-        if (depth == 0) break;
-        --depth;
-      }
-    }
-    if (end == first || *(end - 1) != Char('?')) return base::parse(ctx);
-    const auto stop = end - 1;
-    if (stop != first && (*(stop - 1) == Char('s') || *(stop - 1) == Char('?')))
-      standard_format_error("invalid style value presentation");
+  constexpr auto parse(std::basic_format_parse_context<Char>& ctx)
+      -> decltype(ctx.begin()) {
+    return _specs.parse(ctx, standard_format_error);
+  }
 
-    auto first_auto = std::size_t{0};
-    auto has_auto = false;
-    for (auto it = first; it != stop; ++it) {
-      if (*it != Char('{')) continue;
-      auto ref = it + 1;
-      if (ref != stop && *ref == Char('}')) {
-        const auto id = ctx.next_arg_id();
-        if (!has_auto) first_auto = id;
-        has_auto = true;
-      } else {
-        auto id = std::size_t{0};
-        const auto digits = ref;
-        while (ref != stop && *ref >= Char('0') && *ref <= Char('9')) {
-          const auto digit = static_cast<std::size_t>(*ref++ - Char('0'));
-          if (id > ((std::numeric_limits<std::size_t>::max)() - digit) / 10)
-            standard_format_error("dynamic argument index is too large");
-          id = id * 10 + digit;
-        }
-        if (ref == digits || ref == stop || *ref != Char('}'))
-          standard_format_error("invalid dynamic argument index");
-        ctx.check_arg_id(id);
-      }
-      it = ref;
-    }
-    const auto spec = std::basic_string_view<Char>{first, stop};
-    auto native = std::basic_format_parse_context<Char>{
-        spec, (std::numeric_limits<std::size_t>::max)()};
-    if (has_auto) {
-      for (std::size_t id = 0; id < first_auto; ++id) native.next_arg_id();
-    }
-    if (base::parse(native) != native.end())
-      standard_format_error("invalid style value specification");
-    return end;
+ protected:
+  template <typename FormatContext>
+  auto write(std::basic_string_view<Char> text, FormatContext& ctx) const
+      -> decltype(ctx.out()) {
+    const auto specs = _specs.resolve(ctx, standard_format_error);
+    // Color/style notations contain only ASCII, so code units equal columns.
+    const auto count = (std::min)(text.size(), specs.precision);
+    const auto padding = specs.width > count ? specs.width - count : 0;
+    const auto left = specs.alignment == '>'   ? padding
+                      : specs.alignment == '^' ? padding / 2
+                                               : 0;
+    auto out = specs.pad(ctx.out(), left);
+    out = std::copy_n(text.begin(), count, out);
+    return specs.pad(out, padding - left);
   }
 };
 
@@ -2612,7 +2576,7 @@ struct standard_style_value_formatter : standard_value_specs<Char> {
   auto format(const T& value, FormatContext& ctx) const -> decltype(ctx.out()) {
     auto buffer = basic_memory_buffer<Char, 64>{};
     write_style_value<Char>(std::back_inserter(buffer), value);
-    return std::formatter<std::basic_string_view<Char>, Char>::format(
+    return this->write(
         std::basic_string_view<Char>{buffer.data(), buffer.size()}, ctx);
   }
 };

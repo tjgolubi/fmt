@@ -1,3 +1,5 @@
+#include <type_traits>
+
 #include "standard-format-test.h"
 #include "tjg/backslash.h"
 #include "test-support.h"
@@ -80,7 +82,12 @@ template <typename Char> void check_examples() {
     const auto input = text<Char>(item.escaped);
     auto expected = text<Char>(item.decoded);
     // Widen octal 377 as a code unit, rather than sign-extending a char.
-    if (input == text<Char>("\\377")) expected.assign(1, Char(255));
+    if (input == text<Char>("\\377")) {
+      if constexpr (std::is_same_v<Char, char>)
+        expected.assign(1, '\xff');
+      else
+        expected.assign(1, Char{255});
+    }
     EXPECT_EQ(tjg::backslash_unescape<Char>({input.data(), input.size()}),
               expected);
   }

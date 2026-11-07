@@ -23,7 +23,7 @@ template <typename Char, std::size_t SIZE = 500> class basic_memory_buffer {
   static_assert(SIZE > 0);
   static_assert(std::is_trivially_copyable_v<Char>);
 
-  Char _inline[SIZE]{};
+  Char _inline_storage[SIZE]{};
   std::unique_ptr<Char[]> _storage{};
   std::size_t _size{0};
   std::size_t _capacity{SIZE};
@@ -37,10 +37,10 @@ template <typename Char, std::size_t SIZE = 500> class basic_memory_buffer {
 
   /// Returns contiguous output storage, without a null terminator.
   constexpr auto data() noexcept -> Char* {
-    return _storage ? _storage.get() : _inline;
+    return _storage ? _storage.get() : _inline_storage;
   }
   constexpr auto data() const noexcept -> const Char* {
-    return _storage ? _storage.get() : _inline;
+    return _storage ? _storage.get() : _inline_storage;
   }
 
   /// Returns the number of output characters.

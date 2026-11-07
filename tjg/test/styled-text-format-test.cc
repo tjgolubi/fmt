@@ -341,7 +341,7 @@ TEST(styled_text_format_test, terminal_state_is_shared_and_exception_safe) {
   auto inner = tjg::styled(number, tjg::fg(tjg::term_color::red));
   (void)std::format("{}", inner);
   EXPECT_EQ(&tjg::get_terminal_state(), &terminal);
-  const auto wide_text = tjg::styled(42, tjg::fg(tjg::term_color::red));
+  const auto wide_text = tjg::styled(number, tjg::fg(tjg::term_color::red));
   EXPECT_FALSE(std::format(L"{}", wide_text).empty());
   EXPECT_EQ(tjg::get_terminal_state(), outer);
 #if defined(__cpp_exceptions) || defined(_CPPUNWIND)

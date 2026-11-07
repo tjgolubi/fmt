@@ -1,4 +1,4 @@
-// String specifications for TJG styled-text formatting.
+// String specifications shared by TJG styled text and readable values.
 #ifndef TJG_TREE_FORMAT_SPECS_H_
 #define TJG_TREE_FORMAT_SPECS_H_
 #include <concepts>

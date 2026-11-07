@@ -163,3 +163,16 @@ TEST(color_std_format_test, styled_character_arrays_use_c_string_semantics) {
   const auto view = std::string_view{text, 3};
   EXPECT_EQ(std::format("{}", tjg::styled(view, style)), std::string("\x1b[1ma\0b\x1b[0m", 11));
 }
+
+TEST(color_std_format_test, multiple_question_specs_share_argument_indices) {
+  const auto red = tjg::term_color::red;
+  const auto blue = tjg::term_color::blue;
+  EXPECT_EQ(std::format("{:>{}?}|{:*^{}.{}?}|{}", red, 5, blue, 8, 2, 99),
+            "  red|***bl***|99");
+  EXPECT_EQ(std::format(L"{:>{}?}|{:*^{}.{}?}|{}", red, 5, blue, 8, 2, 99),
+            L"  red|***bl***|99");
+  EXPECT_EQ(std::format("{0:*^{2}.{3}?}|{1:>{4}?}|{5}", red, blue, 8, 2, 6, 99),
+            "***re***|  blue|99");
+  EXPECT_EQ(std::format(L"{0:*^{2}.{3}?}|{1:>{4}?}|{5}", red, blue, 8, 2, 6, 99),
+            L"***re***|  blue|99");
+}
