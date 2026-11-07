@@ -25,7 +25,7 @@
 #  define FMT_COLOR_COMPACT_SGR 0
 #endif
 
-FMT_BEGIN_NAMESPACE
+namespace tjg {
 FMT_BEGIN_EXPORT
 
 /// A narrowing static_cast.
@@ -766,14 +766,16 @@ template <class T> constexpr bool holds_alternative(const color_t& c) noexcept {
 
 /// Returns a reference to T, reporting an error if another kind is active.
 template <class T> constexpr T& get(color_t& c) {
-  return holds_alternative<T>(c) ? detail::color_access<T>::ref(c)
-                                 : (report_error("wrong color_t alternative"),
-                                    detail::color_access<T>::ref(c));
+  return holds_alternative<T>(c)
+             ? detail::color_access<T>::ref(c)
+             : (fmt::report_error("wrong color_t alternative"),
+                detail::color_access<T>::ref(c));
 }
 template <class T> constexpr const T& get(const color_t& c) {
-  return holds_alternative<T>(c) ? detail::color_access<T>::ref(c)
-                                 : (report_error("wrong color_t alternative"),
-                                    detail::color_access<T>::ref(c));
+  return holds_alternative<T>(c)
+             ? detail::color_access<T>::ref(c)
+             : (fmt::report_error("wrong color_t alternative"),
+                detail::color_access<T>::ref(c));
 }
 template <class T> constexpr T&& get(color_t&& c) {
   return std::move(get<T>(c));
@@ -911,7 +913,7 @@ struct to_rgb_visitor {
   }
   template <typename T>
   constexpr auto operator()(const T& color) const noexcept -> color_t {
-    return color_t{fmt::to_rgb(color)};
+    return color_t{tjg::to_rgb(color)};
   }
 };
 }  // namespace detail
@@ -921,7 +923,7 @@ struct to_rgb_visitor {
  * color. An unspecified color remains unspecified. The argument is unchanged.
  */
 FMT_NODISCARD constexpr auto to_rgb(color_t color) noexcept -> color_t {
-  return fmt::visit(detail::to_rgb_visitor{}, color);
+  return tjg::visit(detail::to_rgb_visitor{}, color);
 }
 
 namespace detail {
@@ -938,7 +940,7 @@ struct color_payload {
 constexpr inline auto to_underlying(const color_t& color) noexcept
     -> color_t::value_type {
   return (narrow_cast<color_t::value_type>(color.index()) << 24) |
-         fmt::visit(detail::color_payload{}, color);
+         tjg::visit(detail::color_payload{}, color);
 }
 
 namespace detail {
@@ -1012,7 +1014,7 @@ struct blend_state {
   constexpr auto add(const color_t& color) const noexcept -> blend_state {
     return color.index() == to_underlying(color_t::kind::none)
                ? *this
-               : add(fmt::visit(blend_rgb{}, color), color);
+               : add(tjg::visit(blend_rgb{}, color), color);
   }
 
   constexpr auto average() const noexcept -> rgb {
@@ -1114,7 +1116,7 @@ FMT_NODISCARD constexpr auto blend(color_t first, Second second,
  * **Example (C++20 and later)**:
  *
  *     {
- *       using namespace fmt;
+ *       using namespace tjg;
  *       using enum emphasis;
  *       using enum term_color;
  *
@@ -1871,11 +1873,12 @@ constexpr auto sgr_reset_length = std::size_t{4};
 
 /**
  * Returns the ANSI SGR sequence that resets colors and emphasis to terminal
- * defaults. The returned view refers to static storage. `Char` defaults to
- * `char`.
+ * defaults. The returned fmt::detail::view refers to static storage. `Char`
+ * defaults to `char`.
  */
 template <typename Char = char>
-FMT_NODISCARD constexpr auto sgr_reset() noexcept -> basic_string_view<Char> {
+FMT_NODISCARD constexpr auto sgr_reset() noexcept
+    -> fmt::basic_string_view<Char> {
   static constexpr Char reset[] = {'\x1b', '[', '0', 'm'};
   return {reset, sgr_reset_length};
 }
@@ -1897,11 +1900,12 @@ constexpr Char sgr_reset_storage<Char>::value[sgr_reset_length];
 
 /**
  * Returns the ANSI SGR sequence that resets colors and emphasis to terminal
- * defaults. The returned view refers to static storage. `Char` defaults to
- * `char`.
+ * defaults. The returned fmt::detail::view refers to static storage. `Char`
+ * defaults to `char`.
  */
 template <typename Char = char>
-FMT_NODISCARD constexpr auto sgr_reset() noexcept -> basic_string_view<Char> {
+FMT_NODISCARD constexpr auto sgr_reset() noexcept
+    -> fmt::basic_string_view<Char> {
   return {detail::sgr_reset_storage<Char>::value, sgr_reset_length};
 }
 
@@ -2047,7 +2051,7 @@ template <typename Char> class ansi_color_escape {
 
  public:
   FMT_CONSTEXPR ansi_color_escape(color_t text_color, bool is_bg) noexcept {
-    fmt::visit(color_visitor{*this, is_bg}, text_color);
+    tjg::visit(color_visitor{*this, is_bg}, text_color);
   }
 
   FMT_CONSTEXPR ansi_color_escape(emphasis em) noexcept {
@@ -2097,19 +2101,20 @@ FMT_CONSTEXPR auto make_emphasis(emphasis em) noexcept
 }
 
 template <typename Char>
-FMT_CONSTEXPR20 inline void reset_color(buffer<Char>& buffer) {
+FMT_CONSTEXPR20 inline void reset_color(fmt::detail::buffer<Char>& buffer) {
   constexpr auto reset_color = sgr_reset<Char>();
   buffer.append(reset_color.begin(), reset_color.end());
 }
 
-template <typename T> struct styled_arg : view {
+template <typename T> struct styled_arg : fmt::detail::view {
   const T& value;
   text_style style;
   constexpr styled_arg(const T& v, text_style s) : value{v}, style{s} {}
 };  // styled_arg
 
 template <typename Char>
-FMT_CONSTEXPR20 void append_sgr_raw(buffer<Char>& buf, text_style ts) {
+FMT_CONSTEXPR20 void append_sgr_raw(fmt::detail::buffer<Char>& buf,
+                                    text_style ts) {
   if (ts.empty()) return;
   if (ts.is_absolute()) {
     buf.push_back(Char('0'));
@@ -2126,7 +2131,7 @@ FMT_CONSTEXPR20 void append_sgr_raw(buffer<Char>& buf, text_style ts) {
 #if FMT_COLOR_COMPACT_SGR
 
 template <typename Char>
-FMT_CONSTEXPR20 void append_sgr(buffer<Char>& buf, text_style ts) {
+FMT_CONSTEXPR20 void append_sgr(fmt::detail::buffer<Char>& buf, text_style ts) {
   if (ts.empty()) return;
   buf.push_back(static_cast<Char>('\x1b'));
   buf.push_back(static_cast<Char>('['));
@@ -2137,7 +2142,7 @@ FMT_CONSTEXPR20 void append_sgr(buffer<Char>& buf, text_style ts) {
 #else
 
 template <typename Char>
-FMT_CONSTEXPR20 void append_sgr(buffer<Char>& buf,
+FMT_CONSTEXPR20 void append_sgr(fmt::detail::buffer<Char>& buf,
                                 const ansi_color_escape<Char>& sgr) {
   if (sgr.empty()) return;
   buf.push_back(static_cast<Char>('\x1b'));
@@ -2147,7 +2152,7 @@ FMT_CONSTEXPR20 void append_sgr(buffer<Char>& buf,
 }  // append_sgr
 
 template <typename Char>
-FMT_CONSTEXPR20 void append_sgr(buffer<Char>& buf, text_style ts) {
+FMT_CONSTEXPR20 void append_sgr(fmt::detail::buffer<Char>& buf, text_style ts) {
   if (ts.empty()) return;
   if (ts.is_absolute()) reset_color(buf);
   auto emphasis = make_emphasis<Char>(ts.emph());
@@ -2174,8 +2179,9 @@ class style_scope {
 };  // style_scope
 
 template <typename Char>
-void vformat_to(buffer<Char>& buf, text_style ts, basic_string_view<Char> fmt,
-                basic_format_args<buffered_context<Char>> args) {
+void vformat_to(fmt::detail::buffer<Char>& buf, text_style ts,
+                fmt::basic_string_view<Char> fmt,
+                fmt::basic_format_args<fmt::buffered_context<Char>> args) {
   style_scope scope{};
   append_sgr(buf, ts);
   get_terminal_state() = text_style{ts}.absolute(false);
@@ -2199,7 +2205,7 @@ template <typename Char = char>
 FMT_NODISCARD inline auto to_sgr(const text_style& ts)
     -> std::basic_string<Char> {
   if (ts.empty()) return {};
-  auto buf = basic_memory_buffer<Char, sgr_max_length>{};
+  auto buf = fmt::basic_memory_buffer<Char, sgr_max_length>{};
   detail::append_sgr(buf, ts);
   return {buf.data(), buf.size()};
 }
@@ -2209,14 +2215,15 @@ FMT_NODISCARD inline auto to_sgr(const text_style& ts)
 namespace detail {
 
 template <typename Char>
-FMT_CONSTEXPR20 void append_transition_code(buffer<Char>& buf, uint8_t code) {
+FMT_CONSTEXPR20 void append_transition_code(fmt::detail::buffer<Char>& buf,
+                                            uint8_t code) {
   for (auto cp = decimal_strings[code]; *cp; ++cp) buf.push_back(Char(*cp));
   buf.push_back(Char(';'));
 }
 
 template <typename Char>
-FMT_CONSTEXPR20 void append_transition(buffer<Char>& buf, text_style target,
-                                       text_style initial) {
+FMT_CONSTEXPR20 void append_transition(fmt::detail::buffer<Char>& buf,
+                                       text_style target, text_style initial) {
   auto before = static_cast<unsigned>(to_underlying(initial.emph()));
   auto after = static_cast<unsigned>(to_underlying(target.emph()));
   auto removed = before & ~after;
@@ -2255,15 +2262,16 @@ FMT_CONSTEXPR20 void append_transition(buffer<Char>& buf, text_style target,
 }  // append_transition
 
 template <typename Char>
-FMT_CONSTEXPR20 void append_sgr_transition(buffer<Char>& buf, text_style target,
+FMT_CONSTEXPR20 void append_sgr_transition(fmt::detail::buffer<Char>& buf,
+                                           text_style target,
                                            text_style initial) {
   if (target.is_absolute()) return append_sgr(buf, target);
   initial.absolute(false);
   if (target == initial) return;
-  auto relative = basic_memory_buffer<Char, sgr_max_length>{};
+  auto relative = fmt::basic_memory_buffer<Char, sgr_max_length>{};
   append_transition(relative, target, initial);
   if (relative.size() == 0) return;
-  auto absolute = basic_memory_buffer<Char, sgr_max_length>{};
+  auto absolute = fmt::basic_memory_buffer<Char, sgr_max_length>{};
   append_sgr_raw(absolute, text_style{target}.absolute());
   const auto& parameters =
       (absolute.size() < relative.size()) ? absolute : relative;
@@ -2292,7 +2300,7 @@ template <typename Char = char>
 FMT_NODISCARD inline auto to_sgr(const text_style& target,
                                  const text_style& initial)
     -> std::basic_string<Char> {
-  auto buf = basic_memory_buffer<Char, sgr_max_length>{};
+  auto buf = fmt::basic_memory_buffer<Char, sgr_max_length>{};
   detail::append_sgr_transition(buf, target, initial);
   return {buf.data(), buf.size()};
 }
@@ -2302,7 +2310,8 @@ FMT_NODISCARD inline auto to_sgr(const text_style& target,
 namespace detail {
 
 template <typename Char>
-FMT_CONSTEXPR20 void append_sgr_transition(buffer<Char>& buf, text_style target,
+FMT_CONSTEXPR20 void append_sgr_transition(fmt::detail::buffer<Char>& buf,
+                                           text_style target,
                                            text_style initial) {
   if (!target.is_absolute()) {
     initial.absolute(false);
@@ -2317,7 +2326,7 @@ FMT_CONSTEXPR20 void append_sgr_transition(buffer<Char>& buf, text_style target,
 template <typename Char = char>
 FMT_NODISCARD inline auto to_sgr(text_style target, const text_style& initial)
     -> std::basic_string<Char> {
-  auto buf = basic_memory_buffer<Char, sgr_max_length>{};
+  auto buf = fmt::basic_memory_buffer<Char, sgr_max_length>{};
   detail::append_sgr_transition(buf, target, initial);
   return {buf.data(), buf.size()};
 }
@@ -2332,7 +2341,7 @@ FMT_NODISCARD inline auto to_sgr(text_style target, const text_style& initial)
  */
 template <typename Char = char>
 FMT_NODISCARD inline auto wrap_sgr(const text_style& ts,
-                                   basic_string_view<Char> sv)
+                                   fmt::basic_string_view<Char> sv)
     -> std::basic_string<Char> {
   if (sv.size() == 0) return {};
   if (ts.empty()) return {sv.data(), sv.size()};
@@ -2345,7 +2354,7 @@ FMT_NODISCARD inline auto wrap_sgr(const text_style& ts,
 }  // wrap_sgr
 
 /// Narrow-character convenience overload of `wrap_sgr()`.
-FMT_NODISCARD inline auto wrap_sgr(const text_style& ts, string_view sv)
+FMT_NODISCARD inline auto wrap_sgr(const text_style& ts, fmt::string_view sv)
     -> std::string {
   return wrap_sgr<char>(ts, sv);
 }
@@ -2358,10 +2367,11 @@ FMT_NODISCARD inline auto wrap_sgr(const text_style& ts, string_view sv)
  * specified foreground, background, and emphasis, and followed by an SGR reset
  * to terminal defaults.
  */
-inline void vprint(FILE* f, text_style ts, string_view fmt, format_args args) {
-  auto buf = memory_buffer();
+inline void vprint(FILE* f, text_style ts, fmt::string_view fmt,
+                   fmt::format_args args) {
+  auto buf = fmt::memory_buffer();
   detail::vformat_to(buf, ts, fmt, args);
-  print(f, FMT_STRING("{}"), string_view(buf.begin(), buf.size()));
+  fmt::print(f, FMT_STRING("{}"), fmt::string_view(buf.begin(), buf.size()));
 }
 
 /**
@@ -2374,12 +2384,12 @@ inline void vprint(FILE* f, text_style ts, string_view fmt, format_args args) {
  *
  * **Example**:
  *
- *     fmt::print(stderr, fmt::bold().fg(fmt::color::red),
+ *     tjg::print(stderr, tjg::bold().fg(tjg::color::red),
  *                "Elapsed time: {0:.2f} seconds", 1.23);
  */
 template <typename... T>
-void print(FILE* f, text_style ts, format_string<T...> fmt, T&&... args) {
-  vprint(f, ts, fmt.str, vargs<T...>{{args...}});
+void print(FILE* f, text_style ts, fmt::format_string<T...> fmt, T&&... args) {
+  vprint(f, ts, fmt.str, fmt::vargs<T...>{{args...}});
 }
 
 /**
@@ -2392,11 +2402,11 @@ void print(FILE* f, text_style ts, format_string<T...> fmt, T&&... args) {
  *
  * **Example**:
  *
- *     fmt::print(fmt::bold().fg(fmt::color::red),
+ *     tjg::print(tjg::bold().fg(tjg::color::red),
  *                "Elapsed time: {0:.2f} seconds", 1.23);
  */
 template <typename... T>
-void print(text_style ts, format_string<T...> fmt, T&&... args) {
+void print(text_style ts, fmt::format_string<T...> fmt, T&&... args) {
   return print(stdout, ts, fmt, std::forward<T>(args)...);
 }
 
@@ -2407,12 +2417,12 @@ void print(text_style ts, format_string<T...> fmt, T&&... args) {
  * specified foreground, background, and emphasis, and followed by an SGR reset
  * to terminal defaults. The newline follows the reset.
  */
-inline void vprintln(FILE* f, text_style ts, string_view fmt,
-                     format_args args) {
-  auto buf = memory_buffer();
+inline void vprintln(FILE* f, text_style ts, fmt::string_view fmt,
+                     fmt::format_args args) {
+  auto buf = fmt::memory_buffer();
   detail::vformat_to(buf, ts, fmt, args);
   buf.push_back('\n');
-  print(f, FMT_STRING("{}"), string_view(buf.begin(), buf.size()));
+  fmt::print(f, FMT_STRING("{}"), fmt::string_view(buf.begin(), buf.size()));
 }
 
 /**
@@ -2425,12 +2435,13 @@ inline void vprintln(FILE* f, text_style ts, string_view fmt,
  *
  * **Example**:
  *
- *     fmt::println(stderr, fmt::bold().fg(fmt::color::red),
+ *     tjg::println(stderr, tjg::bold().fg(tjg::color::red),
  *                  "Elapsed time: {0:.2f} seconds", 1.23);
  */
 template <typename... T>
-void println(FILE* f, text_style ts, format_string<T...> fmt, T&&... args) {
-  vprintln(f, ts, fmt.str, vargs<T...>{{args...}});
+void println(FILE* f, text_style ts, fmt::format_string<T...> fmt,
+             T&&... args) {
+  vprintln(f, ts, fmt.str, fmt::vargs<T...>{{args...}});
 }
 
 /**
@@ -2443,11 +2454,11 @@ void println(FILE* f, text_style ts, format_string<T...> fmt, T&&... args) {
  *
  * **Example**:
  *
- *     fmt::println(fmt::bold().fg(fmt::color::red),
+ *     tjg::println(tjg::bold().fg(tjg::color::red),
  *                  "Elapsed time: {0:.2f} seconds", 1.23);
  */
 template <typename... T>
-void println(text_style ts, format_string<T...> fmt, T&&... args) {
+void println(text_style ts, fmt::format_string<T...> fmt, T&&... args) {
   return println(stdout, ts, fmt, std::forward<T>(args)...);
 }
 
@@ -2459,9 +2470,9 @@ void println(text_style ts, format_string<T...> fmt, T&&... args) {
  * specified foreground, background, and emphasis, and followed by an SGR reset
  * to terminal defaults.
  */
-inline auto vformat(text_style ts, string_view fmt, format_args args)
+inline auto vformat(text_style ts, fmt::string_view fmt, fmt::format_args args)
     -> std::string {
-  auto buf = memory_buffer();
+  auto buf = fmt::memory_buffer();
   detail::vformat_to(buf, ts, fmt, args);
   return fmt::to_string(buf);
 }
@@ -2479,14 +2490,14 @@ inline auto vformat(text_style ts, string_view fmt, format_args args)
  *
  * ```
  * #include <fmt/color.h>
- * std::string message = fmt::format(fmt::bold().fg(fmt::color::red),
+ * std::string message = tjg::format(tjg::bold().fg(tjg::color::red),
  *                                   "The answer is {}", 42);
  * ```
  */
 template <typename... T>
-inline auto format(text_style ts, format_string<T...> fmt, T&&... args)
+inline auto format(text_style ts, fmt::format_string<T...> fmt, T&&... args)
     -> std::string {
-  return fmt::vformat(ts, fmt.str, vargs<T...>{{args...}});
+  return tjg::vformat(ts, fmt.str, fmt::vargs<T...>{{args...}});
 }
 
 /**
@@ -2498,12 +2509,12 @@ inline auto format(text_style ts, format_string<T...> fmt, T&&... args)
  * to terminal defaults.
  */
 template <typename OutputIt,
-          FMT_ENABLE_IF(detail::is_output_iterator<OutputIt, char>::value)>
-auto vformat_to(OutputIt out, text_style ts, string_view fmt, format_args args)
-    -> OutputIt {
-  auto&& buf = detail::get_buffer<char>(out);
+          FMT_ENABLE_IF(fmt::detail::is_output_iterator<OutputIt, char>::value)>
+auto vformat_to(OutputIt out, text_style ts, fmt::string_view fmt,
+                fmt::format_args args) -> OutputIt {
+  auto&& buf = fmt::detail::get_buffer<char>(out);
   detail::vformat_to(buf, ts, fmt, args);
-  return detail::get_iterator(buf, out);
+  return fmt::detail::get_iterator(buf, out);
 }
 
 /**
@@ -2518,13 +2529,13 @@ auto vformat_to(OutputIt out, text_style ts, string_view fmt, format_args args)
  *
  *     std::vector<char> out;
  *     fmt::format_to(std::back_inserter(out),
- *                    fmt::bold().fg(fmt::color::red), "{}", 42);
+ *                    tjg::bold().fg(tjg::color::red), "{}", 42);
  */
 template <typename OutputIt, typename... T,
-          FMT_ENABLE_IF(detail::is_output_iterator<OutputIt, char>::value)>
-inline auto format_to(OutputIt out, text_style ts, format_string<T...> fmt,
+          FMT_ENABLE_IF(fmt::detail::is_output_iterator<OutputIt, char>::value)>
+inline auto format_to(OutputIt out, text_style ts, fmt::format_string<T...> fmt,
                       T&&... args) -> OutputIt {
-  return vformat_to(out, ts, fmt.str, vargs<T...>{{args...}});
+  return vformat_to(out, ts, fmt.str, fmt::vargs<T...>{{args...}});
 }
 
 namespace detail {
@@ -2541,7 +2552,7 @@ auto write_style_value(OutputIt out, color_t value) -> OutputIt {
   switch (static_cast<color_t::kind>(value.index())) {
   case color_t::kind::none: return write_color_ascii<Char>(out, "no_color");
   case color_t::kind::rgb:  {
-    const auto packed = to_underlying(fmt::get<rgb>(value));
+    const auto packed = to_underlying(tjg::get<rgb>(value));
     *out++ = static_cast<Char>('#');
     for (int shift = 20; shift >= 0; shift -= 4)
       *out++ = static_cast<Char>("0123456789abcdef"[(packed >> shift) & 15]);
@@ -2556,12 +2567,12 @@ auto write_style_value(OutputIt out, color_t value) -> OutputIt {
                                         "bright_green", "bright_yellow",
                                         "bright_blue",  "bright_magenta",
                                         "bright_cyan",  "bright_white"};
-    const auto index = to_underlying(fmt::get<term_color>(value));
-    if (index < 0 || index >= 16) report_error("invalid terminal color");
+    const auto index = to_underlying(tjg::get<term_color>(value));
+    if (index < 0 || index >= 16) fmt::report_error("invalid terminal color");
     return write_color_ascii<Char>(out, names[index]);
   }
   case color_t::kind::cube: {
-    const auto color = fmt::get<cube_color>(value);
+    const auto color = tjg::get<cube_color>(value);
     out = write_color_ascii<Char>(out, "cube");
     *out++ = static_cast<Char>('0' + color.r());
     *out++ = static_cast<Char>('0' + color.g());
@@ -2569,7 +2580,7 @@ auto write_style_value(OutputIt out, color_t value) -> OutputIt {
     return out;
   }
   case color_t::kind::gray: {
-    const auto index = to_underlying(fmt::get<gray_color>(value));
+    const auto index = to_underlying(tjg::get<gray_color>(value));
     out = write_color_ascii<Char>(out, "gray");
     if (index >= 10) *out++ = static_cast<Char>('0' + index / 10);
     *out++ = static_cast<Char>('0' + index % 10);
@@ -2622,96 +2633,60 @@ auto write_style_value(OutputIt out, emphasis value) -> OutputIt {
 
 template <typename T, typename Char> struct style_value_formatter {
  private:
-  dynamic_format_specs<Char> _specs;
+  fmt::detail::dynamic_format_specs<Char> _specs;
 
  public:
-  FMT_CONSTEXPR auto parse(parse_context<Char>& ctx) -> const Char* {
+  FMT_CONSTEXPR auto parse(fmt::parse_context<Char>& ctx) -> const Char* {
     if (ctx.begin() == ctx.end() || *ctx.begin() == Char('}'))
       return ctx.begin();
-    return parse_format_specs(ctx.begin(), ctx.end(), _specs, ctx,
-                              type::string_type);
+    return fmt::detail::parse_format_specs(ctx.begin(), ctx.end(), _specs, ctx,
+                                           fmt::detail::type::string_type);
   }
 
   template <typename FormatContext>
   auto format(const T& value, FormatContext& ctx) const -> decltype(ctx.out()) {
-    auto specs = format_specs{_specs};
-    handle_dynamic_spec(specs.dynamic_width(), specs.width, _specs.width_ref,
-                        ctx);
-    handle_dynamic_spec(specs.dynamic_precision(), specs.precision,
-                        _specs.precision_ref, ctx);
+    auto specs = fmt::format_specs{_specs};
+    fmt::detail::handle_dynamic_spec(specs.dynamic_width(), specs.width,
+                                     _specs.width_ref, ctx);
+    fmt::detail::handle_dynamic_spec(specs.dynamic_precision(), specs.precision,
+                                     _specs.precision_ref, ctx);
     // Both ordinary and debug presentation use the same unquoted notation.
-    specs.set_type(presentation_type::string);
-    auto buffer = basic_memory_buffer<Char, 64>{};
-    write_style_value<Char>(basic_appender<Char>{buffer}, value);
-    return write<Char>(ctx.out(),
-                       basic_string_view<Char>{buffer.data(), buffer.size()},
-                       specs);
+    specs.set_type(fmt::presentation_type::string);
+    auto buffer = fmt::basic_memory_buffer<Char, 64>{};
+    write_style_value<Char>(fmt::basic_appender<Char>{buffer}, value);
+    return fmt::detail::write<Char>(
+        ctx.out(), fmt::basic_string_view<Char>{buffer.data(), buffer.size()},
+        specs);
   }
 };
 
 }  // namespace detail
 
-/// Formats an unspecified color as `no_color`.
-template <typename Char>
-struct formatter<no_color_t, Char>
-    : detail::style_value_formatter<no_color_t, Char> {};
-
-/// Formats an RGB color as `#rrggbb`, without a named-color lookup.
-template <typename Char>
-struct formatter<rgb, Char> : detail::style_value_formatter<rgb, Char> {};
-
-/// Formats a terminal color using its enum name.
-template <typename Char>
-struct formatter<term_color, Char>
-    : detail::style_value_formatter<term_color, Char> {};
-
-/// Formats a gray color as `grayN`, where N is its index.
-template <typename Char>
-struct formatter<gray_color, Char>
-    : detail::style_value_formatter<gray_color, Char> {};
-
-/// Formats a cube color as `cubeRGB`, with channel indices from 0 to 5.
-template <typename Char>
-struct formatter<cube_color, Char>
-    : detail::style_value_formatter<cube_color, Char> {};
-
-/// Formats the active color alternative, preserving its kind.
-template <typename Char>
-struct formatter<color_t, Char> : detail::style_value_formatter<color_t, Char> {
-};
-
-/// Formats a style as optional absolute/emphasis characters and fg/bg colors.
-template <typename Char>
-struct formatter<text_style, Char>
-    : detail::style_value_formatter<text_style, Char> {};
-
-/// Formats set emphasis names in braces, or `{}` when no bits are set.
-template <typename Char>
-struct formatter<emphasis, Char>
-    : detail::style_value_formatter<emphasis, Char> {};
-
+namespace detail {
 /// Formats a styled argument using the underlying type's format specifications.
 template <typename T, typename Char>
-struct formatter<detail::styled_arg<T>, Char> : formatter<T, Char> {
+struct styled_arg_formatter : fmt::formatter<T, Char> {
   template <typename FormatContext>
   auto format(const detail::styled_arg<T>& arg, FormatContext& ctx) const
       -> decltype(ctx.out()) {
     const auto initial = get_terminal_state();
     const auto effective =
-        arg.style.is_absolute() ? arg.style : fmt::overlay(initial, arg.style);
+        arg.style.is_absolute() ? arg.style : tjg::overlay(initial, arg.style);
     detail::style_scope scope{};
-    auto sgr = basic_memory_buffer<Char, sgr_max_length>{};
+    auto sgr = fmt::basic_memory_buffer<Char, sgr_max_length>{};
     detail::append_sgr_transition(sgr, effective, initial);
     auto out =
-        detail::copy<Char>(sgr.data(), sgr.data() + sgr.size(), ctx.out());
+        fmt::detail::copy<Char>(sgr.data(), sgr.data() + sgr.size(), ctx.out());
     ctx.advance_to(out);
     get_terminal_state() = text_style{effective}.absolute(false);
-    out = formatter<T, Char>::format(arg.value, ctx);
+    out = fmt::formatter<T, Char>::format(arg.value, ctx);
     sgr.clear();
     detail::append_sgr_transition(sgr, initial, get_terminal_state());
-    return detail::copy<Char>(sgr.data(), sgr.data() + sgr.size(), out);
+    return fmt::detail::copy<Char>(sgr.data(), sgr.data() + sgr.size(), out);
   }
-};  // formatter
+};  // styled_arg_formatter
+
+}  // namespace detail
 
 /** Returns a formatting argument that applies text style `ts` to `value` using
  * ANSI escape sequences. The underlying type's format specifications are
@@ -2732,13 +2707,13 @@ struct formatter<detail::styled_arg<T>, Char> : formatter<T, Char> {
  * **Example**:
  *
  *     fmt::print("Elapsed time: {0:.2f} seconds",
- *                fmt::styled(1.23, fmt::fg(fmt::color::green)
- *                                      .bg(fmt::color::midnight_blue)));
+ *                tjg::styled(1.23, tjg::fg(tjg::color::green)
+ *                                      .bg(tjg::color::midnight_blue)));
  */
 template <typename T>
 constexpr auto styled(const T& value, text_style ts)
-    -> detail::styled_arg<remove_cvref_t<T>> {
-  return detail::styled_arg<remove_cvref_t<T>>{value, ts};
+    -> detail::styled_arg<fmt::remove_cvref_t<T>> {
+  return detail::styled_arg<fmt::remove_cvref_t<T>>{value, ts};
 }
 
 /**
@@ -2892,26 +2867,75 @@ constexpr FMT_INLINE_VARIABLE rgb yellow_green{154, 205, 50};
 }  // namespace color
 
 FMT_END_EXPORT
+}  // namespace tjg
+
+FMT_BEGIN_NAMESPACE
+FMT_BEGIN_EXPORT
+/// Formats an unspecified color as `no_color`.
+template <typename Char>
+struct formatter<tjg::no_color_t, Char>
+    : tjg::detail::style_value_formatter<tjg::no_color_t, Char> {};
+
+/// Formats an RGB color as `#rrggbb`, without a named-color lookup.
+template <typename Char>
+struct formatter<tjg::rgb, Char>
+    : tjg::detail::style_value_formatter<tjg::rgb, Char> {};
+
+/// Formats a terminal color using its enum name.
+template <typename Char>
+struct formatter<tjg::term_color, Char>
+    : tjg::detail::style_value_formatter<tjg::term_color, Char> {};
+
+/// Formats a gray color as `grayN`, where N is its index.
+template <typename Char>
+struct formatter<tjg::gray_color, Char>
+    : tjg::detail::style_value_formatter<tjg::gray_color, Char> {};
+
+/// Formats a cube color as `cubeRGB`, with channel indices from 0 to 5.
+template <typename Char>
+struct formatter<tjg::cube_color, Char>
+    : tjg::detail::style_value_formatter<tjg::cube_color, Char> {};
+
+/// Formats the active color alternative, preserving its kind.
+template <typename Char>
+struct formatter<tjg::color_t, Char>
+    : tjg::detail::style_value_formatter<tjg::color_t, Char> {};
+
+/// Formats a style as optional absolute/emphasis characters and fg/bg colors.
+template <typename Char>
+struct formatter<tjg::text_style, Char>
+    : tjg::detail::style_value_formatter<tjg::text_style, Char> {};
+
+/// Formats set emphasis names in braces, or `{}` when no bits are set.
+template <typename Char>
+struct formatter<tjg::emphasis, Char>
+    : tjg::detail::style_value_formatter<tjg::emphasis, Char> {};
+
+template <typename T, typename Char>
+struct formatter<tjg::detail::styled_arg<T>, Char>
+    : tjg::detail::styled_arg_formatter<T, Char> {};
+
+FMT_END_EXPORT
 FMT_END_NAMESPACE
 
 FMT_BEGIN_EXPORT
 namespace std {
 
-template <> struct hash<fmt::rgb> {
-  auto operator()(fmt::rgb value) const noexcept -> size_t {
-    return hash<fmt::rgb::value_type>{}(fmt::to_underlying(value));
+template <> struct hash<tjg::rgb> {
+  auto operator()(tjg::rgb value) const noexcept -> size_t {
+    return hash<tjg::rgb::value_type>{}(tjg::to_underlying(value));
   }
 };
 
-template <> struct hash<fmt::color_t> {
-  auto operator()(fmt::color_t value) const noexcept -> size_t {
-    return hash<fmt::color_t::value_type>{}(fmt::to_underlying(value));
+template <> struct hash<tjg::color_t> {
+  auto operator()(tjg::color_t value) const noexcept -> size_t {
+    return hash<tjg::color_t::value_type>{}(tjg::to_underlying(value));
   }
 };
 
-template <> struct hash<fmt::text_style> {
-  auto operator()(fmt::text_style value) const noexcept -> size_t {
-    return hash<fmt::text_style::value_type>{}(fmt::to_underlying(value));
+template <> struct hash<tjg::text_style> {
+  auto operator()(tjg::text_style value) const noexcept -> size_t {
+    return hash<tjg::text_style::value_type>{}(tjg::to_underlying(value));
   }
 };
 

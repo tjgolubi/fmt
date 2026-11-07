@@ -3,7 +3,8 @@
 FmtColor extends [{fmt}](https://github.com/fmtlib/fmt) with color and text-style
 values, palette conversion and blending, fluent style controls, owning structured
 text, SGR parsing, and ANSI stripping. This fork retains {fmt}'s formatting engine
-and supports C++11 and later.
+and, on `ref/CPP20`, targets C++23 with extension APIs in namespace `tjg`.
+Header paths remain under `fmt/`; the formatting engine retains namespace `fmt`.
 Development is on the `color-dev` branch; these extensions have not been
 accepted into upstream {fmt}.
 
@@ -213,11 +214,11 @@ https://vitaut.net/posts/2020/optimal-file-buffer-size/).
 #include <fmt/color.h>
 
 int main() {
-  fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold,
+  tjg::print(fg(tjg::color::crimson) | tjg::emphasis::bold,
              "Hello, {}!\n", "world");
-  fmt::print(fg(fmt::color::floral_white) | bg(fmt::color::slate_gray) |
-             fmt::emphasis::underline, "Olá, {}!\n", "Mundo");
-  fmt::print(fg(fmt::color::steel_blue) | fmt::emphasis::italic,
+  tjg::print(fg(tjg::color::floral_white) | bg(tjg::color::slate_gray) |
+             tjg::emphasis::underline, "Olá, {}!\n", "Mundo");
+  tjg::print(fg(tjg::color::steel_blue) | tjg::emphasis::italic,
              "你好{}！\n", "世界");
 }
 ```

@@ -3,7 +3,8 @@
 FmtColor extends {fmt} with color and style values, owning styled text, SGR
 parsing, and ANSI stripping. Development is on `color-dev`. Use this fork's
 headers and matching library, or its header-only target. The complete styling
-API supports C++11 and later; the application examples below target C++17.
+API on `ref/CPP20` uses namespace `tjg` and targets C++23. The formatting
+engine remains in namespace `fmt`, and existing header paths are retained.
 
 ## Select the headers
 
@@ -40,7 +41,7 @@ styled-text node emits an SGR reset before applying its own style, unless there
 is no output. An explicit absolute target to `to_sgr(target, initial)` resets
 in both modes, even when the attributes already match.
 
-`fmt::to_sgr(style)` returns only the style's opening SGR sequences; it returns
+`tjg::to_sgr(style)` returns only the style's opening SGR sequences; it returns
 an empty string for an empty relative style. It does not append a reset.
 
 For bold text with RGB foreground `(1,2,3)` and terminal-black background,
@@ -107,9 +108,9 @@ Save this as `hello.cpp` in a separate application directory:
 #include <fmt/color.h>
 
 int main() {
-  const auto style = fmt::fg(fmt::rgb{1, 2, 3})
-                         .bg(fmt::term_color::black).bold();
-  fmt::print(style, "Hello from FmtColor!\n");
+  const auto style = tjg::fg(tjg::rgb{1, 2, 3})
+                         .bg(tjg::term_color::black).bold();
+  tjg::print(style, "Hello from FmtColor!\n");
 }
 ```
 
@@ -125,7 +126,7 @@ COMPACT_SGR ?= 0
 BUILD_DIR := build/sgr-$(COMPACT_SGR)
 
 CPPFLAGS += -I$(FMT_PREFIX)/include -DFMT_COLOR_COMPACT_SGR=$(COMPACT_SGR)
-CXXFLAGS += -O2 -std=c++17
+CXXFLAGS += -O2 -std=c++23
 LDFLAGS += -L$(FMT_PREFIX)/lib
 LDLIBS += -lfmt
 
@@ -171,7 +172,7 @@ find_package(fmt CONFIG REQUIRED)
 
 add_executable(hello hello.cpp)
 target_link_libraries(hello PRIVATE fmt::fmt)
-target_compile_features(hello PRIVATE cxx_std_17)
+target_compile_features(hello PRIVATE cxx_std_23)
 target_compile_definitions(hello PRIVATE
   FMT_COLOR_COMPACT_SGR=$<BOOL:${USE_COMPACT_SGR}>)
 ```
@@ -240,15 +241,15 @@ above. This complete example can replace `hello.cpp`:
 #include <fmt/strip_ansi.h>
 
 int main() {
-  auto phrase = fmt::bold("Hello ")
-      + fmt::overlay(fmt::fg(fmt::term_color::green), "world");
-  fmt::println(fmt::underline(), "{}", phrase);
+  auto phrase = tjg::bold("Hello ")
+      + tjg::overlay(tjg::fg(tjg::term_color::green), "world");
+  tjg::println(tjg::underline(), "{}", phrase);
 
-  auto parsed = fmt::parse_styled_text("\x1b[31mred\x1b[0m");
+  auto parsed = tjg::parse_styled_text("\x1b[31mred\x1b[0m");
   fmt::println("{}", parsed);
 
-  auto text = fmt::bold("\x1b[31mred\x1b[0m");
-  auto clean = fmt::strip_ansi(text);
+  auto text = tjg::bold("\x1b[31mred\x1b[0m");
+  auto clean = tjg::strip_ansi(text);
   fmt::println("{} / {}", clean, clean.plain_text());
 }
 ```
@@ -267,4 +268,4 @@ simulates terminal editing or provides security sanitization.
 
 For the complete nested-style demonstration, run `make -C demo run` from the
 library checkout. That demo uses header-only mode, compact SGR, and C++23;
-its language setting does not change the library's C++11 minimum.
+this branch uses C++23 throughout.

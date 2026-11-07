@@ -1,7 +1,7 @@
 # Named Colors
 
-These constexpr `fmt::rgb` constants belong to the `fmt::color` namespace.
-Use them directly, for example `fmt::fg(fmt::color::coral)`.
+These constexpr `tjg::rgb` constants belong to the `tjg::color` namespace.
+Use them directly, for example `tjg::fg(tjg::color::coral)`.
 The `term_*` names are fixed Xterm-default RGB counterparts of `term_color`
 values, including `term_bright_*` for bright colors. They emit truecolor;
 they do not follow changes to the terminal's palette.
@@ -65,10 +65,10 @@ contrast.  Hover over a swatch to see its RGB hex value.
 
 ## Terminal colors
 
-These `fmt::color::term_*` constants use fixed Xterm-default RGB values.
+These `tjg::color::term_*` constants use fixed Xterm-default RGB values.
 They are shown in two responsive grids: the eight normal colors, followed
-by the eight bright colors beneath them. For example, `fmt::color::term_red`
-is RGB `{205, 0, 0}`. Using `fmt::term_color::red` instead selects the
+by the eight bright colors beneath them. For example, `tjg::color::term_red`
+is RGB `{205, 0, 0}`. Using `tjg::term_color::red` instead selects the
 terminal's palette entry, whose appearance depends on its theme.
 
 ### Normal terminal colors
@@ -87,13 +87,13 @@ terminal's palette entry, whose appearance depends on its theme.
 
 ## Gray palette colors
 
-Use `fmt::gray_color{index}` to select one of these 24 gray levels, shown
+Use `tjg::gray_color{index}` to select one of these 24 gray levels, shown
 from darkest to lightest. The labels use zero-based indices 0–23;
 terminal palette entries are 232–255. Each swatch shows the fixed RGB
 equivalent, with every channel equal to `8 + 10 * index`.
 
 ```cpp
-auto style = fmt::fg(fmt::gray_color{12}); // RGB equivalent {128, 128, 128}.
+auto style = tjg::fg(tjg::gray_color{12}); // RGB equivalent {128, 128, 128}.
 ```
 
 ::: gray_color

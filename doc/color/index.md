@@ -4,7 +4,7 @@ Include `<fmt/color.h>` to combine foreground and background colors with
 emphasis attributes, style individual formatting arguments, and produce
 formatted strings or output.
 
-The color and styling API supports C++11 and later. `fmt::color_t` stores an
+On `ref/CPP20`, the extension API lives in namespace `tjg` and targets C++23. `tjg::color_t` stores an
 unspecified color, an RGB value, or a terminal, cube, or gray palette color
 in one public type.
 
@@ -19,10 +19,10 @@ configuration.
 #include <fmt/color.h>
 
 int main() {
-  auto style = fmt::fg(fmt::color::forest_green).bold();
-  fmt::println(style, "The result is {}.", 42);
+  auto style = tjg::fg(tjg::color::forest_green).bold();
+  tjg::println(style, "The result is {}.", 42);
   fmt::println("The result is {}.",
-               fmt::styled(42, fmt::fg(fmt::term_color::red)));
+               tjg::styled(42, tjg::fg(tjg::term_color::red)));
 }
 ```
 
@@ -56,10 +56,10 @@ levels.  Pass a color to [`fg`](text-style.md#foreground-and-background) or
 background style.
 
 ```cpp
-auto style = fmt::text_style{fmt::rgb{30, 144, 255},
-                             fmt::term_color::black,
-                             fmt::emphasis::bold |
-                             fmt::emphasis::underline};
+auto style = tjg::text_style{tjg::rgb{30, 144, 255},
+                             tjg::term_color::black,
+                             tjg::emphasis::bold |
+                             tjg::emphasis::underline};
 ```
 
 A default-constructed [`text_style`](text-style.md#text_style) has no colors or
@@ -78,14 +78,14 @@ a bright color with a dim color will not dim the bright color. Use constructors
 or fluent setters to select colors directly, and `blend` to average them.
 
 The examples below compare both operations on foreground styles. Every input
-name is a `fmt::term_color` value. Conversion uses the fixed Xterm-default RGB
+name is a `tjg::term_color` value. Conversion uses the fixed Xterm-default RGB
 mapping, which may differ from the user's terminal theme. **Both operations
 produce RGB foregrounds**, rather than terminal palette colors.
 
 ```cpp
-auto red  = fmt::text_style{fmt::term_color::bright_red};
-auto blue = fmt::text_style{fmt::term_color::blue};
-auto averaged = fmt::blend(red, blue); // RGB {127, 0, 119}.
+auto red  = tjg::text_style{tjg::term_color::bright_red};
+auto blue = tjg::text_style{tjg::term_color::blue};
+auto averaged = tjg::blend(red, blue); // RGB {127, 0, 119}.
 auto ored = red | blue;                // RGB {255, 0, 238}.
 ```
 
@@ -130,9 +130,9 @@ Relative styled arguments and structured text inherit missing colors and combine
 emphasis with that style. Each field restores the enclosing style afterward:
 
 ```cpp
-fmt::print(fmt::emphasis::underline,
+tjg::print(tjg::emphasis::underline,
            "The result is {} after rounding.",
-           fmt::styled(42, fmt::fg(fmt::term_color::bright_red)));
+           tjg::styled(42, tjg::fg(tjg::term_color::bright_red)));
 ```
 
 <pre class="color-output"><span style="text-decoration: underline">The result is <span style="color: #FF0000">42</span> after rounding.</span></pre>

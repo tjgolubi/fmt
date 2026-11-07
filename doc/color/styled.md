@@ -13,9 +13,9 @@ span's style over the text added after it, even if that span contains several
 styled parts.
 
 ```cpp
-auto red_text = fmt::underlay(fmt::fg(fmt::color::red),
-    "red text with " + fmt::bold("nested bold") + " still red");
-auto line = fmt::styled_text{"plain | "} + red_text + " | plain again";
+auto red_text = tjg::underlay(tjg::fg(tjg::color::red),
+    "red text with " + tjg::bold("nested bold") + " still red");
+auto line = tjg::styled_text{"plain | "} + red_text + " | plain again";
 fmt::println("{}", line);
 ```
 
@@ -45,11 +45,11 @@ formatting, each relative child inherits colors it does not specify; explicit
 child colors take precedence. Emphasis combines by OR.
 
 ```cpp
-auto words = fmt::styled_text{"red", fmt::fg(fmt::color::red)}
-    + " " + fmt::styled_text{"green", fmt::fg(fmt::color::green)}
-    + " " + fmt::styled_text{"blue", fmt::fg(fmt::color::blue)};
-auto defaults = fmt::fg(fmt::color::black).bg(fmt::color::light_gray);
-auto group = fmt::underlay(defaults, words);
+auto words = tjg::styled_text{"red", tjg::fg(tjg::color::red)}
+    + " " + tjg::styled_text{"green", tjg::fg(tjg::color::green)}
+    + " " + tjg::styled_text{"blue", tjg::fg(tjg::color::blue)};
+auto defaults = tjg::fg(tjg::color::black).bg(tjg::color::light_gray);
+auto group = tjg::underlay(defaults, words);
 fmt::println("{}", group);
 ```
 
@@ -78,7 +78,7 @@ tree, adding emphasis by OR. It skips existing absolute nodes and their entire
 subtrees. Use it when the supplied colors should replace explicit choices:
 
 ```cpp
-auto all_red = fmt::overlay(fmt::fg(fmt::color::red), words);
+auto all_red = tjg::overlay(tjg::fg(tjg::color::red), words);
 fmt::println("{}", all_red);
 ```
 
@@ -95,7 +95,7 @@ Neither operation changes how formatting combines enclosing and inner styles.
 To overlay only the root style, use the style getter and setter:
 
 ```cpp
-words.style(words.style().overlay(fmt::fg(fmt::color::red)));
+words.style(words.style().overlay(tjg::fg(tjg::color::red)));
 ```
 
 That changes the root foreground; the words' explicit foregrounds still take
@@ -125,10 +125,10 @@ descendants inherit the resulting style without repeating the group's absolute
 reset. An explicitly absolute descendant establishes its own reset boundary.
 
 ```cpp
-auto underline_only = fmt::absolute(fmt::underline("underline only"));
-auto sentence = fmt::styled_text{"before "} + underline_only + " after";
-auto decorated = fmt::strike(
-    fmt::underlay(fmt::bg(fmt::gray_color{12}), sentence));
+auto underline_only = tjg::absolute(tjg::underline("underline only"));
+auto sentence = tjg::styled_text{"before "} + underline_only + " after";
+auto decorated = tjg::strike(
+    tjg::underlay(tjg::bg(tjg::gray_color{12}), sentence));
 fmt::println("{}", decorated);
 ```
 
@@ -157,8 +157,8 @@ styles. At field completion, it restores the enclosing shared
 style from the last emitted state.
 
 ```cpp
-fmt::print(fmt::underline(), "The result is {} after rounding.",
-           fmt::styled_text{"42", fmt::fg(fmt::term_color::bright_red)});
+tjg::print(tjg::underline(), "The result is {} after rounding.",
+           tjg::styled_text{"42", tjg::fg(tjg::term_color::bright_red)});
 ```
 
 Expected output (without a trailing newline):
@@ -173,7 +173,7 @@ and precision, with optional `s` presentation. Width and precision may also be
 dynamic arguments. Debug presentation (`?`) is not supported.
 
 ```cpp
-fmt::println("{:*>12.9}", fmt::bold("hello " + fmt::styled_text{"world", fmt::fg(fmt::color::blue)}));
+tjg::println("{:*>12.9}", tjg::bold("hello " + tjg::styled_text{"world", tjg::fg(tjg::color::blue)}));
 // Three '*' characters followed by "hello wor", all bold; "wor" is blue.
 ```
 
@@ -233,8 +233,8 @@ strings use ordinary {fmt} debug escaping, including quotes, backslashes,
 embedded nulls, and control characters.
 
 ```cpp
-auto text = fmt::bold(fmt::styled_text{"hello\n", fmt::fg(fmt::term_color::red)}
-                      + (fmt::underline("world") + "!"));
+auto text = tjg::bold(tjg::styled_text{"hello\n", tjg::fg(tjg::term_color::red)}
+                      + (tjg::underline("world") + "!"));
 fmt::print("{:?}", text);
 ```
 
@@ -272,7 +272,7 @@ without constructing or parsing a format-specification string.
 
 std::ostringstream os;
 os << std::left << std::setfill('*') << std::setw(14)
-   << fmt::bold("hello world");
+   << tjg::bold("hello world");
 // Bold "hello world***", followed by a reset to terminal defaults.
 ```
 
@@ -311,16 +311,16 @@ Each column supplies a foreground and background. The cell helper uses
 
 ```cpp
 constexpr auto notes_color =
-    fmt::fg(fmt::term_color::white).bg(fmt::color::indigo);
+    tjg::fg(tjg::term_color::white).bg(tjg::color::indigo);
 
-auto cell(fmt::styled_text text, fmt::text_style column) -> fmt::styled_text {
-  return fmt::underlay(column, std::move(text));
+auto cell(tjg::styled_text text, tjg::text_style column) -> tjg::styled_text {
+  return tjg::underlay(column, std::move(text));
 }
 
-auto nas_note = fmt::styled_text{"All",
-                   fmt::fg(fmt::term_color::red).bg(fmt::term_color::cyan)}
+auto nas_note = tjg::styled_text{"All",
+                   tjg::fg(tjg::term_color::red).bg(tjg::term_color::cyan)}
     + " volumes "
-    + fmt::styled_text{"healthy", fmt::fg(fmt::term_color::green)};
+    + tjg::styled_text{"healthy", tjg::fg(tjg::term_color::green)};
 ```
 
 With `cell(nas_note, notes_color)`, `All` keeps its red foreground and cyan
@@ -335,7 +335,7 @@ The demo's `print_row` function passes the row style to `println` and formats
 four cells:
 
 ```cpp
-fmt::println(row, "{:<16.16} {:^12.12} {:>12.12} {:<30.30}",
+tjg::println(row, "{:<16.16} {:^12.12} {:>12.12} {:<30.30}",
              cell(std::move(service), service_color),
              cell(std::move(status), status_color),
              cell(std::move(latency), latency_color),
@@ -347,8 +347,8 @@ right-aligned. Each field uses equal width and precision: short text is padded
 and long text is truncated to the column width. The literal spaces between
 fields use the row style rather than a column background.
 
-The heading row supplies `fmt::bold().underline()`, the Backup row supplies
-`fmt::bold()`, and the Old server row supplies `fmt::faint()`. Relative cell
+The heading row supplies `tjg::bold().underline()`, the Backup row supplies
+`tjg::bold()`, and the Old server row supplies `tjg::faint()`. Relative cell
 contents inherit that emphasis while retaining their explicit colors and
 column backgrounds.
 
@@ -357,10 +357,10 @@ column backgrounds.
 The Database row contains an absolute red-on-white warning:
 
 ```cpp
-constexpr auto critical_style = fmt::fg(fmt::color::red)
-    .bg(fmt::color::white).bold().blink().absolute();
-auto db_note = fmt::styled_text{"Connection refused: "}
-    + fmt::styled_text{"CRITICAL!", critical_style}
+constexpr auto critical_style = tjg::fg(tjg::color::red)
+    .bg(tjg::color::white).bold().blink().absolute();
+auto db_note = tjg::styled_text{"Connection refused: "}
+    + tjg::styled_text{"CRITICAL!", critical_style}
     + " Database service is unavailable";
 ```
 
@@ -394,7 +394,7 @@ containing ordinary ANSI SGR into an owned `styled_text` (or `wstyled_text` for
 wide input):
 
 ```cpp
-auto message = fmt::parse_styled_text("plain \x1b[31mred\x1b[0m plain");
+auto message = tjg::parse_styled_text("plain \x1b[31mred\x1b[0m plain");
 fmt::println("{}", message);
 ```
 
@@ -413,8 +413,8 @@ For example, a reset prevents an enclosing underline from returning on later
 text, even when that text enables another attribute:
 
 ```cpp
-auto parsed = fmt::parse_styled_text("\x1b[1mA\x1b[mB\x1b[1mC");
-fmt::println(fmt::underline(), "{}", parsed);
+auto parsed = tjg::parse_styled_text("\x1b[1mA\x1b[mB\x1b[1mC");
+tjg::println(tjg::underline(), "{}", parsed);
 ```
 
 Expected output (followed by a newline):
@@ -458,7 +458,7 @@ Include `<fmt/strip_ansi.h>` and call `strip_ansi` to obtain an owning string
 with complete ESC-prefixed ANSI sequences removed:
 
 ```cpp
-auto plain = fmt::strip_ansi("\x1b[31mred\x1b[0m"); // "red"
+auto plain = tjg::strip_ansi("\x1b[31mred\x1b[0m"); // "red"
 ```
 
 The character-generic function accepts `basic_string_view<Char>`; convenience
@@ -490,8 +490,8 @@ unchanged leaf strings. The input is unchanged. Sequences split across leaves
 are preserved.
 
 ```cpp
-auto text = fmt::bold("\x1b[31mred\x1b[0m");
-auto clean = fmt::strip_ansi(text); // Bold "red", with raw escapes removed.
+auto text = tjg::bold("\x1b[31mred\x1b[0m");
+auto clean = tjg::strip_ansi(text); // Bold "red", with raw escapes removed.
 auto plain = clean.plain_text();   // "red", without the tree's styling.
 ```
 
@@ -509,9 +509,9 @@ They require neither ANSI parsing nor styled text.
 ```cpp
 #include <fmt/backslash.h>
 
-auto readable = fmt::backslash_escape("\x1b[31mred\x1b[0m\n");
+auto readable = tjg::backslash_escape("\x1b[31mred\x1b[0m\n");
 // readable contains the literal text: \e[31mred\e[0m\n
-auto original = fmt::backslash_unescape(readable);
+auto original = tjg::backslash_unescape(readable);
 ```
 
 The decoder accepts the following escape sequences. The last column describes
@@ -568,7 +568,7 @@ strings without allocating an intermediate string.
 #include <string>
 
 std::string log = "Received: ";
-fmt::backslash_escape_to(std::back_inserter(log), "\x1b[31mred\n");
+tjg::backslash_escape_to(std::back_inserter(log), "\x1b[31mred\n");
 // log contains: Received: \e[31mred\n
 ```
 
@@ -605,7 +605,7 @@ Expected output for the example above (without a trailing newline):
 
 ```cpp
 fmt::println("Amount: {:>8.2f}",
-             fmt::styled(1.23, fmt::fg(fmt::color::green)));
+             tjg::styled(1.23, tjg::fg(tjg::color::green)));
 ```
 
 Expected output (followed by a newline):
@@ -620,16 +620,16 @@ enclosing style afterward. For examples, see
 [Text style rendering](index.md#TextStyleRendering).
 
 To insert a styled value directly into an ostream, include
-`<fmt/color-ostream.h>` and use `os << fmt::styled(value, style)`.
+`<fmt/color-ostream.h>` and use `os << tjg::styled(value, style)`.
 [Styled stream insertion](print.md#styled-stream-insertion) describes stream
 formatting, wide streams, and the wrapper's reference lifetime.
 
 ```cpp
 #include <numbers>  // C++20
 
-auto style = fmt::fg(fmt::color::green).bold();
+auto style = tjg::fg(tjg::color::green).bold();
 std::cout << "Pi: " << std::fixed << std::setprecision(2)
-          << fmt::styled(std::numbers::pi, style) << '\n';
+          << tjg::styled(std::numbers::pi, style) << '\n';
 ```
 
 Expected output (followed by a newline):

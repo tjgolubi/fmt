@@ -12,22 +12,24 @@
 
 #include "color.h"
 
-FMT_BEGIN_NAMESPACE
+namespace tjg {
 
 namespace detail {
 struct styled_text_ansi_stripper;
+template <typename Char> struct styled_text_formatter;
 
 // Match ordinary string formatting: UTF-8 display width for char, code-unit
 // count for other character types.
 template <typename Char>
-auto styled_text_width(basic_string_view<Char> text) noexcept -> std::size_t {
+auto styled_text_width(fmt::basic_string_view<Char> text) noexcept
+    -> std::size_t {
   return text.size();
 }
 
-inline auto styled_text_width(string_view text) noexcept -> std::size_t {
+inline auto styled_text_width(fmt::string_view text) noexcept -> std::size_t {
   auto width = std::size_t{0};
-  for_each_codepoint(text, [&](uint32_t cp, string_view) {
-    width += display_width_of(cp);
+  fmt::detail::for_each_codepoint(text, [&](uint32_t cp, fmt::string_view) {
+    width += fmt::detail::display_width_of(cp);
     return true;
   });
   return width;
@@ -45,7 +47,7 @@ struct styled_text_prefix {
 };
 
 template <typename Char>
-auto styled_text_take(basic_string_view<Char> text,
+auto styled_text_take(fmt::basic_string_view<Char> text,
                       styled_text_render_state& state) -> styled_text_prefix {
   const auto size = (std::min)(text.size(), state.remaining);
   state.remaining -= size;
@@ -53,20 +55,22 @@ auto styled_text_take(basic_string_view<Char> text,
   return {size, size};
 }
 
-inline auto styled_text_take(string_view text, styled_text_render_state& state)
+inline auto styled_text_take(fmt::string_view text,
+                             styled_text_render_state& state)
     -> styled_text_prefix {
   auto result = styled_text_prefix{0, 0};
-  for_each_codepoint(text, [&](uint32_t cp, string_view bytes) {
-    const auto width = display_width_of(cp);
-    if (width > state.remaining) {
-      state.stopped = true;
-      return false;
-    }
-    result.size += bytes.size();
-    result.width += width;
-    state.remaining -= width;
-    return true;
-  });
+  fmt::detail::for_each_codepoint(
+      text, [&](uint32_t cp, fmt::string_view bytes) {
+        const auto width = fmt::detail::display_width_of(cp);
+        if (width > state.remaining) {
+          state.stopped = true;
+          return false;
+        }
+        result.size += bytes.size();
+        result.width += width;
+        state.remaining -= width;
+        return true;
+      });
   if (state.remaining == 0) state.stopped = true;
   return result;
 }  // styled_text_take
@@ -83,7 +87,7 @@ template <typename Char> class basic_styled_text {
  private:
   using leaf = std::shared_ptr<const string_type>;
   using branch = std::vector<basic_styled_text>;
-  friend struct formatter<basic_styled_text<Char>, Char>;
+  friend struct detail::styled_text_formatter<Char>;
   friend struct detail::styled_text_ansi_stripper;
   text_style _style{};
   // A branch is created only by concatenating nonempty values.
@@ -237,9 +241,10 @@ template <typename Char> class basic_styled_text {
    */
   FMT_NODISCARD auto display_width() const noexcept -> std::size_t {
     if (!_is_branch)
-      return _data.text ? detail::styled_text_width(basic_string_view<Char>{
-                              _data.text->data(), _data.text->size()})
-                        : 0;
+      return _data.text
+                 ? detail::styled_text_width(fmt::basic_string_view<Char>{
+                       _data.text->data(), _data.text->size()})
+                 : 0;
     return branch_display_width(_data.children);
   }  // display_width
 
@@ -292,7 +297,7 @@ namespace detail {
 template <typename Char, typename OutIter>
 FMT_NODISCARD FMT_CONSTEXPR inline auto copy(const std::basic_string<Char>& str,
                                              OutIter out) -> OutIter {
-  return copy<Char>(fmt::basic_string_view<Char>{str}, out);
+  return fmt::detail::copy<Char>(fmt::basic_string_view<Char>{str}, out);
 }
 
 }  // namespace detail
@@ -303,20 +308,22 @@ FMT_NODISCARD FMT_CONSTEXPR inline auto copy(const std::basic_string<Char>& str,
  * terminal defaults. Debug presentation (`?`) displays stored node styles and
  * quoted leaf strings, indenting children by two spaces per level.
  */
-template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
-  FMT_CONSTEXPR auto parse(parse_context<Char>& ctx) -> const Char* {
+namespace detail {
+template <typename Char> struct styled_text_formatter {
+  FMT_CONSTEXPR auto parse(fmt::parse_context<Char>& ctx) -> const Char* {
     if (ctx.begin() == ctx.end() || *ctx.begin() == Char('}'))
       return ctx.begin();
-    return detail::parse_format_specs(ctx.begin(), ctx.end(), _specs, ctx,
-                                      detail::type::string_type);
+    return fmt::detail::parse_format_specs(ctx.begin(), ctx.end(), _specs, ctx,
+                                           fmt::detail::type::string_type);
   }
 
   FMT_CONSTEXPR void set_debug_format(bool set = true) {
-    _specs.set_type(set ? presentation_type::debug : presentation_type::none);
+    _specs.set_type(set ? fmt::presentation_type::debug
+                        : fmt::presentation_type::none);
   }
 
  private:
-  detail::dynamic_format_specs<Char> _specs;
+  fmt::detail::dynamic_format_specs<Char> _specs;
   using render_state = detail::styled_text_render_state;
 
   template <typename OutputIt>
@@ -329,9 +336,9 @@ template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
     }
     if (!node._is_branch) {
       const auto text = node._data.text
-                            ? basic_string_view<Char>{*node._data.text}
-                            : basic_string_view<Char>{};
-      out = detail::write_escaped_string(out, text);
+                            ? fmt::basic_string_view<Char>{*node._data.text}
+                            : fmt::basic_string_view<Char>{};
+      out = fmt::detail::write_escaped_string(out, text);
       if (indent != 0) *out++ = Char('\n');
       return out;
     }
@@ -351,7 +358,7 @@ template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
     if (!node._is_branch) {
       const auto& text = *node._data.text;
       return detail::styled_text_take(
-                 basic_string_view<Char>{text.data(), text.size()}, state)
+                 fmt::basic_string_view<Char>{text.data(), text.size()}, state)
           .width;
     }
     auto width = std::size_t{0};
@@ -366,7 +373,7 @@ template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
   static auto transition(text_style style, text_style& terminal, OutputIt out)
       -> OutputIt {
     if (style == terminal) return out;
-    const auto sgr = fmt::to_sgr<Char>(style, terminal);
+    const auto sgr = tjg::to_sgr<Char>(style, terminal);
     terminal = style.absolute(false);
     return detail::copy<Char>(sgr, out);
   }
@@ -375,7 +382,7 @@ template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
   static auto write_node(const basic_styled_text<Char>& node,
                          text_style enclosing, text_style& terminal,
                          OutputIt out, render_state& state,
-                         const format_specs& specs, std::size_t left = 0,
+                         const fmt::format_specs& specs, std::size_t left = 0,
                          std::size_t right = 0) -> OutputIt {
     if ((node.empty() || state.stopped) && left == 0 && right == 0) return out;
     auto effective = node._style;
@@ -385,11 +392,11 @@ template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
       out = transition(effective, terminal, out);
       effective = terminal;
     } else {
-      effective = fmt::underlay(effective, enclosing);
+      effective = tjg::underlay(effective, enclosing);
     }
     if (left != 0) {
       out = transition(effective, terminal, out);
-      out = detail::fill<Char>(out, left, specs);
+      out = fmt::detail::fill<Char>(out, left, specs);
     }
     if (node._is_branch) {
       for (const auto& child : node._data.children) {
@@ -399,15 +406,16 @@ template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
     } else if (!node.empty() && !state.stopped) {
       const auto& text = *node._data.text;
       const auto prefix = detail::styled_text_take(
-          basic_string_view<Char>{text.data(), text.size()}, state);
+          fmt::basic_string_view<Char>{text.data(), text.size()}, state);
       if (prefix.size != 0) {
         out = transition(effective, terminal, out);
-        out = detail::copy<Char>(text.data(), text.data() + prefix.size, out);
+        out = fmt::detail::copy<Char>(text.data(), text.data() + prefix.size,
+                                      out);
       }
     }
     if (right != 0) {
       out = transition(effective, terminal, out);
-      out = detail::fill<Char>(out, right, specs);
+      out = fmt::detail::fill<Char>(out, right, specs);
     }
     return out;
   }
@@ -416,11 +424,11 @@ template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
   template <typename FormatContext>
   auto format(const basic_styled_text<Char>& value, FormatContext& ctx) const
       -> decltype(ctx.out()) {
-    auto specs = format_specs{_specs};
-    detail::handle_dynamic_spec(specs.dynamic_width(), specs.width,
-                                _specs.width_ref, ctx);
-    detail::handle_dynamic_spec(specs.dynamic_precision(), specs.precision,
-                                _specs.precision_ref, ctx);
+    auto specs = fmt::format_specs{_specs};
+    fmt::detail::handle_dynamic_spec(specs.dynamic_width(), specs.width,
+                                     _specs.width_ref, ctx);
+    fmt::detail::handle_dynamic_spec(specs.dynamic_precision(), specs.precision,
+                                     _specs.precision_ref, ctx);
     return format_with_specs(value, ctx, specs);
   }
 
@@ -428,16 +436,16 @@ template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
   // stream insertion never builds or parses a format-specification string.
   template <typename FormatContext>
   static auto format_with_specs(const basic_styled_text<Char>& value,
-                                FormatContext& ctx, format_specs specs)
+                                FormatContext& ctx, fmt::format_specs specs)
       -> decltype(ctx.out()) {
-    if (specs.type() == presentation_type::debug) {
+    if (specs.type() == fmt::presentation_type::debug) {
       if (specs.width == 0 && specs.precision < 0)
         return write_debug(value, ctx.out());
-      auto buffer = basic_memory_buffer<Char>{};
-      write_debug(value, basic_appender<Char>{buffer});
-      specs.set_type(presentation_type::string);
-      return detail::write<Char>(
-          ctx.out(), basic_string_view<Char>{buffer.data(), buffer.size()},
+      auto buffer = fmt::basic_memory_buffer<Char>{};
+      write_debug(value, fmt::basic_appender<Char>{buffer});
+      specs.set_type(fmt::presentation_type::string);
+      return fmt::detail::write<Char>(
+          ctx.out(), fmt::basic_string_view<Char>{buffer.data(), buffer.size()},
           specs);
     }
     const auto limit = (specs.precision < 0)
@@ -452,9 +460,9 @@ template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
         padding = static_cast<std::size_t>(specs.width) - width;
       if (width == 0 && padding == 0) return ctx.out();
     }
-    const auto left = specs.align() == align::right    ? padding
-                      : specs.align() == align::center ? padding / 2
-                                                       : 0;
+    const auto left = specs.align() == fmt::align::right    ? padding
+                      : specs.align() == fmt::align::center ? padding / 2
+                                                            : 0;
     if (limit == 0) state.stopped = true;
     const auto initial = get_terminal_state();
     auto& terminal = get_terminal_state();
@@ -464,6 +472,7 @@ template <typename Char> struct formatter<basic_styled_text<Char>, Char> {
     return transition(initial, terminal, out);
   }
 };  // styled-text formatter
+}  // namespace detail
 
 namespace detail {
 template <typename Char>
@@ -472,7 +481,7 @@ auto to_styled_text(basic_styled_text<Char> text) -> basic_styled_text<Char> {
 }
 
 template <
-    typename S, typename Char = char_t<S>,
+    typename S, typename Char = fmt::detail::char_t<S>,
     FMT_ENABLE_IF(std::is_constructible<basic_styled_text<Char>, S&&>::value)>
 auto to_styled_text(S&& text) -> basic_styled_text<Char> {
   return basic_styled_text<Char>{std::forward<S>(text)};
@@ -518,65 +527,72 @@ FMT_NODISCARD auto underlay(text_style style, T&& text)
 template <typename T>
 FMT_NODISCARD auto absolute(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::underlay(fmt::absolute(text_style{}), std::forward<T>(text));
+  return tjg::underlay(tjg::absolute(text_style{}), std::forward<T>(text));
 }
 
 /// Returns styled text with bold enabled on its root, preserving other style.
 template <typename T>
 FMT_NODISCARD auto bold(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::underlay(fmt::bold(), std::forward<T>(text));
+  return tjg::underlay(tjg::bold(), std::forward<T>(text));
 }
 
 /// Returns styled text with faint enabled on its root, preserving other style.
 template <typename T>
 FMT_NODISCARD auto faint(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::underlay(fmt::faint(), std::forward<T>(text));
+  return tjg::underlay(tjg::faint(), std::forward<T>(text));
 }
 
 /// Returns styled text with italic enabled on its root, preserving other style.
 template <typename T>
 FMT_NODISCARD auto italic(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::underlay(fmt::italic(), std::forward<T>(text));
+  return tjg::underlay(tjg::italic(), std::forward<T>(text));
 }
 
 /// Enables underline on the returned root, preserving its other style.
 template <typename T>
 FMT_NODISCARD auto underline(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::underlay(fmt::underline(), std::forward<T>(text));
+  return tjg::underlay(tjg::underline(), std::forward<T>(text));
 }
 
 /// Returns styled text with blink enabled on its root, preserving other style.
 template <typename T>
 FMT_NODISCARD auto blink(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::underlay(fmt::blink(), std::forward<T>(text));
+  return tjg::underlay(tjg::blink(), std::forward<T>(text));
 }
 
 /// Enables reverse on the returned root, preserving its other style.
 template <typename T>
 FMT_NODISCARD auto reverse(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::underlay(fmt::reverse(), std::forward<T>(text));
+  return tjg::underlay(tjg::reverse(), std::forward<T>(text));
 }
 
 /// Enables conceal on the returned root, preserving its other style.
 template <typename T>
 FMT_NODISCARD auto conceal(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::underlay(fmt::conceal(), std::forward<T>(text));
+  return tjg::underlay(tjg::conceal(), std::forward<T>(text));
 }
 
 /// Returns styled text with strike enabled on its root, preserving other style.
 template <typename T>
 FMT_NODISCARD auto strike(T&& text)
     -> decltype(detail::to_styled_text(std::forward<T>(text))) {
-  return fmt::underlay(fmt::strike(), std::forward<T>(text));
+  return tjg::underlay(tjg::strike(), std::forward<T>(text));
 }
 
+}  // namespace tjg
+
+FMT_BEGIN_NAMESPACE
+// Adapt extension-owned trees to the existing formatting engine.
+template <typename Char>
+struct formatter<tjg::basic_styled_text<Char>, Char>
+    : tjg::detail::styled_text_formatter<Char> {};
 FMT_END_NAMESPACE
 
 #endif  // FMT_STYLED_TEXT_H_

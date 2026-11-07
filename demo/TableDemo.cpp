@@ -4,12 +4,12 @@
 
 #include <utility>
 
-using fmt::styled_text;
-using fmt::text_style;
-using fmt::fg;
-using fmt::bg;
-using tc = fmt::term_color;
-namespace color = fmt::color;
+using tjg::styled_text;
+using tjg::text_style;
+using tjg::fg;
+using tjg::bg;
+using tc = tjg::term_color;
+namespace color = tjg::color;
 
 // Each column has a distinct background color.
 constexpr auto service_color = fg(tc::white).bg(color::dark_blue);
@@ -32,7 +32,7 @@ void print_row(styled_text service, styled_text status,
                styled_text latency, styled_text notes,
                text_style row = {})
 {
-  fmt::println(row, "{:<16.16} {:^12.12} {:>12.12} {:<30.30}",
+  tjg::println(row, "{:<16.16} {:^12.12} {:>12.12} {:<30.30}",
                cell(std::move(service), service_color),
                cell(std::move(status),  status_color),
                cell(std::move(latency), latency_color),
@@ -43,7 +43,7 @@ int main() {
   fmt::println("SYSTEM HEALTH DASHBOARD\n");
 
   // Column headings inherit bold and underline from the row.
-  print_row("Service", "Status", "Latency", "Notes", fmt::bold().underline());
+  print_row("Service", "Status", "Latency", "Notes", tjg::bold().underline());
 
   // Normal row.
   auto ok = styled_text{"OK", fg(tc::bright_green)};
@@ -65,15 +65,15 @@ int main() {
   auto warn = styled_text{"WARN", fg(tc::yellow)};
   auto backup_note = styled_text{"Slow", fg(color::yellow)}
                    + " - retry scheduled";
-  print_row("Backup", warn, "215 ms", backup_note, fmt::bold());
+  print_row("Backup", warn, "215 ms", backup_note, tjg::bold());
 
   // An absolute red-on-white fragment within the Notes column.
   auto fail = styled_text{"FAIL", fg(tc::bright_red)};
   auto db_note = styled_text{"Connection refused: "}
                + styled_text{"CRITICAL!", critical_style}
                + " Database service is unavailable";
-  print_row("Database", fail, "--", db_note, fmt::bold());
+  print_row("Database", fail, "--", db_note, tjg::bold());
 
   // Faint row emphasis, retaining the column backgrounds.
-  print_row("Old server", "OFFLINE", "--", "Maintenance mode", fmt::faint());
+  print_row("Old server", "OFFLINE", "--", "Maintenance mode", tjg::faint());
 } // main

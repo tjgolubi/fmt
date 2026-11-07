@@ -289,7 +289,7 @@ TEST(compile_test, constexpr_formatted_size) {
   EXPECT_EQ(array_size, 5);
   const size_t styled_size = fmt::formatted_size(
       FMT_COMPILE("{}"),
-      fmt::styled(std::array{1, 2, 3}, fmt::bg(fmt::color::green)));
+      tjg::styled(std::array{1, 2, 3}, tjg::bg(tjg::color::green)));
 #if FMT_COLOR_COMPACT_SGR == 1
   EXPECT_EQ(styled_size, 28);
 #else

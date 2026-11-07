@@ -491,7 +491,11 @@ class CxxHandler(BaseHandler):
 
     @override
     def collect(self, identifier: str, options: "Mapping[str, Any]") -> Definition:
-        qual_name = "fmt::" + identifier
+        if identifier.startswith("tjg::"):
+            qual_name = identifier
+        else:
+            namespace = "tjg::" if options.get("color_reference") else "fmt::"
+            qual_name = namespace + identifier
 
         param_str = None
         paren = qual_name.find("(")
@@ -529,7 +533,10 @@ class CxxHandler(BaseHandler):
                     else:
                         params_type.append(p.type)
                 node_param_str = ", ".join(params_type)
-                if param_str and param_str != node_param_str:
+                comparable_params = node_param_str
+                if qual_name.startswith("tjg::"):
+                    comparable_params = comparable_params.replace("fmt::", "")
+                if param_str and param_str != comparable_params:
                     candidates.append(f"{name}({node_param_str})")
                     continue
             elif d.kind == "define":

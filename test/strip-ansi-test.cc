@@ -10,7 +10,7 @@ auto chars(const char* input) -> std::basic_string<Char> {
 }
 template<typename Char>
 auto strip(const std::basic_string<Char>& input) -> std::basic_string<Char>
-{ return fmt::strip_ansi<Char>({input.data(), input.size()}); }
+{ return tjg::strip_ansi<Char>({input.data(), input.size()}); }
 
 template<typename Char>
 void check_complete_sequences() {
@@ -58,48 +58,48 @@ void check_preservation() {
 
 template<typename Char>
 void check_styled_text() {
-  using text = fmt::basic_styled_text<Char>;
-  const auto red = fmt::fg(fmt::term_color::red);
-  const auto absolute = fmt::absolute(fmt::underline());
-  const auto input = fmt::bold(
+  using text = tjg::basic_styled_text<Char>;
+  const auto red = tjg::fg(tjg::term_color::red);
+  const auto absolute = tjg::absolute(tjg::underline());
+  const auto input = tjg::bold(
       text{chars<Char>("\x1b[32mred\x1b[0m"), red} +
-      fmt::overlay(absolute,
+      tjg::overlay(absolute,
           text{chars<Char>("\x1b]8;;url\a label\x1b]8;;\a")} +
-          text{chars<Char>("\x1b[2Jtail"), fmt::italic()}));
-  const auto expected = fmt::bold(
+          text{chars<Char>("\x1b[2Jtail"), tjg::italic()}));
+  const auto expected = tjg::bold(
       text{chars<Char>("red"), red} +
-      fmt::overlay(absolute,
+      tjg::overlay(absolute,
           text{chars<Char>(" label")} +
-          text{chars<Char>("tail"), fmt::italic()}));
+          text{chars<Char>("tail"), tjg::italic()}));
   const auto original = input;
-  auto result = fmt::strip_ansi(input);
+  auto result = tjg::strip_ansi(input);
   EXPECT_EQ(result, expected); // Equality checks exact structure and styles.
   EXPECT_EQ(input, original);
-  EXPECT_EQ(fmt::strip_ansi(result), result);
+  EXPECT_EQ(tjg::strip_ansi(result), result);
   result += text{chars<Char>("changed")};
   EXPECT_EQ(input, original);
-  EXPECT_EQ(fmt::strip_ansi(text{chars<Char>("\x1b[0m"), absolute}),
+  EXPECT_EQ(tjg::strip_ansi(text{chars<Char>("\x1b[0m"), absolute}),
             (text{std::basic_string<Char>{}, absolute}));
-  EXPECT_EQ(fmt::strip_ansi(text{}), text{});
+  EXPECT_EQ(tjg::strip_ansi(text{}), text{});
 
   const auto only_controls = text{chars<Char>("\x1b[0m"), red} +
                              text{chars<Char>("\x1b[2J"), absolute};
-  const auto empty_branch = fmt::strip_ansi(only_controls);
+  const auto empty_branch = tjg::strip_ansi(only_controls);
   EXPECT_EQ(empty_branch.plain_text(), std::basic_string<Char>{});
   EXPECT_NE(empty_branch, text{}); // Empty children are not collapsed.
-  EXPECT_EQ(fmt::strip_ansi(empty_branch), empty_branch);
+  EXPECT_EQ(tjg::strip_ansi(empty_branch), empty_branch);
 
   // Incomplete CSI and control strings cannot consume text in another leaf.
   const auto split = text{chars<Char>("\x1b[3"), red} +
                      text{chars<Char>("1mtext"), absolute} +
-                     text{chars<Char>("\x1b]title"), fmt::italic()} +
+                     text{chars<Char>("\x1b]title"), tjg::italic()} +
                      text{chars<Char>("\aend")};
-  EXPECT_EQ(fmt::strip_ansi(split), split);
+  EXPECT_EQ(tjg::strip_ansi(split), split);
   const auto nul_text = std::basic_string<Char>{Char('a'), Char{}, Char('b')};
-  EXPECT_EQ(fmt::strip_ansi(text{nul_text + chars<Char>("\x1b[m"), red}),
+  EXPECT_EQ(tjg::strip_ansi(text{nul_text + chars<Char>("\x1b[m"), red}),
             (text{nul_text, red}));
   const auto malformed = text{chars<Char>("\x1b[1 2m\x1b]unfinished"), red};
-  EXPECT_EQ(fmt::strip_ansi(malformed), malformed);
+  EXPECT_EQ(tjg::strip_ansi(malformed), malformed);
 }
 } // namespace
 
@@ -112,15 +112,15 @@ TEST(strip_ansi_test, preservation) {
   check_preservation<wchar_t>();
 }
 TEST(strip_ansi_test, overloads_and_ownership) {
-  EXPECT_EQ(fmt::strip_ansi("text"), "text");
-  EXPECT_EQ(fmt::strip_ansi(L"text"), L"text");
+  EXPECT_EQ(tjg::strip_ansi("text"), "text");
+  EXPECT_EQ(tjg::strip_ansi(L"text"), L"text");
   auto input = std::string{"\x1b[31mowned\x1b[0m"};
-  const auto result = fmt::strip_ansi(input);
+  const auto result = tjg::strip_ansi(input);
   input.assign(200, 'x');
   EXPECT_EQ(result, "owned");
-  EXPECT_EQ(fmt::strip_ansi(std::wstring{L"wide"}), L"wide");
+  EXPECT_EQ(tjg::strip_ansi(std::wstring{L"wide"}), L"wide");
   const auto utf8 = std::string{"caf\xc3\xa9 \xe7\x95\x8c \xf0\x9f\x98\x80"};
-  EXPECT_EQ(fmt::strip_ansi("\x1b[1m" + utf8 + "\x1b[m"), utf8);
+  EXPECT_EQ(tjg::strip_ansi("\x1b[1m" + utf8 + "\x1b[m"), utf8);
 }
 
 TEST(strip_ansi_test, styled_text) {

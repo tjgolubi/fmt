@@ -682,13 +682,13 @@ Example:
 
 See [Terminal Colors and Text Styles](color/index.md) for detailed documentation.
 
-::: print(text_style, format_string<T...>, T&&...)
+::: tjg::print(text_style, format_string<T...>, T&&...)
 
-::: fg(color_t)
+::: tjg::fg(color_t)
 
-::: bg(color_t)
+::: tjg::bg(color_t)
 
-::: styled(const T&, text_style)
+::: tjg::styled(const T&, text_style)
 
 <a id="os-api"></a>
 ## System APIs

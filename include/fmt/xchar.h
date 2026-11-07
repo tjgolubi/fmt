@@ -338,19 +338,6 @@ template <typename... T> void println(wformat_string<T...> fmt, T&&... args) {
   return print(L"{}\n", fmt::format(fmt, std::forward<T>(args)...));
 }
 
-inline auto vformat(text_style ts, wstring_view fmt, wformat_args args)
-    -> std::wstring {
-  auto buf = wmemory_buffer();
-  detail::vformat_to(buf, ts, fmt, args);
-  return {buf.data(), buf.size()};
-}
-
-template <typename... T>
-inline auto format(text_style ts, wformat_string<T...> fmt, T&&... args)
-    -> std::wstring {
-  return fmt::vformat(ts, fmt.get(), fmt::make_wformat_args(args...));
-}
-
 inline void vprint(std::wostream& os, wstring_view fmt, wformat_args args) {
   auto buffer = basic_memory_buffer<wchar_t>();
   detail::vformat_to(buffer, fmt, args);
@@ -374,5 +361,23 @@ template <typename T> inline auto to_wstring(const T& value) -> std::wstring {
 }
 FMT_END_EXPORT
 FMT_END_NAMESPACE
+
+namespace tjg {
+FMT_BEGIN_EXPORT
+inline auto vformat(text_style ts, fmt::wstring_view fmt,
+                    fmt::wformat_args args) -> std::wstring {
+  auto buf = fmt::wmemory_buffer();
+  detail::vformat_to(buf, ts, fmt, args);
+  return {buf.data(), buf.size()};
+}
+
+template <typename... T>
+inline auto format(text_style ts, fmt::wformat_string<T...> fmt, T&&... args)
+    -> std::wstring {
+  return tjg::vformat(ts, fmt.get(), fmt::make_wformat_args(args...));
+}
+
+FMT_END_EXPORT
+}  // namespace tjg
 
 #endif  // FMT_XCHAR_H_

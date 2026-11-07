@@ -322,9 +322,9 @@ TEST(module_test, sprintf) {
 
 TEST(module_test, color) {
   EXPECT_EQ("\x1B[30m42\x1B[0m",
-            fmt::format(fg(fmt::terminal_color::black), "{}", 42));
+            tjg::format(fg(tjg::terminal_color::black), "{}", 42));
   EXPECT_EQ(L"\x1B[30m42\x1B[0m",
-            fmt::format(fg(fmt::terminal_color::black), L"{}", 42));
+            tjg::format(fg(tjg::terminal_color::black), L"{}", 42));
 }
 
 TEST(module_test, cstring_view) {

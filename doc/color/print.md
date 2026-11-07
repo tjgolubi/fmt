@@ -45,7 +45,7 @@ The referenced arguments must remain alive while the pack is used.
 ```cpp
 int result = 42;
 auto args = fmt::make_format_args(result);
-fmt::vprintln(stdout, fmt::fg(fmt::color::green), "Result: {}", args);
+tjg::vprintln(stdout, tjg::fg(tjg::color::green), "Result: {}", args);
 ```
 
 ## Styled ostream output
@@ -59,8 +59,8 @@ existing headers remain independent.
 #include <sstream>
 
 std::ostringstream os;
-fmt::print(os, fmt::text_style{fmt::emphasis::bold}, "Result: {}", 42);
-fmt::println(os, fmt::fg(fmt::term_color::red), "Status: {}", "failed");
+tjg::print(os, tjg::text_style{tjg::emphasis::bold}, "Result: {}", 42);
+tjg::println(os, tjg::fg(tjg::term_color::red), "Status: {}", "failed");
 ```
 
 The style applies to the entire formatted message. An empty style emits no
@@ -77,14 +77,14 @@ streams. Including the bridge also includes `<fmt/xchar.h>` for wide formatting.
 
 ```cpp
 std::wostringstream wide;
-const auto style = fmt::text_style{fmt::emphasis::bold};
-fmt::print(wide, style, L"Result: {:04x}", 42);
-fmt::println(wide, style, L"Status: {}", L"done");
+const auto style = tjg::text_style{tjg::emphasis::bold};
+tjg::print(wide, style, L"Result: {:04x}", 42);
+tjg::println(wide, style, L"Status: {}", L"done");
 
 int result = 42;
 auto args = fmt::make_wformat_args(result);
-fmt::vprint(wide, style, L"Result: {}", args);
-fmt::vprintln(wide, style, L"Result: {}", args);
+tjg::vprint(wide, style, L"Result: {}", args);
+tjg::vprintln(wide, style, L"Result: {}", args);
 ```
 
 The formatted-output functions use fmt format specifications and leave stream
@@ -117,7 +117,7 @@ narrow output follow the same styling, newline, and reset rules.
 
 ## Styled stream insertion
 
-With `<fmt/color-ostream.h>`, insert the result of `fmt::styled(value, style)`
+With `<fmt/color-ostream.h>`, insert the result of `tjg::styled(value, style)`
 directly into a stream. The operator returns the same stream by reference for
 chaining and supports both `std::ostream` and `std::wostream` in C++11 and later.
 The value must support insertion into that stream; a fmt formatter is not
@@ -128,14 +128,14 @@ required.
 #include <iomanip>
 #include <sstream>
 
-const auto style = fmt::text_style{fmt::emphasis::bold};
+const auto style = tjg::text_style{tjg::emphasis::bold};
 std::ostringstream os;
 os << "Result: " << std::hex << std::setfill('0') << std::setw(4)
-   << fmt::styled(42, style) << '\n';
+   << tjg::styled(42, style) << '\n';
 // "Result: \x1b[1m002a\x1b[0m\n"
 
 std::wostringstream wide;
-wide << fmt::styled(L"message", style) << L'\n';
+wide << tjg::styled(L"message", style) << L'\n';
 ```
 
 The underlying value uses normal stream formatting, including numeric base,

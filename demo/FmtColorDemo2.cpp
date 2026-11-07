@@ -3,8 +3,8 @@
 #include <fmt/format.h>
 
 int main() {
-  using namespace fmt;
-  using enum fmt::term_color;
+  using namespace tjg;
+  using enum tjg::term_color;
 
   // Starting with two styled children creates an unstyled parent. Appending
   // later spans then preserves their own colors and the plain separators.

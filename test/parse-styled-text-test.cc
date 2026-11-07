@@ -10,27 +10,27 @@ auto chars(const char* text) -> std::basic_string<Char> {
   return result;
 }
 template<typename Char>
-auto parse(const std::basic_string<Char>& text) -> fmt::basic_styled_text<Char>
-{ return fmt::parse_styled_text<Char>({text.data(), text.size()}); }
+auto parse(const std::basic_string<Char>& text) -> tjg::basic_styled_text<Char>
+{ return tjg::parse_styled_text<Char>({text.data(), text.size()}); }
 
 template<typename Char>
 void check_structure() {
-  using node = fmt::basic_styled_text<Char>;
+  using node = tjg::basic_styled_text<Char>;
   EXPECT_EQ(parse(chars<Char>("")), node{});
   EXPECT_EQ(parse(chars<Char>("plain")), (node{chars<Char>("plain")}));
   EXPECT_EQ(parse(chars<Char>("\x1b[31mred\x1b[0m")),
-      (node{chars<Char>("red"), fmt::fg(fmt::term_color::red)}));
-  const auto red = fmt::fg(fmt::term_color::red);
+      (node{chars<Char>("red"), tjg::fg(tjg::term_color::red)}));
+  const auto red = tjg::fg(tjg::term_color::red);
   const auto expected = node{chars<Char>("plain")} +
-      node{chars<Char>("red"), red} + fmt::absolute(node{chars<Char>("plain")});
+      node{chars<Char>("red"), red} + tjg::absolute(node{chars<Char>("plain")});
   EXPECT_EQ(parse(chars<Char>("plain\x1b[31mred\x1b[0mplain")), expected);
   EXPECT_EQ(parse(chars<Char>("\x1b[31ma\x1b[32m\x1b[31mb")),
       (node{chars<Char>("ab"), red}));
   // Consecutive or redundant sequences never introduce empty spans.
   EXPECT_EQ(parse(chars<Char>("\x1b[1m\x1b[31m\x1b[31mred")),
-      (node{chars<Char>("red"), fmt::bold(red)}));
+      (node{chars<Char>("red"), tjg::bold(red)}));
   EXPECT_EQ(parse(chars<Char>("a\x1b[999m\x1b[0mb")),
-      (node{chars<Char>("a")} + fmt::absolute(node{chars<Char>("b")})));
+      (node{chars<Char>("a")} + tjg::absolute(node{chars<Char>("b")})));
   EXPECT_EQ(parse(chars<Char>("\x1b[31m\x1b[0m")), node{});
   const auto binary = std::basic_string<Char>{Char('a'), Char{}, Char('b')};
   EXPECT_EQ(parse(binary).plain_text(), binary);
@@ -42,43 +42,43 @@ void check_structure() {
 
 template<typename Char>
 void check_sgr() {
-  using node = fmt::basic_styled_text<Char>;
-  const auto check = [](const char* sequence, fmt::text_style style) {
+  using node = tjg::basic_styled_text<Char>;
+  const auto check = [](const char* sequence, tjg::text_style style) {
     EXPECT_EQ(parse(chars<Char>(sequence) + chars<Char>("x")),
         (node{chars<Char>("x"), style}));
   };
-  check("\x1b[m", fmt::absolute(fmt::text_style{}));
-  check("\x1b[000m", fmt::absolute(fmt::text_style{}));
-  check("\x1b[1;2;3;4;5;7;8;9m", fmt::text_style{static_cast<fmt::emphasis>(255)});
+  check("\x1b[m", tjg::absolute(tjg::text_style{}));
+  check("\x1b[000m", tjg::absolute(tjg::text_style{}));
+  check("\x1b[1;2;3;4;5;7;8;9m", tjg::text_style{static_cast<tjg::emphasis>(255)});
   check("\x1b[1;2;3;4;5;7;8;9;22;23;24;25;27;28;29m", {});
   check("\x1b[1;2;22m", {}); // 22 clears bold and faint together.
   check("\x1b[31;44;39;49m", {});
-  check("\x1b[31;0;4m", fmt::absolute(fmt::underline()));
-  check("\x1b[31;;4m", fmt::absolute(fmt::underline()));
-  check("\x1b[31;m", fmt::absolute(fmt::text_style{}));
-  check("\x1b[999;31;888;4m", fmt::underline(fmt::fg(fmt::term_color::red)));
+  check("\x1b[31;0;4m", tjg::absolute(tjg::underline()));
+  check("\x1b[31;;4m", tjg::absolute(tjg::underline()));
+  check("\x1b[31;m", tjg::absolute(tjg::text_style{}));
+  check("\x1b[999;31;888;4m", tjg::underline(tjg::fg(tjg::term_color::red)));
   for (unsigned i = 0; i < 16; ++i) {
     const auto fg = i < 8 ? 30 + i : 90 + i - 8;
     const auto bg = i < 8 ? 40 + i : 100 + i - 8;
     const auto sequence = fmt::format("\x1b[{};{}m", fg, bg);
-    check(sequence.c_str(), fmt::text_style{static_cast<fmt::term_color>(i),
-                                           static_cast<fmt::term_color>(i)});
+    check(sequence.c_str(), tjg::text_style{static_cast<tjg::term_color>(i),
+                                           static_cast<tjg::term_color>(i)});
   }
   for (unsigned i = 0; i < 256; ++i) {
-    auto color = fmt::color_t{};
-    if (i < 16) color = static_cast<fmt::term_color>(i);
-    else if (i < 232) color = fmt::cube_color{i - 16};
-    else color = fmt::gray_color{static_cast<int>(i - 232)};
+    auto color = tjg::color_t{};
+    if (i < 16) color = static_cast<tjg::term_color>(i);
+    else if (i < 232) color = tjg::cube_color{i - 16};
+    else color = tjg::gray_color{static_cast<int>(i - 232)};
     const auto sequence = fmt::format("\x1b[38;5;{};48;5;{}m", i, i);
-    check(sequence.c_str(), fmt::text_style{color, color});
+    check(sequence.c_str(), tjg::text_style{color, color});
   }
-  const auto rgb = fmt::text_style{fmt::rgb{1, 2, 255}, fmt::rgb{254, 0, 3}};
+  const auto rgb = tjg::text_style{tjg::rgb{1, 2, 255}, tjg::rgb{254, 0, 3}};
   check("\x1b[38;2;1;2;255;48;2;254;0;3m", rgb);
   check("\x1b[38:2::1:2:255;48:2:0:254:0:3m", rgb);
   check("\x1b[38:2:1:2:255;48:2:254:0:3m", rgb);
-  check("\x1b[38:5:1;4m", fmt::underline(fmt::fg(fmt::term_color::red)));
-  check("\x1b[1;38;99;4;31m", fmt::bold()); // Unknown payload is opaque.
-  check("\x1b[4:2;31m", fmt::fg(fmt::term_color::red));
+  check("\x1b[38:5:1;4m", tjg::underline(tjg::fg(tjg::term_color::red)));
+  check("\x1b[1;38;99;4;31m", tjg::bold()); // Unknown payload is opaque.
+  check("\x1b[4:2;31m", tjg::fg(tjg::term_color::red));
 }
 
 template<typename Char>
@@ -89,12 +89,12 @@ void check_literal_escapes() {
       "\x1b]title\x1b[31minside\a", "\x1bPdata\x1b[1m\x1b\\", "\x1bXdata\x1b[31m\x1b\\", "\x1b(B"};
   for (const auto input : inputs) {
     const auto text = chars<Char>(input);
-    EXPECT_EQ(parse(text), (fmt::basic_styled_text<Char>{text}));
+    EXPECT_EQ(parse(text), (tjg::basic_styled_text<Char>{text}));
   }
   const auto text = chars<Char>("\x1b[1;38;2;1;2m");
   const auto parsed = parse(chars<Char>("\x1b[31m") + text);
-  EXPECT_EQ(parsed, (fmt::basic_styled_text<Char>{text,
-      fmt::fg(fmt::term_color::red)})); // Bad sequence changes nothing.
+  EXPECT_EQ(parsed, (tjg::basic_styled_text<Char>{text,
+      tjg::fg(tjg::term_color::red)})); // Bad sequence changes nothing.
 }
 } // namespace
 
@@ -103,54 +103,54 @@ TEST(parse_styled_text_test, sgr) { check_sgr<char>(); check_sgr<wchar_t>(); }
 TEST(parse_styled_text_test, literal_escapes) { check_literal_escapes<char>(); check_literal_escapes<wchar_t>(); }
 
 TEST(parse_styled_text_test, overloads_and_round_trip) {
-  EXPECT_EQ(fmt::parse_styled_text("plain").plain_text(), "plain");
-  EXPECT_EQ(fmt::parse_styled_text(L"wide").plain_text(), L"wide");
-  EXPECT_EQ(fmt::parse_styled_text(std::string{"owned"}).plain_text(), "owned");
-  EXPECT_EQ(fmt::parse_styled_text(std::wstring{L"owned"}).plain_text(), L"owned");
+  EXPECT_EQ(tjg::parse_styled_text("plain").plain_text(), "plain");
+  EXPECT_EQ(tjg::parse_styled_text(L"wide").plain_text(), L"wide");
+  EXPECT_EQ(tjg::parse_styled_text(std::string{"owned"}).plain_text(), "owned");
+  EXPECT_EQ(tjg::parse_styled_text(std::wstring{L"owned"}).plain_text(), L"owned");
   for (unsigned mask = 0; mask < 256; ++mask) {
-    auto source = fmt::styled_text{"a", fmt::text_style{static_cast<fmt::emphasis>(mask)}} +
-        fmt::styled_text{"b", fmt::fg(fmt::rgb{12, 34, 56})} + "c";
+    auto source = tjg::styled_text{"a", tjg::text_style{static_cast<tjg::emphasis>(mask)}} +
+        tjg::styled_text{"b", tjg::fg(tjg::rgb{12, 34, 56})} + "c";
     const auto rendered = fmt::format(FMT_STRING("{}"), source);
-    const auto parsed = fmt::parse_styled_text(rendered);
+    const auto parsed = tjg::parse_styled_text(rendered);
     EXPECT_EQ(parsed.plain_text(), "abc");
     // Rendering may split a combined reset and color sequence. Preserve the
     // parsed text, styles, and reset-group boundaries, not the escape bytes.
     const auto rerendered = fmt::format(FMT_STRING("{}"), parsed);
-    EXPECT_EQ(fmt::parse_styled_text(rerendered), parsed);
+    EXPECT_EQ(tjg::parse_styled_text(rerendered), parsed);
   }
 }
 
 namespace {
 template<typename Char>
 void check_reset_boundaries() {
-  using node = fmt::basic_styled_text<Char>;
+  using node = tjg::basic_styled_text<Char>;
   const auto plain = node{chars<Char>("a")};
-  const auto reset = fmt::absolute(plain);
-  const auto bold = node{chars<Char>("b"), fmt::bold()};
+  const auto reset = tjg::absolute(plain);
+  const auto bold = node{chars<Char>("b"), tjg::bold()};
   // One absolute parent supplies defaults to all following relative children.
-  EXPECT_EQ(parse(chars<Char>("\x1b[ma\x1b[1mb")), fmt::absolute(plain + bold));
+  EXPECT_EQ(parse(chars<Char>("\x1b[ma\x1b[1mb")), tjg::absolute(plain + bold));
   EXPECT_EQ(parse(chars<Char>("a\x1b[0mb\x1b[31mc")),
-      (plain + fmt::absolute(node{chars<Char>("b")} +
-       node{chars<Char>("c"), fmt::fg(fmt::term_color::red)})));
+      (plain + tjg::absolute(node{chars<Char>("b")} +
+       node{chars<Char>("c"), tjg::fg(tjg::term_color::red)})));
   EXPECT_EQ(parse(chars<Char>("\x1b[ma\x1b[m")), reset);
   EXPECT_EQ(parse(chars<Char>("\x1b[ma\x1b[mb")),
-      fmt::absolute(node{chars<Char>("ab")}));
+      tjg::absolute(node{chars<Char>("ab")}));
   // Repeated resets reuse the same flat absolute group, never nested groups.
-  const auto red = fmt::fg(fmt::term_color::red);
-  const auto repeated = fmt::absolute(node{chars<Char>("a"), red} +
-      node{chars<Char>("b")} + node{chars<Char>("c"), fmt::bold()} +
+  const auto red = tjg::fg(tjg::term_color::red);
+  const auto repeated = tjg::absolute(node{chars<Char>("a"), red} +
+      node{chars<Char>("b")} + node{chars<Char>("c"), tjg::bold()} +
       node{chars<Char>("d")});
   EXPECT_EQ(parse(chars<Char>("\x1b[0;31ma\x1b[mb\x1b[1mc\x1b[0md")), repeated);
   EXPECT_EQ(parse(chars<Char>("prefix\x1b[0;31ma\x1b[mb\x1b[1mc\x1b[0md")),
       node{chars<Char>("prefix")} + repeated);
   // Non-SGR literal chunks remain together within the absolute group.
   EXPECT_EQ(parse(chars<Char>("\x1b[ma\x1b[2Jb")),
-      fmt::absolute(node{chars<Char>("a\x1b[2Jb")}));
+      tjg::absolute(node{chars<Char>("a\x1b[2Jb")}));
   // Consecutive parameters/sequences after reset still modify its next span.
   EXPECT_EQ(parse(chars<Char>("\x1b[0m\x1b[31m\x1b[1mx")),
-      fmt::absolute(node{chars<Char>("x"), fmt::bold(fmt::fg(fmt::term_color::red))}));
+      tjg::absolute(node{chars<Char>("x"), tjg::bold(tjg::fg(tjg::term_color::red))}));
   EXPECT_EQ(parse(chars<Char>("\x1b[1ma\x1b[0mb")),
-      (node{chars<Char>("a"), fmt::bold()} + fmt::absolute(node{chars<Char>("b")})));
+      (node{chars<Char>("a"), tjg::bold()} + tjg::absolute(node{chars<Char>("b")})));
 }
 } // namespace
 
@@ -160,14 +160,14 @@ TEST(parse_styled_text_test, reset_boundaries) {
 }
 
 TEST(parse_styled_text_test, enclosing_style) {
-  const auto outer = fmt::underline();
-  EXPECT_EQ(fmt::format(outer, FMT_STRING("A{}B"), fmt::parse_styled_text("plain")),
-            fmt::format(outer, FMT_STRING("AplainB")));
-  const auto parsed = fmt::parse_styled_text("a\x1b[mb\x1b[1mc");
-  const auto bold = fmt::bold();
-  const auto expected = fmt::to_sgr(outer) + "a" +
-      fmt::to_sgr(fmt::absolute(fmt::text_style{}), outer) + "b" +
-      fmt::to_sgr(bold, fmt::text_style{}) + "c" +
-      fmt::to_sgr(outer, bold) + fmt::to_sgr(fmt::text_style{}, outer);
-  EXPECT_EQ(fmt::format(outer, FMT_STRING("{}"), parsed), expected);
+  const auto outer = tjg::underline();
+  EXPECT_EQ(tjg::format(outer, FMT_STRING("A{}B"), tjg::parse_styled_text("plain")),
+            tjg::format(outer, FMT_STRING("AplainB")));
+  const auto parsed = tjg::parse_styled_text("a\x1b[mb\x1b[1mc");
+  const auto bold = tjg::bold();
+  const auto expected = tjg::to_sgr(outer) + "a" +
+      tjg::to_sgr(tjg::absolute(tjg::text_style{}), outer) + "b" +
+      tjg::to_sgr(bold, tjg::text_style{}) + "c" +
+      tjg::to_sgr(outer, bold) + tjg::to_sgr(tjg::text_style{}, outer);
+  EXPECT_EQ(tjg::format(outer, FMT_STRING("{}"), parsed), expected);
 }
