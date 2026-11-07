@@ -146,8 +146,12 @@ alongside {fmt} when both install options are enabled. To install just TJG from
 a top-level build, use `cmake --install build --component tjg`.
 
 The extension is included directly; importing the retained `fmt` module does
-not export TJG APIs. `./build.bash` and `./build.bash taskwarrior` run the full
-repository tests with C++23 and compact SGR. CI stays disabled for `ref/CPP20`.
+not export TJG APIs. `./build.bash` configures only the standalone TJG project,
+builds its tests, and runs the TJG-only suite with C++23 and compact SGR.
+It uses `build/tjg/`; `./build.bash taskwarrior` uses `build/tjg-taskwarrior/`
+with the same settings. Neither builds FMT or runs its regressions. The script
+requires a C++23 toolchain and CMake, without documentation tools. CI stays
+disabled for `ref/CPP20`.
 The package test copies only TJG sources/headers, installs and relocates them,
 and builds a separate consumer using `find_package(tjg)`.
 
@@ -178,3 +182,11 @@ The user guide lives in `tjg/doc/`, with its overview at `tjg/doc/index.md`.
 The shared MkDocs configuration reads those sources directly and retains the
 existing `color/` page URLs. Repository links and edit links point to the moved
 files. The original {fmt} documentation remains under `doc/`.
+
+Generate the documentation separately, with Doxygen on `PATH` and the pinned
+documentation dependencies from `support/doc-requirements.txt` installed:
+
+```bash
+PYTHONPATH=support/python mkdocs build -f support/mkdocs-pages.yml \
+  --site-dir build/tjg-guide --no-directory-urls
+```
