@@ -2,7 +2,7 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [Build and test](BuildAndTest.md) · [Website](Website.md)
 
-Updated November 6, 2026. Implemented behavior is separated below from future
+Updated November 7, 2026. Implemented behavior is separated below from future
 design. A proposal is not permission to implement it.
 
 ## Goals and boundaries
@@ -37,7 +37,7 @@ naming and API conventions.
 
 ## Implemented foundation
 
-The current `color-dev` tip is `10094dee4bd90f9053dc78315cc25d2e7cdd51d7`.
+The current `color-dev` tip is `10c4cd72d015380410d73fe6fcae84b58d0dc3d5`.
 It includes the foundational styling contribution, owning styled-text formatter,
 format-context inheritance/restoration, Backslash utilities, underlay defaults,
 recursive overlays, and the table demo with its user-guide walkthrough. The complete
@@ -296,7 +296,7 @@ and exception-recovery rules are recorded below.
 
 The bridge supports C++11, header-only use, installation, and C++20 module
 export. All 41 current push-CI jobs and both guide-publication jobs passed
-for `10094dee`; see BuildAndTest.md for exact evidence. The separate historical compatibility result
+for `10c4cd72`; see BuildAndTest.md for exact evidence. The separate historical compatibility result
 at `21eba01b` does not validate the current header or bridge.
 
 ## Integrated styling helpers
@@ -384,10 +384,11 @@ C++17; and avoid copying the empty union member in the SGR visitor during MSVC
 constant evaluation. Tests explicitly initialize const stream-only values and
 avoid shadowing and self-assignment warnings.
 
-Current validation is scoped to `color-dev` at `10094dee`: all 41 push-CI
-jobs and both guide-publication jobs passed on attempt 1. `pr/color` remains
-at `dd7180a8`; upstream PR #5015 is closed and unmerged at that earlier head.
-A full remote compact-SGR matrix is not claimed. Public Site version 47 shows
+Current validation is scoped to `color-dev` at `10c4cd72`: all 41 push-CI
+jobs and both guide-publication jobs passed on attempt 2. All 41 pr/color
+push-CI jobs passed on attempt 1 at the same commit. Upstream PR #5015 is
+closed and unmerged with recorded head `dd7180a8`.
+A full remote compact-SGR matrix is not claimed. Public Site version 49 shows
 the current semantics, both demos, and exact source/CI evidence. See
 [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation)
 and [Website.md](Website.md#current-publication).
@@ -417,7 +418,7 @@ convenience as a major design goal.
 
 Owning text, the corrected formatter, context inheritance/restoration, parser,
 and stripper form the foundational extension `35de08cc`; current `color-dev`
-at `10094dee` also includes formatting, Backslash, underlay, and table changes above
+at `10c4cd72` also includes formatting, Backslash, underlay, and table changes above
 upstream `4ed35350`. Continue from `color-dev`; earlier integration commits are
 historical, not dependencies to replay. See StyledText.md for invariants and
 BuildAndTest.md for exact-SHA validation and remaining limits.
@@ -672,7 +673,7 @@ codec overload is implemented; pass `plain_text()` or formatted output as needed
 
 For valid input, unescaping escaped text recovers the original code units,
 including NULs. The guide has a compact Markdown escape table; website version
-47 presents the functions as implemented and links to that reference. CSV/TSV
+49 presents the functions as implemented and links to that reference. CSV/TSV
 conversion belongs elsewhere. {fmt} debug presentation and `std::quoted` do not
 supply this codec's strict general-purpose inverse.
 

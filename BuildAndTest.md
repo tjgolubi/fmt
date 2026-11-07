@@ -2,38 +2,52 @@
 
 [Document map](README.md) · [Workflow](Workflow.md) · [C++ design](CppDesign.md) · [Website](Website.md)
 
-Updated November 6, 2026. Commands run from the library checkout root unless
+Updated November 7, 2026. Commands run from the library checkout root unless
 stated otherwise. Use `color-dev` or an authorized feature branch, not the
 `coord/` documentation worktree on `docs/Coord`. Run library commands from
 `..` when starting in `coord/`. `/doc/` means repository-relative.
 
 ## Current color-dev validation
 
-Verified November 6, 2026 for `color-dev` at
-`10094dee4bd90f9053dc78315cc25d2e7cdd51d7`, based on upstream
-`4ed3535092a96ac9f56fab80df83416d51bcc78e`. Local and remote SHAs match.
-All five workflow runs target this exact commit. Every job was inspected:
-**all 41 push-CI jobs and both guide-publication jobs passed (43 total)**.
-All runs succeeded on attempt 1; no failed, cancelled, or pending jobs remain.
-`pr/color` remains at the earlier `dd7180a8`; its results do not validate this SHA.
+Verified November 7, 2026 for `color-dev` and `pr/color` at
+`10c4cd72d015380410d73fe6fcae84b58d0dc3d5`, based on upstream
+`4ed3535092a96ac9f56fab80df83416d51bcc78e`. Both remote branches identify the
+same commit; the local library checkout is clean on color-dev.
+**All 41 push-CI jobs passed on each branch**, and the two color-dev guide
+build/deployment jobs also passed (43 total on color-dev). Every latest
+color-dev run passed on attempt 2; every pr/color run passed on attempt 1.
+No failed, cancelled, or pending jobs remain in those attempts.
 
-| Workflow          | Exact-SHA evidence                                                                      |
-| ----------------- | --------------------------------------------------------------------------------------- |
-| Linux             | [18 passed](https://github.com/tjgolubi/fmt/actions/runs/42307493068)                   |
-| Windows           | [13 passed](https://github.com/tjgolubi/fmt/actions/runs/42307493100)                   |
-| macOS             | [9 passed](https://github.com/tjgolubi/fmt/actions/runs/42307493239)                    |
-| Doc build         | [1 passed](https://github.com/tjgolubi/fmt/actions/runs/42307493285)                    |
-| Guide publication | [Build and deployment passed](https://github.com/tjgolubi/fmt/actions/runs/42307494028) |
+| Workflow          | color-dev · attempt 2                                                            | pr/color · attempt 1                                                             |
+| ----------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Linux             | [18 passed](https://github.com/tjgolubi/fmt/actions/runs/42313730689/attempts/2) | [18 passed](https://github.com/tjgolubi/fmt/actions/runs/42316142684/attempts/1) |
+| Windows           | [13 passed](https://github.com/tjgolubi/fmt/actions/runs/42313730681/attempts/2) | [13 passed](https://github.com/tjgolubi/fmt/actions/runs/42316142555/attempts/1) |
+| macOS             | [9 passed](https://github.com/tjgolubi/fmt/actions/runs/42313730694/attempts/2)  | [9 passed](https://github.com/tjgolubi/fmt/actions/runs/42316142722/attempts/1)  |
+| Doc build         | [1 passed](https://github.com/tjgolubi/fmt/actions/runs/42313730724/attempts/2)  | [1 passed](https://github.com/tjgolubi/fmt/actions/runs/42316142541/attempts/1)  |
+| Guide publication | [2 passed](https://github.com/tjgolubi/fmt/actions/runs/42313730769/attempts/2)  | Runs only on color-dev.                                                          |
+
+The first color-dev attempt built the guide successfully but GitHub Pages
+returned HTTP 502 while creating its deployment. Terry cancelled the three
+platform workflows after seeing the publication failure. All five workflows
+were rerun at Terry's instruction; the successful attempt-2 results above
+supersede those failed/cancelled attempts. No source fix was needed for the 502.
 
 Local underlay checks passed with GCC 14.2: 96 color/tree/formatter tests in
 C++11 default SGR and 105 in C++23 compact SGR, plus the C++11 sharing-allocation
 regression. These tested the underlay candidate tree retained by `0ba4e364`;
 the current exact-SHA remote matrix above validates the accepted integration.
 Both demos compiled and ran with C++23 header-only compact SGR and
-`-Wall -Wextra -Werror`. The guide's complete expected table text matches the
-compiled output, including UTF-8 alignment and truncation. Local guide rendering
-was unavailable (MkDocs/Doxygen absent); the exact-SHA remote guide build and
-deployment above subsequently passed.
+`-Wall -Wextra -Werror`. The guide's colored table display uses a `pre.color-output` block with styled
+spans for foreground/background, emphasis, and padding. Terry requested one
+extra HTML display space after `東京 NAS`; this does not change demo output or
+UTF-8 width semantics. He also requested removal of the paragraph beginning
+“Rendered from the demo's ANSI output.” Both edits are included in `10c4cd72`.
+Local HTML builds passed using the locked Python requirements and Doxygen
+1.18.0, with `--no-directory-urls`. The known syntax-anchor/Material notices
+remain nonfatal. CSS-embedded `/workspace/downloads/styled.html` was generated
+for download. No browser visual inspection by the assistant is claimed; Terry
+reviewed the downloadable page and approved it. The amended commit retained
+its original message and was force-pushed with a lease.
 
 The amended tree removes the obsolete `feat/StyledText2` push exclusions from
 the four ordinary workflows. These new results supersede the previous SHA's
@@ -123,7 +137,7 @@ final Windows matrix validates this policy. Other builds remain strict.
 header-only mode, and compact SGR. `make -C demo run` runs both and `clean`
 removes both. The table covers nested colors, column defaults, row emphasis,
 absolute boundaries, UTF-8 width estimates, precision, and padding. Source and
-rendered-output downloads are on Website version 47.
+rendered-output downloads are on Website version 49.
 
 ## Backslash and formatting validation
 
@@ -421,12 +435,12 @@ files verified to declare `runs.using: node24`. This replaces the Node.js 20
 pins that caused runner deprecation warnings. Workflow YAML parsing, the
 renamed `color-dev` filter, both pins, and whitespace checks passed locally.
 The guide rebuilt successfully during that work. Current `color-dev`
-publication is verified at `10094dee` as recorded above.
+publication is verified at `10c4cd72` as recorded above.
 
-For `10094dee`, the [guide publication](https://github.com/tjgolubi/fmt/actions/runs/42307494028)
+For `10c4cd72`, the [guide publication](https://github.com/tjgolubi/fmt/actions/runs/42313730769/attempts/2)
 passed both build and deployment from `color-dev`, establishing that the
 environment permitted this branch. The precise environment policy was not
-inspected. The [ordinary doc workflow](https://github.com/tjgolubi/fmt/actions/runs/42307493285)
+inspected. The [ordinary doc workflow](https://github.com/tjgolubi/fmt/actions/runs/42313730724/attempts/2)
 also passed; it builds without deploying. See the current CI snapshot above,
 [Website.md](Website.md#user-guide), and `support/fmtcolor-pages.md`.
 
@@ -499,8 +513,8 @@ The same installed compiled library supports either header-selected mode.
 ### Integrated styling helpers
 
 The consolidated styling/tree/context/parser/stripper code is on `color-dev`
-at `10094dee`. Use the [current exact-SHA snapshot](#current-color-dev-validation),
-including passing macOS and guide publication on attempt 1. Earlier feature
+at `10c4cd72`. Use the [current exact-SHA snapshot](#current-color-dev-validation),
+including passing macOS and guide publication on attempt 2. Earlier feature
 matrices do not establish a complete pass for the rewritten baseline.
 
 Numeric bounds and cube/gray construction, variant access/visitation, blending,
@@ -508,7 +522,7 @@ fluent styles, ostream output, context inheritance, absolute spans, and SGR
 transitions are covered by the integrated suites. C++11 remains required.
 `FmtColorChangeLog.md` was regenerated for the accepted history above
 `4ed35350`, including formatting, Backslash, underlay/overlay, and the table
-demo, and included in `10094dee`.
+demo, and included in `10c4cd72`.
 The prior compiler-checked foreground blend example still uses `fg`, not `bg`:
 terminal red and `gray_color{12}` produce RGB `{166, 64, 64}`, unspecified
 background, bold and underline. Its style-copy factory form is constexpr only
@@ -625,10 +639,10 @@ approval at the last workflow inspection, distinct from these passing fork jobs.
 
 ### Website validation
 
-Version **47** is the confirmed public Site publication for `10094dee`.
+Version **49** is the confirmed public Site publication for `10c4cd72`.
 It includes underlay/overlay semantics, the revised complete FmtColorDemo2,
-the styled table display, source and ANSI downloads, exact source links, all 43
-passing jobs, and the closed/unmerged PR #5015 status. The comparison fix remains
+the styled table display, source and ANSI downloads, exact source links, 43
+passing color-dev jobs and 41 passing pr/color jobs, and the closed/unmerged PR #5015 status. The comparison fix remains
 excluded. QA passed 50 local links/anchors, unique IDs, exact source/download
 matches, and text/padding equality between HTML displays and compiled ANSI
 output for both demos. Browser QA was unavailable; do not claim a visual check.

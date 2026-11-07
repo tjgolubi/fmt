@@ -1,20 +1,22 @@
 # Structured styled text and format contexts
 
-Updated November 6, 2026.
+Updated November 7, 2026.
 
 ## Scope and state
 
 Owning text, formatter/context restoration, parsing, stripping, Backslash,
 and underlay/overlay operations are integrated into `color-dev` at
-`10094dee4bd90f9053dc78315cc25d2e7cdd51d7`. The active library checkout is
+`10c4cd72d015380410d73fe6fcae84b58d0dc3d5`. The active library checkout is
 `color-dev`, clean and pushed. The baseline includes underlay `0ba4e364` and
-the table/guide/changelog commit `10094dee` above the earlier foundation.
-`pr/color` remains at `dd7180a8`; PR #5015 is closed and unmerged.
+the table/guide/changelog commit `10c4cd72` above the earlier foundation.
+`pr/color` now matches color-dev at `10c4cd72`; PR #5015 is closed and
+unmerged with recorded head `dd7180a8`.
 
-Verified November 6, 2026: all 41 push-CI jobs and both guide-publication jobs
-passed on attempt 1 for `10094dee`. See
+Verified November 7, 2026: all 41 push-CI jobs and both guide-publication jobs
+passed on color-dev attempt 2 for `10c4cd72`; all 41 pr/color push-CI jobs
+passed on attempt 1 at the same SHA. See
 [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
-Public Site version 47 includes both demos, current styling semantics, the
+Public Site version 49 includes both demos, current styling semantics, the
 table's styled output, and exact source/CI links. Check CI on demand; do not
 cancel jobs or start periodic polling without instruction.
 
@@ -288,8 +290,9 @@ the Database explanation truncates after `CRITICAL!` with column-styled padding.
 `make -C demo` builds both executables, `make -C demo run` runs both, and
 `make -C demo clean` removes both. The Makefile defaults to C++23 header-only
 compact SGR and accepts `FMT_DIR`/`CXX` overrides. The library remains C++11.
-The user guide contains a table walkthrough and verified complete expected text
-at `color/styled.html#table-demonstration`. Site version 47 shows the styled
+The user guide contains a table walkthrough and colored expected output
+at `color/styled.html#table-demonstration`. The guide illustration adds one space after `東京 NAS` at Terry’s request;
+this is HTML display padding, not a demo/library change. Site version 49 shows the styled
 display and provides source and actual ANSI output downloads for both demos.
 
 The nested padding/precision guide example prints `***hello wor`, all bold with

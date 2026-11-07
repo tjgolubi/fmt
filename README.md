@@ -1,6 +1,6 @@
 # FmtColor coordination
 
-Updated November 6, 2026.
+Updated November 7, 2026.
 
 FmtColor develops color and text-style extensions for C++. We plan two
 sequential deliverables:
@@ -42,31 +42,34 @@ records remain available in Git history.
 ## Current baseline
 
 The development baseline and active library checkout are `color-dev` at
-`10094dee4bd90f9053dc78315cc25d2e7cdd51d7`, pushed with a clean tracked tree.
+`10c4cd72d015380410d73fe6fcae84b58d0dc3d5`, pushed with a clean tracked tree.
 The accepted history above upstream/main `4ed3535092a96ac9f56fab80df83416d51bcc78e`
 is the foundational styling extension `35de08cc`, formatting `d1ffcbca`,
-Backslash `dd7180a8`, underlay/overlay `0ba4e364`, and table demo `10094dee`.
+Backslash `dd7180a8`, underlay/overlay `0ba4e364`, and table demo `10c4cd72`.
 The table commit includes the generated changelog and user-guide walkthrough.
 Do not replay intermediate feature commits onto this baseline.
 
-Verified November 6, 2026: **all 43 jobs passed** for this exact SHA:
+Verified November 7, 2026: **all 43 jobs passed** on `color-dev` for this exact SHA:
 Linux 18, Windows 13, macOS 9, documentation 1, and guide build/deployment 2.
-Every run passed on attempt 1; none failed, cancelled, or remain pending.
+All color-dev runs passed on attempt 2. All 41 pr/color push-CI jobs passed
+on attempt 1 at the same SHA. No failed, cancelled, or pending jobs remain
+in the latest attempts. Guide publication runs only on color-dev.
 Local and GitHub SHAs match. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 
 `FmtColorChangeLog.md` was regenerated with git-cliff 2.14.2,
 `--offline --no-exec`, and the explicit range above `4ed35350` through the
 accepted history. It includes the table feature and the underlay/overlay
-breaking change, and is included in `10094dee`. Do not regenerate automatically.
+breaking change, and is included in `10c4cd72`. Do not regenerate automatically.
 No fork release number or tag has been assigned. Commits and pushes still need
 explicit authorization.
 
 ## Upstream contribution
 
-`pr/color` remains at `dd7180a865d43cb02946874f51c9d690483e18ae` and is not the
-current development checkout. Verified November 6, 2026:
+`pr/color` is pushed at the same `10c4cd72` commit as `color-dev`.
+The active library checkout remains `color-dev`. Verified November 7, 2026:
 [upstream PR #5015](https://github.com/fmtlib/fmt/pull/5015) is closed and
-unmerged, with that earlier head. Website version 47 states this explicitly.
+unmerged; its recorded head remains `dd7180a8`, distinct from the updated
+source branch. Website version 49 distinguishes these states.
 The fork's passing push CI does not establish upstream PR-only results or
 upstream acceptance. Fork README, publication, tooling, and workflow changes
 still require upstream review.
@@ -127,7 +130,7 @@ three octal digits with values up to 255. Unknown/malformed escapes, octal
 overflow, and trailing backslashes throw `fmt::format_error`. Iterator output
 written before an error remains. Decoding is one pass.
 
-The user guide includes a compact Markdown escape table. Website version 47
+The user guide includes a compact Markdown escape table. Website version 49
 presents these as implemented. CSV and TSV conversion remain outside scope.
 See [CppDesign.md](CppDesign.md#backslash-escaping-and-unescaping).
 
@@ -169,7 +172,7 @@ to run both, or `make -C demo clean` to remove both executables. The Makefile
 uses header-only C++23 with compact SGR. `demo/TableDemo.cpp` demonstrates
 column backgrounds, nested colors, row emphasis, absolute styles, UTF-8 display
 widths, padding, and truncation. The guide includes build/run instructions and
-verified expected text output at `color/styled.html#table-demonstration`.
+colored expected output at `color/styled.html#table-demonstration`.
 Debug formatting, deferred blending, extended push/pop parsing, full grapheme/terminal width,
 serialization, styled-text module export, and public iteration remain deferred.
 Appending `detail::styled_arg` to a tree remains deferred; `fmt::styled` retains
@@ -202,11 +205,11 @@ Do not claim that all original upstream tests pass unchanged.
 ## Public documentation and next work
 
 - [Project website](https://fmtcolor.tjgolubi.chatgpt.site): public version
-  **47**, with current underlay/overlay semantics, both working demos and ANSI
-  displays/downloads, exact `10094dee` source links, 43 passing jobs, and the
-  closed/unmerged upstream PR status. Publication is confirmed; see Website.md.
+  **49**, with current underlay/overlay semantics, both working demos and ANSI
+  displays/downloads, exact `10c4cd72` source links, 43 passing jobs, and the
+  closed/unmerged upstream PR status and passing CI for both branches. Publication is confirmed; see Website.md.
 - [Generated user guide](https://tjgolubi.github.io/fmt/color/index.html):
-  build and deployment passed for `10094dee`, including the table walkthrough.
+  build and deployment passed for `10c4cd72`, including the table walkthrough.
 - [Issues](https://github.com/tjgolubi/fmt/issues): bugs and follow-up work.
 
 The `color-dev` root README now uses current branch badges and the correct
