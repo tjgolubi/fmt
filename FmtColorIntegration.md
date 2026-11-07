@@ -204,7 +204,10 @@ Linux also includes address/undefined-behavior sanitizer jobs in both modes.
 Configuration checks that `<format>`, `std::formattable`, and `<print>` actually
 compile and link; a language-standard flag alone is insufficient.
 
-CodeQL builds TJG test executables in both modes. The old FMT-specific fuzz
-workflow is removed. Formatting checks cover TJG headers and CMake files.
-The TJG regression, lint, and CodeQL workflows run on pushes to `ref/CPP20`.
-Other documentation and release workflows retain their existing purpose.
+Pushes to `ref/CPP20` run only the Linux, Windows, and macOS TJG regression
+workflows plus the documentation build. Lint and CodeQL are excluded for this
+branch, including pull requests involving it. The old FMT-specific fuzz
+workflow is removed. The documentation check renders the guide without
+publishing it. Existing runs already started are allowed to finish.
+Analysis, formatting, publication, and release workflows on other branches
+retain their existing purpose.

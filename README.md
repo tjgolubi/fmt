@@ -20,7 +20,7 @@ accepted into upstream {fmt}.
 [![Linux CI](https://github.com/tjgolubi/fmt/actions/workflows/linux.yml/badge.svg?branch=ref%2FCPP20)](https://github.com/tjgolubi/fmt/actions/workflows/linux.yml?query=branch%3Aref%2FCPP20)
 [![Windows CI](https://github.com/tjgolubi/fmt/actions/workflows/windows.yml/badge.svg?branch=ref%2FCPP20)](https://github.com/tjgolubi/fmt/actions/workflows/windows.yml?query=branch%3Aref%2FCPP20)
 [![macOS CI](https://github.com/tjgolubi/fmt/actions/workflows/macos.yml/badge.svg?branch=ref%2FCPP20)](https://github.com/tjgolubi/fmt/actions/workflows/macos.yml?query=branch%3Aref%2FCPP20)
-[![Documentation CI](https://github.com/tjgolubi/fmt/actions/workflows/doc.yml/badge.svg?branch=color-dev)](https://github.com/tjgolubi/fmt/actions/workflows/doc.yml?query=branch%3Acolor-dev)
+[![Documentation CI](https://github.com/tjgolubi/fmt/actions/workflows/doc.yml/badge.svg?branch=ref%2FCPP20)](https://github.com/tjgolubi/fmt/actions/workflows/doc.yml?query=branch%3Aref%2FCPP20)
 
 - [User guide](https://tjgolubi.github.io/fmt/color/index.html)
 - [Project website and design rationale](https://fmtcolor.tjgolubi.chatgpt.site)

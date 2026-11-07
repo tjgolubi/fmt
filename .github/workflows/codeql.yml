@@ -2,15 +2,16 @@ name: codeql
 
 on:
   push:
-    branches: [main, ref/CPP20]
+    branches: [main]
   pull_request:
-    branches: [main, ref/CPP20]
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
   analyze:
+    if: github.ref != 'refs/heads/ref/CPP20' && github.head_ref != 'ref/CPP20' && github.base_ref != 'ref/CPP20'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
