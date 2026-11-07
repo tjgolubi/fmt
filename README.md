@@ -42,34 +42,39 @@ records remain available in Git history.
 ## Current baseline
 
 The development baseline and active library checkout are `color-dev` at
-`10c4cd72d015380410d73fe6fcae84b58d0dc3d5`, pushed with a clean tracked tree.
+`6b5f4ce62381df7b4f72717f4ed7d5743f3ada6e`, pushed with a clean tracked tree.
 The accepted history above upstream/main `4ed3535092a96ac9f56fab80df83416d51bcc78e`
 is the foundational styling extension `35de08cc`, formatting `d1ffcbca`,
-Backslash `dd7180a8`, underlay/overlay `0ba4e364`, and table demo `10c4cd72`.
-The table commit includes the generated changelog and user-guide walkthrough.
+Backslash `dd7180a8`, underlay/overlay `0ba4e364`, table demo `10c4cd72`, and
+styling-value output and styled-text debug views `6b5f4ce6`. The latest squash
+includes named emphasis output, regression tests, guide updates and review,
+clang-format corrections, and the regenerated changelog.
+`feat/debug` and `doc/review` retain the candidate at `afb672c5`; it is already
+integrated into `color-dev` as the single output feature squash.
 Do not replay intermediate feature commits onto this baseline.
 
 Verified November 7, 2026: **all 43 jobs passed** on `color-dev` for this exact SHA:
 Linux 18, Windows 13, macOS 9, documentation 1, and guide build/deployment 2.
-All color-dev runs passed on attempt 2. All 41 pr/color push-CI jobs passed
+All color-dev runs passed on attempt 1. All 41 pr/color push-CI jobs passed
 on attempt 1 at the same SHA. No failed, cancelled, or pending jobs remain
 in the latest attempts. Guide publication runs only on color-dev.
 Local and GitHub SHAs match. See [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
 
 `FmtColorChangeLog.md` was regenerated with git-cliff 2.14.2,
 `--offline --no-exec`, and the explicit range above `4ed35350` through the
-accepted history. It includes the table feature and the underlay/overlay
-breaking change, and is included in `10c4cd72`. Do not regenerate automatically.
+accepted history. It includes the output feature, table feature, and
+underlay/overlay breaking change, and is included in `6b5f4ce6`.
+Do not regenerate automatically.
 No fork release number or tag has been assigned. Commits and pushes still need
 explicit authorization.
 
 ## Upstream contribution
 
-`pr/color` is pushed at the same `10c4cd72` commit as `color-dev`.
+`pr/color` is pushed at the same `6b5f4ce6` commit as `color-dev`.
 The active library checkout remains `color-dev`. Verified November 7, 2026:
 [upstream PR #5015](https://github.com/fmtlib/fmt/pull/5015) is closed and
 unmerged; its recorded head remains `dd7180a8`, distinct from the updated
-source branch. Website version 49 distinguishes these states.
+source branch. Website version 50 distinguishes these states.
 The fork's passing push CI does not establish upstream PR-only results or
 upstream acceptance. Fork README, publication, tooling, and workflow changes
 still require upstream review.
@@ -130,9 +135,26 @@ three octal digits with values up to 255. Unknown/malformed escapes, octal
 overflow, and trailing backslashes throw `fmt::format_error`. Iterator output
 written before an error remains. Decoding is one pass.
 
-The user guide includes a compact Markdown escape table. Website version 49
+The user guide includes a compact Markdown escape table. Website version 50
 presents these as implemented. CSV and TSV conversion remain outside scope.
 See [CppDesign.md](CppDesign.md#backslash-escaping-and-unescaping).
+
+## Implemented value output and tree inspection
+
+Colors, including the active alternative of `color_t`, `text_style`, and
+`emphasis` have narrow/wide formatters in `color.h` and ostream insertion in
+`color-ostream.h`. Ordinary and `?` presentation use the same readable value
+notation. Standalone emphasis lists names in braces; text styles use compact
+absolute/emphasis characters and foreground/background notation.
+See [CppDesign.md](CppDesign.md#readable-value-output).
+
+`styled_text` keeps ANSI rendering for ordinary formatting and supports `?`
+for indented tree inspection with stored styles and escaped leaf strings.
+Direct tree insertion shares the formatter's rendering machinery, honoring
+stream width, fill, and alignment while ignoring stream precision, like string
+insertion. Formatter precision still truncates. Include both `styled_text.h`
+and `color-ostream.h` for tree insertion.
+See [StyledText.md](StyledText.md#debug-presentation-and-stream-insertion).
 
 ## Implemented styled text and format contexts
 
@@ -173,7 +195,7 @@ uses header-only C++23 with compact SGR. `demo/TableDemo.cpp` demonstrates
 column backgrounds, nested colors, row emphasis, absolute styles, UTF-8 display
 widths, padding, and truncation. The guide includes build/run instructions and
 colored expected output at `color/styled.html#table-demonstration`.
-Debug formatting, deferred blending, extended push/pop parsing, full grapheme/terminal width,
+Deferred blending, extended push/pop parsing, full grapheme/terminal width,
 serialization, styled-text module export, and public iteration remain deferred.
 Appending `detail::styled_arg` to a tree remains deferred; `fmt::styled` retains
 its borrowing return type, with updated formatting behavior.
@@ -205,11 +227,13 @@ Do not claim that all original upstream tests pass unchanged.
 ## Public documentation and next work
 
 - [Project website](https://fmtcolor.tjgolubi.chatgpt.site): public version
-  **49**, with current underlay/overlay semantics, both working demos and ANSI
-  displays/downloads, exact `10c4cd72` source links, 43 passing jobs, and the
+  **50**, with readable value output, tree debug views and insertion, both
+  working demos and ANSI displays/downloads, exact `6b5f4ce6` source links,
+  43 passing jobs, and the
   closed/unmerged upstream PR status and passing CI for both branches. Publication is confirmed; see Website.md.
 - [Generated user guide](https://tjgolubi.github.io/fmt/color/index.html):
-  build and deployment passed for `10c4cd72`, including the table walkthrough.
+  build and deployment passed for `6b5f4ce6`, including the output APIs and
+  table walkthrough.
 - [Issues](https://github.com/tjgolubi/fmt/issues): bugs and follow-up work.
 
 The `color-dev` root README now uses current branch badges and the correct

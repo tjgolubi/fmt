@@ -5,19 +5,21 @@ Updated November 7, 2026.
 ## Scope and state
 
 Owning text, formatter/context restoration, parsing, stripping, Backslash,
-and underlay/overlay operations are integrated into `color-dev` at
-`10c4cd72d015380410d73fe6fcae84b58d0dc3d5`. The active library checkout is
+underlay/overlay operations, readable value output, tree debug presentation,
+and direct styled-text insertion are integrated into `color-dev` at
+`6b5f4ce62381df7b4f72717f4ed7d5743f3ada6e`. The active library checkout is
 `color-dev`, clean and pushed. The baseline includes underlay `0ba4e364` and
-the table/guide/changelog commit `10c4cd72` above the earlier foundation.
-`pr/color` now matches color-dev at `10c4cd72`; PR #5015 is closed and
+the table/guide commit `10c4cd72` and output squash `6b5f4ce6`, which includes
+the updated changelog, above the earlier foundation.
+`pr/color` now matches color-dev at `6b5f4ce6`; PR #5015 is closed and
 unmerged with recorded head `dd7180a8`.
 
 Verified November 7, 2026: all 41 push-CI jobs and both guide-publication jobs
-passed on color-dev attempt 2 for `10c4cd72`; all 41 pr/color push-CI jobs
+passed on color-dev attempt 1 for `6b5f4ce6`; all 41 pr/color push-CI jobs
 passed on attempt 1 at the same SHA. See
 [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation).
-Public Site version 49 includes both demos, current styling semantics, the
-table's styled output, and exact source/CI links. Check CI on demand; do not
+Public Site version 50 includes the output APIs, both demos, current styling
+semantics, the table's styled output, and exact source/CI links. Check CI on demand; do not
 cancel jobs or start periodic polling without instruction.
 
 ## Representation and public API
@@ -170,7 +172,8 @@ No XOR/popcount estimator has been implemented.
 `formatter<basic_styled_text<Char>, Char>` is implemented in `styled_text.h`.
 It reuses the ordinary string specification parser for fill, left/right/center
 alignment, width, precision, optional `s`, and dynamic width/precision references.
-Debug presentation (`?`) and invalid string flags are rejected. Ordinary and
+Debug presentation (`?`) inspects stored tree structure as described below;
+invalid string flags are rejected. Ordinary and
 compiled format strings, output iterators, bounded output, and counting output
 are supported. Wide entry points use `<fmt/xchar.h>`. This is a fmt formatter,
 not a `std::formatter`.
@@ -229,6 +232,57 @@ capture external terminal styling. It does inherit and restore the style
 established by an outer `fmt::styled` formatter using the same context. Full Unicode grapheme handling and escape parsing
 remain deferred. Shared-pointer storage prevents useful constant evaluation of
 the owning tree's `display_width()`.
+
+## Debug presentation and stream insertion
+
+`{:?}` displays each node's stored style using the readable `text_style`
+notation from [CppDesign.md](CppDesign.md#readable-value-output), followed by
+one space and its content. Empty styles and their following space are omitted.
+A leaf's content uses ordinary fmt string debug quoting and escaping, including
+embedded nulls, quotes, backslashes, and controls. A top-level leaf has no trailing
+newline; an empty unstyled node displays `""`.
+
+A branch opens with `{` and a newline. Children are indented two spaces per
+level. Each child leaf ends with a newline; a closing `}` aligns with its node's
+style and ends with a newline, including at the root. There is no extra outer
+enclosure. Debug output shows stored styles without resolving inheritance or
+modifying the tree, and retains empty leaves and group structure.
+
+```text
+b {
+  red "hello\n"
+  {
+    _ "world"
+    = /cube503 "!"
+  }
+}
+```
+
+Ordinary `{}`/`{:s}` rendering remains ANSI-styled output. Debug fill, alignment,
+width, and precision apply to the completed diagnostic text; precision may
+truncate that representation. The common no-width/no-precision debug path writes
+the tree directly to the output iterator; modified debug output uses a buffer
+before ordinary string formatting. Narrow/wide, compiled formatting, output
+iterators, bounded output, and counting output are supported.
+
+Include both `styled_text.h` and `color-ostream.h` for direct `operator<<` on
+owning trees. It produces normal ANSI-styled output and calls the shared
+`formatter::format_with_specs` renderer with options derived directly from the
+stream; it never constructs or reparses a format-specification string.
+Width, fill, and alignment control root-styled padding. Left alignment pads
+after text; right, internal, and default alignment pad before it.
+**Stream precision is ignored**, like ordinary string insertion: the complete
+text is emitted even with precision zero or the stream's default six. Formatter
+precision still truncates a tree when explicitly requested in a format string.
+Width is consumed; other stream settings remain unchanged. Narrow UTF-8 width
+and wide code-unit measurement follow the formatter's existing rules.
+An independent insertion assumes default terminal state and does not capture
+external styling. Stream failures follow the exception mask. To send a debug
+view to a stream, insert `fmt::format("{:?}", text)`.
+
+These tree rules differ from insertion of `fmt::styled(number, style)`, whose
+underlying numeric insertion still honors stream precision. There is no stream
+debug-mode manipulator or public tree iteration API.
 
 ## Format context style state
 
@@ -292,7 +346,7 @@ the Database explanation truncates after `CRITICAL!` with column-styled padding.
 compact SGR and accepts `FMT_DIR`/`CXX` overrides. The library remains C++11.
 The user guide contains a table walkthrough and colored expected output
 at `color/styled.html#table-demonstration`. The guide illustration adds one space after `東京 NAS` at Terry’s request;
-this is HTML display padding, not a demo/library change. Site version 49 shows the styled
+this is HTML display padding, not a demo/library change. Site version 50 shows the styled
 display and provides source and actual ANSI output downloads for both demos.
 
 The nested padding/precision guide example prints `***hello wor`, all bold with
@@ -395,7 +449,7 @@ utilities, not tree formatting or SGR parsing; they have no styled-tree overload
 Their strict error behavior and constexpr support are in CppDesign.md. CSV/TSV
 conversion is out of scope.
 
-Debug formatting, deferred blending, extended push/pop parsing, full grapheme/terminal width,
+Deferred blending, extended push/pop parsing, full grapheme/terminal width,
 serialization, styled-text module export, and public iteration remain deferred.
 Appending `detail::styled_arg` to a tree is also deferred. `fmt::styled` keeps
 its borrowing wrapper type while inheriting/restoring context when formatted.

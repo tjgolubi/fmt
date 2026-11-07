@@ -37,10 +37,11 @@ naming and API conventions.
 
 ## Implemented foundation
 
-The current `color-dev` tip is `10c4cd72d015380410d73fe6fcae84b58d0dc3d5`.
+The current `color-dev` tip is `6b5f4ce62381df7b4f72717f4ed7d5743f3ada6e`.
 It includes the foundational styling contribution, owning styled-text formatter,
 format-context inheritance/restoration, Backslash utilities, underlay defaults,
-recursive overlays, and the table demo with its user-guide walkthrough. The complete
+recursive overlays, the table demo, readable value formatters/inserters,
+styled-text debug views, and direct tree insertion with shared rendering. The complete
 fmt release supports C++11. The upstream baseline is `4ed35350`; see
 [README.md](README.md#current-baseline). Source and tests establish behavior;
 private numeric representations are not stable contracts.
@@ -296,7 +297,7 @@ and exception-recovery rules are recorded below.
 
 The bridge supports C++11, header-only use, installation, and C++20 module
 export. All 41 current push-CI jobs and both guide-publication jobs passed
-for `10c4cd72`; see BuildAndTest.md for exact evidence. The separate historical compatibility result
+for `6b5f4ce6`; see BuildAndTest.md for exact evidence. The separate historical compatibility result
 at `21eba01b` does not validate the current header or bridge.
 
 ## Integrated styling helpers
@@ -384,11 +385,11 @@ C++17; and avoid copying the empty union member in the SGR visitor during MSVC
 constant evaluation. Tests explicitly initialize const stream-only values and
 avoid shadowing and self-assignment warnings.
 
-Current validation is scoped to `color-dev` at `10c4cd72`: all 41 push-CI
-jobs and both guide-publication jobs passed on attempt 2. All 41 pr/color
+Current validation is scoped to `color-dev` at `6b5f4ce6`: all 41 push-CI
+jobs and both guide-publication jobs passed on attempt 1. All 41 pr/color
 push-CI jobs passed on attempt 1 at the same commit. Upstream PR #5015 is
 closed and unmerged with recorded head `dd7180a8`.
-A full remote compact-SGR matrix is not claimed. Public Site version 49 shows
+A full remote compact-SGR matrix is not claimed. Public Site version 50 shows
 the current semantics, both demos, and exact source/CI evidence. See
 [BuildAndTest.md](BuildAndTest.md#current-color-dev-validation)
 and [Website.md](Website.md#current-publication).
@@ -418,7 +419,7 @@ convenience as a major design goal.
 
 Owning text, the corrected formatter, context inheritance/restoration, parser,
 and stripper form the foundational extension `35de08cc`; current `color-dev`
-at `10c4cd72` also includes formatting, Backslash, underlay, and table changes above
+at `6b5f4ce6` also includes formatting, Backslash, underlay, table, and output changes above
 upstream `4ed35350`. Continue from `color-dev`; earlier integration commits are
 historical, not dependencies to replay. See StyledText.md for invariants and
 BuildAndTest.md for exact-SHA validation and remaining limits.
@@ -554,12 +555,48 @@ leaf; raw escapes are not interpreted. A private noinline branch-width helper
 avoids GCC 13/14 recursive-inlining union warnings while leaf calculation stays
 inline. Shared-pointer access prevents useful constexpr tree measurement.
 
+### Readable value output
+
+`color.h` provides narrow/wide formatters for `no_color_t`, `rgb`, `term_color`,
+`gray_color`, `cube_color`, `color_t`, `text_style`, and `emphasis`.
+`color-ostream.h` provides matching insertion. `{}` and `{:?}` use the same
+normal textual representation for these values; they do not apply SGR styling.
+String fill, alignment, width, precision, optional `s` or `?`, and dynamic
+width/precision are accepted. Insertion uses string stream formatting, including
+width/fill/alignment and ignoring precision. Numeric flags do not alter notation.
+
+Color notation preserves the stored kind: `no_color`, a terminal enum name such
+as `bright_red`, `grayN` for index 0-23, `cubeRGB` for channel digits 0-5, or
+`#rrggbb` for six lowercase hexadecimal RGB digits. RGB does not look up named
+constants. A `color_t` displays its active alternative, including unspecified.
+
+A `text_style` begins with `=` if absolute, immediately followed by only its
+set emphasis characters in `bfi_!r?-` bit order (bold, faint, italic, underline,
+blink, reverse, conceal, strike). If any color exists, one space separates it
+from that prefix. Colors use `foreground/background`; omit the slash for
+foreground alone, or begin with `/` for background alone. No color component
+is emitted when both channels are unspecified. Empty style is `{}`;
+absolute-only style is `=`. Example: `=b_ bright_red/gray12`.
+
+Standalone emphasis instead lists set names in declaration order, separated by
+single spaces inside braces: `{bold faint italic underline blink reverse conceal strike}`.
+Empty emphasis is `{}`; `strikethrough` displays as `strike`.
+`detail::write_emphasis` is shared by insertion and the formatter. The common
+normal-output helpers are `write_style_value` and `style_value_formatter`;
+their names do not label this representation as debug-only output.
+
+Styled-text `?` presentation is a distinct tree-inspection format, and ordinary
+tree insertion shares the existing ANSI renderer through `format_with_specs`.
+See [StyledText.md](StyledText.md#debug-presentation-and-stream-insertion).
+No public tree iteration or structural mutation was added. The readable values
+do not implement the separate proposed style parser or an archive contract.
+
 ### Deferred blending and other future work
 
 Deferred styled-text blend remains separate from underlay and overlay. Its nested
 semantics and interface need agreement before implementation. Earlier
-`styled_text& blend()` proposals do not authorize code. Debug string presentation,
-readable style parsing, extended push/pop parsing, full grapheme/terminal width,
+`styled_text& blend()` proposals do not authorize code. Readable style parsing,
+extended push/pop parsing, full grapheme/terminal width,
 serialization, and module export remain
 future work. `fmt::styled` keeps its borrowing wrapper type but now inherits
 and restores the format-context style; accepting that wrapper in concatenation

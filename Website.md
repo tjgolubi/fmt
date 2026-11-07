@@ -19,31 +19,32 @@ compatibility-run narratives. Source links refer to the current contribution
 and its upstream baseline. Explain behavior and differences from the original
 upstream API without ABI/rebuild reminders; the ABI change is accepted.
 
-Current published pages (version 49):
+Current published pages (version 50):
 
 - [Overview](https://fmtcolor.tjgolubi.chatgpt.site/): implemented features,
-  parser/stripper introduction, design, two deliverables, complete working
+  readable output introduction, parser/stripper, design, two deliverables, complete working
   `FmtColorDemo2.cpp` underlay/overlay comparison, styled `TableDemo.cpp` display,
   source/ANSI downloads, and guide walkthrough link.
 - [The contribution](https://fmtcolor.tjgolubi.chatgpt.site/integrated-changes.html):
-  current `color-dev` at `10c4cd72`, value APIs, nested formatting/context
+  current `color-dev` at `6b5f4ce6`, value formatters and inserters, tree debug
+  presentation and insertion, nested formatting/context
   restoration, absolute resets unless no output, parser and leaf-local stripping
   examples, guide links, and the complete passing CI results.
 - [Future work](https://fmtcolor.tjgolubi.chatgpt.site/work-in-progress.html):
-  deferred blending, debug presentation, readable style parsing, extended push/pop
+  deferred blending, readable style parsing, extended push/pop
   parsing, terminal-width handling, serialization, and the independent C++23
   library. The independent sample, output, and downloads remain distinct from
   the working overview demo. Backslash utilities are implemented and linked from
   the contribution page; the old future-work anchor directs readers there.
 
-Source links identify `10c4cd72d015380410d73fe6fcae84b58d0dc3d5`, based on
+Source links identify `6b5f4ce62381df7b4f72717f4ed7d5743f3ada6e`, based on
 upstream `4ed3535092a96ac9f56fab80df83416d51bcc78e`. The contribution has not been
-accepted into fmtlib/fmt. `pr/color` now matches color-dev at `10c4cd72`.
+accepted into fmtlib/fmt. `pr/color` now matches color-dev at `6b5f4ce6`.
 [Upstream PR #5015](https://github.com/fmtlib/fmt/pull/5015) is closed and
 unmerged, with recorded head `dd7180a8`, verified November 7, 2026.
 The Site distinguishes that PR record from the updated source branch.
-All 41 push-CI jobs passed on each branch: color-dev attempt 2, pr/color
-attempt 1. Both color-dev guide jobs passed on attempt 2 (43 total).
+All 41 push-CI jobs passed on each branch on attempt 1. Both color-dev guide
+jobs passed on attempt 1 (43 total).
 No failed, cancelled, or pending jobs remain in the latest attempts.
 The separate `fix/StringViewCompare` branch must not be mentioned on the Site.
 
@@ -109,11 +110,13 @@ served at `http://localhost:8875/color/styled.html`. Check server availability
 before relying on it; older previews used `build/doc-html` and port 8000. The previously observed
 upstream syntax-anchor and Material future-version notices remain nonfatal.
 The guide now documents format-context inheritance and restoration for
-`styled` and `styled_text`, including the whole-sentence underline example.
+`styled` and `styled_text`, including the whole-sentence underline example. It also documents readable color, style,
+and emphasis output, tree debug presentation, and tree insertion that ignores
+stream precision while preserving formatter precision for truncation.
 
-The [guide publication](https://github.com/tjgolubi/fmt/actions/runs/42313730769/attempts/2)
-passed build and deployment for `10c4cd72` from `color-dev`; the
-[ordinary doc build](https://github.com/tjgolubi/fmt/actions/runs/42313730724/attempts/2)
+The [guide publication](https://github.com/tjgolubi/fmt/actions/runs/42369996430/attempts/1)
+passed build and deployment for `6b5f4ce6` from `color-dev`; the
+[ordinary doc build](https://github.com/tjgolubi/fmt/actions/runs/42369996567/attempts/1)
 also passed. The workflow filter and edit URI target `color-dev`; Node.js 24
 action pins are recorded in BuildAndTest.md. The exact environment policy was
 not inspected. The guide includes the parser, string/tree stripping, and the
@@ -125,11 +128,16 @@ integration document uses C++17 examples and explains header selection,
 inheritance/restoration, and leaf-local stripping. Its changelog was regenerated
 from the consolidated accepted history.
 
-The guide table now uses colored HTML output. Terry approved one extra display
-space after `東京 NAS` and removal of the paragraph beginning “Rendered from
-the demo's ANSI output.” Those guide edits are in `10c4cd72`; the website's
-existing ANSI-derived table remains unchanged. The page was built locally and
-a CSS-embedded `styled.html` download was provided for Terry's review.
+The guide and website TableDemo displays currently use colored HTML output.
+The guide retains the accepted extra display space after `東京 NAS`; it does
+not change demo output or UTF-8 width semantics. The screenshot replacement
+below is a pending task, not part of the output-API website update.
+
+### To-do
+
+- [ ] Replace the HTML-rendered TableDemo output displays with terminal
+  screenshots in both the user guide (`doc/color/styled.md`) and the project
+  website.
 
 ## Demonstration and future design
 
@@ -165,8 +173,8 @@ The Site's downloadable sample remains the distinct future independent-library
 target. Preserve its displayed source, output, and downloads together. The
 independent library will omit whole-message style-taking output overloads and
 use ordinary standard formatting with styled replacement values/trees; this
-design is described on the Site. Debug formatting,
-deferred blending, readable style parsing, extended push/pop parsing, full
+design is described on the Site. Deferred blending, readable style parsing,
+extended push/pop parsing, full
 grapheme/terminal width, serialization, and
 styled-text module export remain future work. Consult CppDesign.md and
 StyledText.md for current implementation and boundaries.
@@ -181,11 +189,35 @@ preserves styles/structure, processes leaves separately, and never joins escape
 sequences across leaves. Both features link to the guide and exact source.
 Extended push/pop and readable style parsing remain future work.
 
+## Published output APIs
+
+[Readable output](https://fmtcolor.tjgolubi.chatgpt.site/integrated-changes.html#readable-output)
+is implemented on the contribution page, linked from Overview, and removed
+from the deferred work list. Colors (including every `color_t` alternative),
+`text_style`, and `emphasis` have normal textual formatters and ostream output.
+The page distinguishes terminal names, palette indices, RGB hex without name
+lookup, compact style notation, and standalone braced emphasis names.
+`{}` and `{:?}` produce the same representation for those value types.
+
+Styled-text `{:?}` is the separate tree-inspection form, with stored styles,
+escaped leaf strings, two-space nesting, and no top-level leaf newline.
+Normal tree insertion shares the formatter's renderer, accepts stream width,
+fill, and alignment directly, and ignores stream precision like string
+insertion. Explicit formatter precision still truncates. No format-specification
+string is constructed by the inserter. The page links to the generated guide
+and exact source/tests at `6b5f4ce6`, with compiled examples and expected output.
+
+Do not restore debug presentation to the future-work list. Deferred blending,
+readable style parsing, extended push/pop, full terminal width, persistence,
+and the independent C++23 implementation remain planned. Existing demos,
+independent-library samples, designs, source/ANSI downloads, and public access
+were preserved in version 50.
+
 ## Implemented Backslash utilities
 
 [Backslash escaping and unescaping](https://fmtcolor.tjgolubi.chatgpt.site/integrated-changes.html#backslash-escapes)
 is presented as implemented, with the four public functions, a C++17-compatible
-example, source/test links at `10c4cd72`, and a link to the guide's Markdown
+example, source/test links at `6b5f4ce6`, and a link to the guide's Markdown
 escape reference table. It is no longer listed as planned work. Preserve the
 legacy future-work anchor as a link to the current contribution.
 
@@ -250,41 +282,46 @@ results and continue saving/deploying that same state after a helper failure.
 
 ## Current publication
 
-**Public Site version 49** is live at
+**Public Site version 50** is live at
 [fmtcolor.tjgolubi.chatgpt.site](https://fmtcolor.tjgolubi.chatgpt.site).
-Native deployment returned `succeeded` November 7, 2026 at 00:17:21 UTC,
-preserving public access. It presents `color-dev` at `10c4cd72`, current
-underlay defaults and recursive overlay overrides, protected absolute scopes,
-the revised FmtColorDemo2, the styled table demo, source/ANSI downloads, exact
-source links, passing results on both branches with exact attempt links, and
-the closed/unmerged PR #5015 status. Color-dev has 43 successful jobs on
-attempt 2; pr/color has 41 on attempt 1. Guide publication is color-dev only.
+Native deployment returned `succeeded` November 7, 2026 at 12:14:38 UTC,
+preserving public access. It presents `color-dev` and `pr/color` at `6b5f4ce6`,
+readable value output, styled-text debug views and insertion, current styling
+semantics, both working demos, source/ANSI downloads, exact source/CI links,
+and the closed/unmerged PR #5015 status. All runs passed on attempt 1:
+color-dev has 43 successful jobs and pr/color has 41. Guide publication runs
+only on color-dev. The separate comparison fix is excluded from the Site.
 
 | Item                     | Current value                                                                       |
 | ------------------------ | ----------------------------------------------------------------------------------- |
 | Site project ID          | `appgprj_6ad129c3e8408191b873a4e06e601c63`                                          |
-| Source commit            | `d7405bdf11675041ddb74de5c030bf0749ee3e82`                                          |
-| Saved version ID         | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_a4f4ffcb063081919e6da4fb9a0bbe16` |
-| Successful deployment ID | `appgdep_6aee6e0a80108191b511fb8e37c14fff`                                          |
+| Source commit            | `75b50776aa58a2e68dbe6ddda5faf28a3c91900d`                                          |
+| Saved version ID         | `appgprj_6ad129c3e8408191b873a4e06e601c63~appgver_56bedae4720c8191a1555db077ca873a` |
+| Successful deployment ID | `appgdep_6aef162874408191a54900246550a44b`                                          |
 | Audience                 | Public                                                                              |
 
 Cloud source checkout: `/workspace/sites/fmtcolor`.
-Exact saved archive: `/workspace/sites/fmtcolor-pr-ci-update.tar.gz`.
-The installed cloud skill was readable, but the Sites source helper was absent
-and its script resource could not be retrieved. Source was opened and pushed
-with ordinary Git using fresh Site credentials through hidden stdin and
-process-local headers. No token was persisted in source/configuration.
-The archive contains `.openai/hosting.json` and `dist/` from the exact pushed
-source commit; Sites saved it as version 49 and confirmed deployment success.
-Use the supported helper when available in subsequent environments.
+Exact saved archive: `/workspace/sites/fmtcolor-output-update.tar.gz`.
+The installed Sites skill was readable, but its source helper was absent and
+its script resources could not be retrieved. Fresh metadata and credentials
+were obtained through native Sites tools. Ordinary Git opened and pushed the
+source using credentials passed through hidden stdin and process-local headers;
+no token was persisted in source/configuration or printed in output.
+The archive was generated with `git archive` from the exact pushed source
+commit and contains `.openai/hosting.json` and `dist/`. Sites saved version 50
+and confirmed successful public deployment. Use the supported helper when
+available in subsequent environments.
 
-The current update passed 50 local links/anchors, unique IDs, and checks of all
-four pr/color evidence links. Demo source/download equality and rendered
-text/padding comparisons passed when the unchanged displays were introduced. Displays were generated from that output. Blink is illustrated as
-steady text and terminal palette/theme limits are disclosed. Browser tools were
-unavailable, so no visual browser QA is claimed for version 49. No preview
-server was started. No new full local library, tablet, performance, or ABI result
-is inferred from website QA.
+QA passed 52 local links/anchors, 28 guide links/anchors, unique IDs, balanced
+sections, preservation of existing downloads, and checks that stale source/CI
+and deferred-output claims were removed. The three displayed output examples
+compiled and matched their expected text and styled padding in C++11 and C++23.
+Both compact demos were rebuilt and run; current source and ANSI output matched
+the existing downloads. Existing displays were preserved. Blink remains
+illustrated as steady text and terminal palette/theme limits are disclosed.
+Browser tools were unavailable, so no visual browser QA is claimed for version
+50. No preview server was started. No new full local library, tablet,
+performance, or ABI result is inferred from website QA.
 
 Refresh Site metadata and credentials before another update. Keep successful
 source/archive/version/deployment identifiers if interrupted. Do not resave or
