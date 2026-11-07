@@ -1,5 +1,5 @@
 // Isolated allocation regression: replacing global new must not affect other tests.
-#include "fmt/styled_text.h"
+#include "tjg/styled_text.h"
 
 #include <cstdio>
 #include <cstdlib>

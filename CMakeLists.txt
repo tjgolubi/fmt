@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8...3.28)
+cmake_minimum_required(VERSION 3.20...3.28)
 include_guard(GLOBAL)
 
 # Fallback for using newer policies on CMake <3.12.
@@ -103,6 +103,10 @@ if (FMT_SYSTEM_HEADERS)
 endif ()
 
 include(GNUInstallDirs) # CMAKE_INSTALL_INCLUDEDIR
+
+# TJG can also be configured and installed independently with -S tjg.
+option(TJG_INSTALL "Generate TJG install rules." ${FMT_INSTALL})
+add_subdirectory(tjg)
 
 set_verbose(
   FMT_INC_DIR ${CMAKE_INSTALL_INCLUDEDIR} CACHE STRING
@@ -276,18 +280,8 @@ set(FMT_HEADERS)
 foreach (
   header
   args.h
-  backslash.h
-  memory_buffer.h
   base.h
   chrono.h
-  color-ostream.h
-  color.h
-  styled_text.h
-  format_support.h
-  text_support.h
-  tree_format_specs.h
-  parse_styled_text.h
-  strip_ansi.h
   compile.h
   core.h
   enum.h

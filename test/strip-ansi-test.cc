@@ -1,5 +1,5 @@
 #include "standard-format-test.h"
-#include "fmt/strip_ansi.h"
+#include "tjg/strip_ansi.h"
 #include "gtest-extra.h"
 
 namespace {

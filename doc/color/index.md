@@ -1,13 +1,14 @@
 # Terminal Colors and Text Styles
 
-Include `<fmt/color.h>` to combine foreground and background colors with
+Include `<tjg/color.h>` to combine foreground and background colors with
 emphasis attributes, style individual formatting arguments, and produce
 formatted strings or output.
 
 On `ref/CPP20`, the extension API lives in namespace `tjg` and targets C++23.
 Text utilities and SGR helpers use `std::basic_string_view`, including
 `std::string_view` and `std::wstring_view`. Formatting and printing use `std::format` and `std::print`; the extension
-requires no {fmt} headers or library beyond its retained `fmt/` header paths. Owning-tree specifications,
+uses `<tjg/...>` headers and requires no {fmt} headers or library.
+The standalone `tjg/` CMake project provides the installable `tjg::tjg` target. Owning-tree specifications,
 UTF-8 decoding, width estimates, and debug escaping are extension-owned. `tjg::color_t` stores an
 unspecified color, an RGB value, or a terminal, cube, or gray palette color
 in one public type.
@@ -20,7 +21,7 @@ for each use, from concise one-off styles to attributes controlled by user
 configuration.
 
 ```cpp
-#include <fmt/color.h>
+#include <tjg/color.h>
 
 int main() {
   auto style = tjg::fg(tjg::color::forest_green).bold();
@@ -186,13 +187,13 @@ sequences in their result. For format string syntax, see the
 
 ## Standard formatting
 
-Include `<fmt/color.h>` to use colors, `color_t`, `text_style`, `emphasis`,
+Include `<tjg/color.h>` to use colors, `color_t`, `text_style`, `emphasis`,
 and borrowed `styled` arguments with `std::format` and `std::format_to`.
 Both narrow and wide formatting are supported.
 
 ```cpp
 #include <format>
-#include <fmt/color.h>
+#include <tjg/color.h>
 
 auto color = std::format("{}", tjg::color::red); // "#ff0000"
 auto style = std::format("{:?}", tjg::bold());  // "b"
@@ -208,7 +209,7 @@ numeric specifications. Nested styled fields inherit and restore the shared
 terminal state; absolute fields temporarily replace it. The wrapper still
 borrows its value, so stored wrappers need a surviving referent.
 
-Include `<fmt/styled_text.h>` for standard formatting of owning `styled_text`
+Include `<tjg/styled_text.h>` for standard formatting of owning `styled_text`
 and `wstyled_text` trees, including nested styles, padding, truncation, dynamic
 specifications, and `?` tree inspection. The extension uses standard formatting
 throughout; old {fmt} adapters are removed. Formatting reports specification
@@ -216,7 +217,7 @@ errors through `std::format_error`.
 
 ## Memory buffer
 
-`<fmt/memory_buffer.h>` provides `tjg::basic_memory_buffer<Char, SIZE>` and
+`<tjg/memory_buffer.h>` provides `tjg::basic_memory_buffer<Char, SIZE>` and
 its `char` alias, `tjg::memory_buffer`, using only standard C++23 facilities.
 It stores `SIZE` characters inline (500 by default) and grows dynamically when
 needed. SGR construction uses an explicit 60-character inline buffer.

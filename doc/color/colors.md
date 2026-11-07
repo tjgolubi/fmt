@@ -613,8 +613,8 @@ encoding and its hash values are not stable serialization formats.
 ## Readable color output
 
 All color types, including `no_color_t` and `color_t`, support `{}` and `{:?}`
-with the same unquoted notation. Include `<fmt/color.h>` for formatting and
-`<fmt/color-ostream.h>` for narrow or wide ostream insertion.
+with the same unquoted notation. Include `<tjg/color.h>` for formatting and
+`<tjg/color-ostream.h>` for narrow or wide ostream insertion.
 
 | Stored color kind | Example output | Meaning                          |
 | ----------------- | -------------- | -------------------------------- |

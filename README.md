@@ -6,7 +6,9 @@ text, SGR parsing, and ANSI stripping. On `ref/CPP20`, the extension is a
 standalone C++23 header library using `std::format` and `std::print`, with APIs
 in namespace `tjg`. It requires no {fmt} library or formatting adapters.
 The repository still contains the original {fmt} engine and its own tests.
-Header paths remain under `fmt/`; the formatting engine retains namespace `fmt`.
+TJG headers live under `include/tjg/` and are included as `<tjg/...>`.
+The standalone CMake project in `tjg/` exports `tjg::tjg`; the retained {fmt}
+engine remains under `include/fmt/` in namespace `fmt`.
 Development is on the `color-dev` branch; these extensions have not been
 accepted into upstream {fmt}.
 
@@ -26,15 +28,15 @@ The styling extensions include:
 - Public color variants, RGB conversion, color/style blending, comparisons, and hashing.
 - Fluent component and attribute controls, style overlays, and conditional emphasis factories.
 - Optional compact ANSI SGR output, style-to-SGR conversion, reset views, and literal text wrapping.
-- Styled formatting and printing, plus narrow and wide ostream output and styled stream insertion through `<fmt/color-ostream.h>`.
+- Styled formatting and printing, plus narrow and wide ostream output and styled stream insertion through `<tjg/color-ostream.h>`.
 - Owning narrow and wide styled-text trees with scoped concatenation, absolute styles, alignment, padding, and precision.
 - Nested styled values that inherit and restore their enclosing formatting style.
 - Standard ANSI SGR parsing into owned styled text and ANSI stripping for strings and individual tree leaves.
 - Backslash escaping and unescaping for inspecting and reconstructing control characters.
 
-Include `<fmt/color.h>` for color and style values, `<fmt/styled_text.h>` for
-owning text, `<fmt/parse_styled_text.h>` for SGR parsing, and `<fmt/strip_ansi.h>`
-for ANSI stripping. Include `<fmt/backslash.h>` for backslash escaping and
+Include `<tjg/color.h>` for color and style values, `<tjg/styled_text.h>` for
+owning text, `<tjg/parse_styled_text.h>` for SGR parsing, and `<tjg/strip_ansi.h>`
+for ANSI stripping. Include `<tjg/backslash.h>` for backslash escaping and
 unescaping. The generated user guide documents the API, behavior changes,
 and examples; the integration instructions cover Make, CMake, header-only use,
 and selecting the SGR output mode. The [working demo](demo/README.md) shows nested
@@ -213,7 +215,7 @@ https://vitaut.net/posts/2020/optimal-file-buffer-size/).
 **Print with colors and text styles**
 
 ``` c++
-#include <fmt/color.h>
+#include <tjg/color.h>
 
 int main() {
   tjg::print(fg(tjg::color::crimson) | tjg::emphasis::bold,

@@ -3,7 +3,7 @@
 ## Structured styled text
 
 Use `styled_text` to compose text with independently styled parts. Include
-`<fmt/styled_text.h>` and format the result with `{}` using `std::format` or
+`<tjg/styled_text.h>` and format the result with `{}` using `std::format` or
 `std::format_to`. Use `{:?}` for tree inspection. No {fmt} adapter or library is needed.
 
 ### Concatenation preserves each part's style
@@ -262,14 +262,14 @@ apply to the completed debug representation; precision can truncate that text.
 
 ### Stream insertion
 
-Include both `<fmt/styled_text.h>` and `<fmt/color-ostream.h>` to insert a tree
+Include both `<tjg/styled_text.h>` and `<tjg/color-ostream.h>` to insert a tree
 into a narrow or wide ostream. Insertion produces normal ANSI-styled output.
 It shares the formatter's rendering machinery and passes options directly,
 without constructing or parsing a format-specification string.
 
 ```cpp
-#include <fmt/styled_text.h>
-#include <fmt/color-ostream.h>
+#include <tjg/styled_text.h>
+#include <tjg/color-ostream.h>
 #include <iomanip>
 #include <sstream>
 
@@ -392,7 +392,7 @@ blink where supported.
 
 ## Parsing SGR text
 
-Include `<fmt/parse_styled_text.h>` and call `parse_styled_text` to turn text
+Include `<tjg/parse_styled_text.h>` and call `parse_styled_text` to turn text
 containing ordinary ANSI SGR into an owned `styled_text` (or `wstyled_text` for
 wide input):
 
@@ -457,7 +457,7 @@ can affect the terminal outside the style model; parsing is not sanitization.
 
 ## Stripping ANSI sequences
 
-Include `<fmt/strip_ansi.h>` and call `strip_ansi` to obtain an owning string
+Include `<tjg/strip_ansi.h>` and call `strip_ansi` to obtain an owning string
 with complete ESC-prefixed ANSI sequences removed:
 
 ```cpp
@@ -504,13 +504,13 @@ complete sequences formed across leaf boundaries.
 
 ## Backslash escaping and unescaping
 
-Include `<fmt/backslash.h>` for `backslash_escape` and `backslash_unescape`.
+Include `<tjg/backslash.h>` for `backslash_escape` and `backslash_unescape`.
 These independent text utilities return owning strings and support narrow and
 wide text, including embedded NULs when passed a string or a length-bearing view.
 They require neither ANSI parsing nor styled text.
 
 ```cpp
-#include <fmt/backslash.h>
+#include <tjg/backslash.h>
 
 auto readable = tjg::backslash_escape("\x1b[31mred\x1b[0m\n");
 // readable contains the literal text: \e[31mred\e[0m\n
@@ -620,7 +620,7 @@ enclosing style afterward. For examples, see
 [Text style rendering](index.md#TextStyleRendering).
 
 To insert a styled value directly into an ostream, include
-`<fmt/color-ostream.h>` and use `os << tjg::styled(value, style)`.
+`<tjg/color-ostream.h>` and use `os << tjg::styled(value, style)`.
 [Styled stream insertion](print.md#styled-stream-insertion) describes stream
 formatting, wide streams, and the wrapper's reference lifetime.
 

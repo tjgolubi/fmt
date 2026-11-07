@@ -79,7 +79,7 @@ auto operator<<(std::basic_ostream<Char>& os, const T& value)
  * ignored, as for string insertion. Internal alignment behaves as right
  * alignment; only left places padding after text.
  * Field width is consumed; other stream settings are preserved.
- * Include `fmt/styled_text.h` as well as this header.
+ * Include `tjg/styled_text.h` as well as this header.
  */
 template <typename Char>
 auto operator<<(std::basic_ostream<Char>& os,

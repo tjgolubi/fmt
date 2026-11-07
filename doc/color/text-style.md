@@ -18,7 +18,7 @@
 ### Readable style output
 
 `text_style` supports `{}` and `{:?}` using the same compact notation. With
-`<fmt/color-ostream.h>`, narrow and wide ostream insertion uses that notation
+`<tjg/color-ostream.h>`, narrow and wide ostream insertion uses that notation
 too. These operations describe the style without emitting SGR sequences.
 
 Output starts with `=` if the style is absolute, immediately followed by the
@@ -55,13 +55,13 @@ width and precision. Stream width, fill, and alignment behave as for an ordinary
 string. A [styled-text debug view](styled.md#debug-output) omits empty node
 styles.
 
-With `<fmt/color.h>`, formatting an `emphasis` value with `{}` or `{:?}` lists
+With `<tjg/color.h>`, formatting an `emphasis` value with `{}` or `{:?}` lists
 its set attribute names in declaration order, separated by spaces inside braces.
 For example, `bold | faint | strike` displays
 `{bold faint strike}`; an empty `emphasis{}` displays `{}`. The alias
 `strikethrough` displays as `strike`. Narrow and wide formatting accepts string
 fill, alignment, width, precision, optional `s` or `?`, and dynamic specifications.
-With `<fmt/color-ostream.h>`, ostream insertion uses the same named form. Stream
+With `<tjg/color-ostream.h>`, ostream insertion uses the same named form. Stream
 width, fill, and alignment apply as for a string; precision is ignored. This
 named form is separate from the compact characters used inside `text_style` output.
 

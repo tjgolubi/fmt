@@ -1,6 +1,6 @@
 # Styled Output
 
-Include `<fmt/color.h>` to use these output overloads. See
+Include `<tjg/color.h>` to use these output overloads. See
 [Text style rendering](index.md#TextStyleRendering) for the shared styling rules.
 
 ## print to a stream
@@ -50,12 +50,12 @@ tjg::vprintln(stdout, tjg::fg(tjg::color::green), "Result: {}", args);
 
 ## Styled ostream output
 
-Include `<fmt/color-ostream.h>` to use the styled `std::ostream` overloads.
-This bridge includes `<fmt/color.h>` and standard ostream support. It does not
+Include `<tjg/color-ostream.h>` to use the styled `std::ostream` overloads.
+This bridge includes `<tjg/color.h>` and standard ostream support. It does not
 include the {fmt} engine.
 
 ```cpp
-#include <fmt/color-ostream.h>
+#include <tjg/color-ostream.h>
 #include <sstream>
 
 std::ostringstream os;
@@ -117,14 +117,14 @@ narrow output follow the same styling, newline, and reset rules.
 
 ## Styled stream insertion
 
-With `<fmt/color-ostream.h>`, insert the result of `tjg::styled(value, style)`
+With `<tjg/color-ostream.h>`, insert the result of `tjg::styled(value, style)`
 directly into a stream. The operator returns the same stream by reference for
 chaining and supports both `std::ostream` and `std::wostream` in C++23 and later.
 The value must support insertion into that stream; a standard formatter is not
 required.
 
 ```cpp
-#include <fmt/color-ostream.h>
+#include <tjg/color-ostream.h>
 #include <iomanip>
 #include <sstream>
 

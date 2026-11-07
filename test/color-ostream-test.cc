@@ -6,7 +6,7 @@
 //
 // For the license information refer to format.h.
 
-#include "fmt/color-ostream.h"
+#include "tjg/color-ostream.h"
 
 #include <iomanip>
 #include <sstream>

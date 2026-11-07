@@ -2356,7 +2356,7 @@ inline auto vformat(text_style ts, std::string_view fmt, std::format_args args)
  * **Example**:
  *
  * ```
- * #include <fmt/color.h>
+ * #include <tjg/color.h>
  * std::string message = tjg::format(tjg::bold().fg(tjg::color::red),
  *                                   "The answer is {}", 42);
  * ```

@@ -2,11 +2,11 @@
 #include <iomanip>
 #include <sstream>
 
-#include "fmt/color-ostream.h"
+#include "tjg/color-ostream.h"
 
 
-#include "fmt/strip_ansi.h"
-#include "fmt/styled_text.h"
+#include "tjg/strip_ansi.h"
+#include "tjg/styled_text.h"
 #include "gtest-extra.h"
 
 namespace {

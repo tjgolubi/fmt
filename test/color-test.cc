@@ -6,7 +6,7 @@
 //
 // For the license information refer to format.h.
 
-#include "fmt/color.h"
+#include "tjg/color.h"
 
 #include <iterator>  // std::back_inserter
 #include <limits>    // std::numeric_limits

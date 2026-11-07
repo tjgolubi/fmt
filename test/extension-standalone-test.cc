@@ -3,11 +3,11 @@
 #include <sstream>
 #include <stdexcept>
 
-#include "fmt/backslash.h"
-#include "fmt/color-ostream.h"
-#include "fmt/parse_styled_text.h"
-#include "fmt/strip_ansi.h"
-#include "fmt/styled_text.h"
+#include "tjg/backslash.h"
+#include "tjg/color-ostream.h"
+#include "tjg/parse_styled_text.h"
+#include "tjg/strip_ansi.h"
+#include "tjg/styled_text.h"
 
 #ifdef FMT_VERSION
 #  error "The extension must not include the fmt engine"

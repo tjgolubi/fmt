@@ -348,13 +348,10 @@ class CxxHandler(BaseHandler):
         headers = [
             "args.h",
             "chrono.h",
-            "color-ostream.h",
-            "color.h",
             "compile.h",
             "core.h",
             "enum.h",
             "format.h",
-            "memory_buffer.h",
             "os.h",
             "ostream.h",
             "printf.h",
@@ -363,11 +360,25 @@ class CxxHandler(BaseHandler):
             "xchar.h",
         ]
 
+        tjg_headers = [
+            "color.h",
+            "color-ostream.h",
+            "styled_text.h",
+            "parse_styled_text.h",
+            "strip_ansi.h",
+            "backslash.h",
+            "memory_buffer.h",
+            "text_support.h",
+            "tree_format_specs.h",
+            "format_support.h",
+        ]
+        headers += tjg_headers
+
         # Run doxygen.
         cmd = ["doxygen", "-"]
         support_dir = Path(__file__).parents[3]
         top_dir = os.path.dirname(support_dir)
-        include_dir = os.path.join(top_dir, "include", "fmt")
+        include_dir = os.path.join(top_dir, "include")
         self._ns2doxyxml: "dict[str, ET.ElementTree[ET.Element[str]]]" = {}
         build_dir = os.path.join(top_dir, "build")
         os.makedirs(build_dir, exist_ok=True)
@@ -395,7 +406,8 @@ class CxxHandler(BaseHandler):
                                "FMT_END_NAMESPACE=}}" \
                                "FMT_DOC=1"
             """.format(
-                " ".join([os.path.join(include_dir, h) for h in headers]),
+                " ".join([os.path.join(include_dir, "tjg" if h in tjg_headers else "fmt", h)
+                          for h in headers]),
                 self._doxyxml_dir,
             ).encode("utf-8")
         )

@@ -3,11 +3,11 @@
 From this directory, run `make run` using GNU make and a C++23-capable compiler.
 From the repository root, run `make -C demo run`.
 
-The Makefile uses `FMT_DIR=..` to read this checkout's headers. It builds in
-standalone mode with `std::format`, `std::print`, and compact SGR enabled;
+The Makefile uses `TJG_ROOT=..` to read this checkout's `include/tjg/` headers.
+It builds in standalone mode with `std::format`, `std::print`, and compact SGR enabled;
 no CMake, {fmt} library, or `FMT_HEADER_ONLY` definition is needed.
-Override the path or compiler with `make run FMT_DIR=/path/to/fmt CXX=g++`.
-Run `make clean` before changing the fmt path, compiler, or build flags.
+Override the path or compiler with `make run TJG_ROOT=/path/to/fmt CXX=g++`.
+Run `make clean` before changing the TJG path, compiler, or build flags.
 
 `FmtColorDemo2.cpp` exercises nested colors/emphasis and absolute boundaries.
 The second line has strikethrough and a gray background except inside the

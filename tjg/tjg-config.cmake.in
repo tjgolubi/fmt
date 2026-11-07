@@ -1,0 +1,6 @@
+@PACKAGE_INIT@
+
+if (NOT TARGET tjg::tjg)
+  include("${CMAKE_CURRENT_LIST_DIR}/tjg-targets.cmake")
+endif ()
+check_required_components(tjg)

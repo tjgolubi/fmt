@@ -11,9 +11,9 @@ The {fmt} library API consists of the following components:
 - [`fmt/std.h`](#std-api): formatters for standard library types
 - [`fmt/enum.h`](#enum-api): formatting of annotated enums
 - [`fmt/compile.h`](#compile-api): format string compilation
-- [`fmt/memory_buffer.h`](color/index.md#memory-buffer): extension-owned memory buffer
-- [`fmt/color.h`](#color-api): terminal colors and text styles
-- [`fmt/color-ostream.h`](color/print.md#styled-ostream-output): styled narrow and wide ostream output
+- [`tjg/memory_buffer.h`](color/index.md#memory-buffer): extension-owned memory buffer
+- [`tjg/color.h`](#color-api): terminal colors and text styles
+- [`tjg/color-ostream.h`](color/print.md#styled-ostream-output): styled narrow and wide ostream output
 - [`fmt/os.h`](#os-api): system APIs
 - [`fmt/ostream.h`](#ostream-api): `std::ostream` support
 - [`fmt/args.h`](#args-api): dynamic argument lists
@@ -679,7 +679,7 @@ Example:
 <a id="color-api"></a>
 ## Terminal Colors and Text Styles
 
-`fmt/color.h` provides support for terminal color and text style output.
+`tjg/color.h` provides support for terminal color and text style output.
 
 See [Terminal Colors and Text Styles](color/index.md) for detailed documentation.
 

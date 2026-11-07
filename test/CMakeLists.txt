@@ -48,29 +48,34 @@ function (add_fmt_test name)
   add_test(NAME ${name} COMMAND ${name})
 endfunction ()
 
+# Extension suites share the existing test harness but use TJG's own target.
+function (add_tjg_test name)
+  add_fmt_test(${name})
+  target_link_libraries(${name} tjg::tjg)
+endfunction ()
+
 add_fmt_test(args-test)
 add_fmt_test(core-test)
 add_fmt_test(assert-test)
+target_link_libraries(assert-test tjg::tjg)
 add_fmt_test(chrono-test)
 # Prove the extension works without a fmt target or transitive fmt headers.
 add_executable(extension-standalone-test extension-standalone-test.cc
                                         extension-standalone-state.cc)
-target_include_directories(extension-standalone-test PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_compile_features(extension-standalone-test PRIVATE cxx_std_23)
+target_link_libraries(extension-standalone-test PRIVATE tjg::tjg)
 add_test(NAME extension-standalone-test COMMAND extension-standalone-test)
 
-add_fmt_test(color-test)
-add_fmt_test(color-debug-test)
-add_fmt_test(color-std-format-test)
-add_fmt_test(styled-text-test)
-add_fmt_test(styled-text-format-test)
-add_fmt_test(parse-styled-text-test)
-add_fmt_test(strip-ansi-test)
-add_fmt_test(backslash-test)
-add_fmt_test(memory-buffer-test)
+add_tjg_test(color-test)
+add_tjg_test(color-debug-test)
+add_tjg_test(color-std-format-test)
+add_tjg_test(styled-text-test)
+add_tjg_test(styled-text-format-test)
+add_tjg_test(parse-styled-text-test)
+add_tjg_test(strip-ansi-test)
+add_tjg_test(backslash-test)
+add_tjg_test(memory-buffer-test)
 add_executable(styled-text-sharing-test styled-text-sharing-test.cc)
-target_include_directories(styled-text-sharing-test PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_compile_features(styled-text-sharing-test PRIVATE cxx_std_23)
+target_link_libraries(styled-text-sharing-test PRIVATE tjg::tjg)
 add_test(NAME styled-text-sharing-test COMMAND styled-text-sharing-test)
 add_fmt_test(enum-test)
 add_fmt_test(gtest-extra-test)
@@ -82,7 +87,7 @@ if (NOT (MSVC AND BUILD_SHARED_LIBS))
   add_fmt_test(format-impl-test HEADER_ONLY header-only-test.cc)
 endif ()
 add_fmt_test(ostream-test)
-add_fmt_test(color-ostream-test)
+add_tjg_test(color-ostream-test)
 add_fmt_test(compile-test)
 add_fmt_test(printf-test)
 add_fmt_test(ranges-test ranges-odr-test.cc)
@@ -102,7 +107,9 @@ if (MSVC)
   target_compile_options(unicode-test PRIVATE /utf-8)
 endif ()
 add_fmt_test(xchar-test)
+target_link_libraries(xchar-test tjg::tjg)
 add_fmt_test(enforce-checks-test)
+target_link_libraries(enforce-checks-test tjg::tjg)
 target_compile_definitions(enforce-checks-test
                            PRIVATE -DFMT_ENFORCE_COMPILE_STRING)
 
@@ -150,6 +157,7 @@ if (FMT_PEDANTIC)
   endif ()
   if (HAVE_FNO_EXCEPTIONS_FLAG)
     add_library(noexception-test ../src/format.cc noexception-test.cc)
+    target_link_libraries(noexception-test PRIVATE tjg::tjg)
     target_include_directories(noexception-test
                                PRIVATE ${PROJECT_SOURCE_DIR}/include)
     target_compile_options(noexception-test PRIVATE -fno-exceptions)
@@ -286,3 +294,15 @@ else ()
   target_link_libraries(c-test PRIVATE fmt::fmt-c)
   add_test(NAME c-test COMMAND c-test)
 endif ()
+
+# Exercise an installed, relocated TJG-only package from a separate application.
+add_test(
+  NAME tjg-package-test
+  COMMAND ${CMAKE_COMMAND}
+    "-DTJG_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+    "-DTJG_TEST_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/tjg-package-test"
+    "-DTJG_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+    "-DTJG_GENERATOR=${CMAKE_GENERATOR}"
+    "-DTJG_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}"
+    "-DTJG_EXE_SUFFIX=${CMAKE_EXECUTABLE_SUFFIX}"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/tjg-package-test/run.cmake")

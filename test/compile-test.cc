@@ -14,7 +14,6 @@
 #include <vector>
 
 #include "fmt/chrono.h"
-#include "fmt/color.h"
 #include "fmt/ranges.h"
 #include "fmt/std.h"
 #include "gmock/gmock.h"

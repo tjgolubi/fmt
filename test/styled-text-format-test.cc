@@ -1,8 +1,8 @@
 #include "standard-format-test.h"
-#include "fmt/styled_text.h"
+#include "tjg/styled_text.h"
 
 
-#include "fmt/color-ostream.h"
+#include "tjg/color-ostream.h"
 #include "gtest-extra.h"
 
 #include <iomanip>

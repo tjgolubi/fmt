@@ -2,8 +2,9 @@
 
 On `ref/CPP20`, the styling extension is a standalone C++23 header library.
 It uses `std::format` and `std::print`, with public APIs in namespace `tjg`.
-Header paths remain under `fmt/`, but no {fmt} engine headers, compiled library,
-`FMT_HEADER_ONLY` definition, or {fmt} formatter adapters are required.
+Headers live under `include/tjg/` and are included as `<tjg/...>`. No {fmt}
+engine headers, compiled library, `FMT_HEADER_ONLY` definition, or {fmt}
+formatter adapters are required.
 The repository retains the original {fmt} library for unrelated consumers.
 
 A C++23 standard library with `<format>` and `<print>` is required. Development
@@ -13,13 +14,13 @@ validation uses GCC 14.2 with compact SGR enabled.
 
 | Header | Use |
 | --- | --- |
-| `<fmt/color.h>` | Color/style values, styled arguments, SGR helpers, narrow/wide formatting, and narrow FILE printing. |
-| `<fmt/styled_text.h>` | Owning narrow/wide text trees and standard formatters. |
-| `<fmt/parse_styled_text.h>` | Parse standard ANSI SGR into owned styled text. |
-| `<fmt/strip_ansi.h>` | Strip ANSI sequences from strings or styled-text leaves. |
-| `<fmt/memory_buffer.h>` | Inline/growable buffer in namespace `tjg`. |
-| `<fmt/backslash.h>` | Escape control characters or decode backslash escapes. |
-| `<fmt/color-ostream.h>` | Styled narrow/wide ostream output and insertion. |
+| `<tjg/color.h>` | Color/style values, styled arguments, SGR helpers, narrow/wide formatting, and narrow FILE printing. |
+| `<tjg/styled_text.h>` | Owning narrow/wide text trees and standard formatters. |
+| `<tjg/parse_styled_text.h>` | Parse standard ANSI SGR into owned styled text. |
+| `<tjg/strip_ansi.h>` | Strip ANSI sequences from strings or styled-text leaves. |
+| `<tjg/memory_buffer.h>` | Inline/growable buffer in namespace `tjg`. |
+| `<tjg/backslash.h>` | Escape control characters or decode backslash escapes. |
+| `<tjg/color-ostream.h>` | Styled narrow/wide ostream output and insertion. |
 
 The parser and stripper include `styled_text.h`, which includes `color.h`.
 Wide styling no longer needs `<fmt/xchar.h>`. Internal utilities are in
@@ -39,8 +40,8 @@ template definitions; mixing settings violates the one-definition rule.
 ## Example application
 
 ```cpp
-#include <fmt/parse_styled_text.h>
-#include <fmt/strip_ansi.h>
+#include <tjg/parse_styled_text.h>
+#include <tjg/strip_ansi.h>
 #include <print>
 
 int main() {
@@ -82,22 +83,70 @@ hello: hello.cpp
 No `-lfmt` or header-only engine definition is needed. Run `make -C demo run`
 from the checkout for the full nested-style and table demonstrations.
 
-## Use CMake
+## Build and install the standalone package
+
+From the checkout, configure only the TJG project. This does not configure,
+build, or install the retained {fmt} library:
+
+```bash
+cmake -S tjg -B build/tjg-install \
+  -DTJG_COLOR_COMPACT_SGR=ON \
+  -DCMAKE_INSTALL_PREFIX="$HOME/.local/tjg"
+cmake --build build/tjg-install
+cmake --install build/tjg-install
+```
+
+The package installs `include/tjg/`, its license, and CMake configuration under
+`lib/cmake/tjg/` (or the platform's configured library directory). It contains
+no compiled library. `TJG_INSTALL=OFF` disables installation rules.
+
+`TJG_COLOR_COMPACT_SGR` is a CMake option as well as the compiler definition.
+The CMake target propagates its selected value, which defaults to `ON`. Consumers
+should use the target's setting consistently instead of overriding the macro.
+This branch is validated only with compact SGR and C++23 or later.
+
+## Use the installed package with CMake
+
+Save the example as `hello.cpp` with this `CMakeLists.txt`:
 
 ```cmake
 cmake_minimum_required(VERSION 3.20)
 project(tjg_hello LANGUAGES CXX)
-set(TJG_ROOT /path/to/fmt CACHE PATH "TJG checkout")
+find_package(tjg CONFIG REQUIRED)
 add_executable(hello hello.cpp)
-target_include_directories(hello PRIVATE "${TJG_ROOT}/include")
-target_compile_features(hello PRIVATE cxx_std_23)
-target_compile_definitions(hello PRIVATE TJG_COLOR_COMPACT_SGR=1)
+target_link_libraries(hello PRIVATE tjg::tjg)
 ```
 
-For a library whose public headers use TJG, propagate the include directory,
-C++23 feature, and SGR definition with `PUBLIC` instead of `PRIVATE`.
+Then build against the installation:
 
-The repository's existing CMake install also installs these headers. A full
-repository build still builds/tests the retained {fmt} engine; that is separate
-from the extension's requirements. `./build.bash` and `./build.bash taskwarrior`
-select C++23 compact SGR. CI remains disabled for `ref/CPP20`.
+```bash
+cmake -S . -B build -DCMAKE_PREFIX_PATH="$HOME/.local/tjg"
+cmake --build build
+./build/hello
+```
+
+`tjg::tjg` supplies the include directory, C++23 requirement, and SGR definition.
+No `find_package(fmt)` or {fmt} link target is needed. For a library whose public
+headers use TJG, use `PUBLIC` instead of `PRIVATE` so these requirements propagate.
+The installed package can be moved to a different prefix without rebuilding it.
+
+## Use TJG directly from a checkout
+
+A parent project can use `add_subdirectory` or FetchContent's `SOURCE_SUBDIR`
+without configuring the repository's {fmt} project:
+
+```cmake
+add_subdirectory(/path/to/fmt/tjg tjg-build)
+add_executable(hello hello.cpp)
+target_link_libraries(hello PRIVATE tjg::tjg)
+```
+
+The repository's top-level build also provides `tjg::tjg`, and installs TJG
+alongside {fmt} when both install options are enabled. To install just TJG from
+a top-level build, use `cmake --install build --component tjg`.
+
+The extension is included directly; importing the retained `fmt` module does
+not export TJG APIs. `./build.bash` and `./build.bash taskwarrior` run the full
+repository tests with C++23 and compact SGR. CI stays disabled for `ref/CPP20`.
+The package test copies only TJG sources/headers, installs and relocates them,
+and builds a separate consumer using `find_package(tjg)`.
