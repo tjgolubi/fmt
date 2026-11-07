@@ -1,12 +1,17 @@
 name: doc
 
-on: [push, pull_request]
+on:
+  push:
+    branches-ignore: [ref/CPP20]
+  pull_request:
+    branches-ignore: [ref/CPP20]
 
 permissions:
   contents: read
 
 jobs:
   build:
+    if: github.ref != 'refs/heads/ref/CPP20' && github.head_ref != 'ref/CPP20' && github.base_ref != 'ref/CPP20'
     runs-on: ubuntu-22.04
 
     steps:

@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   analyze:
+    if: github.ref != 'refs/heads/ref/CPP20' && github.head_ref != 'ref/CPP20' && github.base_ref != 'ref/CPP20'
     runs-on: ubuntu-latest
     permissions:
       contents: read
