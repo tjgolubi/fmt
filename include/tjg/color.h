@@ -25,6 +25,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <variant>
 
 #include "format_support.h"
 #include "memory_buffer.h"
@@ -58,7 +59,9 @@ template <typename T> struct underlying_type {
  *
  * Use `no_color` with `fg()` or `bg()` to construct an unspecified channel.
  */
-struct no_color_t {};
+struct no_color_t {
+  constexpr auto operator<=>(const no_color_t&) const noexcept = default;
+};
 
 template <> struct underlying_type<no_color_t> {
   using type = unsigned;
@@ -462,372 +465,21 @@ template <Color T>
   return no_color_t{};
 }
 
-/**
- * A color value holding no_color_t, rgb, term_color, cube_color, or gray_color.
- * Indices 0 through 4, respectively, match the packed discriminator.
- * Default construction holds no_color_t. Construction and assignment from a
- * color preserve its kind. get/get_if provide reference/pointer access, and
- * visit dispatches a visitor to the active alternative. The common interface
- * supports single-color visitation with one result type for every alternative.
- *
- * Uses the union implementation in every supported language mode.
- * References and pointers must not outlive the color or an alternative change.
- * Wrong-kind get reports format_error; get_if provides nonthrowing access.
- */
-class color_t;
+/// A color variant. Its alternative indices match the packed style encoding.
+using color_t = std::variant<no_color_t, rgb, term_color, cube_color, gray_color>;
+
 template <> struct underlying_type<color_t> {
   using type = uint32_t;
 };
-constexpr auto to_underlying(const color_t&) noexcept -> uint32_t;
-namespace detail {
-template <class T> struct color_access;
-}
-
-// Alternative indices match text_style's packed discriminator encoding.
-class color_t {
- public:
-  using value_type = uint32_t;
-
-  static_assert(std::is_same<value_type, underlying_type<color_t>::type>::value,
-                "color_t underlying type must match value_type");
-
-  /// Alternative identifiers, matching index() and the packed discriminator.
-  enum class kind : uint8_t {
-    none,  ///< Unspecified color.
-    rgb,   ///< RGB color.
-    term,  ///< Terminal palette color.
-    cube,  ///< 6x6 cube color
-    gray   ///< 24-level gray color
-  };
-
- private:
-  friend constexpr auto to_underlying(const color_t&) noexcept -> value_type;
-
-  union storage {
-    no_color_t none;
-    rgb truecolor;
-    term_color terminal;
-    cube_color cube;
-    gray_color gray;
-    constexpr storage(no_color_t v) noexcept : none(v) {}
-    constexpr storage(rgb v) noexcept : truecolor(v) {}
-    constexpr storage(term_color v) noexcept : terminal(v) {}
-    constexpr storage(cube_color v) noexcept : cube(v) {}
-    constexpr storage(gray_color v) noexcept : gray(v) {}
-  } _data{no_color};
-
-  kind _kind{kind::none};
-
-  template <class T> friend struct detail::color_access;
-
- public:
-  /// Constructs an unspecified color.
-  constexpr color_t() noexcept {}
-
-  /// Constructs an unspecified color from its sentinel.
-  constexpr color_t(no_color_t v) noexcept : _data{v}, _kind{kind::none} {}
-
-  /// Constructs an RGB color, preserving all three channels.
-  constexpr color_t(rgb v) noexcept : _data{v}, _kind{kind::rgb} {}
-
-  /// Constructs a terminal palette color.
-  constexpr color_t(term_color v) noexcept : _data{v}, _kind{kind::term} {}
-
-  /// Constructs a 6x6x6 cube color.
-  constexpr color_t(cube_color v) noexcept : _data{v}, _kind{kind::cube} {}
-
-  /// Constructs a gray palette color.
-  constexpr color_t(gray_color v) noexcept : _data{v}, _kind{kind::gray} {}
-
-  color_t(const color_t&) = default;
-  color_t(color_t&&) = default;
-  color_t& operator=(const color_t&) = default;
-  color_t& operator=(color_t&&) = default;
-
-  // A union cannot use memberwise defaulted comparisons. Compare the packed
-  // values so ordering agrees with the older-language implementation.
-  [[nodiscard]] constexpr auto operator==(const color_t& rhs) const noexcept
-      -> bool {
-    return to_underlying(*this) == to_underlying(rhs);
-  }
-
-  [[nodiscard]] constexpr auto operator<=>(const color_t& rhs) const noexcept
-      -> std::strong_ordering {
-    return to_underlying(*this) <=> to_underlying(rhs);
-  }
-
-  // Trivial union copy assignment starts the corresponding member lifetime.
-  // These overloads also permit assignment from the currently held member.
-  /// Replaces the active alternative with an unspecified color.
-  constexpr color_t& operator=(no_color_t v) noexcept {
-    return *this = color_t{v};
-  }
-  /// Replaces the active alternative with an RGB color.
-  constexpr color_t& operator=(rgb v) noexcept { return *this = color_t{v}; }
-  /// Replaces the active alternative with a terminal palette color.
-  constexpr color_t& operator=(term_color v) noexcept {
-    return *this = color_t{v};
-  }
-  /// Replaces the active alternative with a cube palette color.
-  constexpr color_t& operator=(cube_color v) noexcept {
-    return *this = color_t{v};
-  }
-  /// Replaces the active alternative with a gray palette color.
-  constexpr color_t& operator=(gray_color v) noexcept {
-    return *this = color_t{v};
-  }
-
-  /// Returns the active alternative: 0 none, 1 RGB, 2 terminal, 3 cube, 4 gray
-  constexpr std::size_t index() const noexcept {
-    return enum_cast<std::size_t>(_kind);
-  }
-
- private:
-  constexpr auto promote_to_rgb() noexcept -> color_t& {
-    switch (_kind) {
-    default:
-    case kind::none: return *this = rgb{};
-    case kind::rgb:  break;
-    case kind::term: *this = rgb(_data.terminal); break;
-    case kind::cube: *this = rgb(_data.cube); break;
-    case kind::gray: *this = rgb(_data.gray); break;
-    }
-    return *this;
-  }
-
- public:
-  /**
-   * Combines this color with `rhs`.
-   *
-   * An unspecified color takes the other operand's value, preserving its kind.
-   * If both colors are specified, they are promoted to RGB and corresponding
-   * channel bits are ORed. This color then holds RGB; `rhs` remains unchanged.
-   *
-   * Terminal colors use the fixed Xterm-default RGB palette, which may differ
-   * from the user's terminal theme. This operation does not average colors.
-   */
-  constexpr auto operator|=(color_t rhs) noexcept -> color_t& {
-    if (rhs._kind == kind::none) return *this;
-    if (_kind == kind::none) return *this = rhs;
-    promote_to_rgb();
-    _data.truecolor |= rhs.promote_to_rgb()._data.truecolor;
-    return *this;
-  }
-
-  /**
-   * Returns the composition of `lhs` and `rhs`.
-   *
-   * Uses the same unspecified-color handling, RGB promotion, and bitwise-OR
-   * rules as `operator|=`.
-   */
-  [[nodiscard]]
-  friend constexpr auto operator|(color_t lhs, color_t rhs) noexcept
-      -> color_t {
-    return lhs |= rhs;
-  }
-
-};  // color_t
-
-template <> struct underlying_type<color_t::kind> {
-  using type = uint8_t;
-};
-
-[[nodiscard]]
-constexpr auto to_underlying(color_t::kind x) noexcept -> uint8_t {
-  return enum_cast<uint8_t>(x);
-}
 
 namespace detail {
 
-template <> struct color_access<no_color_t> {
-  static constexpr std::size_t index = to_underlying(color_t::kind::none);
-  static constexpr no_color_t& ref(color_t& c) noexcept { return c._data.none; }
-  static constexpr const no_color_t& ref(const color_t& c) noexcept {
-    return c._data.none;
-  }
-};
+enum class color_kind : std::size_t { none, rgb, term, cube, gray };
 
-template <> struct color_access<rgb> {
-  static constexpr std::size_t index = to_underlying(color_t::kind::rgb);
-  static constexpr rgb& ref(color_t& c) noexcept { return c._data.truecolor; }
-  static constexpr const rgb& ref(const color_t& c) noexcept {
-    return c._data.truecolor;
-  }
-};
-
-template <> struct color_access<term_color> {
-  static constexpr std::size_t index = to_underlying(color_t::kind::term);
-  static constexpr term_color& ref(color_t& c) noexcept {
-    return c._data.terminal;
-  }
-  static constexpr const term_color& ref(const color_t& c) noexcept {
-    return c._data.terminal;
-  }
-};
-
-template <> struct color_access<cube_color> {
-  static constexpr std::size_t index = to_underlying(color_t::kind::cube);
-  static constexpr cube_color& ref(color_t& c) noexcept { return c._data.cube; }
-  static constexpr const cube_color& ref(const color_t& c) noexcept {
-    return c._data.cube;
-  }
-};
-
-template <> struct color_access<gray_color> {
-  static constexpr std::size_t index = to_underlying(color_t::kind::gray);
-  static constexpr gray_color& ref(color_t& c) noexcept { return c._data.gray; }
-  static constexpr const gray_color& ref(const color_t& c) noexcept {
-    return c._data.gray;
-  }
-};
-
-template <std::size_t Index> struct color_alternative;
-template <> struct color_alternative<to_underlying(color_t::kind::none)> {
-  using type = no_color_t;
-};
-template <> struct color_alternative<to_underlying(color_t::kind::rgb)> {
-  using type = rgb;
-};
-template <> struct color_alternative<to_underlying(color_t::kind::term)> {
-  using type = term_color;
-};
-template <> struct color_alternative<to_underlying(color_t::kind::cube)> {
-  using type = cube_color;
-};
-template <> struct color_alternative<to_underlying(color_t::kind::gray)> {
-  using type = gray_color;
-};
-
-}  // namespace detail
-
-/// Returns true if the color holds T; T must be a supported alternative.
-template <class T> constexpr bool holds_alternative(const color_t& c) noexcept {
-  return c.index() == detail::color_access<T>::index;
+constexpr auto is_unspecified(const color_t& color) noexcept -> bool {
+  return color.valueless_by_exception() ||
+         std::holds_alternative<no_color_t>(color);
 }
-
-/// Returns a reference to T, reporting an error if another kind is active.
-template <class T> constexpr T& get(color_t& c) {
-  if (!holds_alternative<T>(c))
-    detail::standard_format_error("wrong color_t alternative");
-  return detail::color_access<T>::ref(c);
-}
-template <class T> constexpr const T& get(const color_t& c) {
-  if (!holds_alternative<T>(c))
-    detail::standard_format_error("wrong color_t alternative");
-  return detail::color_access<T>::ref(c);
-}
-template <class T> constexpr T&& get(color_t&& c) {
-  return std::move(get<T>(c));
-}
-
-template <class T> constexpr const T&& get(const color_t&& c) {
-  return std::move(get<T>(c));
-}
-
-/// Returns a pointer to T, or nullptr for null input or another active kind.
-template <class T> constexpr T* get_if(color_t* c) noexcept {
-  return c && holds_alternative<T>(*c) ? &detail::color_access<T>::ref(*c)
-                                       : nullptr;
-}
-
-template <class T> constexpr const T* get_if(const color_t* c) noexcept {
-  return c && holds_alternative<T>(*c) ? &detail::color_access<T>::ref(*c)
-                                       : nullptr;
-}
-
-// Index access shares precisely the same checks as type access.
-template <std::size_t Index>
-constexpr typename detail::color_alternative<Index>::type& get(color_t& c) {
-  return get<typename detail::color_alternative<Index>::type>(c);
-}
-
-template <std::size_t Index>
-constexpr const typename detail::color_alternative<Index>::type& get(
-    const color_t& c) {
-  return get<typename detail::color_alternative<Index>::type>(c);
-}
-
-template <std::size_t Index>
-constexpr typename detail::color_alternative<Index>::type&& get(color_t&& c) {
-  return get<typename detail::color_alternative<Index>::type>(std::move(c));
-}
-
-template <std::size_t Index>
-constexpr const typename detail::color_alternative<Index>::type&& get(
-    const color_t&& c) {
-  return get<typename detail::color_alternative<Index>::type>(std::move(c));
-}
-
-template <std::size_t Index>
-constexpr typename detail::color_alternative<Index>::type* get_if(
-    color_t* c) noexcept {
-  return get_if<typename detail::color_alternative<Index>::type>(c);
-}
-
-template <std::size_t Index>
-constexpr const typename detail::color_alternative<Index>::type* get_if(
-    const color_t* c) noexcept {
-  return get_if<typename detail::color_alternative<Index>::type>(c);
-}
-
-/**
- * Calls visitor with the active alternative of one color.
- * Preserves the color's cv/ref category and forwards the visitor.
- * Every alternative must be callable with exactly the same return type.
- * Visitor exceptions propagate; void and reference results are supported.
- */
-template <
-    class Visitor, class Color,
-    typename std::enable_if<
-        std::is_same<typename std::remove_cv<
-                         typename std::remove_reference<Color>::type>::type,
-                     color_t>::value,
-        int>::type = 0>
-constexpr auto visit(Visitor&& visitor, Color&& color)
-    -> decltype(std::forward<Visitor>(visitor)(
-        get<no_color_t>(std::forward<Color>(color)))) {
-  using kind = color_t::kind;
-  using result = decltype(std::forward<Visitor>(visitor)(
-      get<no_color_t>(std::forward<Color>(color))));
-  static_assert(
-      std::is_same<result, decltype(std::forward<Visitor>(visitor)(
-                               get<rgb>(std::forward<Color>(color))))>::value,
-      "color visitor must have the same return type for every alternative");
-  static_assert(
-      std::is_same<result,
-                   decltype(std::forward<Visitor>(visitor)(
-                       get<term_color>(std::forward<Color>(color))))>::value,
-      "color visitor must have the same return type for every alternative");
-  static_assert(
-      std::is_same<result,
-                   decltype(std::forward<Visitor>(visitor)(
-                       get<cube_color>(std::forward<Color>(color))))>::value,
-      "color visitor must have the same return type for every alternative");
-  static_assert(
-      std::is_same<result,
-                   decltype(std::forward<Visitor>(visitor)(
-                       get<gray_color>(std::forward<Color>(color))))>::value,
-      "color visitor must have the same return type for every alternative");
-  switch (enum_cast<kind>(color.index())) {
-  case kind::rgb:
-    return std::forward<Visitor>(visitor)(get<rgb>(std::forward<Color>(color)));
-  case kind::term:
-    return std::forward<Visitor>(visitor)(
-        get<term_color>(std::forward<Color>(color)));
-  case kind::cube:
-    return std::forward<Visitor>(visitor)(
-        get<cube_color>(std::forward<Color>(color)));
-  case kind::gray:
-    return std::forward<Visitor>(visitor)(
-        get<gray_color>(std::forward<Color>(color)));
-  case kind::none:
-  default:
-    return std::forward<Visitor>(visitor)(
-        get<no_color_t>(std::forward<Color>(color)));
-  }
-}  // visit
-
-namespace detail {
 
 struct to_rgb_visitor {
   constexpr auto operator()(const no_color_t&) const noexcept -> color_t {
@@ -845,31 +497,50 @@ struct to_rgb_visitor {
  * color. An unspecified color remains unspecified. The argument is unchanged.
  */
 [[nodiscard]] constexpr auto to_rgb(color_t color) noexcept -> color_t {
-  return tjg::visit(detail::to_rgb_visitor{}, color);
+  if (color.valueless_by_exception()) return no_color;
+  return std::visit(detail::to_rgb_visitor{}, color);
 }
+
+/// Combines specified colors by ORing their RGB channels.
+/// An unspecified operand preserves the other color's kind.
+constexpr auto operator|=(color_t& lhs, color_t rhs) noexcept -> color_t& {
+  if (lhs.valueless_by_exception()) lhs = no_color;
+  if (detail::is_unspecified(rhs)) return lhs;
+  if (detail::is_unspecified(lhs)) return lhs = rhs;
+  return lhs = std::get<rgb>(to_rgb(lhs)) | std::get<rgb>(to_rgb(rhs));
+}
+
+/// Returns the composition of two colors without modifying either operand.
+[[nodiscard]] constexpr auto operator|(color_t lhs, color_t rhs) noexcept
+    -> color_t {
+  return lhs |= rhs;
+}
+
+using color_t_value_type = uint32_t;
 
 namespace detail {
 struct color_payload {
   template <typename Color>
   constexpr auto operator()(const Color& color) const noexcept
-      -> color_t::value_type {
-    return static_cast<color_t::value_type>(to_underlying(color));
+      -> color_t_value_type {
+    return static_cast<color_t_value_type>(to_underlying(color));
   }
 };
 }  // namespace detail
 
 /// The packed numeric representation used by text_style, not a stable archive.
 constexpr inline auto to_underlying(const color_t& color) noexcept
-    -> color_t::value_type {
-  return (narrow_cast<color_t::value_type>(color.index()) << 24) |
-         tjg::visit(detail::color_payload{}, color);
+    -> color_t_value_type {
+  if (color.valueless_by_exception()) return 0;
+  return (narrow_cast<color_t_value_type>(color.index()) << 24) |
+         std::visit(detail::color_payload{}, color);
 }
 
 namespace detail {
 
-// Decode valid packed colors produced by text_style using color_t::kind tags.
-constexpr auto unpack_color(color_t::value_type value) -> color_t {
-  using kind = color_t::kind;
+// Decode valid packed colors produced by text_style using color_kind tags.
+constexpr auto unpack_color(color_t_value_type value) -> color_t {
+  using kind = color_kind;
   switch (enum_cast<kind>(value >> 24)) {
   case kind::rgb:  return color_t{rgb{value & 0x00ffffff}};
   case kind::term: return color_t{enum_cast<term_color>(value & 0xff)};
@@ -914,9 +585,8 @@ struct blend_state {
   }
 
   constexpr auto add(const color_t& color) const noexcept -> blend_state {
-    return color.index() == to_underlying(color_t::kind::none)
-               ? *this
-               : add(tjg::visit(blend_rgb{}, color), color);
+    return is_unspecified(color) ? *this
+                                 : add(std::visit(blend_rgb{}, color), color);
   }
 
   constexpr auto average() const noexcept -> rgb {
@@ -1040,10 +710,10 @@ class text_style {
   static constexpr auto emph_shift = 54;
   static constexpr auto abs_shift = emph_shift + emph_bits;
 
-  static constexpr auto color_mask = (color_t::value_type{1} << color_bits) - 1;
+  static constexpr auto color_mask = (color_t_value_type{1} << color_bits) - 1;
   static constexpr auto disc_mask = (1U << disc_bits) - 1;
   static constexpr auto value_bits = color_bits + disc_bits;
-  static constexpr auto value_mask = (color_t::value_type{1} << value_bits) - 1;
+  static constexpr auto value_mask = (color_t_value_type{1} << value_bits) - 1;
   static constexpr auto abs_mask = value_type{1} << abs_shift;
 
   static constexpr auto fg_mask = value_type{value_mask} << fg_shift;
@@ -1231,7 +901,7 @@ class text_style {
    */
   [[nodiscard]]
   constexpr auto fg() const noexcept -> color_t {
-    using value_t = color_t::value_type;
+    using value_t = color_t_value_type;
     return detail::unpack_color(
         narrow_cast<value_t>((style_ >> fg_shift) & value_mask));
   }
@@ -1242,7 +912,7 @@ class text_style {
    */
   [[nodiscard]]
   constexpr auto bg() const noexcept -> color_t {
-    using value_t = color_t::value_type;
+    using value_t = color_t_value_type;
     return detail::unpack_color(
         narrow_cast<value_t>((style_ >> bg_shift) & value_mask));
   }
@@ -1883,7 +1553,6 @@ template <typename Char> class ansi_color_escape {
     ansi_color_escape& escape;
     bool is_bg;
 
-    // Avoid copying the empty union member during MSVC constant evaluation.
     constexpr void operator()(const no_color_t&) const noexcept {}
 
     template <typename Color>
@@ -1894,7 +1563,8 @@ template <typename Char> class ansi_color_escape {
 
  public:
   constexpr ansi_color_escape(color_t text_color, bool is_bg) noexcept {
-    tjg::visit(color_visitor{*this, is_bg}, text_color);
+    if (!text_color.valueless_by_exception())
+      std::visit(color_visitor{*this, is_bg}, text_color);
   }
 
   constexpr ansi_color_escape(emphasis em) noexcept {
@@ -2087,7 +1757,7 @@ constexpr void append_transition(Buffer& buf, text_style target,
     buf.append(sgr.begin(), sgr.end());
   }
   auto fg = target.fg();
-  if (fg != no_color) {
+  if (!is_unspecified(fg)) {
     if (fg != initial.fg()) {
       auto sgr = make_foreground_color<Char>(fg);
       buf.append(sgr.begin(), sgr.end());
@@ -2096,7 +1766,7 @@ constexpr void append_transition(Buffer& buf, text_style target,
     append_transition_code(buf, 39);
   }
   auto bg = target.bg();
-  if (bg != no_color) {
+  if (!is_unspecified(bg)) {
     if (bg != initial.bg()) {
       auto sgr = make_background_color<Char>(bg);
       buf.append(sgr.begin(), sgr.end());
@@ -2434,16 +2104,17 @@ auto write_color_ascii(OutputIt out, const char* text) -> OutputIt {
 // Preserve the stored color kind; RGB values never require a name lookup.
 template <typename Char, typename OutputIt>
 auto write_style_value(OutputIt out, color_t value) -> OutputIt {
-  switch (static_cast<color_t::kind>(value.index())) {
-  case color_t::kind::none: return write_color_ascii<Char>(out, "no_color");
-  case color_t::kind::rgb:  {
-    const auto packed = to_underlying(tjg::get<rgb>(value));
+  switch (static_cast<color_kind>(value.index())) {
+  case color_kind::none:
+  default: return write_color_ascii<Char>(out, "no_color");
+  case color_kind::rgb:  {
+    const auto packed = to_underlying(std::get<rgb>(value));
     *out++ = static_cast<Char>('#');
     for (int shift = 20; shift >= 0; shift -= 4)
       *out++ = static_cast<Char>("0123456789abcdef"[(packed >> shift) & 15]);
     return out;
   }
-  case color_t::kind::term: {
+  case color_kind::term: {
     static const char* const names[] = {"black",        "red",
                                         "green",        "yellow",
                                         "blue",         "magenta",
@@ -2452,28 +2123,27 @@ auto write_style_value(OutputIt out, color_t value) -> OutputIt {
                                         "bright_green", "bright_yellow",
                                         "bright_blue",  "bright_magenta",
                                         "bright_cyan",  "bright_white"};
-    const auto index = to_underlying(tjg::get<term_color>(value));
+    const auto index = to_underlying(std::get<term_color>(value));
     if (index < 0 || index >= 16)
       detail::standard_format_error("invalid terminal color");
     return write_color_ascii<Char>(out, names[index]);
   }
-  case color_t::kind::cube: {
-    const auto color = tjg::get<cube_color>(value);
+  case color_kind::cube: {
+    const auto color = std::get<cube_color>(value);
     out = write_color_ascii<Char>(out, "cube");
     *out++ = static_cast<Char>('0' + color.r());
     *out++ = static_cast<Char>('0' + color.g());
     *out++ = static_cast<Char>('0' + color.b());
     return out;
   }
-  case color_t::kind::gray: {
-    const auto index = to_underlying(tjg::get<gray_color>(value));
+  case color_kind::gray: {
+    const auto index = to_underlying(std::get<gray_color>(value));
     out = write_color_ascii<Char>(out, "gray");
     if (index >= 10) *out++ = static_cast<Char>('0' + index / 10);
     *out++ = static_cast<Char>('0' + index % 10);
     return out;
   }
   }
-  return out;
 }
 
 template <typename Char, typename OutputIt>
@@ -2819,7 +2489,7 @@ template <> struct hash<tjg::rgb> {
 
 template <> struct hash<tjg::color_t> {
   auto operator()(tjg::color_t value) const noexcept -> size_t {
-    return hash<tjg::color_t::value_type>{}(tjg::to_underlying(value));
+    return hash<tjg::color_t_value_type>{}(tjg::to_underlying(value));
   }
 };
 

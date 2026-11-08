@@ -292,8 +292,8 @@ All these members are `noexcept`. Getters are `const` and return values.  The
 color getters return the public type [`tjg::color_t`](colors.md#color-variants),
 preserving the RGB, terminal, cube, gray, or unspecified alternative. The result
 can be passed to either color setter, either style constructor, or the free
-`tjg::fg` and `tjg::bg` functions. Use `tjg::holds_alternative`, `tjg::get`,
-`tjg::get_if`, or `tjg::visit` to inspect its alternative. The emphasis getter
+`tjg::fg` and `tjg::bg` functions. Use `std::holds_alternative`, `std::get`,
+`std::get_if`, or `std::visit` to inspect its alternative. The emphasis getter
 returns `emphasis`.
 
 Getters accept empty components: color getters return an unspecified color,
@@ -323,7 +323,7 @@ auto copy = tjg::text_style{source.fg(), source.bg(), source.emph()};
 
 auto foreground = source.fg();
 auto has_foreground = source.has_fg(); // false
-auto unspecified = tjg::holds_alternative<tjg::no_color_t>(foreground); // true
+auto unspecified = std::holds_alternative<tjg::no_color_t>(foreground); // true
 ```
 
 !!! note "Backward compatibility"

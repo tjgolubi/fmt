@@ -4,8 +4,6 @@
 
 #include <cstdio>
 #include <string>
-#include <string_view>
-#include <utility>
 
 #include "gtest/gtest.h"
 
@@ -23,27 +21,7 @@ class output_redirect {
   auto restore_and_read() -> std::string;
 };
 
-template <typename Exception, typename Function>
-auto throws_message(Function&& function, std::string_view expected)
-    -> ::testing::AssertionResult {
-  try {
-    std::forward<Function>(function)();
-  } catch (const Exception& error) {
-    if (std::string_view{error.what()} == expected)
-      return ::testing::AssertionSuccess();
-    return ::testing::AssertionFailure()
-           << "Expected message: " << std::string{expected}
-           << "; actual: " << error.what();
-  } catch (...) {
-    return ::testing::AssertionFailure() << "Wrong exception type";
-  }
-  return ::testing::AssertionFailure() << "No exception thrown";
-}
 }  // namespace tjg::test
-
-#define EXPECT_THROW_MSG(statement, exception, message) \
-  EXPECT_TRUE(                                          \
-      (tjg::test::throws_message<exception>([&] { statement; }, message)))
 
 #define EXPECT_WRITE(file, statement, expected)        \
   do {                                                 \

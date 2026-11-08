@@ -393,10 +393,8 @@ They do not clear a color already present in another style when combined with
 
 ## Color variants
 
-`tjg::color_t` is a public value type for storing different kinds of color in
-one variable. It is available in C++23 and later and uses its own union-based
-implementation in every supported language mode; it does not require
-`std::variant`.
+`tjg::color_t` is an alias for
+`std::variant<tjg::no_color_t, tjg::rgb, tjg::term_color, tjg::cube_color, tjg::gray_color>`.
 
 ::: color_t
     options:
@@ -430,42 +428,28 @@ unchanged; use a style setter to replace a channel.
 
 `index` returns the active alternative's index as `std::size_t`:
 
-| Index | `color_t::kind` | Alternative  | Meaning                |
-| ----: | :-------------: | ------------ | ---------------------- |
-|     0 |      `none`     | `no_color_t` | Unspecified color      |
-|     1 |      `rgb`      | `rgb`        | Three RGB channels     |
-|     2 |      `term`     | `term_color` | Terminal palette color |
-|     3 |      `cube`     | `cube_color` | 6×6×6 palette color    |
-|     4 |      `gray`     | `gray_color` | 24-level gray color    |
+| Index | Alternative  | Meaning                |
+| ----: | ------------ | ---------------------- |
+|     0 | `no_color_t` | Unspecified color      |
+|     1 | `rgb`        | Three RGB channels     |
+|     2 | `term_color` | Terminal palette color |
+|     3 | `cube_color` | 6×6×6 palette color    |
+|     4 | `gray_color` | 24-level gray color    |
 
 RGB black and terminal black remain specified alternatives, distinct from
 `no_color_t`.
 
 ### Accessing a color
 
-::: holds_alternative
-    options:
-      color_reference: true
+`std::holds_alternative<T>(color)` reports whether the color holds `T`.
+`std::get<T>(color)` returns a reference to that alternative and throws
+`std::bad_variant_access` if `T` is inactive. `std::get_if<T>(&color)` returns
+a pointer to the alternative, or `nullptr` if `T` is inactive or the input
+pointer is null. Classification and pointer access are `noexcept`.
 
-::: get(color_t&)
-    options:
-      color_reference: true
-
-::: get_if(color_t*)
-    options:
-      color_reference: true
-
-`holds_alternative<T>(color)` reports whether the color holds `T`.
-`get<T>(color)` returns a reference to that alternative and throws
-`format_error` if another alternative is active. `get_if<T>(&color)` returns
-a pointer to the alternative, or `nullptr` for a different kind or a null
-input pointer. Classification and pointer access are `noexcept`.
-
-Both access functions also accept an index: `get<1>(color)` and
-`get_if<1>(&color)` access RGB. `T` must be one of the listed alternatives;
-an index must be in the range 0–4. An unsupported type or index is a
-compile-time error. Use `color_t::kind` values with `to_underlying` or
-`enum_cast` when selecting an index by name.
+Both access functions accept an index. `std::get<1>(color)` and
+`std::get_if<1>(&color)` access RGB. `T` must be one of the listed alternatives,
+and an index must be in the range 0–4.
 
 The `get` overloads preserve the argument's constness and value category:
 
@@ -482,12 +466,11 @@ color value.
 
 ```cpp
 tjg::color_t accent = tjg::color::coral;
-if (auto* channels = tjg::get_if<tjg::rgb>(&accent))
+if (auto* channels = std::get_if<tjg::rgb>(&accent))
   channels->g = 128;
 
-bool is_rgb = tjg::holds_alternative<tjg::rgb>(accent); // true
-constexpr auto rgb_index = tjg::enum_cast<std::size_t>(tjg::color_t::kind::rgb);
-auto red = tjg::get<rgb_index>(accent).r;
+bool is_rgb = std::holds_alternative<tjg::rgb>(accent); // true
+auto red = std::get<tjg::rgb>(accent).r;
 ```
 
 References and pointers refer to storage inside the `color_t`; they must not
@@ -496,7 +479,7 @@ values, so copy an alternative when extracting it directly:
 
 ```cpp
 auto style = tjg::text_style{tjg::color::coral};
-auto channels = tjg::get<tjg::rgb>(style.fg()); // Copies RGB before the temporary dies.
+auto channels = std::get<tjg::rgb>(style.fg()); // Copies RGB before the temporary dies.
 ```
 
 Const and mutable access, classification, and `index` support constant
@@ -507,11 +490,10 @@ evaluation in C++23.
 
 ### Visitation
 
-`tjg::visit(visitor, color)` calls the visitor with the active alternative of
-one `color_t`. It preserves the color argument's constness and value category
-and forwards the visitor. The visitor must accept all five alternatives
-with exactly the same return type. Value, reference, and `void` results are
-supported; visitor exceptions propagate.
+`std::visit(visitor, color)` calls the visitor with the active alternative.
+It preserves the color argument's constness and value category and forwards
+the visitor. The visitor must accept all five alternatives with the same
+return type. Visitor exceptions propagate.
 
 A function object with overloads works in C++23:
 
@@ -525,14 +507,14 @@ struct describe_color {
 };
 
 tjg::color_t accent = tjg::color::coral;
-const char* description = tjg::visit(describe_color{}, accent); // "RGB"
+const char* description = std::visit(describe_color{}, accent); // "RGB"
 ```
 
 A visitor can instead use a templated call operator that accepts every
 alternative. In C++23 and later, a generic lambda is another option:
 
 ```cpp
-auto payload = tjg::visit([](const auto& value) -> uint32_t {
+auto payload = std::visit([](const auto& value) -> uint32_t {
   return tjg::to_underlying(value);
 }, accent);
 ```
@@ -590,7 +572,7 @@ They do not average colors or perform alpha compositing.
 ```cpp
 tjg::color_t accent = tjg::cube_color{1, 2, 3}; // RGB equivalent {95, 135, 175}.
 accent |= tjg::gray_color{12}; // RGB {223, 135, 175}.
-bool is_rgb = tjg::holds_alternative<tjg::rgb>(accent); // true
+bool is_rgb = std::holds_alternative<tjg::rgb>(accent); // true
 ```
 
 !!! note "Changed behavior"
@@ -598,17 +580,19 @@ bool is_rgb = tjg::holds_alternative<tjg::rgb>(accent); // true
     Overlapping colors involving a terminal color previously reported an error.
     They now combine after conversion to RGB.
 
-Equality and ordering include both kind and payload: colors of different
-kinds remain distinct even when their RGB equivalents are equal. Ordering
-follows the unsigned packed value, in kind order `none`, `rgb`, `term`,
-`cube`, then `gray`, and by payload within each kind. C++20
-and later provide `std::strong_ordering` through `operator<=>`.
+Standard variant comparisons use the alternative index first, then compare
+the stored values within each alternative. Colors with different alternatives
+remain distinct even when their RGB equivalents are equal. To compare a
+variant with a concrete color, use `std::get` or construct a second `color_t`.
 `std::hash<tjg::color_t>` permits use as an unordered-container key.
 
-`color_t::value_type` and `underlying_type<color_t>::type` are `uint32_t`.
+`tjg::underlying_type<tjg::color_t>::type` is `uint32_t`.
 `tjg::to_underlying(color)` returns the packed representation used by
 `text_style`, including the alternative's discriminator and payload. This
 encoding and its hash values are not stable serialization formats.
+
+If a throwing operation leaves a variant valueless, TJG treats it as
+unspecified when packing, formatting, blending, or composing colors.
 
 ## Readable color output
 

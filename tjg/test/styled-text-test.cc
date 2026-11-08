@@ -22,11 +22,11 @@ CHECK_NO_MEMBER(begin);
 #undef CHECK_NO_MEMBER
 
 template<typename T> auto has_get(int)
-    -> decltype(tjg::get<typename T::string_type>(std::declval<T&>()),
+    -> decltype(std::get<typename T::string_type>(std::declval<T&>()),
                 std::true_type{});
 template<typename> auto has_get(...) -> std::false_type;
 template<typename T> auto has_holds(int)
-    -> decltype(tjg::holds_alternative<typename T::string_type>(
+    -> decltype(std::holds_alternative<typename T::string_type>(
                     std::declval<const T&>()), std::true_type{});
 template<typename> auto has_holds(...) -> std::false_type;
 
@@ -325,8 +325,7 @@ void check_overlay() {
   auto member = source;
   EXPECT_EQ(&member.overlay(overrides), &member);
   EXPECT_EQ(member, expected);
-  EXPECT_EQ(member.style().fg().index(),
-            tjg::to_underlying(tjg::color_t::kind::term));
+  EXPECT_TRUE(std::holds_alternative<tjg::term_color>(member.style().fg()));
   EXPECT_EQ(member.plain_text(), text<Char>("leftright"));
   member.overlay(tjg::text_style{}).overlay(overrides);
   EXPECT_EQ(member, expected);

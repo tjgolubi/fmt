@@ -17,7 +17,7 @@
 #include <unordered_set>  // std::unordered_set
 #include <utility>  // std::declval, std::move
 
-#include "test-support.h"  // EXPECT_WRITE, EXPECT_THROW_MSG
+#include "test-support.h"  // EXPECT_WRITE
 
 #if TJG_COLOR_COMPACT_SGR == 1
 #  define TJG_SGR_EXPECTED(legacy, compact) compact
@@ -173,15 +173,18 @@ TEST(color_test, absolute_style_constexpr) {
 
 template<typename T>
 void check_color_comparisons(const T* values, size_t count) {
-  static_assert(noexcept(T{} == T{}), "equality must be noexcept");
-  static_assert(noexcept(T{} != T{}), "inequality must be noexcept");
-  static_assert(noexcept(T{} < T{}), "ordering must be noexcept");
-  static_assert(noexcept(T{} <= T{}), "ordering must be noexcept");
-  static_assert(noexcept(T{} > T{}), "ordering must be noexcept");
-  static_assert(noexcept(T{} >= T{}), "ordering must be noexcept");
+  if constexpr (!std::is_same_v<T, tjg::color_t>) {
+    static_assert(noexcept(T{} == T{}), "equality must be noexcept");
+    static_assert(noexcept(T{} != T{}), "inequality must be noexcept");
+    static_assert(noexcept(T{} < T{}), "ordering must be noexcept");
+    static_assert(noexcept(T{} <= T{}), "ordering must be noexcept");
+    static_assert(noexcept(T{} > T{}), "ordering must be noexcept");
+    static_assert(noexcept(T{} >= T{}), "ordering must be noexcept");
+  }
   static_assert(T{} == T{}, "default values must compare equal");
   static_assert(!(T{} < T{}), "ordering must be irreflexive");
-  static_assert(noexcept(T{} <=> T{}), "three-way comparison must be noexcept");
+  if constexpr (!std::is_same_v<T, tjg::color_t>)
+    static_assert(noexcept(T{} <=> T{}), "three-way comparison must be noexcept");
   static_assert(std::is_same<decltype(T{} <=> T{}),
                              std::strong_ordering>::value,
                 "integral representations must have a strong ordering");
@@ -700,9 +703,9 @@ TEST(color_test, color_sentinels) {
                 "the unspecified sentinel has no payload");
   static_assert(std::is_default_constructible<no_color_t>::value,
                 "the unspecified sentinel must be constructible");
-  // GCC 4.9's standard library does not provide this trait.
-  static_assert(std::is_trivially_copyable<tjg::color_t>::value,
-                "alternative replacement relies on trivial union copying");
+  static_assert(std::is_same_v<
+                tjg::color_t, std::variant<no_color_t, tjg::rgb, tjg::term_color,
+                                           tjg::cube_color, tjg::gray_color>>);
   static_assert(std::is_same<tjg::underlying_type<no_color_t>::type,
                              unsigned>::value,
                 "the sentinel has an unsigned numeric representation");
@@ -857,8 +860,8 @@ TEST(color_test, text_style_overlay_constexpr) {
                     tjg::overlay(tjg::text_style{}, base) == base &&
                     tjg::overlay(base, base) == base,
                 "free overlay must preserve empty and equal cases");
-  static_assert(base.fg() == tjg::term_color::red &&
-                    overrides.fg() == tjg::rgb{},
+  static_assert(std::get<tjg::term_color>(base.fg()) == tjg::term_color::red &&
+                    std::get<tjg::rgb>(overrides.fg()) == tjg::rgb{},
                 "free overlay must preserve its inputs");
 }
 
@@ -1162,9 +1165,9 @@ void check_color_access(T value) {
                     noexcept(std::declval<color_t&>() = value),
                 "construction and alternative assignment must be noexcept");
 #define CHECK_COLOR_GET(Color, Result)                                      \
-  static_assert(std::is_same<decltype(tjg::get<T>(std::declval<Color>())),    \
+  static_assert(std::is_same<decltype(std::get<T>(std::declval<Color>())),    \
                              Result>::value &&                             \
-                    std::is_same<decltype(tjg::get<Index>(                  \
+                    std::is_same<decltype(std::get<Index>(                  \
                                      std::declval<Color>())),              \
                                  Result>::value,                           \
                 "type and index access must preserve cv/ref qualifiers")
@@ -1173,9 +1176,9 @@ void check_color_access(T value) {
   CHECK_COLOR_GET(color_t&&, T&&);
   CHECK_COLOR_GET(const color_t&&, const T&&);
 #undef CHECK_COLOR_GET
-  static_assert(std::is_same<decltype(tjg::get_if<T>(
+  static_assert(std::is_same<decltype(std::get_if<T>(
                                  std::declval<color_t*>())), T*>::value &&
-                    std::is_same<decltype(tjg::get_if<Index>(
+                    std::is_same<decltype(std::get_if<Index>(
                                      std::declval<const color_t*>())),
                                  const T*>::value,
                 "pointer access must preserve constness");
@@ -1183,30 +1186,30 @@ void check_color_access(T value) {
   color_t color = value;
   const color_t& constant = color;
   EXPECT_EQ(color.index(), Index);
-  EXPECT_TRUE(tjg::holds_alternative<T>(constant));
-  EXPECT_EQ(&tjg::get<T>(color), &tjg::get<Index>(color));
-  EXPECT_EQ(&tjg::get<T>(constant), &tjg::get<Index>(constant));
-  EXPECT_EQ(tjg::get_if<T>(&color), &tjg::get<T>(color));
-  EXPECT_EQ(tjg::get_if<Index>(&color), &tjg::get<T>(color));
-  EXPECT_EQ(tjg::get_if<T>(&constant), &tjg::get<T>(constant));
-  EXPECT_EQ(tjg::get_if<Index>(&constant), &tjg::get<T>(constant));
-  EXPECT_EQ(tjg::get_if<T>(static_cast<color_t*>(nullptr)), nullptr);
-  EXPECT_EQ(tjg::get_if<T>(static_cast<const color_t*>(nullptr)), nullptr);
-  EXPECT_EQ(tjg::get_if<Index>(static_cast<color_t*>(nullptr)), nullptr);
-  EXPECT_EQ(tjg::get_if<Index>(static_cast<const color_t*>(nullptr)), nullptr);
-  static_assert(noexcept(tjg::holds_alternative<T>(constant)) &&
-                    noexcept(tjg::get_if<T>(&color)) &&
-                    noexcept(tjg::get_if<T>(&constant)) &&
-                    noexcept(tjg::get_if<Index>(&color)) &&
-                    noexcept(tjg::get_if<Index>(&constant)),
+  EXPECT_TRUE(std::holds_alternative<T>(constant));
+  EXPECT_EQ(&std::get<T>(color), &std::get<Index>(color));
+  EXPECT_EQ(&std::get<T>(constant), &std::get<Index>(constant));
+  EXPECT_EQ(std::get_if<T>(&color), &std::get<T>(color));
+  EXPECT_EQ(std::get_if<Index>(&color), &std::get<T>(color));
+  EXPECT_EQ(std::get_if<T>(&constant), &std::get<T>(constant));
+  EXPECT_EQ(std::get_if<Index>(&constant), &std::get<T>(constant));
+  EXPECT_EQ(std::get_if<T>(static_cast<color_t*>(nullptr)), nullptr);
+  EXPECT_EQ(std::get_if<T>(static_cast<const color_t*>(nullptr)), nullptr);
+  EXPECT_EQ(std::get_if<Index>(static_cast<color_t*>(nullptr)), nullptr);
+  EXPECT_EQ(std::get_if<Index>(static_cast<const color_t*>(nullptr)), nullptr);
+  static_assert(noexcept(std::holds_alternative<T>(constant)) &&
+                    noexcept(std::get_if<T>(&color)) &&
+                    noexcept(std::get_if<T>(&constant)) &&
+                    noexcept(std::get_if<Index>(&color)) &&
+                    noexcept(std::get_if<Index>(&constant)),
                 "classification and pointer access must be noexcept");
-  EXPECT_EQ(tjg::to_underlying(tjg::get<T>(std::move(color))),
+  EXPECT_EQ(tjg::to_underlying(std::get<T>(std::move(color))),
             tjg::to_underlying(value));
-  EXPECT_EQ(tjg::to_underlying(tjg::get<Index>(std::move(color))),
+  EXPECT_EQ(tjg::to_underlying(std::get<Index>(std::move(color))),
             tjg::to_underlying(value));
-  EXPECT_EQ(tjg::to_underlying(tjg::get<T>(std::move(constant))),
+  EXPECT_EQ(tjg::to_underlying(std::get<T>(std::move(constant))),
             tjg::to_underlying(value));
-  EXPECT_EQ(tjg::to_underlying(tjg::get<Index>(std::move(constant))),
+  EXPECT_EQ(tjg::to_underlying(std::get<Index>(std::move(constant))),
             tjg::to_underlying(value));
 
   const color_t alternatives[] = {tjg::no_color, tjg::rgb{},
@@ -1215,20 +1218,19 @@ void check_color_access(T value) {
   for (auto other : alternatives) {
     if (other.index() == Index) continue;
     const auto& const_other = other;
-    EXPECT_FALSE(tjg::holds_alternative<T>(other));
-    EXPECT_EQ(tjg::get_if<T>(&other), nullptr);
-    EXPECT_EQ(tjg::get_if<T>(&const_other), nullptr);
-    EXPECT_EQ(tjg::get_if<Index>(&other), nullptr);
-    EXPECT_EQ(tjg::get_if<Index>(&const_other), nullptr);
-    EXPECT_THROW_MSG((void)tjg::get<T>(other), std::format_error,
-                     "wrong color_t alternative");
-    EXPECT_THROW((void)tjg::get<T>(const_other), std::format_error);
-    EXPECT_THROW((void)tjg::get<T>(std::move(other)), std::format_error);
-    EXPECT_THROW((void)tjg::get<T>(std::move(const_other)), std::format_error);
-    EXPECT_THROW((void)tjg::get<Index>(other), std::format_error);
-    EXPECT_THROW((void)tjg::get<Index>(const_other), std::format_error);
-    EXPECT_THROW((void)tjg::get<Index>(std::move(other)), std::format_error);
-    EXPECT_THROW((void)tjg::get<Index>(std::move(const_other)), std::format_error);
+    EXPECT_FALSE(std::holds_alternative<T>(other));
+    EXPECT_EQ(std::get_if<T>(&other), nullptr);
+    EXPECT_EQ(std::get_if<T>(&const_other), nullptr);
+    EXPECT_EQ(std::get_if<Index>(&other), nullptr);
+    EXPECT_EQ(std::get_if<Index>(&const_other), nullptr);
+    EXPECT_THROW((void)std::get<T>(other), std::bad_variant_access);
+    EXPECT_THROW((void)std::get<T>(const_other), std::bad_variant_access);
+    EXPECT_THROW((void)std::get<T>(std::move(other)), std::bad_variant_access);
+    EXPECT_THROW((void)std::get<T>(std::move(const_other)), std::bad_variant_access);
+    EXPECT_THROW((void)std::get<Index>(other), std::bad_variant_access);
+    EXPECT_THROW((void)std::get<Index>(const_other), std::bad_variant_access);
+    EXPECT_THROW((void)std::get<Index>(std::move(other)), std::bad_variant_access);
+    EXPECT_THROW((void)std::get<Index>(std::move(const_other)), std::bad_variant_access);
   }
 }
 
@@ -1242,18 +1244,13 @@ void check_color_assignment(T replacement) {
     EXPECT_EQ(&(color = replacement), &color);
     EXPECT_EQ(color, expected);
     // Assignment from the active member must read it before replacing storage.
-    EXPECT_EQ(&(color = tjg::get<T>(color)), &color);
+    EXPECT_EQ(&(color = std::get<T>(color)), &color);
     EXPECT_EQ(color, expected);
   }
 }
 
 struct color_kind_visitor {
-#if defined(_MSC_VER) && _MSC_VER >= 1929 && _MSC_VER <= 1944 && !defined(__clang__)
-  // MSVC 19.29 and 19.44 reject copying the empty union member in constexpr.
   constexpr size_t operator()(const tjg::no_color_t&) const { return 0; }
-#else
-  constexpr size_t operator()(tjg::no_color_t) const { return 0; }
-#endif
   constexpr size_t operator()(tjg::rgb) const { return 1; }
   constexpr size_t operator()(tjg::term_color) const { return 2; }
   constexpr size_t operator()(tjg::cube_color) const { return 3; }
@@ -1264,11 +1261,11 @@ template<typename T, size_t Index>
 constexpr bool check_color_constexpr_access(tjg::color_t&& color) {
   return
          // GCC 4.9 rejects constexpr pointer comparisons involving temporaries.
-         tjg::get_if<T>(&color) == &tjg::get<Index>(color) &&
-         tjg::get_if<Index>(&color) == &tjg::get<T>(color) &&
-         color_kind_visitor{}(tjg::get<Index>(std::move(color))) == Index &&
-         tjg::visit(color_kind_visitor{}, color) == Index &&
-         tjg::visit(color_kind_visitor{}, std::move(color)) == Index &&
+         std::get_if<T>(&color) == &std::get<Index>(color) &&
+         std::get_if<Index>(&color) == &std::get<T>(color) &&
+         color_kind_visitor{}(std::get<Index>(std::move(color))) == Index &&
+         std::visit(color_kind_visitor{}, color) == Index &&
+         std::visit(color_kind_visitor{}, std::move(color)) == Index &&
          tjg::fg(color).fg() == color && tjg::bg(color).bg() == color;
 }
 
@@ -1318,19 +1315,19 @@ struct color_throwing_visitor {
 constexpr bool check_color_constexpr_assignment() {
   tjg::color_t color;
   color = tjg::rgb{1, 2, 3};
-  tjg::get<tjg::rgb>(color).r = 4;
-  tjg::get_if<1>(&color)->b = 5;
-  bool rgb_ok = tjg::get<1>(color) == tjg::rgb{4, 2, 5};
+  std::get<tjg::rgb>(color).r = 4;
+  std::get_if<1>(&color)->b = 5;
+  bool rgb_ok = std::get<1>(color) == tjg::rgb{4, 2, 5};
   color = tjg::term_color::black;
-  bool terminal_ok = tjg::holds_alternative<tjg::term_color>(color) &&
-                     tjg::get<2>(color) == tjg::term_color::black;
+  bool terminal_ok = std::holds_alternative<tjg::term_color>(color) &&
+                     std::get<2>(color) == tjg::term_color::black;
   color = tjg::cube_color{215};
-  bool cube_ok = tjg::get<3>(color) == tjg::cube_color{215};
+  bool cube_ok = std::get<3>(color) == tjg::cube_color{215};
   color = tjg::gray_color{23};
-  bool gray_ok = tjg::get<4>(color) == tjg::gray_color{23};
+  bool gray_ok = std::get<4>(color) == tjg::gray_color{23};
   color = tjg::no_color;
   return rgb_ok && terminal_ok && cube_ok && gray_ok &&
-         tjg::holds_alternative<tjg::no_color_t>(color);
+         std::holds_alternative<tjg::no_color_t>(color);
 }
 }  // namespace
 
@@ -1345,14 +1342,14 @@ TEST(color_test, color_variant_access) {
   check_color_access<tjg::gray_color, 4>(tjg::gray_color{0});
   check_color_access<tjg::gray_color, 4>(tjg::gray_color{23});
   auto color = tjg::color_t{tjg::rgb{1, 2, 3}};
-  tjg::get<tjg::rgb>(color).r = 4;
-  tjg::get<1>(color).g = 5;
-  tjg::get_if<tjg::rgb>(&color)->b = 6;
-  tjg::get_if<1>(&color)->r = 7;
-  EXPECT_EQ(tjg::get<tjg::rgb>(color), (tjg::rgb{7, 5, 6}));
-  EXPECT_EQ(tjg::get_if<2>(&color), nullptr);
-  EXPECT_EQ(tjg::get_if<tjg::gray_color>(&color), nullptr);
-  EXPECT_THROW((void)tjg::get<2>(color), std::format_error);
+  std::get<tjg::rgb>(color).r = 4;
+  std::get<1>(color).g = 5;
+  std::get_if<tjg::rgb>(&color)->b = 6;
+  std::get_if<1>(&color)->r = 7;
+  EXPECT_EQ(std::get<tjg::rgb>(color), (tjg::rgb{7, 5, 6}));
+  EXPECT_EQ(std::get_if<2>(&color), nullptr);
+  EXPECT_EQ(std::get_if<tjg::gray_color>(&color), nullptr);
+  EXPECT_THROW((void)std::get<2>(color), std::bad_variant_access);
 }
 
 TEST(color_test, color_variant_assignment) {
@@ -1391,25 +1388,25 @@ TEST(color_test, color_variant_visit) {
   for (size_t i = 0; i < 5; ++i) {
     auto color = colors[i];
     const auto& constant = color;
-    EXPECT_EQ(tjg::visit(color_kind_visitor{}, constant), color.index());
+    EXPECT_EQ(std::visit(color_kind_visitor{}, constant), color.index());
     color_category_visitor visitor;
-    EXPECT_EQ(tjg::visit(visitor, color), 0u);
-    EXPECT_EQ(tjg::visit(visitor, constant), 1u);
-    EXPECT_EQ(tjg::visit(visitor, std::move(color)), 2u);
-    EXPECT_EQ(tjg::visit(visitor, std::move(constant)), 3u);
-    EXPECT_EQ(tjg::visit(std::move(visitor), color), 4u);
-    EXPECT_EQ(tjg::visit(std::move(visitor), constant), 5u);
-    EXPECT_EQ(tjg::visit(std::move(visitor), std::move(color)), 6u);
-    EXPECT_EQ(tjg::visit(std::move(visitor), std::move(constant)), 7u);
+    EXPECT_EQ(std::visit(visitor, color), 0u);
+    EXPECT_EQ(std::visit(visitor, constant), 1u);
+    EXPECT_EQ(std::visit(visitor, std::move(color)), 2u);
+    EXPECT_EQ(std::visit(visitor, std::move(constant)), 3u);
+    EXPECT_EQ(std::visit(std::move(visitor), color), 4u);
+    EXPECT_EQ(std::visit(std::move(visitor), constant), 5u);
+    EXPECT_EQ(std::visit(std::move(visitor), std::move(color)), 6u);
+    EXPECT_EQ(std::visit(std::move(visitor), std::move(constant)), 7u);
     int calls = 0;
-    tjg::visit(color_mutating_visitor{calls}, color);
+    std::visit(color_mutating_visitor{calls}, color);
     EXPECT_EQ(calls, 1);
     EXPECT_EQ(color, changed[i]);
     int result = 0;
-    EXPECT_EQ(&tjg::visit(color_reference_visitor{result}, color), &result);
-    tjg::visit(color_reference_visitor{result}, color) = 9;
+    EXPECT_EQ(&std::visit(color_reference_visitor{result}, color), &result);
+    std::visit(color_reference_visitor{result}, color) = 9;
     EXPECT_EQ(result, 9);
-    EXPECT_THROW(tjg::visit(color_throwing_visitor{}, color), int);
+    EXPECT_THROW(std::visit(color_throwing_visitor{}, color), int);
     EXPECT_EQ(color, changed[i]);
   }
 }
@@ -1427,8 +1424,8 @@ TEST(color_test, color_variant_constexpr) {
   constexpr tjg::color_t terminal = tjg::term_color::black;
   constexpr tjg::color_t cube = tjg::cube_color{215};
   constexpr tjg::color_t gray = tjg::gray_color{23};
-  static_assert(tjg::get<3>(cube) == tjg::cube_color{215} &&
-                    tjg::get<4>(gray) == tjg::gray_color{23},
+  static_assert(std::get<3>(cube) == tjg::cube_color{215} &&
+                    std::get<4>(gray) == tjg::gray_color{23},
                 "palette access must be constexpr in C++11");
   static_assert(tjg::detail::unpack_color(tjg::to_underlying(cube)) == cube &&
                     tjg::detail::unpack_color(tjg::to_underlying(gray)) == gray,
@@ -1437,24 +1434,24 @@ TEST(color_test, color_variant_constexpr) {
   static_assert(palette_style.fg() == cube && palette_style.bg() == gray &&
                     palette_style.emph() == tjg::emphasis::bold,
                 "palette style getters must be constexpr in C++11");
-  static_assert(empty.index() == 0 && tjg::holds_alternative<tjg::no_color_t>(empty),
+  static_assert(empty.index() == 0 && std::holds_alternative<tjg::no_color_t>(empty),
                 "default construction must hold the unspecified alternative");
-  static_assert(rgb.index() == 1 && tjg::get<tjg::rgb>(rgb).g == 2 &&
-                    tjg::get<1>(rgb).b == 3,
+  static_assert(rgb.index() == 1 && std::get<tjg::rgb>(rgb).g == 2 &&
+                    std::get<1>(rgb).b == 3,
                 "RGB type and index access must be constexpr in C++11");
   static_assert(terminal.index() == 2 &&
-                    tjg::get<tjg::term_color>(terminal) == tjg::term_color::black,
+                    std::get<tjg::term_color>(terminal) == tjg::term_color::black,
                 "terminal black must remain specified in constant evaluation");
-  static_assert(tjg::get_if<1>(&rgb) == &tjg::get<tjg::rgb>(rgb) &&
-                    tjg::get_if<tjg::term_color>(&rgb) == nullptr &&
-                    tjg::get_if<0>(static_cast<const tjg::color_t*>(nullptr)) ==
+  static_assert(std::get_if<1>(&rgb) == &std::get<tjg::rgb>(rgb) &&
+                    std::get_if<tjg::term_color>(&rgb) == nullptr &&
+                    std::get_if<0>(static_cast<const tjg::color_t*>(nullptr)) ==
                         nullptr,
                 "pointer access must be constexpr in C++11");
-  static_assert(tjg::visit(color_kind_visitor{}, empty) == 0 &&
-                    tjg::visit(color_kind_visitor{}, rgb) == 1 &&
-                    tjg::visit(color_kind_visitor{}, terminal) == 2 &&
-                    tjg::visit(color_kind_visitor{}, cube) == 3 &&
-                    tjg::visit(color_kind_visitor{}, gray) == 4,
+  static_assert(std::visit(color_kind_visitor{}, empty) == 0 &&
+                    std::visit(color_kind_visitor{}, rgb) == 1 &&
+                    std::visit(color_kind_visitor{}, terminal) == 2 &&
+                    std::visit(color_kind_visitor{}, cube) == 3 &&
+                    std::visit(color_kind_visitor{}, gray) == 4,
                 "visitation must be constexpr in C++11");
   static_assert(check_color_constexpr_assignment(),
                 "replacement and mutable access must support constant evaluation");
@@ -1474,18 +1471,18 @@ TEST(color_test, color_variant_style_values) {
   auto background = tjg::color_t{tjg::term_color::black};
   const auto style =
       tjg::text_style{foreground, background, tjg::emphasis::strike};
-  tjg::get<1>(foreground).r = 255;
-  tjg::get<2>(background) = tjg::term_color::white;
-  EXPECT_EQ(tjg::get<tjg::rgb>(style.fg()), (tjg::rgb{1, 2, 3}));
-  EXPECT_EQ(tjg::get<tjg::term_color>(style.bg()), tjg::term_color::black);
+  std::get<1>(foreground).r = 255;
+  std::get<2>(background) = tjg::term_color::white;
+  EXPECT_EQ(std::get<tjg::rgb>(style.fg()), (tjg::rgb{1, 2, 3}));
+  EXPECT_EQ(std::get<tjg::term_color>(style.bg()), tjg::term_color::black);
   auto extracted = style.fg();
-  tjg::get<1>(extracted).b = 255;
-  EXPECT_EQ(tjg::get<1>(style.fg()).b, 3);
+  std::get<1>(extracted).b = 255;
+  EXPECT_EQ(std::get<1>(style.fg()).b, 3);
   // Copying an alternative from a temporary color is safe.
-  auto copy = tjg::get<tjg::rgb>(style.fg());
+  auto copy = std::get<tjg::rgb>(style.fg());
   copy.g = 255;
   EXPECT_EQ(copy, (tjg::rgb{1, 255, 3}));
-  EXPECT_EQ(tjg::get<1>(style.fg()).g, 2);
+  EXPECT_EQ(std::get<1>(style.fg()).g, 2);
   EXPECT_EQ(tjg::format(style, "value"),
             TJG_SGR_EXPECTED(
                 "\x1b[9m\x1b[38;2;001;002;003m\x1b[40mvalue\x1b[0m",
@@ -2320,9 +2317,9 @@ TEST(color_test, short_names_compatibility) {
     const auto color = static_cast<term_color>(i);
     const auto legacy = static_cast<tjg::terminal_color>(i);
     const auto stored = tjg::color_t{color};
-    EXPECT_EQ(tjg::get<tjg::terminal_color>(stored), color);
-    EXPECT_TRUE(tjg::holds_alternative<tjg::terminal_color>(stored));
-    EXPECT_EQ(tjg::get<term_color>(
+    EXPECT_EQ(std::get<tjg::terminal_color>(stored), color);
+    EXPECT_TRUE(std::holds_alternative<tjg::terminal_color>(stored));
+    EXPECT_EQ(std::get<term_color>(
                   tjg::color_t{legacy}), color);
     EXPECT_EQ(tjg::format(fg(color), "fg"), tjg::format(fg(legacy), "fg"));
     EXPECT_EQ(tjg::format(bg(color), "bg"), tjg::format(bg(legacy), "bg"));
@@ -2672,8 +2669,10 @@ TEST(color_test, text_style_underlay_constexpr) {
   constexpr auto base = tjg::fg(tjg::term_color::yellow);
   constexpr auto defaults = tjg::fg(tjg::term_color::white).bg(tjg::term_color::blue);
   constexpr auto result = tjg::underlay(base, defaults);
-  static_assert(result.fg() == tjg::term_color::yellow, "preserve foreground");
-  static_assert(result.bg() == tjg::term_color::blue, "supply background");
+  static_assert(std::get<tjg::term_color>(result.fg()) == tjg::term_color::yellow,
+                "preserve foreground");
+  static_assert(std::get<tjg::term_color>(result.bg()) == tjg::term_color::blue,
+                "supply background");
   constexpr auto member = tjg::text_style{base}.underlay(defaults);
   static_assert(member == result, "member and free underlay agree");
 }
