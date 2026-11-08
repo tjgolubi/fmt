@@ -11,7 +11,6 @@
 #define TJG_COLOR_H_
 
 #include <algorithm>
-#include <cassert>
 #include <compare>
 #include <concepts>
 #include <cstdint>
@@ -27,6 +26,7 @@
 #include <utility>
 #include <variant>
 
+#include "error_support.h"
 #include "format_support.h"
 #include "memory_buffer.h"
 #include "tree_format_specs.h"
@@ -167,7 +167,7 @@ struct rgb {
   [[nodiscard]] static constexpr auto check_arg(int v) noexcept -> chan_type {
     return (v >= 0 && v <= 255)
                ? narrow_cast<chan_type>(v)
-               : (assert((false) && ("rgb::rgb: channel out of range")),
+               : (TJG_ASSERT(false, "rgb::rgb: channel out of range"),
                   narrow_cast<chan_type>(v < 0 ? 0 : 255));
   }
 
@@ -268,7 +268,7 @@ constexpr auto checked_term_index(term_color clr) noexcept -> int8_t {
   return (to_underlying(clr) >= 0 &&
           to_underlying(clr) <= to_underlying(term_color::bright_white))
              ? to_underlying(clr)
-             : (assert((false) && ("rgb::rgb: terminal color out of range")),
+             : (TJG_ASSERT(false, "rgb::rgb: terminal color out of range"),
                 to_underlying(clr));
 }
 
@@ -294,8 +294,7 @@ struct gray_color {
   [[nodiscard]] static constexpr chan_type check_arg(int v) noexcept {
     return (v >= 0 && v < 24)
                ? narrow_cast<chan_type>(v)
-               : (assert((false) &&
-                         ("gray_color::gray_color: index out of range")),
+               : (TJG_ASSERT(false, "gray_color::gray_color: index out of range"),
                   narrow_cast<chan_type>(v < 0 ? 0 : 23));
   }
 
@@ -349,16 +348,15 @@ struct cube_color {
   static constexpr auto check_arg(int v) noexcept -> chan_type {
     return (v >= 0 && v < 6)
                ? narrow_cast<chan_type>(v)
-               : (assert((false) &&
-                         ("cube_color::cube_color: channel out of range")),
+               : (TJG_ASSERT(false, "cube_color::cube_color: channel out of range"),
                   narrow_cast<chan_type>(v < 0 ? 0 : 5));
   }
 
   [[nodiscard]] static constexpr auto check_index(unsigned v) noexcept
       -> value_type {
     return v <= 215 ? narrow_cast<value_type>(v)
-                    : (assert((false) &&
-                              ("cube_color::cube_color: index out of range")),
+                    : (TJG_ASSERT(false,
+                                  "cube_color::cube_color: index out of range"),
                        value_type{215});
   }
 
@@ -1289,8 +1287,8 @@ constexpr auto checked_blend_style(const text_style& style) noexcept
     -> const text_style& {
   return !style.is_absolute() || (style.has_fg() && style.has_bg())
              ? style
-             : (assert((false) && ("cannot blend an absolute style with "
-                                   "terminal-default colors")),
+             : (TJG_ASSERT(false, "cannot blend an absolute style with "
+                                  "terminal-default colors"),
                 style);
 }
 

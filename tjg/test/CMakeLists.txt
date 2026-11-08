@@ -52,6 +52,7 @@ tjg_test_options(tjg-test-main)
 
 foreach (
   name
+  error-support
   color
   color-debug
   color-std-format
@@ -69,6 +70,12 @@ foreach (
   tjg_test_options(${name}-test)
   add_test(NAME ${name}-test COMMAND ${name}-test)
 endforeach ()
+
+add_executable(error-support-release-test error-support-test.cc)
+target_link_libraries(error-support-release-test PRIVATE tjg-test-main)
+target_compile_definitions(error-support-release-test PRIVATE NDEBUG)
+tjg_test_options(error-support-release-test)
+add_test(NAME error-support-release-test COMMAND error-support-release-test)
 
 add_executable(extension-standalone-test extension-standalone-test.cc
                                          extension-standalone-state.cc)

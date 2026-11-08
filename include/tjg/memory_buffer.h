@@ -4,12 +4,13 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <cstdlib>
 #include <limits>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+
+#include "error_support.h"
 
 namespace tjg {
 
@@ -56,11 +57,7 @@ template <typename Char, std::size_t SIZE = 500> class basic_memory_buffer {
     constexpr auto max_size =
         (std::numeric_limits<std::size_t>::max)() / sizeof(Char);
     if (count > max_size - _size) {
-#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
-      throw std::length_error("memory buffer is too large");
-#else
-      std::abort();
-#endif
+      TJG_THROW(std::length_error("memory buffer is too large"));
     }
     const auto required = _size + count;
     if (required > _capacity) {
