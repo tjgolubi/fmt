@@ -11422,27 +11422,24 @@ class CapturedStream {
                                     << temp_file_path;
     filename_ = temp_file_path;
 # else
-    // There's no guarantee that a test has write access to the current
-    // directory, so we create the temporary file in the /tmp directory
-    // instead. We use /tmp on most systems, and /sdcard on Android.
-    // That's because Android doesn't have /tmp.
+    // Honor the caller's writable temporary directory, including on Android
+    // environments such as Termux where /data/local/tmp is inaccessible.
+    const char* temp_dir = posix::GetEnv("TMPDIR");
+    if (temp_dir == nullptr || temp_dir[0] == '\0') {
 #  if GTEST_OS_LINUX_ANDROID
-    // Note: Android applications are expected to call the framework's
-    // Context.getExternalStorageDirectory() method through JNI to get
-    // the location of the world-writable SD Card directory. However,
-    // this requires a Context handle, which cannot be retrieved
-    // globally from native code. Doing so also precludes running the
-    // code as part of a regular standalone executable, which doesn't
-    // run in a Dalvik process (e.g. when running it through 'adb shell').
-    //
-    // The location /data/local/tmp is directly accessible from native code.
-    // '/sdcard' and other variants cannot be relied on, as they are not
-    // guaranteed to be mounted, or may have a delay in mounting.
-    char name_template[] = "/data/local/tmp/gtest_captured_stream.XXXXXX";
+      temp_dir = "/data/local/tmp";
 #  else
-    char name_template[] = "/tmp/captured_stream.XXXXXX";
+      temp_dir = "/tmp";
 #  endif  // GTEST_OS_LINUX_ANDROID
-    const int captured_fd = mkstemp(name_template);
+    }
+    std::string name_template(temp_dir);
+    if (name_template.back() != '/') name_template += '/';
+    name_template += "gtest_captured_stream.XXXXXX";
+    std::vector<char> writable_template(name_template.begin(),
+                                        name_template.end());
+    writable_template.push_back('\0');
+    const int captured_fd = mkstemp(writable_template.data());
+    name_template = writable_template.data();
     if (captured_fd == -1) {
       GTEST_LOG_(WARNING)
           << "Failed to create tmp file " << name_template
