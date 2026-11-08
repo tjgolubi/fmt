@@ -98,7 +98,9 @@ template <typename Char>
 
 namespace detail {
 struct styled_text_ansi_stripper {
-  template <typename Char> static void strip(basic_styled_text<Char>& text) {
+  template <typename Char>
+  static void strip(basic_styled_text<Char>& text)
+      TJG_NOEXCEPT_UNLESS_BAD_ALLOC {
     if (text._is_branch) {
       for (auto& child : text._data.children) strip(child);
     } else if (text._data.text) {
@@ -123,6 +125,7 @@ struct styled_text_ansi_stripper {
  */
 template <typename Char>
 [[nodiscard]] auto strip_ansi(basic_styled_text<Char> input)
+    TJG_NOEXCEPT_UNLESS_BAD_ALLOC
     -> basic_styled_text<Char> {
   detail::styled_text_ansi_stripper::strip(input);
   return input;

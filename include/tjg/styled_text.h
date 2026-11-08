@@ -111,6 +111,7 @@ template <typename Char> class basic_styled_text {
   basic_styled_text() : _style{}, _is_branch{false}, _data{leaf{}} {}
 
   basic_styled_text(string_type text, text_style style = {})
+      TJG_NOEXCEPT_UNLESS_BAD_ALLOC
       : _style{style},
         _is_branch{false},
         _data{text.empty()
@@ -121,6 +122,7 @@ template <typename Char> class basic_styled_text {
       : basic_styled_text{string_type{text}, style} {}
 
   basic_styled_text(const basic_styled_text& other)
+      TJG_NOEXCEPT_UNLESS_BAD_ALLOC
       : _style{other._style}, _is_branch{other._is_branch} {
     if (_is_branch)
       new (&_data.children) branch{other._data.children};
@@ -147,7 +149,8 @@ template <typename Char> class basic_styled_text {
 
   ~basic_styled_text() { destroy(); }
 
-  auto operator=(const basic_styled_text& other) -> basic_styled_text& {
+  auto operator=(const basic_styled_text& other) TJG_NOEXCEPT_UNLESS_BAD_ALLOC
+      -> basic_styled_text& {
     if (this == &other) return *this;
     auto copy = basic_styled_text{other};
     return *this = std::move(copy);

@@ -52,6 +52,7 @@ tjg_test_options(tjg-test-main)
 
 foreach (
   name
+  allocation-noexcept
   error-support
   color
   color-debug
@@ -70,6 +71,15 @@ foreach (
   tjg_test_options(${name}-test)
   add_test(NAME ${name}-test COMMAND ${name}-test)
 endforeach ()
+
+add_executable(allocation-noexcept-enabled-test allocation-noexcept-test.cc)
+target_link_libraries(allocation-noexcept-enabled-test PRIVATE tjg-test-main)
+target_compile_definitions(
+  allocation-noexcept-enabled-test
+  PRIVATE TJG_NOEXCEPT_UNLESS_BAD_ALLOC=noexcept TJG_TEST_ALLOCATION_NOEXCEPT=1)
+tjg_test_options(allocation-noexcept-enabled-test)
+add_test(NAME allocation-noexcept-enabled-test
+         COMMAND allocation-noexcept-enabled-test)
 
 add_executable(error-support-release-test error-support-test.cc)
 target_link_libraries(error-support-release-test PRIVATE tjg-test-main)

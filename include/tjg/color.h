@@ -1717,6 +1717,7 @@ void vformat_to(Buffer& buf, text_style ts,
  */
 template <typename Char = char>
 [[nodiscard]] inline auto to_sgr(const text_style& ts)
+    TJG_NOEXCEPT_UNLESS_BAD_ALLOC
     -> std::basic_string<Char> {
   if (ts.empty()) return {};
   auto buf = basic_memory_buffer<Char, sgr_max_length>{};
@@ -1811,7 +1812,7 @@ constexpr void append_sgr_transition(Buffer& buf, text_style target,
 template <typename Char = char>
 [[nodiscard]] inline auto to_sgr(const text_style& target,
                                  const text_style& initial)
-    -> std::basic_string<Char> {
+    TJG_NOEXCEPT_UNLESS_BAD_ALLOC -> std::basic_string<Char> {
   auto buf = basic_memory_buffer<Char, sgr_max_length>{};
   detail::append_sgr_transition(buf, target, initial);
   return {buf.data(), buf.size()};
@@ -1836,6 +1837,7 @@ constexpr void append_sgr_transition(Buffer& buf, text_style target,
 
 template <typename Char = char>
 [[nodiscard]] inline auto to_sgr(text_style target, const text_style& initial)
+    TJG_NOEXCEPT_UNLESS_BAD_ALLOC
     -> std::basic_string<Char> {
   auto buf = basic_memory_buffer<Char, sgr_max_length>{};
   detail::append_sgr_transition(buf, target, initial);
