@@ -181,15 +181,12 @@ void check_color_comparisons(const T* values, size_t count) {
   static_assert(noexcept(T{} >= T{}), "ordering must be noexcept");
   static_assert(T{} == T{}, "default values must compare equal");
   static_assert(!(T{} < T{}), "ordering must be irreflexive");
-#if defined(__cpp_lib_three_way_comparison) && \
-    __cpp_lib_three_way_comparison >= 201907L
   static_assert(noexcept(T{} <=> T{}), "three-way comparison must be noexcept");
   static_assert(std::is_same<decltype(T{} <=> T{}),
                              std::strong_ordering>::value,
                 "integral representations must have a strong ordering");
   static_assert((T{} <=> T{}) == std::strong_ordering::equal,
                 "default values must compare equal");
-#endif
 
   auto keys = std::map<T, size_t>();
   auto integers = std::map<uint64_t, size_t>();
@@ -205,10 +202,7 @@ void check_color_comparisons(const T* values, size_t count) {
       EXPECT_EQ(values[i] <= values[j], lhs <= rhs);
       EXPECT_EQ(values[i] > values[j], lhs > rhs);
       EXPECT_EQ(values[i] >= values[j], lhs >= rhs);
-#if defined(__cpp_lib_three_way_comparison) && \
-    __cpp_lib_three_way_comparison >= 201907L
       EXPECT_EQ(values[i] <=> values[j], lhs <=> rhs);
-#endif
     }
   }
   EXPECT_EQ(keys.size(), integers.size());
@@ -1697,13 +1691,11 @@ TEST(color_test, blend_overloads) {
                                     std::declval<tjg::gray_color>())) &&
                     noexcept(tjg::blend(tjg::color_t{}, tjg::rgb{})),
                 "both blend overloads must be noexcept");
-#if defined(__cpp_concepts) && __cpp_concepts >= 201907L
   static_assert(tjg::Color<const tjg::rgb&> && tjg::Color<tjg::term_color> &&
                     tjg::Color<tjg::cube_color> && tjg::Color<tjg::gray_color> &&
                     !tjg::Color<tjg::color_t> && !tjg::Color<tjg::no_color_t> &&
                     !tjg::Color<int>,
                 "Color identifies only plain color types");
-#endif
   constexpr auto mixed = tjg::blend(tjg::term_color::red,
                                     tjg::cube_color{1, 2, 3},
                                     tjg::gray_color{12});

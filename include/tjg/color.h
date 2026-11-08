@@ -888,13 +888,6 @@ struct is_blend_color
               std::is_same<typename std::decay<T>::type, color_t>::value ||
               std::is_same<typename std::decay<T>::type, no_color_t>::value> {};
 
-template <typename... Colors> struct all_blend_colors;
-template <> struct all_blend_colors<> : std::true_type {};
-template <typename First, typename... Rest>
-struct all_blend_colors<First, Rest...>
-    : std::integral_constant<bool, is_blend_color<First>::value &&
-                                       all_blend_colors<Rest...>::value> {};
-
 struct blend_rgb {
   constexpr auto operator()(const no_color_t&) const noexcept -> rgb {
     return rgb{};
@@ -905,7 +898,6 @@ struct blend_rgb {
   }
 };
 
-// Pass accumulated values through single-return helpers for C++11 constexpr.
 struct blend_state {
   uint64_t r, g, b;
   size_t count;
@@ -937,16 +929,6 @@ struct blend_state {
     return count < 2 ? first : color_t{average()};
   }
 };
-
-constexpr auto blend_accumulate(blend_state state) noexcept -> blend_state {
-  return state;
-}
-
-template <typename First, typename... Rest>
-constexpr auto blend_accumulate(blend_state state, First first,
-                                Rest... rest) noexcept -> blend_state {
-  return blend_accumulate(state.add(color_t{first}), rest...);
-}
 
 }  // namespace detail
 
@@ -1756,11 +1738,6 @@ namespace detail {
 template <typename Char> struct sgr_reset_storage {
   static constexpr Char value[sgr_reset_length] = {'\x1b', '[', '0', 'm'};
 };
-
-#  if __cplusplus < 201703L
-template <typename Char>
-constexpr Char sgr_reset_storage<Char>::value[sgr_reset_length];
-#  endif
 
 }  // namespace detail
 

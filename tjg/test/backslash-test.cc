@@ -44,7 +44,6 @@ constexpr auto check_constexpr_decoding() -> bool {
 static_assert(check_constexpr_decoding(),
               "constexpr octal, hex, quotes, question mark, and empty input");
 
-#if defined(__cpp_lib_constexpr_string) && __cpp_lib_constexpr_string >= 201907L
 constexpr auto check_constexpr_strings() -> bool {
   const auto encoded = tjg::backslash_escape("\x1b\n\x7f");
   const auto wide = tjg::backslash_escape(L"\x1b\n\x7f");
@@ -58,7 +57,6 @@ constexpr auto check_constexpr_strings() -> bool {
          tjg::backslash_unescape(tjg::backslash_escape(wide_input)) == wide_input;
 }
 static_assert(check_constexpr_strings(), "constexpr owning narrow/wide strings");
-#endif
 
 template <typename Char>
 auto text(const char* s) -> std::basic_string<Char> {

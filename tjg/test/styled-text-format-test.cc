@@ -406,16 +406,8 @@ TEST(styled_text_format_test, stream_insertion_options) {
   const auto tree = tjg::bold(tjg::styled_text{"ab"} +
                              tjg::styled_text{"cdefgh", tjg::fg(tjg::term_color::red)});
   const auto bold_red = tjg::bold(tjg::fg(tjg::term_color::red));
-#if defined(_MSC_VER) && _MSC_VER < 1930
-  // Older MSVC STL alignment constants and fmtflags have different types.
-  const std::ios_base::fmtflags alignments[] = {
-      std::ios_base::left, std::ios_base::right,
-      std::ios_base::internal, std::ios_base::fmtflags{}};
-  for (auto alignment : alignments) {
-#else
   for (auto alignment : {std::ios_base::left, std::ios_base::right,
                          std::ios_base::internal, std::ios_base::fmtflags{}}) {
-#endif
     std::ostringstream os;
     os.setf(alignment, std::ios_base::adjustfield);
     os << std::hex << std::setprecision(4) << std::setfill('*') << std::setw(11);
