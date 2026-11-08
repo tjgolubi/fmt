@@ -76,6 +76,23 @@ Terminal state is no longer carried by formatting contexts.
 without locking or `thread_local`. Formatting scopes restore enclosing state
 after nesting and exceptions. Do not add synchronization without discussion.
 
+## Conditional allocation exception policy
+
+When generating new {color} code, use `TJG_NOEXCEPT_UNLESS_BAD_ALLOC` from
+`<tjg/error_support.h>` on functions whose only intended escaping exception is
+`std::bad_alloc`. Audit the function and its callees; leave it unannotated when
+other exceptions are plausible, including length errors, formatting or parsing
+errors, stream failures, and exceptions from user-defined operations or iterators.
+Use ordinary `noexcept` for functions that cannot throw at all.
+
+The macro defaults to empty. Applications whose allocation-failure policy
+terminates may define it as `noexcept`, consistently across translation units
+and before including any {color} header. Test affected code with both settings
+and both SGR modes. Existing examples include owned-string styled-text
+construction, tree copying and copy assignment, bounded `to_sgr` generation,
+and tree-based ANSI stripping. This policy does not authorize changing the
+application's allocator or process-wide allocation handler.
+
 ## Build and test policy
 
 Build and test **only TJG**, not the original FMT library/regressions.
