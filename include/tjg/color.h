@@ -64,6 +64,12 @@ template <typename T> struct underlying_type {
  */
 struct no_color_t {
   constexpr auto operator<=>(const no_color_t&) const noexcept = default;
+
+#if defined(_MSC_VER) && !defined(__clang__) && _MSC_VER <= 1951
+ private:
+  // MSVC cannot constexpr-assign an empty alternative in std::variant.
+  char _dummy{'\0'};
+#endif
 };
 
 template <> struct underlying_type<no_color_t> {

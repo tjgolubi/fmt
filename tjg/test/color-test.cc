@@ -699,8 +699,16 @@ TEST(color_test, color_type_composition) {
 
 TEST(color_test, color_sentinels) {
   using tjg::no_color_t;
+#if defined(_MSC_VER) && !defined(__clang__) && _MSC_VER <= 1951
+  static_assert(sizeof(no_color_t) == sizeof(char),
+                "the MSVC sentinel workaround adds only one byte");
+#else
   static_assert(std::is_empty<no_color_t>::value,
                 "the unspecified sentinel has no payload");
+#endif
+  static_assert(no_color_t{} == no_color_t{} &&
+                    (no_color_t{} <=> no_color_t{}) == 0,
+                "default sentinel values must compare equal");
   static_assert(std::is_default_constructible<no_color_t>::value,
                 "the unspecified sentinel must be constructible");
   static_assert(std::is_same_v<
@@ -1325,12 +1333,7 @@ constexpr bool check_color_constexpr_assignment() {
   bool cube_ok = std::get<3>(color) == tjg::cube_color{215};
   color = tjg::gray_color{23};
   bool gray_ok = std::get<4>(color) == tjg::gray_color{23};
-#if defined(_MSC_VER) && !defined(__clang__) && _MSC_VER <= 1944
-  // MSVC rejects assigning the empty sentinel into variant in constant evaluation.
-  color.emplace<tjg::no_color_t>();
-#else
   color = tjg::no_color;
-#endif
   return rgb_ok && terminal_ok && cube_ok && gray_ok &&
          std::holds_alternative<tjg::no_color_t>(color);
 }
