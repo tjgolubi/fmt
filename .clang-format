@@ -13,3 +13,187 @@ AlignConsecutiveShortCaseStatements:
   AcrossEmptyLines: true
   AcrossComments: true
   AlignCaseColons: false
+# Check the most specific project interfaces before their supporting headers.
+IncludeBlocks: Regroup
+SortIncludes: CaseSensitive
+IncludeIsMainRegex: '(_test|-test)?$'
+IncludeCategories:
+  - Regex: '^[<"](tjg/)?strip_ansi\.h[>"]$'
+    Priority: 1
+    SortPriority: 1
+  - Regex: '^[<"](tjg/)?parse_styled_text\.h[>"]$'
+    Priority: 1
+    SortPriority: 2
+  - Regex: '^[<"](tjg/)?styled_text\.h[>"]$'
+    Priority: 1
+    SortPriority: 3
+  - Regex: '^[<"](tjg/)?color-ostream\.h[>"]$'
+    Priority: 1
+    SortPriority: 4
+  - Regex: '^[<"](tjg/)?backslash\.h[>"]$'
+    Priority: 1
+    SortPriority: 5
+  - Regex: '^[<"](tjg/)?color\.h[>"]$'
+    Priority: 1
+    SortPriority: 6
+  - Regex: '^[<"](tjg/)?tree_format_specs\.h[>"]$'
+    Priority: 1
+    SortPriority: 7
+  - Regex: '^[<"](tjg/)?memory_buffer\.h[>"]$'
+    Priority: 1
+    SortPriority: 8
+  - Regex: '^[<"](tjg/)?format_support\.h[>"]$'
+    Priority: 1
+    SortPriority: 9
+  - Regex: '^[<"](tjg/)?text_support\.h[>"]$'
+    Priority: 1
+    SortPriority: 10
+  - Regex: '^[<"](tjg/)?error_support\.h[>"]$'
+    Priority: 1
+    SortPriority: 11
+  - Regex: '^"standard-format-test\.h"$'
+    Priority: 1
+    SortPriority: 20
+  - Regex: '^"test-support\.h"$'
+    Priority: 1
+    SortPriority: 21
+  - Regex: '^[<"]tjg/'
+    Priority: 1
+    SortPriority: 30
+  - Regex: '^[<"](gtest|gmock|fmt)/'
+    Priority: 2
+    SortPriority: 100
+  - Regex: '^"'
+    Priority: 1
+    SortPriority: 30
+  # Higher-level C++ facilities, then containers and foundational utilities.
+  - Regex: '^<print>$'
+    Priority: 3
+    SortPriority: 200
+  - Regex: '^<format>$'
+    Priority: 3
+    SortPriority: 201
+  - Regex: '^<sstream>$'
+    Priority: 3
+    SortPriority: 202
+  - Regex: '^<iostream>$'
+    Priority: 3
+    SortPriority: 203
+  - Regex: '^<fstream>$'
+    Priority: 3
+    SortPriority: 204
+  - Regex: '^<iomanip>$'
+    Priority: 3
+    SortPriority: 205
+  - Regex: '^<ostream>$'
+    Priority: 3
+    SortPriority: 206
+  - Regex: '^<istream>$'
+    Priority: 3
+    SortPriority: 207
+  - Regex: '^<ios>$'
+    Priority: 3
+    SortPriority: 208
+  - Regex: '^<system_error>$'
+    Priority: 3
+    SortPriority: 209
+  - Regex: '^<string>$'
+    Priority: 3
+    SortPriority: 210
+  - Regex: '^<string_view>$'
+    Priority: 3
+    SortPriority: 211
+  - Regex: '^<vector>$'
+    Priority: 4
+    SortPriority: 220
+  - Regex: '^<map>$'
+    Priority: 4
+    SortPriority: 221
+  - Regex: '^<unordered_map>$'
+    Priority: 4
+    SortPriority: 222
+  - Regex: '^<set>$'
+    Priority: 4
+    SortPriority: 223
+  - Regex: '^<unordered_set>$'
+    Priority: 4
+    SortPriority: 224
+  - Regex: '^<array>$'
+    Priority: 4
+    SortPriority: 225
+  - Regex: '^<tuple>$'
+    Priority: 4
+    SortPriority: 226
+  - Regex: '^<optional>$'
+    Priority: 4
+    SortPriority: 227
+  - Regex: '^<variant>$'
+    Priority: 4
+    SortPriority: 228
+  - Regex: '^<stdexcept>$'
+    Priority: 4
+    SortPriority: 229
+  - Regex: '^<functional>$'
+    Priority: 4
+    SortPriority: 230
+  - Regex: '^<algorithm>$'
+    Priority: 4
+    SortPriority: 231
+  - Regex: '^<iterator>$'
+    Priority: 4
+    SortPriority: 232
+  - Regex: '^<memory>$'
+    Priority: 4
+    SortPriority: 233
+  - Regex: '^<compare>$'
+    Priority: 5
+    SortPriority: 240
+  - Regex: '^<concepts>$'
+    Priority: 5
+    SortPriority: 241
+  - Regex: '^<type_traits>$'
+    Priority: 5
+    SortPriority: 242
+  - Regex: '^<utility>$'
+    Priority: 5
+    SortPriority: 243
+  - Regex: '^<source_location>$'
+    Priority: 5
+    SortPriority: 244
+  - Regex: '^<new>$'
+    Priority: 5
+    SortPriority: 245
+  - Regex: '^<limits>$'
+    Priority: 5
+    SortPriority: 246
+  # C compatibility and platform C headers are always last.
+  - Regex: '^<cstdio>$'
+    Priority: 6
+    SortPriority: 300
+  - Regex: '^<cstdlib>$'
+    Priority: 6
+    SortPriority: 301
+  - Regex: '^<cerrno>$'
+    Priority: 6
+    SortPriority: 302
+  - Regex: '^<cstdint>$'
+    Priority: 6
+    SortPriority: 303
+  - Regex: '^<cstddef>$'
+    Priority: 6
+    SortPriority: 304
+  - Regex: '^<c(assert|complex|ctype|errno|fenv|float|inttypes|iso646|limits|locale|math|setjmp|signal|stdalign|stdarg|stdatomic|stdbool|stddef|stdint|stdio|stdlib|stdnoreturn|string|tgmath|threads|time|uchar|wchar|wctype)>$'
+    Priority: 6
+    SortPriority: 300
+  - Regex: '^<(assert|complex|ctype|errno|fenv|float|inttypes|iso646|limits|locale|math|setjmp|signal|stdalign|stdarg|stdatomic|stdbool|stddef|stdint|stdio|stdlib|stdnoreturn|string|tgmath|threads|time|uchar|wchar|wctype|io|unistd)\.h>'
+    Priority: 6
+    SortPriority: 300
+  - Regex: '^<sys/'
+    Priority: 6
+    SortPriority: 300
+  - Regex: '^<[^./]+>$'
+    Priority: 3
+    SortPriority: 219
+  - Regex: '.*'
+    Priority: 2
+    SortPriority: 100

@@ -1,5 +1,5 @@
-#include "tjg/backslash.h"
 #include "tjg/styled_text.h"
+#include "tjg/backslash.h"
 
 int main() {
   const auto tree = tjg::bold("hello");

@@ -1,9 +1,10 @@
 // Isolated allocation regression: replacing global new must not affect other tests.
 #include "tjg/styled_text.h"
 
+#include <new>
+
 #include <cstdio>
 #include <cstdlib>
-#include <new>
 
 namespace {
 bool count_allocations = false;

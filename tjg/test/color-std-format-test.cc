@@ -1,12 +1,11 @@
-#include "standard-format-test.h"
 #include "tjg/color.h"
-
+#include "standard-format-test.h"
+#include "test-support.h"
 
 #include <format>
 #include <string>
-#include <vector>
 
-#include "test-support.h"
+#include <vector>
 
 namespace {
 struct native_nested { bool absolute = false; };

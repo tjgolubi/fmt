@@ -1,12 +1,15 @@
 // String specifications shared by TJG styled text and readable values.
 #ifndef TJG_TREE_FORMAT_SPECS_H_
 #define TJG_TREE_FORMAT_SPECS_H_
-#include <concepts>
+#include "text_support.h"
+
 #include <format>
+
 #include <iterator>
+
+#include <concepts>
 #include <utility>
 
-#include "text_support.h"
 namespace tjg::detail {
 template <typename Char> struct tree_format_specs {
   std::size_t width = 0;

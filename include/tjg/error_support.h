@@ -2,9 +2,10 @@
 #ifndef TJG_ERROR_SUPPORT_H_
 #define TJG_ERROR_SUPPORT_H_
 
+#include <source_location>
+
 #include <cstdio>
 #include <cstdlib>
-#include <source_location>
 
 namespace tjg::detail {
 // Avoid formatting or allocating while reporting a failure.

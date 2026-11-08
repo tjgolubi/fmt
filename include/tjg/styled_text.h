@@ -2,17 +2,19 @@
 #ifndef TJG_STYLED_TEXT_H_
 #define TJG_STYLED_TEXT_H_
 
-#include <algorithm>
-#include <limits>
-#include <memory>
-#include <new>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
-
 #include "color.h"
 #include "tree_format_specs.h"
+
+#include <string>
+#include <string_view>
+
+#include <vector>
+#include <algorithm>
+#include <memory>
+
+#include <utility>
+#include <new>
+#include <limits>
 
 namespace tjg {
 

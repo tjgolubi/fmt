@@ -1,13 +1,15 @@
 // This target deliberately has no {fmt} library or test harness dependency.
-#include <cstdlib>
+#include "tjg/strip_ansi.h"
+#include "tjg/parse_styled_text.h"
+#include "tjg/styled_text.h"
+#include "tjg/color-ostream.h"
+#include "tjg/backslash.h"
+
 #include <sstream>
+
 #include <stdexcept>
 
-#include "tjg/backslash.h"
-#include "tjg/color-ostream.h"
-#include "tjg/parse_styled_text.h"
-#include "tjg/strip_ansi.h"
-#include "tjg/styled_text.h"
+#include <cstdlib>
 
 #ifdef FMT_VERSION
 #  error "The extension must not include the fmt engine"

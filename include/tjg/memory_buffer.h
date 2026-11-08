@@ -2,15 +2,17 @@
 #ifndef TJG_MEMORY_BUFFER_H_
 #define TJG_MEMORY_BUFFER_H_
 
-#include <algorithm>
-#include <cstddef>
-#include <limits>
-#include <memory>
+#include "error_support.h"
+
 #include <stdexcept>
+#include <algorithm>
+#include <memory>
+
 #include <type_traits>
 #include <utility>
+#include <limits>
 
-#include "error_support.h"
+#include <cstddef>
 
 namespace tjg {
 

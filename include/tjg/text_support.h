@@ -4,13 +4,16 @@
 // table.
 #ifndef TJG_TEXT_SUPPORT_H_
 #define TJG_TEXT_SUPPORT_H_
-#include <algorithm>
-#include <cstddef>
-#include <cstdint>
-#include <limits>
 #include <string_view>
+
+#include <algorithm>
+
 #include <type_traits>
 #include <utility>
+#include <limits>
+
+#include <cstdint>
+#include <cstddef>
 namespace tjg::detail {
 using std::size_t;
 using std::uint16_t;

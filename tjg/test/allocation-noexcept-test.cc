@@ -1,10 +1,9 @@
-#include "tjg/backslash.h"
 #include "tjg/strip_ansi.h"
+#include "tjg/backslash.h"
+#include "test-support.h"
 
 #include <type_traits>
 #include <utility>
-
-#include "test-support.h"
 
 namespace {
 #ifdef TJG_TEST_ALLOCATION_NOEXCEPT

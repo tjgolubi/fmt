@@ -2,10 +2,10 @@
 #ifndef TJG_STRIP_ANSI_H_
 #define TJG_STRIP_ANSI_H_
 
+#include "styled_text.h"
+
 #include <string>
 #include <string_view>
-
-#include "styled_text.h"
 
 namespace tjg {
 namespace detail {

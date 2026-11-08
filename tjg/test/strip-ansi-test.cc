@@ -1,5 +1,5 @@
-#include "standard-format-test.h"
 #include "tjg/strip_ansi.h"
+#include "standard-format-test.h"
 #include "test-support.h"
 
 namespace {

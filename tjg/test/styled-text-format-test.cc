@@ -1,12 +1,10 @@
-#include "standard-format-test.h"
 #include "tjg/styled_text.h"
-
-
 #include "tjg/color-ostream.h"
+#include "standard-format-test.h"
 #include "test-support.h"
 
-#include <iomanip>
 #include <sstream>
+#include <iomanip>
 
 namespace {
 auto render(const tjg::styled_text& value) -> std::string {

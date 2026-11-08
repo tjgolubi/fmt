@@ -1,4 +1,3 @@
-#include "standard-format-test.h"
 // Formatting library for C++ - styled std::ostream tests
 //
 // Copyright (c) 2026 - present, Victor Zverovich and {fmt} contributors
@@ -8,10 +7,11 @@
 
 #include "tjg/color-ostream.h"
 
-#include <iomanip>
-#include <sstream>
-
+#include "standard-format-test.h"
 #include "test-support.h"
+
+#include <sstream>
+#include <iomanip>
 
 TEST(color_ostream_test, emphasis_insertion) {
   using tjg::emphasis;

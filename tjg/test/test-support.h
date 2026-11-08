@@ -2,10 +2,11 @@
 #ifndef TJG_TEST_SUPPORT_H_
 #define TJG_TEST_SUPPORT_H_
 
-#include <cstdio>
+#include "gtest/gtest.h"
+
 #include <string>
 
-#include "gtest/gtest.h"
+#include <cstdio>
 
 namespace tjg::test {
 class output_redirect {

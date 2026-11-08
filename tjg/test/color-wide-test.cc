@@ -1,5 +1,5 @@
-#include "test-support.h"
 #include "tjg/color.h"
+#include "test-support.h"
 
 TEST(color_wide_test, format) {
 #if TJG_COLOR_COMPACT_SGR == 1

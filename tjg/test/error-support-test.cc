@@ -1,8 +1,7 @@
 #include "tjg/error_support.h"
+#include "test-support.h"
 
 #include <stdexcept>
-
-#include "test-support.h"
 
 namespace {
 constexpr bool valid_checks() {

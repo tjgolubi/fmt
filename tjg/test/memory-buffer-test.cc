@@ -1,9 +1,9 @@
 #include "tjg/memory_buffer.h"
+#include "test-support.h"
 
-#include <iterator>
 #include <string>
 
-#include "test-support.h"
+#include <iterator>
 
 TEST(memory_buffer_test, inline_storage_and_growth) {
   tjg::basic_memory_buffer<char, 4> buffer;

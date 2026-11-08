@@ -3,6 +3,7 @@
 #include <format>
 #include <string>
 #include <string_view>
+
 #include <type_traits>
 template <typename S, typename... Args>
 auto runtime_format(const S& pattern, Args&&... args) {

@@ -10,26 +10,29 @@
 #ifndef TJG_COLOR_H_
 #define TJG_COLOR_H_
 
-#include <algorithm>
-#include <compare>
-#include <concepts>
-#include <cstdint>
-#include <cstdio>
-#include <format>
-#include <functional>
-#include <iterator>
-#include <limits>
+#include "tree_format_specs.h"
+#include "memory_buffer.h"
+#include "format_support.h"
+#include "error_support.h"
+
 #include <print>
+#include <format>
 #include <string>
 #include <string_view>
+
+#include <variant>
+#include <functional>
+#include <algorithm>
+#include <iterator>
+
+#include <compare>
+#include <concepts>
 #include <type_traits>
 #include <utility>
-#include <variant>
+#include <limits>
 
-#include "error_support.h"
-#include "format_support.h"
-#include "memory_buffer.h"
-#include "tree_format_specs.h"
+#include <cstdio>
+#include <cstdint>
 
 #ifndef TJG_COLOR_COMPACT_SGR
 #  define TJG_COLOR_COMPACT_SGR 0

@@ -8,12 +8,13 @@
 #ifndef TJG_COLOR_OSTREAM_H_
 #define TJG_COLOR_OSTREAM_H_
 
-#include <limits>
+#include "color.h"
+#include "tree_format_specs.h"
+
 #include <ostream>
 #include <string_view>
 
-#include "color.h"
-#include "tree_format_specs.h"
+#include <limits>
 
 namespace tjg {
 

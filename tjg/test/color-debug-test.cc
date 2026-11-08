@@ -1,13 +1,11 @@
-#include "standard-format-test.h"
-#include <iomanip>
-#include <sstream>
-
-#include "tjg/color-ostream.h"
-
-
 #include "tjg/strip_ansi.h"
 #include "tjg/styled_text.h"
+#include "tjg/color-ostream.h"
+#include "standard-format-test.h"
 #include "test-support.h"
+
+#include <sstream>
+#include <iomanip>
 
 namespace {
 template <typename T>

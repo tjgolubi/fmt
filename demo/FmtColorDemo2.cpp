@@ -1,5 +1,6 @@
-#include <tjg/color.h>
 #include <tjg/styled_text.h>
+#include <tjg/color.h>
+
 #include <print>
 
 int main() {

@@ -1,4 +1,3 @@
-#include "standard-format-test.h"
 // Formatting library for C++ - color tests
 //
 // Copyright (c) 2012 - present, Victor Zverovich and {fmt} contributors
@@ -8,16 +7,17 @@
 
 #include "tjg/color.h"
 
-#include <iterator>  // std::back_inserter
-#include <limits>    // std::numeric_limits
-#include <map>       // std::map
+#include "standard-format-test.h"
+#include "test-support.h"  // EXPECT_WRITE
 
-#include <type_traits>  // std::is_convertible, std::is_same
+#include <map>            // std::map
 #include <unordered_map>  // std::unordered_map
 #include <unordered_set>  // std::unordered_set
-#include <utility>  // std::declval, std::move
+#include <iterator>       // std::back_inserter
 
-#include "test-support.h"  // EXPECT_WRITE
+#include <type_traits>  // std::is_convertible, std::is_same
+#include <utility>      // std::declval, std::move
+#include <limits>       // std::numeric_limits
 
 #if TJG_COLOR_COMPACT_SGR == 1
 #  define TJG_SGR_EXPECTED(legacy, compact) compact

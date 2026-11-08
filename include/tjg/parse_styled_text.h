@@ -2,9 +2,9 @@
 #ifndef TJG_PARSE_STYLED_TEXT_H_
 #define TJG_PARSE_STYLED_TEXT_H_
 
-#include <string_view>
-
 #include "styled_text.h"
+
+#include <string_view>
 
 namespace tjg {
 

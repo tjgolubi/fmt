@@ -2,11 +2,12 @@
 #ifndef TJG_BACKSLASH_H_
 #define TJG_BACKSLASH_H_
 
-#include <iterator>
+#include "format_support.h"
+
 #include <string>
 #include <string_view>
 
-#include "format_support.h"
+#include <iterator>
 
 namespace tjg {
 

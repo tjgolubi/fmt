@@ -1,5 +1,5 @@
-#include "test-support.h"
 #include "tjg/color.h"
+#include "test-support.h"
 
 #if GTEST_HAS_DEATH_TEST && !defined(NDEBUG)
 TEST(color_assert_test, argument_ranges) {

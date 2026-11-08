@@ -1,6 +1,5 @@
-#include "standard-format-test.h"
 #include "tjg/styled_text.h"
-
+#include "standard-format-test.h"
 #include "test-support.h"
 
 namespace {
