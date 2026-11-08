@@ -5,6 +5,12 @@ independent TJG migration. This is separate from the usual coordination
 documents, which describe the FMT-based development line. Terry explicitly
 requested that those documents remain unchanged for this handoff.
 
+## Project name
+
+The independent styling library is called **{color}**. Its current namespace,
+header paths, and CMake target remain `tjg`; the project name does not itself
+rename those identifiers.
+
 ## Current baseline
 
 - Repository: https://github.com/tjgolubi/fmt
