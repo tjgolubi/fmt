@@ -14,6 +14,10 @@ target_link_libraries(tjg-consumer PRIVATE tjg::tjg)
 target_compile_definitions(
   tjg-consumer
   PRIVATE TJG_EXPECTED_COMPACT_SGR=$<BOOL:${TJG_EXPECTED_COMPACT_SGR}>)
+if (CMAKE_SYSTEM_NAME STREQUAL "MSYS" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  # libstdc++ <print> needs stdio declarations hidden by strict C++ mode on MSYS.
+  target_compile_definitions(tjg-consumer PRIVATE _DEFAULT_SOURCE)
+endif ()
 set_target_properties(
   tjg-consumer
   PROPERTIES CXX_STANDARD_REQUIRED ON
