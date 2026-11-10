@@ -549,7 +549,7 @@ TEST(color_test, emphasis_or_assign) {
 constexpr auto check_emphasis_or_assign() -> bool {
   auto value = tjg::emphasis::bold;
   auto& result = (value |= tjg::emphasis::underline);
-  (result |= tjg::emphasis::strike) |= tjg::emphasis{};
+  (result |= tjg::emphasis::strike) |= tjg::emphasis::none;
   tjg::operator|=(value, value);
   return &result == &value &&
          value == (tjg::emphasis::bold | tjg::emphasis::underline |
@@ -588,6 +588,9 @@ TEST(color_test, numeric_conversions) {
   static_assert(std::to_underlying(tjg::term_color::bright_white) ==
                     static_cast<uint8_t>(tjg::term_color::bright_white),
                 "bright terminal color conversion must preserve the enum value");
+  static_assert(std::to_underlying(tjg::emphasis::none) == 0);
+  static_assert(tjg::emphasis{} == tjg::emphasis::none);
+  static_assert(tjg::text_style{tjg::emphasis::none}.empty());
   static_assert(std::to_underlying(tjg::emphasis::bold) == 1,
                 "bold must retain its bit");
   static_assert(std::to_underlying(tjg::emphasis::strike) == 128,
@@ -605,12 +608,12 @@ TEST(color_test, numeric_conversions) {
 }
 
 namespace {
-struct composition_sample {
+struct blend_sample {
   tjg::color_t color;
   tjg::rgb promoted;
 };
 
-const composition_sample composition_samples[] = {
+const blend_sample blend_samples[] = {
     {tjg::no_color, {0, 0, 0}},
     {tjg::rgb{1, 2, 3}, {1, 2, 3}},
     {tjg::term_color::red, {205, 0, 0}},
@@ -618,43 +621,7 @@ const composition_sample composition_samples[] = {
     {tjg::gray_color{12}, {128, 128, 128}}};
 
 // Expected RGB values above are independent of the conversion implementation.
-tjg::color_t expected_composition(size_t left, size_t right) {
-  if (left == 0) return composition_samples[right].color;
-  if (right == 0) return composition_samples[left].color;
-  auto lhs = composition_samples[left].promoted;
-  auto rhs = composition_samples[right].promoted;
-  return tjg::rgb{static_cast<uint8_t>(lhs.r | rhs.r),
-                 static_cast<uint8_t>(lhs.g | rhs.g),
-                 static_cast<uint8_t>(lhs.b | rhs.b)};
-}
 }  // namespace
-
-TEST(color_test, color_type_composition) {
-  static_assert(noexcept(tjg::color_t{} | tjg::color_t{}) &&
-                    noexcept(std::declval<tjg::color_t&>() |= tjg::color_t{}),
-                "color composition must be noexcept");
-  for (size_t i = 0; i != 5; ++i) {
-    for (size_t j = 0; j != 5; ++j) {
-      SCOPED_TRACE(std::format("color kinds {} and {}", i, j));
-      auto lhs = composition_samples[i].color;
-      auto rhs = composition_samples[j].color;
-      const auto expected = expected_composition(i, j);
-      EXPECT_EQ(lhs | rhs, expected);
-      EXPECT_EQ(lhs, composition_samples[i].color);
-      EXPECT_EQ(&(lhs |= rhs), &lhs);
-      EXPECT_EQ(lhs, expected);
-      EXPECT_EQ(rhs, composition_samples[j].color);
-    }
-    auto self = composition_samples[i].color;
-    EXPECT_EQ(&(self |= self), &self);
-    EXPECT_EQ(self, expected_composition(i, i));
-  }
-  auto lhs = tjg::color_t{tjg::rgb{0xC0F000}};
-  auto rhs = tjg::color_t{tjg::rgb{0x000FEE}};
-  EXPECT_EQ(lhs | rhs, tjg::color_t{tjg::rgb{0xC0FFEE}});
-  EXPECT_EQ(lhs, tjg::color_t{tjg::rgb{0xC0F000}});
-  EXPECT_EQ(rhs, tjg::color_t{tjg::rgb{0x000FEE}});
-}
 
 TEST(color_test, color_sentinels) {
   using tjg::no_color_t;
@@ -831,7 +798,7 @@ concept has_bitwise_or = requires(Left lhs, Right rhs) { lhs | rhs; };
 template <typename Left, typename Right>
 concept has_bitwise_or_assign = requires(Left lhs, Right rhs) { lhs |= rhs; };
 
-TEST(color_test, text_style_has_no_bitwise_composition) {
+TEST(color_test, bitwise_composition_constraints) {
   using tjg::text_style;
   using tjg::emphasis;
   static_assert(!has_bitwise_or<text_style, text_style>);
@@ -841,8 +808,8 @@ TEST(color_test, text_style_has_no_bitwise_composition) {
   static_assert(!has_bitwise_or_assign<text_style, emphasis>);
   static_assert(has_bitwise_or<emphasis, emphasis>);
   static_assert(has_bitwise_or_assign<emphasis, emphasis>);
-  static_assert(has_bitwise_or<tjg::color_t, tjg::color_t>);
-  static_assert(has_bitwise_or_assign<tjg::color_t, tjg::color_t>);
+  static_assert(!has_bitwise_or<tjg::color_t, tjg::color_t>);
+  static_assert(!has_bitwise_or_assign<tjg::color_t, tjg::color_t>);
 }
 
 TEST(color_test, palette_style_replacement) {
@@ -1564,7 +1531,7 @@ TEST(color_test, to_rgb) {
                     tjg::to_rgb(tjg::color_t{tjg::cube_color{1, 2, 3}}) ==
                         tjg::color_t{tjg::rgb{95, 135, 175}},
                 "all variant alternatives support C++11 constant conversion");
-  for (const auto& sample : composition_samples) {
+  for (const auto& sample : blend_samples) {
     const auto source = sample.color;
     const auto converted = tjg::to_rgb(source);
     EXPECT_EQ(converted, source.index() == 0 ? tjg::color_t{}
@@ -1659,10 +1626,10 @@ TEST(color_test, color_variant_blend) {
   for (size_t i = 0; i != 5; ++i) {
     for (size_t j = 0; j != 5; ++j) {
       SCOPED_TRACE(std::format("blend kinds {} and {}", i, j));
-      const auto lhs = composition_samples[i].color;
-      const auto rhs = composition_samples[j].color;
-      const auto a = composition_samples[i].promoted;
-      const auto b = composition_samples[j].promoted;
+      const auto lhs = blend_samples[i].color;
+      const auto rhs = blend_samples[j].color;
+      const auto a = blend_samples[i].promoted;
+      const auto b = blend_samples[j].promoted;
       const auto expected = i == 0 ? rhs : j == 0 ? lhs : tjg::color_t{tjg::rgb{
           static_cast<uint8_t>((unsigned{a.r} + b.r) / 2),
           static_cast<uint8_t>((unsigned{a.g} + b.g) / 2),
@@ -1671,8 +1638,8 @@ TEST(color_test, color_variant_blend) {
       EXPECT_EQ(tjg::blend(tjg::no_color, lhs, tjg::no_color, rhs,
                            tjg::no_color), expected);
       EXPECT_EQ(tjg::blend(lhs, tjg::no_color), lhs);
-      EXPECT_EQ(lhs, composition_samples[i].color);
-      EXPECT_EQ(rhs, composition_samples[j].color);
+      EXPECT_EQ(lhs, blend_samples[i].color);
+      EXPECT_EQ(rhs, blend_samples[j].color);
     }
   }
 }
@@ -1716,16 +1683,16 @@ TEST(color_test, text_style_blend) {
   for (size_t i = 0; i != 5; ++i) {
     for (size_t j = 0; j != 5; ++j) {
       SCOPED_TRACE(std::format("style blend kinds {} and {}", i, j));
-      const auto a = composition_samples[i].promoted;
-      const auto b = composition_samples[j].promoted;
-      const auto foreground = i == 0 ? composition_samples[j].color
-          : j == 0 ? composition_samples[i].color : tjg::color_t{tjg::rgb{
+      const auto a = blend_samples[i].promoted;
+      const auto b = blend_samples[j].promoted;
+      const auto foreground = i == 0 ? blend_samples[j].color
+          : j == 0 ? blend_samples[i].color : tjg::color_t{tjg::rgb{
               static_cast<uint8_t>((unsigned{a.r} + b.r) / 2),
               static_cast<uint8_t>((unsigned{a.g} + b.g) / 2),
               static_cast<uint8_t>((unsigned{a.b} + b.b) / 2)}};
-      const auto lhs = tjg::text_style{composition_samples[i].color,
+      const auto lhs = tjg::text_style{blend_samples[i].color,
                                        tjg::gray_color{12}, tjg::emphasis::bold};
-      const auto rhs = tjg::text_style{composition_samples[j].color, tjg::no_color,
+      const auto rhs = tjg::text_style{blend_samples[j].color, tjg::no_color,
                                        tjg::emphasis::underline};
       EXPECT_EQ(tjg::blend(lhs, rhs),
                 (tjg::text_style{foreground, tjg::gray_color{12},
@@ -1733,9 +1700,9 @@ TEST(color_test, text_style_blend) {
       EXPECT_EQ(tjg::blend(lhs, rhs, tjg::bg(tjg::cube_color{1, 2, 3})),
                 (tjg::text_style{foreground, tjg::rgb{111, 131, 151},
                                  tjg::emphasis::bold | tjg::emphasis::underline}));
-      EXPECT_EQ(lhs.fg(), composition_samples[i].color);
+      EXPECT_EQ(lhs.fg(), blend_samples[i].color);
       EXPECT_EQ(lhs.bg(), tjg::color_t{tjg::gray_color{12}});
-      EXPECT_EQ(rhs.fg(), composition_samples[j].color);
+      EXPECT_EQ(rhs.fg(), blend_samples[j].color);
       EXPECT_FALSE(rhs.has_bg());
     }
   }

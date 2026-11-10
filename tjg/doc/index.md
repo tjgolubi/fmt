@@ -75,26 +75,22 @@ preserves its color and kind.  When multiple inputs specify the same channel,
 their colors convert to RGB and combine by averaging the color channels; that
 channel then holds RGB.
 
-[Color `operator|`](colors.md#composition-comparisons-and-numeric-representation)
-and `operator|=` perform bitwise composition: they OR the channel
-bits instead of averaging them. OR cannot lower a channel value, so combining
-a bright color with a dim color will not dim the bright color. Use constructors
-or fluent setters to select colors directly, and `blend` to average them.
+[RGB `operator|`](colors.md#combining-rgb-values) and `operator|=` combine
+the corresponding channel bits. OR cannot lower a channel value. Use `blend`
+to average colors.
 
-The examples below compare both operations on color values. Every input
-name is a `tjg::term_color` value. Conversion uses the fixed Xterm-default RGB
-mapping, which may differ from the user's terminal theme. **Both operations
-produce RGB colors**, rather than terminal palette colors.
+These examples convert terminal colors to RGB using the fixed Xterm-default
+palette, which may differ from the user's terminal theme.
 
 ```cpp
-auto red  = tjg::color_t{tjg::term_color::bright_red};
-auto blue = tjg::color_t{tjg::term_color::blue};
+auto red = tjg::to_rgb(tjg::term_color::bright_red);
+auto blue = tjg::to_rgb(tjg::term_color::blue);
 auto averaged = tjg::blend(red, blue); // RGB {127, 0, 119}.
-auto ored = red | blue;                // RGB {255, 0, 238}.
+auto combined = red | blue;           // RGB {255, 0, 238}.
 ```
 
 <table class="color-comparison">
-<thead><tr><th>Inputs (<a href="colors.html#terminal-palette-colors"><code>term_color</code></a>)</th><th><a href="colors.html#blending-color-variants"><code>blend()</code></a> — average</th><th><a href="colors.html#composition-comparisons-and-numeric-representation"><code>operator|</code></a> — bitwise OR</th></tr></thead>
+<thead><tr><th>Inputs (<a href="colors.html#terminal-palette-colors"><code>term_color</code></a>)</th><th><a href="colors.html#averaging-rgb-values"><code>blend()</code></a> — average</th><th><a href="colors.html#combining-rgb-values"><code>operator|</code></a> — bitwise OR</th></tr></thead>
 <tbody>
 <tr>
 <td><div class="color-inputs"><span class="color-chip" style="background-color:#FF0000;color:#000000"><a href="colors.html#terminal-palette-colors"><code>bright_red</code></a><small>255, 0, 0</small></span><span class="color-chip" style="background-color:#0000EE;color:#FFFFFF"><a href="colors.html#terminal-palette-colors"><code>blue</code></a><small>0, 0, 238</small></span></div></td>

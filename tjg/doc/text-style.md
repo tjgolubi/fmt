@@ -49,9 +49,9 @@ styles.
 With `<tjg/color.h>`, formatting an `emphasis` value with `{}` or `{:?}` lists
 its set attribute names in declaration order, separated by spaces inside braces.
 For example, `bold | faint | strike` displays
-`{bold faint strike}`; an empty `emphasis{}` displays `{}`. The alias
-Narrow and wide formatting accepts string
-fill, alignment, width, precision, optional `s` or `?`, and dynamic specifications.
+`{bold faint strike}`. `emphasis::none` displays `{}`. Narrow and wide formatting
+accepts string fill, alignment, width, precision, optional `s` or `?`, and
+dynamic specifications.
 With `<tjg/color-ostream.h>`, ostream insertion uses the same named form. Stream
 width, fill, and alignment apply as for a string; precision is ignored. This
 named form is separate from the compact characters used inside `text_style` output.
@@ -66,7 +66,7 @@ to `color_t`.
 The color-first constructor requires a foreground color; background and
 emphasis default to unspecified and empty. The emphasis-first constructor
 accepts optional foreground and background colors, both defaulting to
-`no_color`. Its emphasis defaults to `emphasis{}`, so `text_style{}` creates
+`no_color`. Its emphasis defaults to `emphasis::none`, so `text_style{}` creates
 an empty style. An emphasis value alone creates an emphasis-only style.
 
 ```cpp
@@ -187,9 +187,8 @@ For structured text, see
 Use constructors or fluent setters to select foreground, background, and emphasis.
 Use `overlay` to replace specified colors, `underlay` to fill unspecified colors,
 and `blend` to average them. These named operations combine emphasis bits by OR.
-`text_style` does not provide `operator|` or `operator|=`; those operators remain
-available for [color values](colors.md#composition-comparisons-and-numeric-representation)
-and [emphasis masks](#combining-emphasis-attributes).
+Bitwise OR is available for [RGB values](colors.md#combining-rgb-values) and
+[emphasis masks](#combining-emphasis-attributes).
 
 ```cpp
 auto style = tjg::fg(tjg::cube_color{1, 2, 3}).bg(tjg::gray_color{12});
@@ -277,7 +276,7 @@ can be passed to either color setter, either style constructor, or the free
 returns `emphasis`.
 
 Getters accept empty components: color getters return an unspecified color,
-and `emph()` returns `emphasis{}`. Presence checks are optional.
+and `emph()` returns `emphasis::none`. Presence checks are optional.
 
 The `has_fg`, `has_bg`, and `has_emph` queries return `bool`, preserve
 the style, and are `const`, `constexpr`, and `noexcept`. An empty style
@@ -290,7 +289,7 @@ returns `text_style&` for chaining. Color setters accept a named RGB constant,
 an `rgb`, a `term_color`, a `cube_color`, a `gray_color`, or `no_color`.
 Passing `no_color` clears that channel to unspecified; it does not store a
 terminal-reset instruction.
-Passing `emphasis{}` clears all attributes.
+Passing `emphasis::none` clears all attributes.
 
 ```cpp
 auto style = tjg::text_style{tjg::color::coral};
@@ -502,7 +501,7 @@ hashes. Hash values are not a stable serialization format.
 union without modifying either operand. `operator|=` adds the right operand's
 attributes to the left operand and returns `emphasis&` referring to that left
 operand, allowing chaining. Existing attributes remain set; combining with
-`emphasis{}` leaves the value unchanged.
+`emphasis::none` leaves the value unchanged.
 
 ```cpp
 auto attributes = tjg::emphasis::bold;

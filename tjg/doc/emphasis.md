@@ -5,6 +5,7 @@ Use emphasis values as styles or combine them with colors through
 
 ## Attributes
 
+`tjg::emphasis::none` is the zero mask. It specifies no attributes.
 `tjg::emphasis::strike` selects crossed-out text (SGR 9).
 
 ::: emphasis

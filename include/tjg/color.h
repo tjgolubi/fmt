@@ -97,12 +97,13 @@ enum class term_color : int8_t {
 
 /**
  * Independent text attributes that can be combined with `operator|`.
- * `emphasis()` specifies no attributes.
+ * `emphasis::none` specifies no attributes.
  *
  * The enum values are bit masks. Attribute support and the appearance of
  * combinations depend on the terminal.
  */
 enum class emphasis : uint8_t {
+  none = 0,              ///< No attributes.
   bold = 1 << 0,          ///< Increased intensity (SGR 1).
   faint = 1 << 1,         ///< Decreased intensity (SGR 2).
   italic = 1 << 2,        ///< Italic text         (SGR 3).
@@ -424,21 +425,6 @@ struct to_rgb_visitor {
   return std::visit(detail::to_rgb_visitor{}, color);
 }
 
-/// Combines specified colors by ORing their RGB channels.
-/// An unspecified operand preserves the other color's kind.
-constexpr auto operator|=(color_t& lhs, color_t rhs) noexcept -> color_t& {
-  if (lhs.valueless_by_exception()) lhs = no_color;
-  if (detail::is_unspecified(rhs)) return lhs;
-  if (detail::is_unspecified(lhs)) return lhs = rhs;
-  return lhs = std::get<rgb>(to_rgb(lhs)) | std::get<rgb>(to_rgb(rhs));
-}
-
-/// Returns the composition of two colors without modifying either operand.
-[[nodiscard]] constexpr auto operator|(color_t lhs, color_t rhs) noexcept
-    -> color_t {
-  return lhs |= rhs;
-}
-
 namespace detail {
 
 template <typename T>
@@ -567,7 +553,7 @@ class text_style {
    * Default construction produces an empty style. Conversion from `emphasis`
    * is implicit.
    */
-  constexpr text_style(emphasis emp = emphasis{}, color_t fg = no_color,
+  constexpr text_style(emphasis emp = emphasis::none, color_t fg = no_color,
                        color_t bg = no_color) noexcept
       : text_style{fg, bg, emp} {}
 
@@ -580,7 +566,7 @@ class text_style {
    * The foreground is required; `no_color` specifies a background-only style.
    */
   constexpr text_style(color_t fg, color_t bg = no_color,
-                       emphasis emp = emphasis{}) noexcept
+                       emphasis emp = emphasis::none) noexcept
       : _emph{emp}, _fg{fg}, _bg{bg} {}
 
   /// Returns true if no colors, emphasis, or absolute flag are set.
@@ -594,7 +580,7 @@ class text_style {
    */
   constexpr auto clear() noexcept -> text_style& {
     _absolute = false;
-    _emph = {};
+    _emph = emphasis::none;
     _fg = no_color;
     _bg = no_color;
     return *this;
@@ -660,7 +646,7 @@ class text_style {
 
   /// Returns true if at least one emphasis attribute is set.
   [[nodiscard]] constexpr auto has_emph() const noexcept -> bool {
-    return _emph != emphasis{};
+    return _emph != emphasis::none;
   }
 
   /**
@@ -712,7 +698,7 @@ class text_style {
 
   /**
    * Replaces all emphasis attributes and returns a reference to this style.
-   * Only the bits in `em` remain enabled; `emphasis{}` clears all attributes.
+   * Only the bits in `em` remain enabled; `emphasis::none` clears them all.
    * Preserves both colors. Bold and faint remain independent bits.
    */
   constexpr auto emph(emphasis em) noexcept -> text_style& {

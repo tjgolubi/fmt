@@ -95,7 +95,7 @@ TEST(color_debug_test, style_notation) {
 
 TEST(color_debug_test, emphasis_notation) {
   using tjg::emphasis;
-  check_output(emphasis{}, "{}");
+  check_output(emphasis::none, "{}");
   check_output(emphasis::bold, "{bold}");
   check_output(emphasis::faint, "{faint}");
   check_output(emphasis::italic, "{italic}");

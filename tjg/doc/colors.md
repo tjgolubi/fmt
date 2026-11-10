@@ -370,8 +370,7 @@ auto terminal_black = tjg::fg(tjg::term_color::black); // Black foreground.
 ```
 
 Both `tjg::fg(tjg::no_color)` and `tjg::bg(tjg::no_color)` produce empty styles.
-They do not clear a color already present in another style when combined with
-`|` or `|=`, and they do not emit a terminal reset.
+They supply no color when used with `overlay` or `underlay`.
 
 ## Color variants
 
@@ -538,28 +537,7 @@ down. The operation is `noexcept`, leaves its arguments unchanged, and supports
 constant evaluation in C++23 and later. It requires at least two arguments and
 rejects non-color arguments during overload resolution.
 
-### Composition, comparisons, and numeric representation
-
-`color_t` supports `|` and `|=`. An unspecified color takes the other operand's
-value and preserves its kind. If both colors are specified, both convert to
-RGB and their corresponding channel bits combine by OR. The result holds
-`rgb`, even when both operands originally have the same palette kind and value.
-Terminal conversion uses the fixed Xterm-default palette described above.
-
-`|` leaves both operands unchanged. `|=` replaces the left operand and returns
-`color_t&`; the right operand is unchanged. Both operations are `noexcept`.
-They do not average colors or perform alpha compositing.
-
-```cpp
-tjg::color_t accent = tjg::cube_color{1, 2, 3}; // RGB equivalent {95, 135, 175}.
-accent |= tjg::gray_color{12}; // RGB {223, 135, 175}.
-bool is_rgb = std::holds_alternative<tjg::rgb>(accent); // true
-```
-
-!!! note "Changed behavior"
-
-    Overlapping colors involving a terminal color previously reported an error.
-    They now combine after conversion to RGB.
+### Comparisons and numeric representation
 
 Standard variant comparisons use the alternative index first, then compare
 the stored values within each alternative. Colors with different alternatives
@@ -572,7 +550,7 @@ it does not pack the variant into an integer. `color_t` has no packed integer
 conversion. Hash values are not stable serialization formats.
 
 If a throwing operation leaves a variant valueless, TJG treats it as
-unspecified when formatting, blending, or composing colors. Hashing uses the
+unspecified when formatting or blending colors. Hashing uses the
 variant's alternative index, including `std::variant_npos` when valueless.
 
 ### Combining hashes
