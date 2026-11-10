@@ -29,11 +29,6 @@ for their fixed Xterm-default RGB equivalents.
     options:
       color_reference: true
 
-!!! note "Backward compatibility"
-
-    `tjg::terminal_color` remains an alias for `tjg::term_color`.
-    Both names denote the same type and provide the same color constants.
-
 Terminal colors use the terminal's palette rather than fixed RGB values.
 Their enum values are contiguous palette indices, separate from the ANSI
 SGR codes emitted for foreground and background colors. The rightmost
@@ -63,13 +58,6 @@ a customized terminal theme:
 auto style     = tjg::fg(tjg::term_color::black);
 bool specified = style.has_fg(); // true
 ```
-
-!!! note "Changed behavior"
-
-    Previously, `terminal_color` values were foreground SGR codes 30-37 and
-    90-97.  They are now palette indices 0-15. Symbolic names and emitted SGR
-    sequences are unchanged, but numeric conversions and stored terminal-color
-    values differ.
 
 Use symbolic terminal-color names in styling code. Their numeric values are
 not stable serialization formats.
@@ -358,10 +346,9 @@ C++23, as does terminal-to-RGB conversion.
 
 Palette rendering uses the terminal's palette entries. RGB conversion uses
 fixed values, so a customized terminal palette can produce a different
-appearance. With `TJG_COLOR_COMPACT_SGR` undefined or `0`, palette indices in
-escape sequences use three decimal digits, including leading zeroes: cube
-index zero emits `38;5;016` for a foreground color. With the definition set to
-`1`, it emits `38;5;16`. See [SGR output modes](format.md#to_sgr).
+appearance. Palette indices in escape sequences use unpadded decimal digits.
+For example, cube index zero emits `38;5;16` for a foreground color.
+See [SGR output](format.md#to_sgr).
 
 ## Unspecified color
 

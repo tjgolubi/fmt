@@ -1,6 +1,6 @@
 CXX = g++
 TJG_ROOT = ..
-CPPFLAGS += -I$(TJG_ROOT)/include -DTJG_COLOR_COMPACT_SGR=1
+CPPFLAGS += -I$(TJG_ROOT)/include
 CXXFLAGS += -std=c++23 -Wall -Wextra -Werror
 
 DEMOS = FmtColorDemo2 TableDemo

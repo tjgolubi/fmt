@@ -104,7 +104,6 @@ TEST(color_debug_test, emphasis_notation) {
   check_output(emphasis::reverse, "{reverse}");
   check_output(emphasis::conceal, "{conceal}");
   check_output(emphasis::strike, "{strike}");
-  check_output(emphasis::strikethrough, "{strike}");
   check_output(emphasis::strike | emphasis::bold | emphasis::underline,
                "{bold underline strike}");
   check_output(static_cast<emphasis>(255),

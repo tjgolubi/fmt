@@ -163,7 +163,7 @@ void check_nested_formatting() {
   absolute_outer.absolute();
   tree.style(absolute_outer);
   check_states(render(tree), chars<Char>("ab"), {outer, outer});
-  // The absolute root resets even from assumed defaults, in both modes.
+  // The absolute root resets even from assumed defaults.
   const auto expected = tjg::to_sgr<Char>(absolute_outer) + chars<Char>("ab") +
                         tjg::to_sgr<Char>(tjg::text_style{}, outer);
   EXPECT_EQ(render(tree), expected);
@@ -675,13 +675,8 @@ TEST(styled_text_format_test, defaults_and_recursive_overrides) {
 TEST(styled_text_format_test, standard_tree_specs_and_debug) {
   const auto tree = tjg::bold(tjg::styled_text{"hello "} +
       tjg::styled_text{"world", tjg::fg(tjg::term_color::blue)});
-#if TJG_COLOR_COMPACT_SGR
   const auto child_open = std::string{"\x1b[34m"};
   const auto child_close = std::string{"\x1b[39m"};
-#else
-  const auto child_open = std::string{"\x1b[0m\x1b[1m\x1b[34m"};
-  const auto child_close = std::string{"\x1b[0m\x1b[1m"};
-#endif
   const auto rendered = "\x1b[1mhello " + child_open + "world\x1b[0m";
   EXPECT_EQ(std::format("{}", tree), rendered);
   EXPECT_EQ(std::format("{:s}", tree), rendered);

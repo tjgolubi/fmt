@@ -17,7 +17,6 @@ static_assert(_MSVC_LANG >= 202002L);
 #else
 static_assert(__cplusplus >= 202100L);
 #endif
-static_assert(TJG_COLOR_COMPACT_SGR == TJG_EXPECTED_COMPACT_SGR);
 
 int main() {
   const auto tree = tjg::bold("hello") + " world";

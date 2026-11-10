@@ -5,15 +5,6 @@
 ::: text_style
     options:
       color_reference: true
-      exclude_members:
-        - get_foreground
-        - get_background
-        - get_emphasis
-        - has_foreground
-        - has_background
-        - has_emphasis
-        - strikethrough
-        - is_strikethrough
 
 ### Readable style output
 
@@ -59,7 +50,7 @@ With `<tjg/color.h>`, formatting an `emphasis` value with `{}` or `{:?}` lists
 its set attribute names in declaration order, separated by spaces inside braces.
 For example, `bold | faint | strike` displays
 `{bold faint strike}`; an empty `emphasis{}` displays `{}`. The alias
-`strikethrough` displays as `strike`. Narrow and wide formatting accepts string
+Narrow and wide formatting accepts string
 fill, alignment, width, precision, optional `s` or `?`, and dynamic specifications.
 With `<tjg/color-ostream.h>`, ostream insertion uses the same named form. Stream
 width, fill, and alignment apply as for a string; precision is ignored. This
@@ -114,10 +105,9 @@ queries the separately stored Boolean flag. Both are `noexcept` and support
 constant evaluation. Absolute styles can still be explicitly modified using
 setters, overlays, and underlays.
 
-An absolute-only style is nonempty and emits `"\x1b[0m"`. Compact SGR output
-combines the reset and attributes, such as `"\x1b[0;4m"`; noncompact output
-emits the reset separately before the attribute sequences. Neither form
-depends on a previously active terminal style.
+An absolute-only style is nonempty and emits `"\x1b[0m"`. An absolute style
+with attributes combines the reset and attributes in one sequence, such as
+`"\x1b[0;4m"`.
 
 ### Overlaying styles
 
@@ -312,17 +302,9 @@ const auto source = style;
 auto copy = tjg::text_style{source.fg(), source.bg(), source.emph()};
 
 auto foreground = source.fg();
-auto has_foreground = source.has_fg(); // false
+auto has_fg = source.has_fg(); // false
 auto unspecified = std::holds_alternative<tjg::no_color_t>(foreground); // true
 ```
-
-!!! note "Backward compatibility"
-
-    The original `get_foreground`, `get_background`, and `get_emphasis`
-    names are retained as aliases for `fg`, `bg`, and `emph`, respectively.
-    Likewise, `has_foreground`, `has_background`, and
-    `has_emphasis` are retained as aliases for `has_fg`, `has_bg`, and
-    `has_emph`, respectively.
 
 !!! note "Changed behavior"
 
@@ -334,8 +316,7 @@ auto unspecified = std::holds_alternative<tjg::no_color_t>(foreground); // true
 
     Foreground and background values now have the public type `tjg::color_t`.
     Their type was previously unspecified and named `detail::color_type`
-    internally. Both the short getters and the original names return
-    `color_t` by value.
+    internally. The getters return `color_t` by value.
 
 ### Attribute queries
 
@@ -375,11 +356,6 @@ enabling or disabling either leaves the other unchanged. Rendering emits both
 when both are enabled; their combined appearance depends on the terminal.
 Attribute and component setters support constant evaluation in C++23 and
 later on supported compilers.
-
-The aliases `strikethrough` and `is_strikethrough` forward to `strike`
-and `is_strike`, respectively. Either setter changes the same attribute bit,
-and either query reports its state. `strikethrough(bool enable = true)` returns
-`text_style&` for chaining.
 
 Use `emph(attributes)` to set exactly a group of attributes, then individual
 setters to change selected bits. In C++20 and later, `using enum` makes the
@@ -507,8 +483,7 @@ later on supported compilers.
 
 `text_style` stores its absolute flag, emphasis, foreground, and background as
 separate members. Equality compares all four components. Ordering compares the
-absolute flag first, then emphasis, background, and foreground, preserving the
-previous ordering without packing the style. Different color kinds remain
+absolute flag first, then emphasis, foreground, and background. Different color kinds remain
 distinct even when their RGB equivalents are equal. Styles can be used as keys
 in `std::map` and `std::set`; `operator<=>` returns `std::strong_ordering`.
 

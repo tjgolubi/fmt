@@ -26,17 +26,9 @@ auto sgr      = tjg::to_sgr(style);
 auto wide_sgr = tjg::to_sgr<wchar_t>(style);
 ```
 
-The output depends on the `TJG_COLOR_COMPACT_SGR` compiler definition:
-
-| Definition | Output for the example                  |
-| ---------- | --------------------------------------- |
-| `0`        | `\x1b[1m\x1b[38;2;001;002;003m\x1b[40m` |
-| `1`        | `\x1b[1;38;2;1;2;3;40m`                 |
-
-`0` is the default.
-
-Here `\x1b` denotes the actual ESC character. Set the definition consistently
-when compiling the application and its libraries. The extension requires C++23. The function can allocate and is not `noexcept`.
+The example emits one SGR sequence with unpadded parameters,
+`\x1b[1;38;2;1;2;3;40m`. Here `\x1b` denotes the ESC character.
+The function can allocate and is not `noexcept`.
 
 Use `to_sgr` when managing terminal state yourself. Use the styled formatting
 or printing functions to wrap text in styling followed by a terminal reset.
@@ -53,34 +45,24 @@ style is ignored. Neither input is modified.
 
 An absolute final style always emits a full reset followed by its own
 attributes, even when the initial state has the same attributes. This case
-delegates to `tjg::to_sgr(final_style)` and follows its SGR output mode.
+delegates to `tjg::to_sgr(final_style)`.
 
 ```cpp
 const auto initial = tjg::bold(tjg::fg(tjg::term_color::red));
 const auto final_style = tjg::underline(tjg::fg(tjg::term_color::red));
 auto transition = tjg::to_sgr(final_style, initial);
-// Compact:    "\x1b[22;4m".
-// Noncompact: "\x1b[0m\x1b[4m\x1b[31m".
-// Both produce underlined red text without bold.
+// "\x1b[22;4m" leaves red text underlined and clears bold.
 ```
 
-For a relative final style, identical complete states emit nothing in either
-output mode. Changed states follow `TJG_COLOR_COMPACT_SGR`:
+For a relative final style, identical complete states emit nothing. When the
+state changes, the formatter emits one sequence with unpadded parameters. It
+chooses the shorter of selective changes and a reset followed by the target
+attributes, preferring selective changes on a tie.
 
-- Noncompact mode (`0`, the default) resets when the initial state is nondefault,
-  then emits the final style's specified colors and emphasis, using separate
-  sequences and padded color parameters. It omits the reset when the initial
-  state is already defaults. An explicitly absolute target always resets.
-- Compact mode (`1`) chooses the shorter of selective changes and
-  reset-and-rebuild, preferring selective changes on a tie. Its output is one
-  combined sequence with unpadded parameters.
-
-Compact selective changes can restore default foreground or background with
+Selective changes can restore default foreground or background with
 SGR `39` or `49`. Bold and faint share SGR `22` for removal, so a surviving
 intensity attribute is reapplied when necessary. Colors are compared by kind
-and value, preserving terminal palette semantics. Noncompact mode instead
-rebuilds the full requested state, with a reset when needed. Both modes produce
-the requested appearance.
+and value, preserving terminal palette semantics.
 
 Both overloads support narrow and wide characters; transitions can allocate and
 are not `noexcept`.
@@ -96,7 +78,6 @@ the four-character sequence `\x1b[0m`. `Char` defaults to `char`; specify
 `wchar_t` for a wide-character view. The view refers to static storage and
 remains valid for the lifetime of the program. The function allocates no
 memory, is `noexcept`, and supports constant evaluation in C++23 and later.
-Its output is the same in both SGR modes.
 
 Use the reset after manually styled text to restore terminal-default colors
 and emphasis. It does not restore a previously active enclosing style.
@@ -114,20 +95,19 @@ wide_message.append(wide_reset.data(), wide_reset.size());
 ## `wrap_sgr`
 
 `tjg::wrap_sgr(style, text)` returns a string containing the style's opening
-SGR sequences, the text, and a terminal reset. The style comes first. Unlike
+SGR sequence, the text, and a terminal reset. The style comes first. Unlike
 `format`, it copies the text literally: braces, embedded nulls, and escape
 sequences are preserved without interpretation.
 
 ```cpp
 const auto style = tjg::bold();
 auto message     = tjg::wrap_sgr(style, "Result: {42}");
-// "\x1b[1mResult: {42}\x1b[0m" in either mode.
+// "\x1b[1mResult: {42}\x1b[0m".
 ```
 
 Empty text produces an empty string, even with a nonempty style. An empty
-style returns only the text. Otherwise, the opening sequences follow the
-selected `TJG_COLOR_COMPACT_SGR` mode, and the trailing reset restores terminal
-defaults rather than an enclosing style. The function leaves its inputs
+style returns only the text. Otherwise, the trailing reset restores terminal
+defaults. The function leaves its inputs
 unchanged, can allocate, and is not `noexcept`.
 
 The character template accepts `std::basic_string_view<Char>` and returns
@@ -147,7 +127,7 @@ Both constants are `constexpr std::size_t` values available in C++23 and later:
 
 | Constant                | Value | Meaning                                                                     |
 | ----------------------- | ----- | --------------------------------------------------------------------------- |
-| `tjg::sgr_max_length`   | `60`  | Upper bound on the opening SGR output for one style, in either output mode. |
+| `tjg::sgr_max_length`   | `60`  | Capacity bound for generating SGR output.                                   |
 | `tjg::sgr_reset_length` | `4`   | Length of the reset sequence returned by `sgr_reset`.                       |
 
 Lengths count `Char` elements, including ESC, brackets, parameters, and the

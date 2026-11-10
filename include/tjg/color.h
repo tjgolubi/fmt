@@ -35,10 +35,6 @@
 #include <cstdio>
 #include <cstdint>
 
-#ifndef TJG_COLOR_COMPACT_SGR
-#  define TJG_COLOR_COMPACT_SGR 0
-#endif
-
 namespace tjg {
 
 /// A narrowing static_cast.
@@ -99,9 +95,6 @@ enum class term_color : int8_t {
   bright_white
 };  // term_color
 
-/// Alias for `term_color`, retained for backward compatibility.
-using terminal_color = term_color;
-
 /**
  * Independent text attributes that can be combined with `operator|`.
  * `emphasis()` specifies no attributes.
@@ -118,7 +111,6 @@ enum class emphasis : uint8_t {
   reverse = 1 << 5,       ///< Reversed fg and bg  (SGR 7).
   conceal = 1 << 6,       ///< Concealed text      (SGR 8).
   strike = 1 << 7,        ///< Crossed-out text    (SGR 9).
-  strikethrough = strike  ///< Alias for `strike`, for backward compatibility.
 };  // emphasis
 
 [[nodiscard]]
@@ -693,21 +685,6 @@ class text_style {
     return _emph != emphasis{};
   }
 
-  /// Returns true if a foreground color is specified.
-  [[nodiscard]] constexpr auto has_foreground() const noexcept -> bool {
-    return has_fg();
-  }
-
-  /// Returns true if a background color is specified.
-  [[nodiscard]] constexpr auto has_background() const noexcept -> bool {
-    return has_bg();
-  }
-
-  /// Returns true if at least one emphasis attribute is set.
-  [[nodiscard]] constexpr auto has_emphasis() const noexcept -> bool {
-    return has_emph();
-  }
-
   /**
    * Returns the foreground color, preserving its kind and value.
    * The result can be passed to `fg()` or `bg()`.
@@ -729,27 +706,6 @@ class text_style {
   /// Returns the combined emphasis bit mask.
   [[nodiscard]] constexpr auto emph() const noexcept -> emphasis {
     return _emph;
-  }
-
-  /**
-   * Returns the foreground color, preserving its kind and value.
-   * The result can be passed to `fg()` or `bg()`.
-   */
-  [[nodiscard]] constexpr auto get_foreground() const noexcept -> color_t {
-    return fg();
-  }
-
-  /**
-   * Returns the background color, preserving its kind and value.
-   * The result can be passed to `fg()` or `bg()`.
-   */
-  [[nodiscard]] constexpr auto get_background() const noexcept -> color_t {
-    return bg();
-  }
-
-  /// Returns the combined emphasis bit mask, or `emphasis{}` if none is set.
-  [[nodiscard]] constexpr auto get_emphasis() const noexcept -> emphasis {
-    return emph();
   }
 
   /**
@@ -881,27 +837,11 @@ class text_style {
     return is_enabled(emphasis::strike);
   }
 
-  /// Alias for `strike()`, retained for backward compatibility.
-  constexpr auto strikethrough(bool enable = true) noexcept -> text_style& {
-    return strike(enable);
-  }
-
-  /// Alias for `is_strike()`, retained for backward compatibility.
-  [[nodiscard]] constexpr auto is_strikethrough() const noexcept -> bool {
-    return is_strike();
-  }
-
   [[nodiscard]] constexpr auto operator==(const text_style&) const noexcept
       -> bool = default;
 
-  [[nodiscard]] constexpr auto operator<=>(const text_style& other) const noexcept
-      -> std::strong_ordering {
-    // Preserve the established ordering without encoding the style as an integer.
-    if (auto order = _absolute <=> other._absolute; order != 0) return order;
-    if (auto order = _emph <=> other._emph; order != 0) return order;
-    if (auto order = _bg <=> other._bg; order != 0) return order;
-    return _fg <=> other._fg;
-  }
+  [[nodiscard]] constexpr auto operator<=>(const text_style&) const noexcept
+      -> std::strong_ordering = default;
 };  // text_style
 
 /**
@@ -1225,8 +1165,6 @@ template <typename Char = char>
 
 namespace detail {
 
-#if TJG_COLOR_COMPACT_SGR
-
 constexpr const char* decimal_strings[256] = {
     "0",   "1",   "2",   "3",   "4",   "5",   "6",   "7",   "8",   "9",   "10",
     "11",  "12",  "13",  "14",  "15",  "16",  "17",  "18",  "19",  "20",  "21",
@@ -1252,36 +1190,6 @@ constexpr const char* decimal_strings[256] = {
     "231", "232", "233", "234", "235", "236", "237", "238", "239", "240", "241",
     "242", "243", "244", "245", "246", "247", "248", "249", "250", "251", "252",
     "253", "254", "255"};  // decimal_strings
-
-#else
-
-constexpr const char* decimal_strings[256] = {
-    "000", "001", "002", "003", "004", "005", "006", "007", "008", "009", "010",
-    "011", "012", "013", "014", "015", "016", "017", "018", "019", "020", "021",
-    "022", "023", "024", "025", "026", "027", "028", "029", "030", "031", "032",
-    "033", "034", "035", "036", "037", "038", "039", "040", "041", "042", "043",
-    "044", "045", "046", "047", "048", "049", "050", "051", "052", "053", "054",
-    "055", "056", "057", "058", "059", "060", "061", "062", "063", "064", "065",
-    "066", "067", "068", "069", "070", "071", "072", "073", "074", "075", "076",
-    "077", "078", "079", "080", "081", "082", "083", "084", "085", "086", "087",
-    "088", "089", "090", "091", "092", "093", "094", "095", "096", "097", "098",
-    "099", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109",
-    "110", "111", "112", "113", "114", "115", "116", "117", "118", "119", "120",
-    "121", "122", "123", "124", "125", "126", "127", "128", "129", "130", "131",
-    "132", "133", "134", "135", "136", "137", "138", "139", "140", "141", "142",
-    "143", "144", "145", "146", "147", "148", "149", "150", "151", "152", "153",
-    "154", "155", "156", "157", "158", "159", "160", "161", "162", "163", "164",
-    "165", "166", "167", "168", "169", "170", "171", "172", "173", "174", "175",
-    "176", "177", "178", "179", "180", "181", "182", "183", "184", "185", "186",
-    "187", "188", "189", "190", "191", "192", "193", "194", "195", "196", "197",
-    "198", "199", "200", "201", "202", "203", "204", "205", "206", "207", "208",
-    "209", "210", "211", "212", "213", "214", "215", "216", "217", "218", "219",
-    "220", "221", "222", "223", "224", "225", "226", "227", "228", "229", "230",
-    "231", "232", "233", "234", "235", "236", "237", "238", "239", "240", "241",
-    "242", "243", "244", "245", "246", "247", "248", "249", "250", "251", "252",
-    "253", "254", "255"};  // decimal_strings
-
-#endif
 
 template <typename Char> class ansi_color_escape {
   // Maximum color SGR is "\x1b[38;2;255;255;255m"
@@ -1379,10 +1287,6 @@ template <typename Char> class ansi_color_escape {
     }
   }
 
-  [[nodiscard]] constexpr auto empty() const noexcept -> bool {
-    return (size == 0);
-  }
-
   constexpr operator const Char*() const noexcept { return buffer; }
 
   [[nodiscard]] constexpr auto begin() const noexcept -> const Char* {
@@ -1438,8 +1342,6 @@ constexpr void append_sgr_raw(Buffer& buf, text_style ts) {
   buf.append(background.begin(), background.end());
 }  // append_sgr_raw
 
-#if TJG_COLOR_COMPACT_SGR
-
 template <typename Buffer, typename Char = typename Buffer::value_type>
 constexpr void append_sgr(Buffer& buf, text_style ts) {
   if (ts.empty()) return;
@@ -1448,31 +1350,6 @@ constexpr void append_sgr(Buffer& buf, text_style ts) {
   append_sgr_raw(buf, ts);
   buf.data()[buf.size() - 1] = static_cast<Char>('m');
 }  // append_sgr
-
-#else
-
-template <typename Buffer, typename Char = typename Buffer::value_type>
-constexpr void append_sgr(Buffer& buf, const ansi_color_escape<Char>& sgr) {
-  if (sgr.empty()) return;
-  buf.push_back(static_cast<Char>('\x1b'));
-  buf.push_back(static_cast<Char>('['));
-  buf.append(sgr.begin(), sgr.end());
-  buf.data()[buf.size() - 1] = static_cast<Char>('m');
-}  // append_sgr
-
-template <typename Buffer, typename Char = typename Buffer::value_type>
-constexpr void append_sgr(Buffer& buf, text_style ts) {
-  if (ts.empty()) return;
-  if (ts.is_absolute()) reset_color(buf);
-  auto emphasis = make_emphasis<Char>(ts.emph());
-  append_sgr(buf, emphasis);
-  auto foreground = make_foreground_color<Char>(ts.fg());
-  append_sgr(buf, foreground);
-  auto background = make_background_color<Char>(ts.bg());
-  append_sgr(buf, background);
-}  // append_sgr
-
-#endif
 
 class style_scope {
   text_style _saved;
@@ -1507,10 +1384,9 @@ void vformat_to(Buffer& buf, text_style ts,
 }  // namespace detail
 
 /**
- * Returns the ANSI SGR escape sequences for the specified foreground,
- * background, and emphasis in `ts`. Absolute styles begin with a terminal
- * reset: compact mode includes `0;` in the sequence, while noncompact mode
- * emits a separate reset sequence first. An absolute-only style emits a reset.
+ * Returns one ANSI SGR escape sequence for the specified foreground,
+ * background, and emphasis, with unpadded parameters. Absolute styles start
+ * with a reset parameter. An absolute-only style emits a reset.
  *
  * Returns an empty string for an empty style.
  * Unspecified color channels emit no color parameters. For absolute styles,
@@ -1525,8 +1401,6 @@ template <typename Char = char>
   detail::append_sgr(buf, ts);
   return {buf.data(), buf.size()};
 }
-
-#if TJG_COLOR_COMPACT_SGR
 
 namespace detail {
 
@@ -1605,9 +1479,8 @@ constexpr void append_sgr_transition(Buffer& buf, text_style target,
  * always resets and delegates to the one-argument overload, regardless of the
  * initial state. Otherwise returns an empty string when no changes are needed.
  *
- * For relative targets, uses one unpadded sequence, independently of
- * `TJG_COLOR_COMPACT_SGR`, choosing the shorter of selective changes and reset
- * followed by the target attributes.
+ * For relative targets, uses one unpadded sequence, choosing the shorter of
+ * selective changes and reset followed by the target attributes.
  * Equal lengths prefer selective changes. `Char` defaults to `char`.
  */
 template <typename Char = char>
@@ -1618,34 +1491,6 @@ template <typename Char = char>
   detail::append_sgr_transition(buf, target, initial);
   return {buf.data(), buf.size()};
 }
-
-#else
-
-namespace detail {
-
-template <typename Buffer, typename Char = typename Buffer::value_type>
-constexpr void append_sgr_transition(Buffer& buf, text_style target,
-                                     text_style initial) {
-  if (!target.is_absolute()) {
-    initial.absolute(false);
-    if (target == initial) return;
-    target.absolute(!initial.empty());
-  }
-  append_sgr(buf, target);
-}
-
-}  // namespace detail
-
-template <typename Char = char>
-[[nodiscard]] inline auto to_sgr(text_style target, const text_style& initial)
-    TJG_NOEXCEPT_UNLESS_BAD_ALLOC
-    -> std::basic_string<Char> {
-  auto buf = basic_memory_buffer<Char, sgr_max_length>{};
-  detail::append_sgr_transition(buf, target, initial);
-  return {buf.data(), buf.size()};
-}
-
-#endif
 
 /**
  * Returns a copy of `sv` wrapped in the SGR sequences for `ts` and a terminal

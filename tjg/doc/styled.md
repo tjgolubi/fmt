@@ -120,8 +120,8 @@ subtree.
 After the absolute span, the surrounding appearance resumes.
 
 An absolute node emits an SGR reset before applying its style, unless it
-produces no output. This applies in both compact and noncompact modes, even when
-the recorded terminal state already has the same attributes. Relative
+produces no output. This applies even when the recorded terminal state already
+has the same attributes. Relative
 descendants inherit the resulting style without repeating the group's absolute
 reset. An explicitly absolute descendant establishes its own reset boundary.
 
@@ -614,7 +614,7 @@ Expected output (followed by a newline):
 
 The width and precision apply to the number, including padding inside the styled
 span. Relative styles inherit the shared terminal state; absolute styles replace
-it for this value and always emit an explicit reset in both SGR modes, even
+it for this value and always emit an explicit reset, even
 when the enclosing state already has the same attributes. Both restore the
 enclosing style afterward. For examples, see
 [Text style rendering](index.md#TextStyleRendering).

@@ -28,7 +28,6 @@ TEST(color_ostream_test, emphasis_insertion) {
       {emphasis::reverse, "{reverse}"},
       {emphasis::conceal, "{conceal}"},
       {emphasis::strike, "{strike}"},
-      {emphasis::strikethrough, "{strike}"},
       {emphasis::strike | emphasis::bold | emphasis::underline,
        "{bold underline strike}"},
       {static_cast<emphasis>(255),
@@ -70,11 +69,7 @@ TEST(color_ostream_test, insertion) {
   auto& result = (os << tjg::styled(text, style));
   EXPECT_EQ(&result, &os);
   result << ' ' << tjg::styled(42, tjg::emphasis::underline) << '!';
-#if TJG_COLOR_COMPACT_SGR == 1
   const std::string opening = "\x1b[1;38;2;1;2;3;40m";
-#else
-  const std::string opening = "\x1b[1m\x1b[38;2;001;002;003m\x1b[40m";
-#endif
   EXPECT_EQ(os.str(), opening + text + "\x1b[0m \x1b[4m42\x1b[0m!");
 }
 
@@ -86,11 +81,7 @@ TEST(color_ostream_test, insertion_wide) {
   auto& result = (os << tjg::styled(text, style));
   EXPECT_EQ(&result, &os);
   result << L' ' << tjg::styled(42, tjg::emphasis::underline) << L'!';
-#if TJG_COLOR_COMPACT_SGR == 1
   const std::wstring opening = L"\x1b[1;38;2;1;2;3;40m";
-#else
-  const std::wstring opening = L"\x1b[1m\x1b[38;2;001;002;003m\x1b[40m";
-#endif
   EXPECT_EQ(os.str(), opening + text + L"\x1b[0m \x1b[4m42\x1b[0m!");
 }
 
@@ -150,12 +141,7 @@ TEST(color_ostream_test, wide_print_and_println) {
   const auto style = tjg::text_style{tjg::emphasis::bold, tjg::rgb{1, 2, 3},
                                     tjg::term_color::black};
   tjg::print(os, style, L"Result: {:04x} {}", 42, L"done");
-#if TJG_COLOR_COMPACT_SGR == 1
   EXPECT_EQ(os.str(), L"\x1b[1;38;2;1;2;3;40mResult: 002a done\x1b[0m");
-#else
-  EXPECT_EQ(os.str(),
-            L"\x1b[1m\x1b[38;2;001;002;003m\x1b[40mResult: 002a done\x1b[0m");
-#endif
   os.str(L"");
   tjg::println(os, tjg::emphasis::underline, L"{}", 42);
   EXPECT_EQ(os.str(), L"\x1b[4m42\x1b[0m\n");
@@ -221,12 +207,7 @@ TEST(color_ostream_test, print) {
   const auto style = tjg::text_style{tjg::emphasis::bold, tjg::rgb{1, 2, 3},
                                     tjg::term_color::black};
   tjg::print(os, style, "Result: {:04x} {}", 42, "done");
-#if TJG_COLOR_COMPACT_SGR == 1
   EXPECT_EQ(os.str(), "\x1b[1;38;2;1;2;3;40mResult: 002a done\x1b[0m");
-#else
-  EXPECT_EQ(os.str(),
-            "\x1b[1m\x1b[38;2;001;002;003m\x1b[40mResult: 002a done\x1b[0m");
-#endif
   os << " plain";
   EXPECT_EQ(os.str().substr(os.str().size() - 10), "\x1b[0m plain");
 }

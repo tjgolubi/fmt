@@ -145,11 +145,10 @@ styled span. Stream formatting settings follow the value's ordinary insertion
 behavior. Strings are inserted literally, without interpreting braces as format
 fields.
 
-A nonempty style emits opening SGR sequences selected by
-[`TJG_COLOR_COMPACT_SGR`](format.md#to_sgr), followed by the value and a reset
-to terminal defaults. An empty style simply inserts the value and emits no
-reset. Inserting an empty string with a nonempty style still emits the opening
-sequences and reset. A reset does not restore an enclosing style.
+A nonempty style emits an [opening SGR sequence](format.md#to_sgr), followed
+by the value and a reset to terminal defaults. An empty style simply inserts
+the value. Inserting an empty string with a nonempty style still emits the
+opening sequence and reset. A reset does not restore an enclosing style.
 
 If inserting the value throws and exceptions are enabled, the operator attempts
 to write a reset, ignores any exception from that recovery write, and rethrows

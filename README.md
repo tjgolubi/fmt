@@ -11,8 +11,7 @@ The standalone CMake project in `tjg/` exports `tjg::tjg`; the retained {fmt}
 engine remains under `include/fmt/` in namespace `fmt`.
 TJG tests and their own harness live in `tjg/test/`; the original FMT tests
 remain in `test/`. Configure `tjg/` with `-DTJG_TEST=ON` to run only TJG tests.
-`./build.bash` builds and tests only TJG in C++23, in both compact and
-non-compact SGR modes.
+`./build.bash` builds and tests only TJG in C++23.
 The user guide sources live in `tjg/doc/`.
 Development is on the `color-dev` branch; these extensions have not been
 accepted into upstream {fmt}.
@@ -32,7 +31,7 @@ The styling extensions include:
 - Named RGB constants, terminal colors, and the 216-color cube and 24-level gray palettes.
 - Public color variants, RGB conversion, color/style blending, comparisons, and hashing.
 - Fluent component and attribute controls, style overlays, and conditional emphasis factories.
-- Optional compact ANSI SGR output, style-to-SGR conversion, reset views, and literal text wrapping.
+- Compact ANSI SGR output, style-to-SGR conversion, reset views, and literal text wrapping.
 - Styled formatting and printing, plus narrow and wide ostream output and styled stream insertion through `<tjg/color-ostream.h>`.
 - Owning narrow and wide styled-text trees with scoped concatenation, absolute styles, alignment, padding, and precision.
 - Nested styled values that inherit and restore their enclosing formatting style.

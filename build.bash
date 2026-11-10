@@ -20,11 +20,8 @@ case "${1:-}" in
 esac
 
 set -x
-for mode in ON OFF; do
-  mode_build_dir="$build_dir/$mode"
-  cmake -S tjg -B "$mode_build_dir" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++ \
-    -DCMAKE_CXX_STANDARD=23 -DCMAKE_CXX_STANDARD_REQUIRED=ON \
-    -DTJG_TEST=ON -DTJG_WERROR=ON -DTJG_COLOR_COMPACT_SGR="$mode"
-  cmake --build "$mode_build_dir" --parallel 4
-  ctest --test-dir "$mode_build_dir" --output-on-failure
-done
+cmake -S tjg -B "$build_dir" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++ \
+  -DCMAKE_CXX_STANDARD=23 -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+  -DTJG_TEST=ON -DTJG_WERROR=ON
+cmake --build "$build_dir" --parallel 4
+ctest --test-dir "$build_dir" --output-on-failure

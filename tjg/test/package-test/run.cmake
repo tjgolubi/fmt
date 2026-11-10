@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 foreach (required TJG_SOURCE_DIR TJG_TEST_BINARY_DIR TJG_CXX_COMPILER
-                  TJG_GENERATOR TJG_COMPACT_SGR)
+                  TJG_GENERATOR)
   if (NOT DEFINED ${required} OR "${${required}}" STREQUAL "")
     message(FATAL_ERROR "Missing package-test setting: ${required}")
   endif ()
@@ -50,7 +50,6 @@ run("${CMAKE_COMMAND}"
     -DCMAKE_BUILD_TYPE=Debug
     "-DCMAKE_INSTALL_PREFIX=${prefix}"
     -DTJG_INSTALL=ON
-    "-DTJG_COLOR_COMPACT_SGR=${TJG_COMPACT_SGR}"
     -DTJG_TEST=OFF)
 run("${CMAKE_COMMAND}" --build "${package_build}" --config Debug)
 run("${CMAKE_COMMAND}" --install "${package_build}" --config Debug)
@@ -59,7 +58,7 @@ if (EXISTS "${prefix}/include/fmt")
 endif ()
 file(RENAME "${prefix}" "${relocated}")
 
-# The consumer sets no language standard, include path, or SGR definition itself.
+# The consumer sets no language standard, or include path itself.
 run("${CMAKE_COMMAND}"
     -S
     "${TJG_SOURCE_DIR}/tjg/test/package-test"
@@ -69,8 +68,7 @@ run("${CMAKE_COMMAND}"
     "-DCMAKE_MAKE_PROGRAM=${TJG_MAKE_PROGRAM}"
     "-DCMAKE_CXX_COMPILER=${TJG_CXX_COMPILER}"
     -DCMAKE_BUILD_TYPE=Debug
-    "-DCMAKE_PREFIX_PATH=${relocated}"
-    "-DTJG_EXPECTED_COMPACT_SGR=${TJG_COMPACT_SGR}")
+    "-DCMAKE_PREFIX_PATH=${relocated}")
 run("${CMAKE_COMMAND}"
     --build
     "${consumer_build}"

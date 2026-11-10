@@ -7,7 +7,6 @@ include(CMakePackageConfigHelpers)
 option(TJG_INSTALL "Generate TJG install rules." ON)
 option(TJG_TEST "Build TJG tests." OFF)
 option(TJG_WERROR "Treat TJG test warnings as errors." OFF)
-option(TJG_COLOR_COMPACT_SGR "Use compact ANSI SGR output." ON)
 
 add_library(tjg INTERFACE)
 add_library(tjg::tjg ALIAS tjg)
@@ -15,8 +14,6 @@ target_compile_features(tjg INTERFACE cxx_std_23)
 target_include_directories(
   tjg INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
                 $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_compile_definitions(
-  tjg INTERFACE TJG_COLOR_COMPACT_SGR=$<BOOL:${TJG_COLOR_COMPACT_SGR}>)
 
 if (TJG_INSTALL)
   set(TJG_CMAKE_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/tjg")

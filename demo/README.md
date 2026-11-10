@@ -4,7 +4,7 @@ From this directory, run `make run` using GNU make and a C++23-capable compiler.
 From the repository root, run `make -C demo run`.
 
 The Makefile uses `TJG_ROOT=..` to read this checkout's `include/tjg/` headers.
-It builds in standalone mode with `std::format`, `std::print`, and compact SGR enabled;
+It builds in standalone mode with `std::format` and `std::print`, using compact SGR;
 no CMake, {fmt} library, or `FMT_HEADER_ONLY` definition is needed.
 Override the path or compiler with `make run TJG_ROOT=/path/to/fmt CXX=g++`.
 Run `make clean` before changing the TJG path, compiler, or build flags.

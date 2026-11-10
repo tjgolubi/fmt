@@ -12,11 +12,6 @@ Use emphasis values as styles or combine them with colors through
       color_reference: true
       enum_value_placeholder: unspecified value
 
-!!! note "Backward compatibility"
-
-    `tjg::emphasis::strikethrough` remains an alias for `tjg::emphasis::strike`.
-    Both names select the same attribute bit and produce the same SGR sequence.
-
 ## Combining attributes
 
 ::: operator|(emphasis, emphasis)

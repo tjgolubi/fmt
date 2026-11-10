@@ -9,13 +9,12 @@ permissions:
 
 jobs:
   build:
-    name: LLVM 20 libc++ C++23 ${{ matrix.build_type }} SGR=${{ matrix.compact }}
+    name: LLVM 20 libc++ C++23 ${{ matrix.build_type }}
     runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
         build_type: [Debug, Release]
-        compact: ["ON", "OFF"]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
@@ -34,7 +33,6 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DCMAKE_CXX_STANDARD=23 -DCMAKE_CXX_STANDARD_REQUIRED=ON
           -DTJG_TEST=ON -DTJG_WERROR=ON
-          -DTJG_COLOR_COMPACT_SGR=${{ matrix.compact }}
 
       - name: Build TJG tests
         run: cmake --build build/tjg --parallel 4
