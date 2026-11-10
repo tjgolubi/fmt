@@ -319,33 +319,33 @@ TEST(styled_text_format_test, separate_format_call_inherits_shared_state) {
   const auto red = tjg::underline(tjg::fg(tjg::term_color::red));
   check_states(tjg::format(outer, "{}", terminal_state_nested{}),
                std::string{"a42z"}, {outer, red, red, outer});
-  EXPECT_EQ(tjg::get_terminal_state(), tjg::text_style{});
+  EXPECT_EQ(tjg::detail::get_style_state(), tjg::text_style{});
 #if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   EXPECT_THROW((void)tjg::format(outer, "{}",
                                 tjg::styled(color_context_throwing{}, red)),
                std::format_error);
-  EXPECT_EQ(tjg::get_terminal_state(), tjg::text_style{});
+  EXPECT_EQ(tjg::detail::get_style_state(), tjg::text_style{});
 #endif
 }
 
-TEST(styled_text_format_test, terminal_state_is_shared_and_exception_safe) {
+TEST(styled_text_format_test, active_style_is_shared_and_exception_safe) {
   tjg::detail::style_scope scope{};
-  auto& terminal = tjg::get_terminal_state();
+  auto& terminal = tjg::detail::get_style_state();
   EXPECT_EQ(terminal, tjg::text_style{});
   const auto outer = tjg::underline(tjg::bg(tjg::term_color::blue));
   terminal = outer;
   const auto number = 42;
   auto inner = tjg::styled(number, tjg::fg(tjg::term_color::red));
   (void)std::format("{}", inner);
-  EXPECT_EQ(&tjg::get_terminal_state(), &terminal);
+  EXPECT_EQ(&tjg::detail::get_style_state(), &terminal);
   const auto wide_text = tjg::styled(number, tjg::fg(tjg::term_color::red));
   EXPECT_FALSE(std::format(L"{}", wide_text).empty());
-  EXPECT_EQ(tjg::get_terminal_state(), outer);
+  EXPECT_EQ(tjg::detail::get_style_state(), outer);
 #if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   const auto value = color_context_throwing{};
   auto styled = tjg::styled(value, tjg::bold());
   EXPECT_THROW((void)std::format("{}", styled), std::format_error);
-  EXPECT_EQ(tjg::get_terminal_state(), outer);
+  EXPECT_EQ(tjg::detail::get_style_state(), outer);
 #endif
 }
 
@@ -709,7 +709,7 @@ TEST(styled_text_format_test, standard_tree_inherits_and_restores_style) {
   auto red = outer; red.fg(tjg::term_color::red);
   check_states(std::format("{}", tjg::styled(tree, outer)), std::string{"abcd"},
                {outer, red, tjg::bold(), outer});
-  EXPECT_EQ(tjg::get_terminal_state(), tjg::text_style{});
+  EXPECT_EQ(tjg::detail::get_style_state(), tjg::text_style{});
   const auto empty = tjg::absolute(tjg::styled_text{});
   EXPECT_EQ(std::format("{}", empty), "");
   EXPECT_EQ(std::format("{:.0}", tree), "");
@@ -717,7 +717,7 @@ TEST(styled_text_format_test, standard_tree_inherits_and_restores_style) {
   auto width = -1;
   EXPECT_THROW((void)std::vformat("{:>{}}", std::make_format_args(tree, width)),
                std::format_error);
-  EXPECT_EQ(tjg::get_terminal_state(), tjg::text_style{});
+  EXPECT_EQ(tjg::detail::get_style_state(), tjg::text_style{});
   for (const char* spec : {"{:08}", "{:+}", "{:.}", "{:d}", "{:s?}"}) {
     EXPECT_THROW((void)std::vformat(spec, std::make_format_args(tree)), std::format_error);
   }
@@ -739,14 +739,160 @@ struct tree_throwing_output {
 TEST(styled_text_format_test, standard_tree_output_failure_restores_state) {
   tjg::detail::style_scope scope{};
   const auto outer = tjg::underline();
-  tjg::get_terminal_state() = outer;
+  tjg::detail::get_style_state() = outer;
   const auto tree = tjg::bold(std::string(4000, 'x'));
   int remaining = 20;
   EXPECT_THROW(std::format_to(tree_throwing_output{&remaining}, "{}", tree), std::runtime_error);
-  EXPECT_EQ(tjg::get_terminal_state(), outer);
+  EXPECT_EQ(tjg::detail::get_style_state(), outer);
 }
 TEST(styled_text_format_test, named_dynamic_specs_are_rejected) {
   const auto tree = tjg::styled_text{"hello world"};
   EXPECT_THROW((void)runtime_format("{:>{width}.{prec}}", tree, 9, 5),
                std::format_error);
+}
+
+struct nested_format_probe {
+  tjg::text_style terminal;
+};
+
+namespace std {
+template <typename Char>
+struct formatter<nested_format_probe, Char> : formatter<int, Char> {
+  template <typename Context>
+  auto format(const nested_format_probe& value, Context& ctx) const
+      -> decltype(ctx.out()) {
+    const auto enclosing = tjg::detail::get_style_state();
+    EXPECT_EQ(enclosing, tjg::bold());
+    EXPECT_EQ(tjg::get_terminal_state(), value.terminal);
+    const auto red = tjg::fg(tjg::term_color::red);
+    if constexpr (same_as<Char, char>) {
+      EXPECT_EQ(tjg::format(red, "{}", 7), "\x1b[31m7\x1b[39m");
+    } else {
+      EXPECT_EQ(tjg::format(red, L"{}", 7), L"\x1b[31m7\x1b[39m");
+    }
+    EXPECT_EQ(tjg::detail::get_style_state(), enclosing);
+    EXPECT_EQ(tjg::get_terminal_state(), value.terminal);
+    EXPECT_THROW((void)tjg::vformat(red, "{", std::make_format_args()),
+                 std::format_error);
+    EXPECT_EQ(tjg::detail::get_style_state(), enclosing);
+    return formatter<int, Char>::format(42, ctx);
+  }
+};
+}  // namespace std
+
+namespace {
+struct terminal_state_scope {
+  tjg::text_style previous = tjg::get_terminal_state();
+  ~terminal_state_scope() { tjg::get_terminal_state() = previous; }
+};
+
+template <typename Char>
+void check_format_scopes() {
+  terminal_state_scope restore{};
+  const auto terminal = tjg::underline(tjg::bg(tjg::term_color::blue));
+  tjg::get_terminal_state() = terminal;
+  const auto value = nested_format_probe{terminal};
+  const auto pattern = chars<Char>("a{}z");
+  const auto expected = chars<Char>("\x1b[1ma42z\x1b[0m");
+  const auto args =
+      std::make_format_args<tjg::detail::format_context<Char>>(value);
+  EXPECT_EQ(tjg::vformat(tjg::bold(), std::basic_string_view<Char>{pattern},
+                         args), expected);
+  Char output[64]{};
+  auto end = tjg::vformat_to(output, tjg::bold(),
+                            std::basic_string_view<Char>{pattern}, args);
+  EXPECT_EQ(std::basic_string<Char>(output, end), expected);
+  if constexpr (std::same_as<Char, char>) {
+    EXPECT_EQ(tjg::format(tjg::bold(), "a{}z", value), expected);
+    end = tjg::format_to(output, tjg::bold(), "a{}z", value);
+    EXPECT_EQ(tjg::format(tjg::absolute(tjg::text_style{}), "x"), "\x1b[0mx");
+  } else {
+    EXPECT_EQ(tjg::format(tjg::bold(), L"a{}z", value), expected);
+    end = tjg::format_to(output, tjg::bold(), L"a{}z", value);
+    EXPECT_EQ(tjg::format(tjg::absolute(tjg::text_style{}), L"x"), L"\x1b[0mx");
+  }
+  EXPECT_EQ(std::basic_string<Char>(output, end), expected);
+  EXPECT_EQ(tjg::detail::get_style_state(), tjg::text_style{});
+  EXPECT_EQ(tjg::get_terminal_state(), terminal);
+}
+
+struct format_failing_output {
+  using difference_type = std::ptrdiff_t;
+  char* position;
+  int* remaining;
+  bool persistent = false;
+
+  auto operator*() -> format_failing_output& { return *this; }
+  auto operator++() -> format_failing_output& {
+    ++position;
+    return *this;
+  }
+  auto operator++(int) -> format_failing_output {
+    auto previous = *this;
+    ++*this;
+    return previous;
+  }
+  auto operator=(char value) -> format_failing_output& {
+    if (--*remaining == 0 || (persistent && *remaining < 0))
+      throw std::runtime_error("format output failed");
+    *position = value;
+    return *this;
+  }
+};
+}  // namespace
+
+TEST(styled_text_format_test, format_scopes_inherit_and_restore) {
+  check_format_scopes<char>();
+  check_format_scopes<wchar_t>();
+}
+
+TEST(styled_text_format_test, format_scope_output_failures) {
+  terminal_state_scope restore{};
+  const auto terminal = tjg::underline();
+  tjg::get_terminal_state() = terminal;
+  char output[64]{};
+  int remaining = 8;  // Opening SGR and three payload characters succeed.
+  EXPECT_THROW(tjg::format_to(format_failing_output{output, &remaining},
+                               tjg::bold(), "abcdef"),
+               std::runtime_error);
+  EXPECT_EQ(std::string(output), "\x1b[1mabc\x1b[0m");
+  EXPECT_EQ(tjg::get_terminal_state(), terminal);
+
+  std::fill(std::begin(output), std::end(output), '\0');
+  remaining = 11;  // Fail the first byte of the closing SGR persistently.
+  EXPECT_NO_THROW(tjg::format_to(
+      format_failing_output{output, &remaining, true}, tjg::bold(), "abcdef"));
+  EXPECT_EQ(std::string(output), "\x1b[1mabcdef");
+  EXPECT_EQ(tjg::get_terminal_state(), terminal);
+  EXPECT_EQ(tjg::detail::get_style_state(), tjg::text_style{});
+
+  std::fill(std::begin(output), std::end(output), '\0');
+  remaining = 2;  // The opening SGR itself fails before a guard is constructed.
+  EXPECT_THROW(tjg::format_to(
+      format_failing_output{output, &remaining, true}, tjg::bold(), "abcdef"),
+      std::runtime_error);
+  EXPECT_EQ(tjg::detail::get_style_state(), tjg::text_style{});
+  EXPECT_EQ(tjg::get_terminal_state(), terminal);
+
+  auto partial = std::string{};
+  const auto body = color_context_throwing{};
+  const auto throwing = tjg::styled(body, tjg::bold());
+  EXPECT_THROW(tjg::format_to(std::back_inserter(partial), tjg::text_style{},
+                               "{}", throwing),
+               std::format_error);
+  EXPECT_TRUE(partial.ends_with("\x1b[0m"));
+  EXPECT_EQ(tjg::detail::get_style_state(), tjg::text_style{});
+  EXPECT_EQ(tjg::get_terminal_state(), terminal);
+}
+
+TEST(styled_text_format_test, failed_sgr_close_preserves_active_style) {
+  tjg::detail::format_scope context{tjg::underline()};
+  char output[32]{};
+  int remaining = 5;
+  auto out = format_failing_output{output, &remaining, true};
+  {
+    tjg::detail::sgr_scope<char, decltype(out)> scope{out, tjg::bold()};
+  }
+  EXPECT_EQ(std::string(output), "\x1b[1m");
+  EXPECT_EQ(tjg::detail::get_style_state(), tjg::underline(tjg::bold()));
 }

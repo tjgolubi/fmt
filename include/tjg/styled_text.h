@@ -428,8 +428,8 @@ template <typename Char> struct styled_text_renderer {
                       : specs.alignment == '^' ? padding / 2
                                                : 0;
     if (limit == 0) state.stopped = true;
-    const auto initial = get_terminal_state();
-    auto& terminal = get_terminal_state();
+    const auto initial = get_style_state();
+    auto& terminal = get_style_state();
     detail::style_scope scope{};
     auto out = write_node(value, initial, terminal, ctx.out(), state, specs,
                           left, padding - left);

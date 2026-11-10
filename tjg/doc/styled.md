@@ -144,9 +144,9 @@ it resumes both surrounding properties.
 ### Formatting and plain text
 
 Formatting leaves the value unchanged. Relative roots inherit the enclosing
-shared terminal state's colors and emphasis. After the complete replacement field,
-the enclosing style is restored. The shared state initially assumes terminal
-defaults. See the [shared-state rules](index.md) for single-threaded use and
+active formatting state's colors and emphasis. After the complete replacement
+field, the enclosing style is restored. The outermost formatting state is reset.
+See the [shared-state rules](index.md) for single-threaded use and
 nested formatting calls.
 
 The formatter tracks the last style emitted to the terminal separately from
@@ -613,7 +613,7 @@ Expected output (followed by a newline):
 <pre class="color-output">Amount: <span style="color: #008000">    1.23</span></pre>
 
 The width and precision apply to the number, including padding inside the styled
-span. Relative styles inherit the shared terminal state; absolute styles replace
+span. Relative styles inherit the active formatting state; absolute styles replace
 it for this value and always emit an explicit reset, even
 when the enclosing state already has the same attributes. Both restore the
 enclosing style afterward. For examples, see

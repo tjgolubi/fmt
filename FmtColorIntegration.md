@@ -56,9 +56,10 @@ packs must remain alive. Invalid specifications and malformed backslash escapes
 throw `std::format_error`. The standard library does not support named arguments;
 use positional dynamic width and precision, such as `"{0:>{1}.{2}}"`.
 
-A style-taking output call appends a terminal reset for a nonempty style.
-Nested `tjg::styled` arguments and owning trees inherit and restore their
-enclosing style. Shared terminal state assumes single-threaded use for now.
+String and iterator formatting inherit and restore the enclosing formatting
+style. The outermost formatting state is reset and is separate from the tracked
+terminal state. Nested `tjg::styled` arguments and owning trees use the active
+formatting style. Formatting state assumes single-threaded use for now.
 
 ## Use Make
 

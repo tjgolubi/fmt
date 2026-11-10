@@ -30,8 +30,8 @@ The example emits one SGR sequence with unpadded parameters,
 `\x1b[1;38;2;1;2;3;40m`. Here `\x1b` denotes the ESC character.
 The function can allocate and is not `noexcept`.
 
-Use `to_sgr` when managing terminal state yourself. Use the styled formatting
-or printing functions to wrap text in styling followed by a terminal reset.
+Use `to_sgr` when managing terminal state yourself. Styled formatting wraps text
+in SGR transitions that return to the enclosing formatting style.
 
 ### Transitions from a known style
 
@@ -137,13 +137,32 @@ Use the returned string's `size` for the actual opening length.
 
 ## `format`
 
-::: format(text_style, std::format_string<T...>, T&&...)
+The `format`, `vformat`, `format_to`, and `vformat_to` overloads share these rules.
+The outermost formatting state is reset. Each call inherits the active formatting
+style, applies the requested style, and appends a transition back to its entry
+style. Relative styles inherit missing colors and combine emphasis. Absolute
+styles establish their own reset boundary. Nested styled values use the same
+active formatting state.
+
+The formatting state is separate from `get_terminal_state`. A state scope
+restores the enclosing active state on normal exit and exceptions. Only SGR
+generation uses a temporary `memory_buffer`; text goes directly to the returned
+string or supplied output iterator through standard formatting.
+
+The SGR scope attempts its closing transition on every exit. Closing output is
+best effort. If it fails, that failure is suppressed and the local style is not
+recorded as restored. A previously thrown formatting or output exception still
+propagates. The enclosing formatting state is restored independently. Partial
+output can remain after errors. An absolute reset-only style needs no additional
+closing SGR when the entry state was already reset.
+
+::: format(text_style, std::format_string<Args...>, Args&&...)
     options:
       color_reference: true
 
 ## `format_to`
 
-::: format_to(OutputIt, text_style, std::format_string<T...>, T&&...)
+::: format_to(OutputIt, text_style, std::format_string<Args...>, Args&&...)
     options:
       color_reference: true
 
