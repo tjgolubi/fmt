@@ -156,8 +156,10 @@ TEST(color_test, absolute_style_constexpr) {
   static_assert(!result.is_absolute() && result.fg() == full.fg() &&
                     result.bg() == full.bg(),
                 "valid absolute blends remain constant-evaluable and relative");
-  constexpr auto cleared = tjg::text_style{full}.clear();
-  static_assert(cleared.empty() && !cleared.is_absolute(),
+  static_assert([full] {
+                  auto style = full;
+                  return style.clear().empty() && !style.is_absolute();
+                }(),
                 "clear removes absolute during evaluation");
 }
 
@@ -2189,11 +2191,17 @@ TEST(color_test, fluent_constexpr) {
                 "clearing components must support constant evaluation");
   static_assert(!empty.has_fg() && !empty.has_bg() && !empty.has_emph(),
                 "presence queries must detect constexpr component clearing");
-  constexpr auto cleared_style = tjg::text_style{replaced}.clear();
-  static_assert(cleared_style.empty() && cleared_style == tjg::text_style{},
+  static_assert([replaced] {
+                  auto style = replaced;
+                  style.clear();
+                  return style.empty() && style == tjg::text_style{};
+                }(),
                 "clear must restore an empty style during constant evaluation");
-  constexpr auto reused = tjg::text_style{replaced}.clear().strike();
-  static_assert(reused == tjg::text_style{tjg::emphasis::strike},
+  static_assert([replaced] {
+                  auto style = replaced;
+                  return style.clear().strike() ==
+                         tjg::text_style{tjg::emphasis::strike};
+                }(),
                 "clear must support fluent reuse during constant evaluation");
 }
 

@@ -9,6 +9,7 @@
 
 #include <functional>
 #include <limits>
+#include <type_traits>
 
 #include <cstddef>
 #include <cstdint>
@@ -44,10 +45,11 @@ constexpr auto hash_mix(uint32_t x) noexcept -> uint32_t {
 template <typename T>
 inline void hash_combine(std::size_t& seed, const T& value)
     noexcept(noexcept(std::hash<T>{}(value))) {
-  static_assert(std::numeric_limits<std::size_t>::digits == 32 ||
-                std::numeric_limits<std::size_t>::digits == 64);
-  seed = detail::hash_mix(seed + std::size_t{0x9e3779b9} +
-                          std::hash<T>{}(value));
+  constexpr auto bits = std::numeric_limits<std::size_t>::digits;
+  static_assert(bits == 32 || bits == 64);
+  using mix_type = std::conditional_t<bits == 32, uint32_t, uint64_t>;
+  const auto sum = seed + std::size_t{0x9e3779b9} + std::hash<T>{}(value);
+  seed = detail::hash_mix(static_cast<mix_type>(sum));
 }
 
 }  // namespace tjg

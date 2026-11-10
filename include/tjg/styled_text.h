@@ -73,8 +73,8 @@ template <typename Char> class basic_styled_text {
     ~storage() {}
   } _data;
 
-#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ == 13
-  // GCC 13 can report an inactive union member as uninitialized when this
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 13 && __GNUC__ <= 14
+  // GCC 13/14 can report an inactive union member as uninitialized when this
   // vector move is inlined through concatenation. Keep leaf moves inline.
   [[gnu::noinline]] static void move_branch(branch* target,
                                             branch& source) noexcept {
@@ -135,7 +135,7 @@ template <typename Char> class basic_styled_text {
   basic_styled_text(basic_styled_text&& other) noexcept
       : _style{other._style}, _is_branch{other._is_branch} {
     if (_is_branch) {
-#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ == 13
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 13 && __GNUC__ <= 14
       move_branch(&_data.children, other._data.children);
 #else
       new (&_data.children) branch{std::move(other._data.children)};

@@ -6,7 +6,9 @@ struct hash_input {
   std::size_t value;
 };
 
-struct throwing_hash_input {};
+struct throwing_hash_input {
+  bool should_throw;
+};
 
 namespace std {
 template <> struct hash<hash_input> {
@@ -15,7 +17,10 @@ template <> struct hash<hash_input> {
   }
 };
 template <> struct hash<throwing_hash_input> {
-  auto operator()(throwing_hash_input) const -> size_t { throw 42; }
+  auto operator()(throwing_hash_input value) const -> size_t {
+    if (value.should_throw) throw 42;
+    return 0;
+  }
 };
 }  // namespace std
 
@@ -42,6 +47,8 @@ TEST(hash_support_test, boost_combine_vectors) {
 TEST(hash_support_test, propagates_hasher_exception) {
   std::size_t seed = 123;
   static_assert(!noexcept(tjg::hash_combine(seed, throwing_hash_input{})));
-  EXPECT_THROW(tjg::hash_combine(seed, throwing_hash_input{}), int);
+  // Keep both paths reachable when the compiler inlines the hasher.
+  volatile bool should_throw = true;
+  EXPECT_THROW(tjg::hash_combine(seed, throwing_hash_input{should_throw}), int);
   EXPECT_EQ(seed, 123u);
 }

@@ -65,10 +65,11 @@ void check_sgr() {
                                            static_cast<tjg::term_color>(i)});
   }
   for (unsigned i = 0; i < 256; ++i) {
-    auto color = tjg::color_t{};
-    if (i < 16) color = static_cast<tjg::term_color>(i);
-    else if (i < 232) color = tjg::cube_color{i - 16};
-    else color = tjg::gray_color{static_cast<int>(i - 232)};
+    const auto color = [i]() -> tjg::color_t {
+      if (i < 16) return static_cast<tjg::term_color>(i);
+      if (i < 232) return tjg::cube_color{i - 16};
+      return tjg::gray_color{static_cast<int>(i - 232)};
+    }();
     const auto sequence = std::format("\x1b[38;5;{};48;5;{}m", i, i);
     check(sequence.c_str(), tjg::text_style{color, color});
   }
