@@ -365,7 +365,7 @@ TEST(styled_text_format_test, enclosing_format_context) {
   tjg::print(os, outer, "a{}z", tjg::styled(42, red));
   check_states(os.str(), std::string{"a42z"}, expected);
   std::wostringstream wide{};
-  tjg::println(wide, outer, L"a{:}z", tjg::styled(42, red));
+  wide << tjg::format(outer, L"a{:}z", tjg::styled(42, red)) << L'\n';
   check_states(wide.str(), std::wstring{L"a42z\n"},
                {outer, tjg::underline(red), tjg::underline(red), outer, {}});
   EXPECT_WRITE(stdout, tjg::print(outer, "a{}z",

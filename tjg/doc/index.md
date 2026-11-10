@@ -46,7 +46,7 @@ The first call styles the entire message. The second styles only `42`.
 | [Emphasis](emphasis.md)        | Text attributes and their combination                                                                                              |
 | [Text styles](text-style.md)   | `text_style`, named style operations, and `fg`/`bg`                                                                                |
 | [Styled arguments](styled.md)  | Structured styled text, SGR parsing, ANSI stripping, backslash escaping/unescaping, `styled`, format specifications, and lifetimes |
-| [Styled output](print.md)      | `print`, `println`, `vprint`, and `vprintln`                                                                                       |
+| [Styled output](print.md)      | `print`, `println`, `vprint_unicode`, and `vprint_nonunicode`                                                                                    |
 | [Styled formatting](format.md) | `format`, `format_to`, and their `v` variants                                                                                      |
 
 ## Choosing and combining styles
@@ -122,7 +122,7 @@ auto combined = red | blue;           // RGB {255, 0, 238}.
 If a style is not empty, the formatted text is preceded by [SGR] (Select Graphic
 Rendition) sequences for its specified foreground, background, and emphasis,
 and followed by an SGR reset to terminal defaults. An empty style adds no
-sequences of its own. `println` and `vprintln` append their newline after
+sequences of its own. `println` appends its newline after
 the reset.
 
 A shared terminal style carries the enclosing style through replacement fields.

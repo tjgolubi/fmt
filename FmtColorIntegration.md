@@ -20,7 +20,7 @@ validation uses GCC 14.2.
 | `<tjg/strip_ansi.h>` | Strip ANSI sequences from strings or styled-text leaves. |
 | `<tjg/memory_buffer.h>` | Inline/growable buffer in namespace `tjg`. |
 | `<tjg/backslash.h>` | Escape control characters or decode backslash escapes. |
-| `<tjg/color-ostream.h>` | Styled narrow/wide ostream output and insertion. |
+| `<tjg/color-ostream.h>` | Styled ostream printing and narrow/wide stream insertion. |
 
 The parser and stripper include `styled_text.h`, which includes `color.h`.
 Wide styling no longer needs `<fmt/xchar.h>`. Internal utilities are in

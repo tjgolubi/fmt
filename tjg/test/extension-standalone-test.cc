@@ -48,7 +48,7 @@ int main() {
   tjg::println(stream, red, "{}", value);
   check(stream.str() == "\x1b[31m42\x1b[0m\n");
   std::wostringstream wide_stream;
-  tjg::print(wide_stream, red, L"{}", value);
+  wide_stream << tjg::format(red, L"{}", value);
   check(wide_stream.str() == wide);
   stream.str("");
   stream << tree;

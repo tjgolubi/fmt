@@ -11,6 +11,7 @@
 #include "test-support.h"
 
 #include <sstream>
+#include <locale>
 #include <iomanip>
 
 TEST(color_ostream_test, emphasis_insertion) {
@@ -136,72 +137,6 @@ TEST(color_ostream_test, insertion_stream_only_value) {
   os << tjg::styled(value, tjg::emphasis::bold);
   EXPECT_EQ(os.str(), "\x1b[1mcustom\x1b[0m");
 }
-TEST(color_ostream_test, wide_print_and_println) {
-  std::wostringstream os;
-  const auto style = tjg::text_style{tjg::emphasis::bold, tjg::rgb{1, 2, 3},
-                                    tjg::term_color::black};
-  tjg::print(os, style, L"Result: {:04x} {}", 42, L"done");
-  EXPECT_EQ(os.str(), L"\x1b[1;38;2;1;2;3;40mResult: 002a done\x1b[0m");
-  os.str(L"");
-  tjg::println(os, tjg::emphasis::underline, L"{}", 42);
-  EXPECT_EQ(os.str(), L"\x1b[4m42\x1b[0m\n");
-  os.str(L"");
-  tjg::print(os, tjg::text_style{}, L"{}", L"plain");
-  tjg::println(os, tjg::text_style{}, L"{}", 42);
-  EXPECT_EQ(os.str(), L"plain42\n");
-  os.str(L"");
-  tjg::print(os, style, L"");
-  EXPECT_EQ(os.str(), tjg::to_sgr<wchar_t>(style) + L"\x1b[0m");
-}
-
-TEST(color_ostream_test, wide_argument_packs) {
-  std::wostringstream os;
-  int value = 42;
-  auto args = std::make_wformat_args(value);
-  tjg::vprint(os, tjg::emphasis::bold, L"{:04}", args);
-  EXPECT_EQ(os.str(), L"\x1b[1m0042\x1b[0m");
-  os.str(L"");
-  tjg::vprintln(os, tjg::emphasis::bold, L"{}", args);
-  EXPECT_EQ(os.str(), L"\x1b[1m42\x1b[0m\n");
-}
-
-TEST(color_ostream_test, wide_print_preserves_stream_formatting) {
-  std::wostringstream os;
-  os << std::hex << std::setprecision(2) << std::setfill(L'*') << std::setw(30);
-  const std::wstring text(L"a\0{}b", 5);
-  tjg::print(os, tjg::emphasis::bold, L"{} {}", text, 42);
-  const wchar_t expected[] = L"\x1b[1ma\0{}b 42\x1b[0m";
-  EXPECT_EQ(os.str(), std::wstring(expected, sizeof(expected) / sizeof(*expected) - 1));
-  EXPECT_EQ(os.width(), 30);
-  EXPECT_EQ(os.fill(), L'*');
-  EXPECT_EQ(os.precision(), 2);
-  EXPECT_EQ(os.flags() & std::ios_base::basefield, std::ios_base::hex);
-}
-
-TEST(color_ostream_test, wide_formatting_error) {
-  std::wostringstream os;
-  os << L"original";
-  EXPECT_THROW(tjg::vprint(os, tjg::emphasis::bold, L"{", std::make_wformat_args()),
-               std::format_error);
-  EXPECT_EQ(os.str(), L"original");
-}
-
-namespace {
-struct failing_wstreambuf : std::wstreambuf {
-  std::streamsize xsputn(const wchar_t*, std::streamsize) override { return 0; }
-};
-}  // namespace
-
-TEST(color_ostream_test, wide_stream_failure) {
-  failing_wstreambuf buffer;
-  std::wostream os(&buffer);
-  tjg::print(os, tjg::emphasis::bold, L"{}", 42);
-  EXPECT_TRUE(os.bad());
-  os.clear();
-  os.exceptions(std::ios_base::badbit);
-  EXPECT_THROW(tjg::println(os, tjg::emphasis::bold, L"{}", 42),
-               std::ios_base::failure);
-}
 TEST(color_ostream_test, print) {
   std::ostringstream os;
   const auto style = tjg::text_style{tjg::emphasis::bold, tjg::rgb{1, 2, 3},
@@ -222,11 +157,25 @@ TEST(color_ostream_test, argument_packs) {
   std::ostringstream os;
   int value = 42;
   auto args = std::make_format_args(value);
-  tjg::vprint(os, tjg::emphasis::bold, "{:04}", args);
+  tjg::vprint_nonunicode(os, tjg::emphasis::bold, "{:04}", args);
   EXPECT_EQ(os.str(), "\x1b[1m0042\x1b[0m");
   os.str("");
-  tjg::vprintln(os, tjg::emphasis::bold, "{}", args);
-  EXPECT_EQ(os.str(), "\x1b[1m42\x1b[0m\n");
+  tjg::vprint_unicode(os, tjg::emphasis::bold, "{}\n", args);
+  EXPECT_EQ(os.str(), "\x1b[1m42\n\x1b[0m");
+}
+
+TEST(color_ostream_test, localized_runtime_print) {
+  struct punctuation : std::numpunct<char> {
+    auto do_thousands_sep() const -> char override { return '_'; }
+    auto do_grouping() const -> std::string override { return "\3"; }
+  };
+  auto os = std::ostringstream{};
+  os.imbue(std::locale{std::locale::classic(), new punctuation});
+  auto value = 1234;
+  auto args = std::make_format_args(value);
+  tjg::vprint_nonunicode(os, tjg::bold(), "{:L}", args);
+  tjg::vprint_unicode(os, tjg::bold(), "{:L}", args);
+  EXPECT_EQ(os.str(), "\x1b[1m1_234\x1b[0m\x1b[1m1_234\x1b[0m");
 }
 
 TEST(color_ostream_test, empty_style_and_text) {
@@ -269,7 +218,7 @@ TEST(color_ostream_test, long_output) {
 TEST(color_ostream_test, formatting_error) {
   std::ostringstream os;
   os << "original";
-  EXPECT_THROW(tjg::vprint(os, tjg::emphasis::bold, "{", std::make_format_args()),
+  EXPECT_THROW(tjg::vprint_nonunicode(os, tjg::emphasis::bold, "{", std::make_format_args()),
                std::format_error);
   EXPECT_EQ(os.str(), "original");
 }

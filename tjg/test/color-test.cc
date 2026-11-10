@@ -2267,6 +2267,20 @@ TEST(color_test, print) {
                "\x1b[38;2;255;20;30mrgb(255,20,30)\x1b[0m");
 }
 
+TEST(color_test, runtime_print) {
+  auto value = 42;
+  auto args = std::make_format_args(value);
+  const auto style = tjg::bold();
+  EXPECT_WRITE(stdout, tjg::vprint_unicode(stdout, style, "{:04}", args),
+               "\x1b[1m0042\x1b[0m");
+  EXPECT_WRITE(stdout, tjg::vprint_unicode(style, "{}", args),
+               "\x1b[1m42\x1b[0m");
+  EXPECT_WRITE(stdout, tjg::vprint_nonunicode(stdout, style, "{:04}", args),
+               "\x1b[1m0042\x1b[0m");
+  EXPECT_WRITE(stdout, tjg::vprint_nonunicode(style, "{}", args),
+               "\x1b[1m42\x1b[0m");
+}
+
 TEST(color_test, println) {
   EXPECT_WRITE(stdout,
                tjg::println(fg(tjg::rgb(255, 20, 30)), "rgb(255,20,30)"),

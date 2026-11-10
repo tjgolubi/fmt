@@ -24,10 +24,12 @@ template <typename Char> class basic_styled_text;
 namespace detail {
 template <typename Char> struct styled_text_renderer;
 
-template <typename Char> struct color_ostream_types {
-  using string_view = std::basic_string_view<Char>;
-  using format_args = detail::format_args<Char>;
-};
+inline void format_ostream_message(std::ostream& os, memory_buffer& buffer,
+                                   text_style ts, std::string_view fmt,
+                                   std::format_args args) {
+  const auto locale = os.getloc();
+  detail::vformat_to(buffer, ts, fmt, args, &locale);
+}
 
 template <typename Char, std::size_t SIZE>
 void write_color_buffer(std::basic_ostream<Char>& os,
@@ -112,31 +114,25 @@ auto operator<<(std::basic_ostream<Char>& os,
 }
 
 /**
- * Prints formatted text to `os` using `ts`.
+ * Prints styled text using the standard non-Unicode stream output path.
  * A nonempty style precedes the text with SGR sequences and appends a reset
  * to terminal defaults. An empty style emits no SGR sequences.
  */
-template <typename Char>
-void vprint(std::basic_ostream<Char>& os, text_style ts,
-            typename detail::color_ostream_types<Char>::string_view fmt,
-            typename detail::color_ostream_types<Char>::format_args args) {
-  auto buffer = basic_memory_buffer<Char>();
-  detail::vformat_to(buffer, ts, fmt, args);
-  detail::write_color_buffer(os, buffer);
+inline void vprint_nonunicode(std::ostream& os, text_style ts,
+                              std::string_view fmt, std::format_args args) {
+  auto buffer = memory_buffer{};
+  detail::format_ostream_message(os, buffer, ts, fmt, args);
+  const auto text = std::string_view{buffer.data(), buffer.size()};
+  std::vprint_nonunicode(os, "{}", std::make_format_args(text));
 }
 
-/**
- * Prints formatted text to `os` using `ts`, followed by a newline.
- * The newline follows the terminal reset for a nonempty style.
- */
-template <typename Char>
-void vprintln(std::basic_ostream<Char>& os, text_style ts,
-              typename detail::color_ostream_types<Char>::string_view fmt,
-              typename detail::color_ostream_types<Char>::format_args args) {
-  auto buffer = basic_memory_buffer<Char>();
-  detail::vformat_to(buffer, ts, fmt, args);
-  buffer.push_back(static_cast<Char>('\n'));
-  detail::write_color_buffer(os, buffer);
+/// Prints styled text using the standard Unicode stream output path.
+inline void vprint_unicode(std::ostream& os, text_style ts,
+                           std::string_view fmt, std::format_args args) {
+  auto buffer = memory_buffer{};
+  detail::format_ostream_message(os, buffer, ts, fmt, args);
+  const auto text = std::string_view{buffer.data(), buffer.size()};
+  std::vprint_unicode(os, "{}", std::make_format_args(text));
 }
 
 /**
@@ -150,14 +146,10 @@ void vprintln(std::basic_ostream<Char>& os, text_style ts,
 template <typename... T>
 void print(std::ostream& os, text_style ts, std::format_string<T...> fmt,
            T&&... args) {
-  tjg::vprint(os, ts, fmt.get(), std::make_format_args(args...));
-}
-
-/// Prints styled formatted text to a wide stream.
-template <typename... T>
-void print(std::wostream& os, text_style ts, std::wformat_string<T...> fmt,
-           T&&... args) {
-  tjg::vprint(os, ts, fmt.get(), std::make_wformat_args(args...));
+  auto buffer = memory_buffer{};
+  detail::format_ostream_message(os, buffer, ts, fmt.get(),
+                                 std::make_format_args(args...));
+  std::print(os, "{}", std::string_view{buffer.data(), buffer.size()});
 }
 
 /**
@@ -167,14 +159,10 @@ void print(std::wostream& os, text_style ts, std::wformat_string<T...> fmt,
 template <typename... T>
 void println(std::ostream& os, text_style ts, std::format_string<T...> fmt,
              T&&... args) {
-  tjg::vprintln(os, ts, fmt.get(), std::make_format_args(args...));
-}
-
-/// Prints styled formatted text to a wide stream, followed by a newline.
-template <typename... T>
-void println(std::wostream& os, text_style ts, std::wformat_string<T...> fmt,
-             T&&... args) {
-  tjg::vprintln(os, ts, fmt.get(), std::make_wformat_args(args...));
+  auto buffer = memory_buffer{};
+  detail::format_ostream_message(os, buffer, ts, fmt.get(),
+                                 std::make_format_args(args...));
+  std::println(os, "{}", std::string_view{buffer.data(), buffer.size()});
 }
 
 namespace detail {

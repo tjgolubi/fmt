@@ -18,6 +18,7 @@
 
 #include <print>
 #include <format>
+#include <locale>
 #include <string>
 #include <string_view>
 
@@ -1314,11 +1315,15 @@ using format_args = std::basic_format_args<format_context<Char>>;
 
 template <typename Buffer, typename Char = typename Buffer::value_type>
 void vformat_to(Buffer& buf, text_style ts,
-                std::basic_string_view<Char> pattern, format_args<Char> args) {
+                std::basic_string_view<Char> pattern, format_args<Char> args,
+                const std::locale* locale = nullptr) {
   style_scope scope{};
   append_sgr(buf, ts);
   get_terminal_state() = text_style{ts}.absolute(false);
-  std::vformat_to(std::back_inserter(buf), pattern, args);
+  if (locale)
+    std::vformat_to(std::back_inserter(buf), *locale, pattern, args);
+  else
+    std::vformat_to(std::back_inserter(buf), pattern, args);
   if (ts != text_style()) reset_color(buf);
 }  // vformat_to
 
@@ -1467,11 +1472,33 @@ template <typename Char = char>
  * specified foreground, background, and emphasis, and followed by an SGR reset
  * to terminal defaults.
  */
-inline void vprint(FILE* f, text_style ts, std::string_view fmt,
-                   std::format_args args) {
+inline void vprint_nonunicode(FILE* f, text_style ts, std::string_view fmt,
+                              std::format_args args) {
   auto buf = memory_buffer();
   detail::vformat_to(buf, ts, fmt, args);
-  std::print(f, "{}", std::string_view(buf.data(), buf.size()));
+  const auto text = std::string_view{buf.data(), buf.size()};
+  std::vprint_nonunicode(f, "{}", std::make_format_args(text));
+}
+
+/// Prints a styled message to stdout without Unicode-specific handling.
+inline void vprint_nonunicode(text_style ts, std::string_view fmt,
+                              std::format_args args) {
+  tjg::vprint_nonunicode(stdout, ts, fmt, args);
+}
+
+/// Prints a styled message using the standard Unicode output path.
+inline void vprint_unicode(FILE* f, text_style ts, std::string_view fmt,
+                           std::format_args args) {
+  auto buf = memory_buffer();
+  detail::vformat_to(buf, ts, fmt, args);
+  const auto text = std::string_view{buf.data(), buf.size()};
+  std::vprint_unicode(f, "{}", std::make_format_args(text));
+}
+
+/// Prints a styled message to stdout using the standard Unicode output path.
+inline void vprint_unicode(text_style ts, std::string_view fmt,
+                           std::format_args args) {
+  tjg::vprint_unicode(stdout, ts, fmt, args);
 }
 
 /**
@@ -1489,7 +1516,9 @@ inline void vprint(FILE* f, text_style ts, std::string_view fmt,
  */
 template <typename... T>
 void print(FILE* f, text_style ts, std::format_string<T...> fmt, T&&... args) {
-  vprint(f, ts, fmt.get(), std::make_format_args(args...));
+  auto buf = memory_buffer();
+  detail::vformat_to(buf, ts, fmt.get(), std::make_format_args(args...));
+  std::print(f, "{}", std::string_view{buf.data(), buf.size()});
 }
 
 /**
@@ -1511,21 +1540,6 @@ void print(text_style ts, std::format_string<T...> fmt, T&&... args) {
 }
 
 /**
- * Behaves like `vprint(f, ts, fmt, args)`, with an appended newline.
- *
- * If `ts` is not empty, the formatted text is preceded by SGR sequences for its
- * specified foreground, background, and emphasis, and followed by an SGR reset
- * to terminal defaults. The newline follows the reset.
- */
-inline void vprintln(FILE* f, text_style ts, std::string_view fmt,
-                     std::format_args args) {
-  auto buf = memory_buffer();
-  detail::vformat_to(buf, ts, fmt, args);
-  buf.push_back('\n');
-  std::print(f, "{}", std::string_view(buf.data(), buf.size()));
-}
-
-/**
  * The colored analog of
  * [std::println()](https://en.cppreference.com/w/cpp/io/println.html).
  *
@@ -1541,7 +1555,9 @@ inline void vprintln(FILE* f, text_style ts, std::string_view fmt,
 template <typename... T>
 void println(FILE* f, text_style ts, std::format_string<T...> fmt,
              T&&... args) {
-  vprintln(f, ts, fmt.get(), std::make_format_args(args...));
+  auto buf = memory_buffer();
+  detail::vformat_to(buf, ts, fmt.get(), std::make_format_args(args...));
+  std::println(f, "{}", std::string_view{buf.data(), buf.size()});
 }
 
 /**

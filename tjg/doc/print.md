@@ -27,26 +27,34 @@ Include `<tjg/color.h>` to use these output overloads. See
     options:
       color_reference: true
 
-## vprint
+## Runtime print
 
-::: vprint(FILE*, text_style, std::string_view, std::format_args)
-    options:
-      color_reference: true
-
-## vprintln
-
-::: vprintln(FILE*, text_style, std::string_view, std::format_args)
-    options:
-      color_reference: true
-
-The `v` functions accept an argument pack created with `std::make_format_args`.
-The referenced arguments must remain alive while the pack is used.
+The runtime overloads take an argument pack created with
+`std::make_format_args`. The arguments must remain alive while the pack is used.
+The Unicode and non-Unicode overloads use the corresponding standard output
+paths. Overloads without a destination write to stdout.
 
 ```cpp
 int result = 42;
 auto args = std::make_format_args(result);
-tjg::vprintln(stdout, tjg::fg(tjg::color::green), "Result: {}", args);
+tjg::vprint_unicode(stdout, tjg::fg(tjg::color::green), "Result: {}", args);
 ```
+
+::: vprint_unicode(FILE*, text_style, std::string_view, std::format_args)
+    options:
+      color_reference: true
+
+::: vprint_unicode(text_style, std::string_view, std::format_args)
+    options:
+      color_reference: true
+
+::: vprint_nonunicode(FILE*, text_style, std::string_view, std::format_args)
+    options:
+      color_reference: true
+
+::: vprint_nonunicode(text_style, std::string_view, std::format_args)
+    options:
+      color_reference: true
 
 ## Styled ostream output
 
@@ -66,36 +74,11 @@ tjg::println(os, tjg::fg(tjg::term_color::red), "Status: {}", "failed");
 The style applies to the entire formatted message. An empty style emits no
 SGR sequences. A nonempty style ends with a reset to terminal defaults, which
 does not restore an enclosing style. `println` places its newline after the
-reset. Stream state and exception handling follow the existing ostream output
-functions. These overloads require C++23 and standard-library formatting support. `print` and `println`
-provide separate overloads for `std::ostream&` and `std::wostream&`;
-`vprint` and `vprintln` take `std::basic_ostream<Char>&`.
-The format string and argument pack must match the stream character type.
-Use narrow format strings for narrow streams and wide format strings for wide
-streams. Wide formatting is available without `<fmt/xchar.h>`.
-
-
-```cpp
-std::wostringstream wide;
-const auto style = tjg::text_style{tjg::emphasis::bold};
-tjg::print(wide, style, L"Result: {:04x}", 42);
-tjg::println(wide, style, L"Status: {}", L"done");
-
-int result = 42;
-auto args = std::make_wformat_args(result);
-tjg::vprint(wide, style, L"Result: {}", args);
-tjg::vprintln(wide, style, L"Result: {}", args);
-```
-
-The formatted-output functions use standard format specifications and leave stream
-formatting settings such as field width and numeric base unchanged. Wide and
-narrow output follow the same styling, newline, and reset rules.
+reset. The formatted-output functions use the stream's locale for localized
+format specifications and leave settings such as field width and numeric base
+alone.
 
 ::: print(std::ostream&, text_style, std::format_string<T...>, T&&...)
-    options:
-      color_reference: true
-
-::: print(std::wostream&, text_style, std::wformat_string<T...>, T&&...)
     options:
       color_reference: true
 
@@ -103,17 +86,16 @@ narrow output follow the same styling, newline, and reset rules.
     options:
       color_reference: true
 
-::: println(std::wostream&, text_style, std::wformat_string<T...>, T&&...)
+::: vprint_unicode(std::ostream&, text_style, std::string_view, std::format_args)
     options:
       color_reference: true
 
-::: vprint(std::basic_ostream<Char>&, text_style, typename detail::color_ostream_types<Char>::string_view, typename detail::color_ostream_types<Char>::format_args)
+::: vprint_nonunicode(std::ostream&, text_style, std::string_view, std::format_args)
     options:
       color_reference: true
 
-::: vprintln(std::basic_ostream<Char>&, text_style, typename detail::color_ostream_types<Char>::string_view, typename detail::color_ostream_types<Char>::format_args)
-    options:
-      color_reference: true
+For wide streams, use `tjg::format` with a wide format string and insert the
+result, or use the styled stream insertion described below.
 
 ## Styled stream insertion
 
