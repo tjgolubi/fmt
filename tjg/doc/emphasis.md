@@ -51,12 +51,12 @@ emits both SGR attributes. Their combined appearance depends on the terminal.
 The underlying representation of `tjg::emphasis` is `uint8_t`.
 
 ```cpp
-using emphasis_t = tjg::underlying_type<tjg::emphasis>::type;
+using emphasis_t = std::underlying_type_t<tjg::emphasis>;
 constexpr auto bold_bit
-                   = tjg::to_underlying(tjg::emphasis::bold); // 1
+                   = std::to_underlying(tjg::emphasis::bold); // 1
 constexpr auto attributes = tjg::emphasis::bold
                           | tjg::emphasis::faint;
-constexpr auto bits = tjg::to_underlying(attributes);         // 3
+constexpr auto bits = std::to_underlying(attributes);         // 3
 static_assert(std::is_same_v<const emphasis_t, decltype(bits)>);
 static_assert(bold_bit == 1);
 static_assert(bits     == 3);

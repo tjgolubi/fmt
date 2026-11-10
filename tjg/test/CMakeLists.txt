@@ -54,6 +54,7 @@ foreach (
   name
   allocation-noexcept
   error-support
+  hash-support
   color
   color-debug
   color-std-format

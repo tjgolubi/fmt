@@ -14,6 +14,7 @@
 #include "memory_buffer.h"
 #include "format_support.h"
 #include "error_support.h"
+#include "hash_support.h"
 
 #include <print>
 #include <format>
@@ -52,11 +53,6 @@ constexpr inline auto enum_cast(U x) noexcept -> T {
   return static_cast<T>(x);
 }
 
-/// Provides the integer representation as the member type `type`.
-template <typename T> struct underlying_type {
-  using type = void;
-};
-
 /**
  * Indicates an unspecified color, distinct from RGB or terminal black.
  *
@@ -71,14 +67,6 @@ struct no_color_t {
   char _dummy{'\0'};
 #endif
 };
-
-template <> struct underlying_type<no_color_t> {
-  using type = unsigned;
-};
-
-[[nodiscard]] constexpr auto to_underlying(no_color_t) noexcept -> unsigned {
-  return 0u;
-}
 
 /// The unspecified-color value.
 inline constexpr no_color_t no_color{};
@@ -114,13 +102,6 @@ enum class term_color : int8_t {
 /// Alias for `term_color`, retained for backward compatibility.
 using terminal_color = term_color;
 
-template <> struct underlying_type<term_color> {
-  using type = int8_t;
-};
-
-[[nodiscard]] constexpr auto to_underlying(term_color x) noexcept -> int8_t {
-  return enum_cast<int8_t>(x);
-}
 /**
  * Independent text attributes that can be combined with `operator|`.
  * `emphasis()` specifies no attributes.
@@ -140,18 +121,10 @@ enum class emphasis : uint8_t {
   strikethrough = strike  ///< Alias for `strike`, for backward compatibility.
 };  // emphasis
 
-template <> struct underlying_type<emphasis> {
-  using type = uint8_t;
-};
-
-[[nodiscard]] constexpr auto to_underlying(emphasis x) noexcept -> uint8_t {
-  return enum_cast<uint8_t>(x);
-}
-
 [[nodiscard]]
 constexpr inline auto operator|(emphasis lhs, emphasis rhs) noexcept
     -> emphasis {
-  return enum_cast<emphasis>(to_underlying(lhs) | to_underlying(rhs));
+  return enum_cast<emphasis>(std::to_underlying(lhs) | std::to_underlying(rhs));
 }
 
 constexpr inline auto operator|=(emphasis& lhs, emphasis rhs) noexcept
@@ -179,8 +152,6 @@ struct rgb {
                : (TJG_ASSERT(false, "rgb::rgb: channel out of range"),
                   narrow_cast<chan_type>(v < 0 ? 0 : 255));
   }
-
-  friend constexpr auto to_underlying(rgb) noexcept -> value_type;
 
  public:
   /// Constructs black, with all three components set to zero.
@@ -230,14 +201,6 @@ struct rgb {
 
 };  // rgb
 
-template <> struct underlying_type<rgb> {
-  using type = rgb::value_type;
-};
-
-[[nodiscard]] constexpr auto to_underlying(rgb x) noexcept -> rgb::value_type {
-  return x.value();
-}
-
 namespace color {
 
 // The agreed Xterm-default RGB mapping for terminal palette indices 0-15.
@@ -274,11 +237,11 @@ inline constexpr rgb term_color_palette[16] = {
     color::term_bright_white};  // term_color_palette
 
 constexpr auto checked_term_index(term_color clr) noexcept -> int8_t {
-  return (to_underlying(clr) >= 0 &&
-          to_underlying(clr) <= to_underlying(term_color::bright_white))
-             ? to_underlying(clr)
+  return (std::to_underlying(clr) >= 0 &&
+          std::to_underlying(clr) <= std::to_underlying(term_color::bright_white))
+             ? std::to_underlying(clr)
              : (TJG_ASSERT(false, "rgb::rgb: terminal color out of range"),
-                to_underlying(clr));
+                std::to_underlying(clr));
 }
 
 }  // namespace detail
@@ -307,8 +270,6 @@ struct gray_color {
                   narrow_cast<chan_type>(v < 0 ? 0 : 23));
   }
 
-  friend constexpr auto to_underlying(gray_color) noexcept -> value_type;
-
  public:
   /// Constructs gray index zero, whose RGB equivalent is {8, 8, 8}.
   constexpr gray_color() noexcept = default;
@@ -322,21 +283,15 @@ struct gray_color {
   /// Asserts on invalid values; clamps them when assertions are disabled.
   constexpr explicit gray_color(int v) noexcept : _value{check_arg(v)} {}
 
+  /// Returns the zero-based gray palette index, from 0 to 23.
+  [[nodiscard]] constexpr auto index() const noexcept -> int { return _value; }
+
   /// Converts to RGB, with each channel equal to 8 + 10 * index.
   [[nodiscard]] constexpr operator rgb() const noexcept {
     return make_rgb(narrow_cast<rgb::chan_type>(10 * _value + 8));
   }
 
 };  // gray_color
-
-template <> struct underlying_type<gray_color> {
-  using type = gray_color::value_type;
-};
-
-[[nodiscard]]
-constexpr auto to_underlying(gray_color v) noexcept -> gray_color::value_type {
-  return static_cast<gray_color::value_type>(v._value);
-}
 
 namespace detail {
 
@@ -369,13 +324,12 @@ struct cube_color {
                        value_type{215});
   }
 
-  [[nodiscard]] constexpr value_type value() const noexcept {
-    return narrow_cast<value_type>(36 * _r + 6 * _g + _b);
+ public:
+  /// Returns the zero-based cube palette index, from 0 to 215.
+  [[nodiscard]] constexpr auto index() const noexcept -> int {
+    return 36 * _r + 6 * _g + _b;
   }
 
-  friend constexpr auto to_underlying(cube_color) noexcept -> value_type;
-
- public:
   /// Returns the red channel index, from 0 to 5.
   [[nodiscard]] constexpr auto r() const noexcept -> int { return _r; };
   /// Returns the green channel index, from 0 to 5.
@@ -428,15 +382,6 @@ struct cube_color {
 
 };  // cube_color
 
-template <> struct underlying_type<cube_color> {
-  using type = cube_color::value_type;
-};
-
-[[nodiscard]]
-constexpr cube_color::value_type to_underlying(cube_color x) noexcept {
-  return x.value();
-}
-
 namespace detail {
 
 template <typename T>
@@ -474,10 +419,6 @@ template <Color T>
 
 /// A color variant with alternatives for each supported color kind.
 using color_t = std::variant<no_color_t, rgb, term_color, cube_color, gray_color>;
-
-template <> struct underlying_type<color_t> {
-  using type = uint32_t;
-};
 
 namespace detail {
 
@@ -523,40 +464,7 @@ constexpr auto operator|=(color_t& lhs, color_t rhs) noexcept -> color_t& {
   return lhs |= rhs;
 }
 
-using color_t_value_type = uint32_t;
-
 namespace detail {
-struct color_payload {
-  template <typename Color>
-  constexpr auto operator()(const Color& color) const noexcept
-      -> color_t_value_type {
-    return static_cast<color_t_value_type>(to_underlying(color));
-  }
-};
-}  // namespace detail
-
-/// An explicit packed color representation, not a stable archive.
-constexpr inline auto to_underlying(const color_t& color) noexcept
-    -> color_t_value_type {
-  if (color.valueless_by_exception()) return 0;
-  return (narrow_cast<color_t_value_type>(color.index()) << 24) |
-         std::visit(detail::color_payload{}, color);
-}
-
-namespace detail {
-
-// Decode valid packed colors using color_kind tags.
-constexpr auto unpack_color(color_t_value_type value) -> color_t {
-  using kind = color_kind;
-  switch (enum_cast<kind>(value >> 24)) {
-  case kind::rgb:  return color_t{rgb{value & 0x00ffffff}};
-  case kind::term: return color_t{enum_cast<term_color>(value & 0xff)};
-  case kind::cube: return color_t{cube_color{value & 0xff}};
-  case kind::gray: return color_t{gray_color{static_cast<int>(value & 0xff)}};
-  case kind::none:
-  default:         return color_t{no_color};
-  }
-}  // unpack_color
 
 template <typename T>
 struct is_blend_color
@@ -880,8 +788,8 @@ class text_style {
 
  private:
   constexpr auto set(emphasis em, bool enable = true) noexcept -> text_style& {
-    const auto bits = to_underlying(_emph);
-    const auto mask = to_underlying(em);
+    const auto bits = std::to_underlying(_emph);
+    const auto mask = std::to_underlying(em);
     _emph = static_cast<emphasis>(enable ? (bits | mask) : (bits & ~mask));
     return *this;
   }
@@ -929,7 +837,7 @@ class text_style {
 
  private:
   [[nodiscard]] constexpr auto is_enabled(emphasis em) const noexcept -> bool {
-    return (to_underlying(_emph) & to_underlying(em)) != 0;
+    return (std::to_underlying(_emph) & std::to_underlying(em)) != 0;
   }
 
  public:
@@ -1403,8 +1311,8 @@ template <typename Char> class ansi_color_escape {
 
   constexpr void append(term_color clr, bool is_bg) noexcept {
     constexpr auto BrightBlack =
-        static_cast<int>(to_underlying(term_color::bright_black));
-    auto value = static_cast<int>(to_underlying(clr));
+        static_cast<int>(std::to_underlying(term_color::bright_black));
+    auto value = static_cast<int>(std::to_underlying(clr));
     value += (value < BrightBlack) ? 30 : 90 - BrightBlack;
 
     // Background ASCII codes are the same as the foreground ones + 10.
@@ -1429,14 +1337,14 @@ template <typename Char> class ansi_color_escape {
   constexpr void append(cube_color clr, bool is_bg) noexcept {
     append("38;5;");
     if (is_bg) buffer[0] = Char{'4'};
-    auto index = narrow_cast<uint8_t>(to_underlying(clr) + 16);
+    auto index = narrow_cast<uint8_t>(clr.index() + 16);
     append(index, ';');
   }
 
   constexpr void append(gray_color clr, bool is_bg) noexcept {
     append("38;5;");
     if (is_bg) buffer[0] = Char{'4'};
-    auto index = narrow_cast<uint8_t>(to_underlying(clr) + 232);
+    auto index = narrow_cast<uint8_t>(clr.index() + 232);
     append(index, ';');
   }
 
@@ -1459,7 +1367,7 @@ template <typename Char> class ansi_color_escape {
   }
 
   constexpr ansi_color_escape(emphasis em) noexcept {
-    unsigned bits = to_underlying(em);
+    unsigned bits = std::to_underlying(em);
     if (bits == 0) return;
 
     constexpr char sgr[] = {'1', '2', '3', '4', '5', '7', '8', '9'};
@@ -1631,8 +1539,8 @@ constexpr void append_transition_code(Buffer& buf, uint8_t code) {
 template <typename Buffer, typename Char = typename Buffer::value_type>
 constexpr void append_transition(Buffer& buf, text_style target,
                                  text_style initial) {
-  auto before = static_cast<unsigned>(to_underlying(initial.emph()));
-  auto after = static_cast<unsigned>(to_underlying(target.emph()));
+  auto before = static_cast<unsigned>(std::to_underlying(initial.emph()));
+  auto after = static_cast<unsigned>(std::to_underlying(target.emph()));
   auto removed = before & ~after;
   // SGR 22 clears both intensity attributes; reapply any surviving bit.
   if ((removed & 3u) != 0) {
@@ -2001,7 +1909,7 @@ auto write_style_value(OutputIt out, color_t value) -> OutputIt {
   case color_kind::none:
   default: return write_color_ascii<Char>(out, "no_color");
   case color_kind::rgb:  {
-    const auto packed = to_underlying(std::get<rgb>(value));
+    const auto packed = static_cast<uint32_t>(std::get<rgb>(value));
     *out++ = static_cast<Char>('#');
     for (int shift = 20; shift >= 0; shift -= 4)
       *out++ = static_cast<Char>("0123456789abcdef"[(packed >> shift) & 15]);
@@ -2016,7 +1924,7 @@ auto write_style_value(OutputIt out, color_t value) -> OutputIt {
                                         "bright_green", "bright_yellow",
                                         "bright_blue",  "bright_magenta",
                                         "bright_cyan",  "bright_white"};
-    const auto index = to_underlying(std::get<term_color>(value));
+    const auto index = std::to_underlying(std::get<term_color>(value));
     if (index < 0 || index >= 16)
       detail::standard_format_error("invalid terminal color");
     return write_color_ascii<Char>(out, names[index]);
@@ -2030,7 +1938,7 @@ auto write_style_value(OutputIt out, color_t value) -> OutputIt {
     return out;
   }
   case color_kind::gray: {
-    const auto index = to_underlying(std::get<gray_color>(value));
+    const auto index = std::get<gray_color>(value).index();
     out = write_color_ascii<Char>(out, "gray");
     if (index >= 10) *out++ = static_cast<Char>('0' + index / 10);
     *out++ = static_cast<Char>('0' + index % 10);
@@ -2043,7 +1951,7 @@ template <typename Char, typename OutputIt>
 auto write_style_value(OutputIt out, text_style value) -> OutputIt {
   if (value.empty()) return write_color_ascii<Char>(out, "{}");
   if (value.is_absolute()) *out++ = static_cast<Char>('=');
-  const auto bits = to_underlying(value.emph());
+  const auto bits = std::to_underlying(value.emph());
   for (int bit = 0; bit < 8; ++bit) {
     if ((bits & (1u << bit)) != 0) *out++ = static_cast<Char>("bfi_!r?-"[bit]);
   }
@@ -2063,7 +1971,7 @@ auto write_emphasis(OutputIt out, emphasis value) -> OutputIt {
                                       "underline", "blink", "reverse",
                                       "conceal",   "strike"};
   *out++ = static_cast<Char>('{');
-  const auto bits = to_underlying(value);
+  const auto bits = std::to_underlying(value);
   auto first = true;
   for (int bit = 0; bit < 8; ++bit) {
     if ((bits & (1u << bit)) == 0) continue;
@@ -2376,25 +2284,34 @@ struct formatter<tjg::detail::styled_arg<T>, Char>
 
 template <> struct hash<tjg::rgb> {
   auto operator()(tjg::rgb value) const noexcept -> size_t {
-    return hash<tjg::rgb::value_type>{}(tjg::to_underlying(value));
+    return hash<uint32_t>{}(static_cast<uint32_t>(value));
   }
 };
 
 template <> struct hash<tjg::color_t> {
   auto operator()(tjg::color_t value) const noexcept -> size_t {
-    return hash<tjg::color_t_value_type>{}(tjg::to_underlying(value));
+    auto result = hash<size_t>{}(value.index());
+    if (value.valueless_by_exception()) return result;
+    std::visit(
+        [&](const auto& color) noexcept {
+          using T = decay_t<decltype(color)>;
+          if constexpr (is_same_v<T, tjg::gray_color> ||
+                        is_same_v<T, tjg::cube_color>)
+            tjg::hash_combine(result, color.index());
+          else if constexpr (!is_same_v<T, tjg::no_color_t>)
+            tjg::hash_combine(result, color);
+        },
+        value);
+    return result;
   }
 };
 
 template <> struct hash<tjg::text_style> {
   auto operator()(tjg::text_style value) const noexcept -> size_t {
     auto result = hash<bool>{}(value.is_absolute());
-    const auto combine = [&](size_t component) {
-      result ^= component + size_t{0x9e3779b9} + (result << 6) + (result >> 2);
-    };
-    combine(hash<uint8_t>{}(tjg::to_underlying(value.emph())));
-    combine(hash<tjg::color_t>{}(value.fg()));
-    combine(hash<tjg::color_t>{}(value.bg()));
+    tjg::hash_combine(result, value.emph());
+    tjg::hash_combine(result, value.fg());
+    tjg::hash_combine(result, value.bg());
     return result;
   }
 };

@@ -71,12 +71,12 @@ bool specified = style.has_fg(); // true
     sequences are unchanged, but numeric conversions and stored terminal-color
     values differ.
 
-Use symbolic terminal-color names in styling code. Their numeric values and
-packed color encodings are not stable serialization formats.
+Use symbolic terminal-color names in styling code. Their numeric values are
+not stable serialization formats.
 
 `term_color` has the signed underlying type `int8_t`.
-`tjg::underlying_type<tjg::term_color>::type` and
-`tjg::to_underlying(term_color)` also use `int8_t`. The named values are
+`std::underlying_type_t<tjg::term_color>` and
+`std::to_underlying(term_color)` also use `int8_t`. The named values are
 indices `0..15`; the signed type does not introduce additional palette colors.
 Conversion to RGB asserts that the index is within that range before accessing
 the fixed palette. Prefer the named values rather than casting arbitrary
@@ -252,15 +252,12 @@ values have equal hashes. Hash values are not a stable serialization format.
 
 ### Integer representation
 
-`tjg::underlying_type<tjg::rgb>::type` names the integer representation type.
-`tjg::to_underlying(tjg::rgb value)` returns that representation:
+Convert explicitly to `uint32_t` to obtain the numeric `0x00RRGGBB`
+representation:
 
 ```cpp
-using packed_t = tjg::underlying_type<tjg::rgb>::type;
-constexpr auto coral  = tjg::color::coral;
-constexpr auto packed = tjg::to_underlying(coral);  // 0x00FF7F50
-static_assert(std::is_same<const packed_t, decltype(packed)>::value,
-              "packed RGB type");
+constexpr auto coral = tjg::color::coral;
+constexpr auto packed = static_cast<uint32_t>(coral); // 0x00FF7F50
 static_assert(tjg::rgb{packed} == coral, "packed RGB round trip");
 ```
 Packed integer conversions are explicit in both directions. Direct construction
@@ -301,9 +298,8 @@ tjg::rgb converted = shade; // {128, 128, 128}
 ```
 
 Implicit conversion to `rgb` sets every channel to `8 + 10 * index`, from
-`{8, 8, 8}` through `{238, 238, 238}`. `value_type` and
-`underlying_type<gray_color>::type` are `uint8_t`;
-`to_underlying(color)` returns the zero-based gray index.
+`{8, 8, 8}` through `{238, 238, 238}`.
+`color.index()` returns the zero-based gray index as `int`.
 For terminal output, the library adds 232 to select palette entries 232–255,
 using SGR `38;5;n` for foreground and `48;5;n` for background.
 
@@ -351,8 +347,7 @@ Implicit conversion to `rgb` maps channel indices 0–5 to the fixed levels
 tjg::rgb converted = tjg::cube_color{1, 2, 3}; // {95, 135, 175}
 ```
 
-`value_type` and `underlying_type<cube_color>::type` are `uint8_t`.
-`to_underlying(color)` returns the zero-based cube index as `uint8_t`.
+`color.index()` returns the zero-based cube index as `int`.
 Channel storage and its `chan_type` alias are private implementation details.
 For terminal output, the library adds 16 to select palette entries 16–231.
 Foreground uses SGR `38;5;n`; background uses `48;5;n`.
@@ -514,15 +509,14 @@ A visitor can instead use a templated call operator that accepts every
 alternative. In C++23 and later, a generic lambda is another option:
 
 ```cpp
-auto payload = std::visit([](const auto& value) -> uint32_t {
-  return tjg::to_underlying(value);
-}, accent);
+auto description_text = std::visit([](const auto& value) {
+  return std::format("{}", value);
+}, accent); // "#ff7f50"
 ```
 
-The explicit return type gives every alternative the same result type.
-This example returns only the numeric payload, without the kind discriminator.
-Visitation supports C++23 constant evaluation when the visitor and color access
-do.
+Each alternative produces the same result type, `std::string`.
+Visitation also supports constant evaluation when the visitor and color access
+do; formatting in this example runs at runtime.
 
 ### Blending color variants
 
@@ -586,14 +580,30 @@ remain distinct even when their RGB equivalents are equal. To compare a
 variant with a concrete color, use `std::get` or construct a second `color_t`.
 `std::hash<tjg::color_t>` permits use as an unordered-container key.
 
-`tjg::underlying_type<tjg::color_t>::type` is `uint32_t`.
-`tjg::to_underlying(color)` returns a packed color representation, including
-the alternative's discriminator and payload. `text_style` stores `color_t`
-members directly rather than using this encoding. The encoding and its hash
-values are not stable serialization formats.
+The hasher combines the alternative index with the active color's hash;
+it does not pack the variant into an integer. `color_t` has no packed integer
+conversion. Hash values are not stable serialization formats.
 
 If a throwing operation leaves a variant valueless, TJG treats it as
-unspecified when packing, formatting, blending, or composing colors.
+unspecified when formatting, blending, or composing colors. Hashing uses the
+variant's alternative index, including `std::variant_npos` when valueless.
+
+### Combining hashes
+
+Include `<tjg/hash_support.h>` to use `tjg::hash_combine(seed, value)`.
+It updates a `std::size_t` seed using `std::hash<T>` for the value and
+Boost.ContainerHash 1.85's mixing algorithm. Start with a zero seed and combine
+members in a consistent order:
+
+```cpp
+std::size_t seed = 0;
+tjg::hash_combine(seed, tjg::color::coral);
+tjg::hash_combine(seed, tjg::emphasis::bold);
+```
+
+The function is `noexcept` when the value's standard hasher is `noexcept`;
+otherwise exceptions from that hasher propagate. It requires a working
+`std::hash<T>` specialization. It does not add Boost's other hashing facilities.
 
 ## Readable color output
 

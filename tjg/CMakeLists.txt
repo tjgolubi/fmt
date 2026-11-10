@@ -45,6 +45,7 @@ if (TJG_INSTALL)
     COMPONENT tjg)
   install(
     FILES "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE"
+          "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE-Boost"
     DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/tjg"
     COMPONENT tjg)
 endif ()

@@ -163,7 +163,20 @@ TEST(color_test, absolute_style_constexpr) {
 
 template <typename T>
 auto comparison_key(const T& value) {
-  return static_cast<uint64_t>(tjg::to_underlying(value));
+  if constexpr (std::is_enum_v<T>)
+    return static_cast<uint64_t>(std::to_underlying(value));
+  else if constexpr (std::is_same_v<T, tjg::rgb>)
+    return static_cast<uint64_t>(static_cast<uint32_t>(value));
+  else if constexpr (std::is_same_v<T, tjg::no_color_t>)
+    return uint64_t{0};
+  else
+    return static_cast<uint64_t>(value.index());
+}
+
+auto comparison_key(const tjg::color_t& value) {
+  return std::pair{value.index(), std::visit([](const auto& color) {
+    return comparison_key(color);
+  }, value)};
 }
 
 auto comparison_key(const tjg::text_style& value) {
@@ -232,12 +245,10 @@ TEST(color_test, rgb_comparisons) {
 
 TEST(color_test, gray_color) {
   using tjg::gray_color;
-  static_assert(std::is_same<gray_color::value_type, uint8_t>::value &&
-                    std::is_same<tjg::underlying_type<gray_color>::type,
-                                 uint8_t>::value,
-                "grayscale indices use uint8_t");
-  static_assert(std::is_same<decltype(tjg::to_underlying(gray_color{})),
-                             uint8_t>::value,
+  static_assert(noexcept(std::declval<const gray_color&>().index()));
+
+  static_assert(std::is_same<decltype(gray_color{}.index()),
+                             int>::value,
                 "numeric access returns the zero-based index");
   static_assert(std::is_convertible<gray_color, tjg::rgb>::value &&
                     !std::is_convertible<int, gray_color>::value,
@@ -245,8 +256,8 @@ TEST(color_test, gray_color) {
   static_assert(noexcept(static_cast<tjg::rgb>(gray_color{})),
                 "RGB conversion must be noexcept");
   constexpr gray_color first{0}, last{23};
-  static_assert(tjg::to_underlying(first) == 0 &&
-                    tjg::to_underlying(last) == 23,
+  static_assert(first.index() == 0 &&
+                    last.index() == 23,
                 "boundary indices must support C++11 constant evaluation");
   constexpr tjg::rgb dark = first, light = last;
   static_assert(dark == tjg::rgb{8, 8, 8} && light == tjg::rgb{238, 238, 238},
@@ -254,14 +265,14 @@ TEST(color_test, gray_color) {
   constexpr tjg::rgb middle = gray_color{12};
   static_assert(middle == tjg::rgb{128, 128, 128},
                 "a temporary gray color supports C++11 RGB conversion");
-  EXPECT_EQ(tjg::to_underlying(gray_color{}), 0);
+  EXPECT_EQ(gray_color{}.index(), 0);
   const int indices[] = {0, 1, 12, 22, 23};
   const unsigned levels[] = {8, 18, 128, 228, 238};
   for (size_t i = 0; i != sizeof(indices) / sizeof(indices[0]); ++i) {
     SCOPED_TRACE(indices[i]);
     gray_color color{indices[i]};
     tjg::rgb converted = color;
-    EXPECT_EQ(tjg::to_underlying(color), indices[i]);
+    EXPECT_EQ(color.index(), indices[i]);
     EXPECT_EQ(converted.r, levels[i]);
     EXPECT_EQ(converted.g, levels[i]);
     EXPECT_EQ(converted.b, levels[i]);
@@ -287,12 +298,10 @@ TEST(color_test, gray_color) {
 
 TEST(color_test, cube_color) {
   using tjg::cube_color;
-  static_assert(std::is_same<cube_color::value_type, uint8_t>::value &&
-                    std::is_same<tjg::underlying_type<cube_color>::type,
-                                 uint8_t>::value,
-                "cube indices use uint8_t");
-  static_assert(std::is_same<decltype(tjg::to_underlying(cube_color{})),
-                             uint8_t>::value,
+  static_assert(noexcept(std::declval<const cube_color&>().index()));
+
+  static_assert(std::is_same<decltype(cube_color{}.index()),
+                             int>::value,
                 "numeric access returns the zero-based index");
   static_assert(std::is_convertible<cube_color, tjg::rgb>::value &&
                     !std::is_convertible<unsigned, cube_color>::value,
@@ -305,14 +314,14 @@ TEST(color_test, cube_color) {
                 "RGB conversion must be noexcept");
   constexpr cube_color first{0}, last{215}, middle{1, 2, 3};
   constexpr tjg::rgb converted = middle;
-  static_assert(tjg::to_underlying(first) == 0 &&
-                    tjg::to_underlying(last) == 215 && last.r() == 5 &&
+  static_assert(first.index() == 0 &&
+                    last.index() == 215 && last.r() == 5 &&
                     last.g() == 5 && last.b() == 5,
                 "cube index decoding supports C++11 constant evaluation");
   static_assert(converted == tjg::rgb{95, 135, 175} &&
-                    tjg::to_underlying(middle) == 51,
+                    middle.index() == 51,
                 "cube encoding and RGB conversion support C++11");
-  EXPECT_EQ(tjg::to_underlying(cube_color{}), 0);
+  EXPECT_EQ(cube_color{}.index(), 0);
   static_assert(noexcept(cube_color{0}) && noexcept(cube_color{0, 0, 0}),
                 "cube construction must be noexcept");
   static_assert(noexcept(std::declval<cube_color&>().r(0)) &&
@@ -376,7 +385,7 @@ TEST(color_test, cube_color_xterm_rgb) {
         EXPECT_EQ(color.r(), red);
         EXPECT_EQ(color.g(), green);
         EXPECT_EQ(color.b(), blue);
-        EXPECT_EQ(tjg::to_underlying(color), index);
+        EXPECT_EQ(color.index(), index);
         EXPECT_EQ(color, (tjg::cube_color{red, green, blue}));
         tjg::rgb converted = color;
         EXPECT_EQ(converted.r, red == 0 ? 0 : 55 + 40 * red);
@@ -407,7 +416,7 @@ TEST(color_test, terminal_color_xterm_rgb) {
   static_assert(std::is_same<std::underlying_type<tjg::term_color>::type,
                              int8_t>::value,
                 "terminal enum storage must be signed");
-  static_assert(tjg::to_underlying(static_cast<tjg::term_color>(-1)) == -1,
+  static_assert(std::to_underlying(static_cast<tjg::term_color>(-1)) == -1,
                 "underlying conversion must preserve signed enum values");
   constexpr tjg::rgb black = tjg::term_color::black;
   constexpr tjg::rgb bright = tjg::term_color::bright_white;
@@ -423,8 +432,8 @@ TEST(color_test, terminal_color_xterm_rgb) {
 
 TEST(color_test, color_type_comparisons) {
   using tjg::color_t;
-  constexpr auto low = tjg::detail::unpack_color(uint32_t{1} << 24);
-  constexpr auto high = tjg::detail::unpack_color(uint32_t{2} << 24);
+  constexpr auto low = color_t{tjg::rgb{}};
+  constexpr auto high = color_t{tjg::term_color::black};
   static_assert(color_t{} < low, "unspecified differs from RGB black");
   static_assert(low < high, "RGB black differs from terminal black");
   const color_t values[] = {
@@ -462,11 +471,6 @@ void check_color_hashes(const T* values, size_t count) {
   auto entries = std::unordered_map<T, size_t>();
   auto integers = std::map<decltype(comparison_key(T{})), size_t>();
   for (size_t i = 0; i < count; ++i) {
-    if constexpr (!std::is_same_v<T, tjg::text_style>) {
-      using value_type = typename tjg::underlying_type<T>::type;
-      auto integer_hasher = std::hash<value_type>();
-      EXPECT_EQ(hasher(values[i]), integer_hasher(tjg::to_underlying(values[i])));
-    }
     keys.insert(values[i]);
     entries[values[i]] = i;
     integers[comparison_key(values[i])] = i;
@@ -500,6 +504,10 @@ TEST(color_test, color_type_hash) {
       tjg::color::coral, tjg::rgb{0xFF7F50}, tjg::cube_color{0},
       tjg::cube_color{215}, tjg::gray_color{0}, tjg::gray_color{23}};
   check_color_hashes(values, sizeof(values) / sizeof(values[0]));
+  const auto hash = std::hash<color_t>{};
+  // Same numeric payload, different alternatives must influence the hash.
+  EXPECT_NE(hash(color_t{tjg::rgb{}}), hash(color_t{tjg::term_color::black}));
+  EXPECT_NE(hash(color_t{tjg::cube_color{0}}), hash(color_t{tjg::gray_color{0}}));
 }
 
 TEST(color_test, text_style_hash) {
@@ -530,9 +538,9 @@ TEST(color_test, emphasis_or_assign) {
       auto value = static_cast<emphasis>(lhs);
       const auto other = static_cast<emphasis>(rhs);
       auto& result = (value |= other);
-      EXPECT_EQ(tjg::to_underlying(value), lhs | rhs);
+      EXPECT_EQ(std::to_underlying(value), lhs | rhs);
       EXPECT_EQ(&result, &value);
-      EXPECT_EQ(tjg::to_underlying(other), rhs);
+      EXPECT_EQ(std::to_underlying(other), rhs);
     }
   }
   auto value = emphasis::bold;
@@ -557,42 +565,40 @@ TEST(color_test, emphasis_or_assign_constexpr) {
                 "compound assignment must support constant evaluation");
 }
 
-TEST(color_test, underlying) {
-  static_assert(std::is_same<tjg::underlying_type<tjg::term_color>::type,
+TEST(color_test, numeric_conversions) {
+  static_assert(std::is_same<std::underlying_type<tjg::term_color>::type,
                              int8_t>::value, "terminal color underlying type");
-  static_assert(std::is_same<tjg::underlying_type<tjg::emphasis>::type,
+  static_assert(std::is_same<std::underlying_type<tjg::emphasis>::type,
                              uint8_t>::value, "emphasis underlying type");
-  static_assert(std::is_same<tjg::underlying_type<tjg::rgb>::type,
-                             uint32_t>::value, "RGB underlying type");
 
-  static_assert(std::is_same<decltype(tjg::to_underlying(
+  static_assert(std::is_same<decltype(std::to_underlying(
                                  tjg::term_color::black)),
                              int8_t>::value, "terminal color return type");
-  static_assert(std::is_same<decltype(tjg::to_underlying(tjg::emphasis::bold)),
+  static_assert(std::is_same<decltype(std::to_underlying(tjg::emphasis::bold)),
                              uint8_t>::value, "emphasis return type");
-  static_assert(std::is_same<decltype(tjg::to_underlying(tjg::rgb{})),
+  static_assert(std::is_same<decltype(static_cast<uint32_t>(tjg::rgb{})),
                              uint32_t>::value, "RGB return type");
 
-  static_assert(noexcept(tjg::to_underlying(tjg::term_color::black)),
+  static_assert(noexcept(std::to_underlying(tjg::term_color::black)),
                 "terminal color conversion must be noexcept");
-  static_assert(noexcept(tjg::to_underlying(tjg::emphasis::bold)),
+  static_assert(noexcept(std::to_underlying(tjg::emphasis::bold)),
                 "emphasis conversion must be noexcept");
-  static_assert(noexcept(tjg::to_underlying(tjg::rgb{})),
+  static_assert(noexcept(static_cast<uint32_t>(tjg::rgb{})),
                 "RGB conversion must be noexcept");
 
-  static_assert(tjg::to_underlying(tjg::term_color::black) ==
+  static_assert(std::to_underlying(tjg::term_color::black) ==
                     static_cast<uint8_t>(tjg::term_color::black),
                 "terminal color conversion must preserve the enum value");
-  static_assert(tjg::to_underlying(tjg::term_color::bright_white) ==
+  static_assert(std::to_underlying(tjg::term_color::bright_white) ==
                     static_cast<uint8_t>(tjg::term_color::bright_white),
                 "bright terminal color conversion must preserve the enum value");
-  static_assert(tjg::to_underlying(tjg::emphasis::bold) == 1,
+  static_assert(std::to_underlying(tjg::emphasis::bold) == 1,
                 "bold must retain its bit");
-  static_assert(tjg::to_underlying(tjg::emphasis::strike) == 128,
+  static_assert(std::to_underlying(tjg::emphasis::strike) == 128,
                 "strike must retain its bit");
-  static_assert(tjg::to_underlying(tjg::rgb{0xAB123456}) == 0x123456,
+  static_assert(static_cast<uint32_t>(tjg::rgb{0xAB123456}) == 0x123456,
                 "packed RGB must have a zero high byte");
-  static_assert(tjg::to_underlying(tjg::rgb{}) == 0,
+  static_assert(static_cast<uint32_t>(tjg::rgb{}) == 0,
                 "default RGB must be black");
   const auto style = tjg::fg(tjg::rgb{0x123456})
                          .bg(tjg::term_color::black)
@@ -600,31 +606,6 @@ TEST(color_test, underlying) {
   EXPECT_EQ(style.fg(), tjg::color_t{tjg::rgb{0x123456}});
   EXPECT_EQ(style.bg(), tjg::color_t{tjg::term_color::black});
   EXPECT_EQ(style.emph(), tjg::emphasis::bold | tjg::emphasis::strike);
-}
-
-TEST(color_test, color_type_underlying) {
-  using tjg::color_t;
-  static_assert(std::is_same<tjg::underlying_type<color_t>::type,
-                             uint32_t>::value, "packed color underlying type");
-  static_assert(std::is_same<decltype(tjg::to_underlying(color_t{})),
-                             uint32_t>::value, "packed color return type");
-  static_assert(noexcept(tjg::to_underlying(color_t{})),
-                "packed color conversion must be noexcept");
-  static_assert(tjg::to_underlying(color_t{}) == 0,
-                "default packed color must be empty");
-
-  // Check the internal packed representation against independent expected values.
-  const color_t colors[] = {
-      color_t{}, color_t{tjg::rgb{0}},
-      color_t{tjg::rgb{0x123456}},
-      color_t{tjg::term_color::black}, color_t{tjg::cube_color{215}},
-      color_t{tjg::gray_color{23}}};
-  const uint32_t expected[] = {
-      0u, (uint32_t{1} << 24),
-      (uint32_t{1} << 24) | 0x123456u, (uint32_t{2} << 24),
-      (uint32_t{3} << 24) | 215u, (uint32_t{4} << 24) | 23u};
-  for (size_t i = 0; i < sizeof(colors) / sizeof(colors[0]); ++i)
-    EXPECT_EQ(tjg::to_underlying(colors[i]), expected[i]);
 }
 
 namespace {
@@ -696,13 +677,6 @@ TEST(color_test, color_sentinels) {
   static_assert(std::is_same_v<
                 tjg::color_t, std::variant<no_color_t, tjg::rgb, tjg::term_color,
                                            tjg::cube_color, tjg::gray_color>>);
-  static_assert(std::is_same<tjg::underlying_type<no_color_t>::type,
-                             unsigned>::value,
-                "the sentinel has an unsigned numeric representation");
-  static_assert(tjg::to_underlying(tjg::no_color) == 0,
-                "the unspecified sentinel has zero payload");
-  static_assert(noexcept(tjg::to_underlying(tjg::no_color)),
-                "sentinel conversion must be noexcept");
 }
 
 TEST(color_test, text_style_empty_and_clear) {
@@ -887,7 +861,7 @@ TEST(color_test, palette_style_replacement) {
     EXPECT_EQ(style.fg(), replacement);
     EXPECT_EQ(style.bg(), background);
     EXPECT_EQ(style.has_fg(), replacement.index() != 0);
-    EXPECT_EQ(tjg::to_underlying(style.emph()), 0xFF);
+    EXPECT_EQ(std::to_underlying(style.emph()), 0xFF);
   }
   style.fg(tjg::gray_color{23});
   for (auto replacement : replacements) {
@@ -895,7 +869,7 @@ TEST(color_test, palette_style_replacement) {
     EXPECT_EQ(style.bg(), replacement);
     EXPECT_EQ(style.fg(), tjg::color_t{tjg::gray_color{23}});
     EXPECT_EQ(style.has_bg(), replacement.index() != 0);
-    EXPECT_EQ(tjg::to_underlying(style.emph()), 0xFF);
+    EXPECT_EQ(std::to_underlying(style.emph()), 0xFF);
   }
   style.fg(tjg::no_color).emph(tjg::emphasis{});
   EXPECT_EQ(style, tjg::text_style{});
@@ -1181,14 +1155,10 @@ void check_color_access(T value) {
                     noexcept(std::get_if<Index>(&color)) &&
                     noexcept(std::get_if<Index>(&constant)),
                 "classification and pointer access must be noexcept");
-  EXPECT_EQ(tjg::to_underlying(std::get<T>(std::move(color))),
-            tjg::to_underlying(value));
-  EXPECT_EQ(tjg::to_underlying(std::get<Index>(std::move(color))),
-            tjg::to_underlying(value));
-  EXPECT_EQ(tjg::to_underlying(std::get<T>(std::move(constant))),
-            tjg::to_underlying(value));
-  EXPECT_EQ(tjg::to_underlying(std::get<Index>(std::move(constant))),
-            tjg::to_underlying(value));
+  EXPECT_EQ(std::get<T>(std::move(color)), value);
+  EXPECT_EQ(std::get<Index>(std::move(color)), value);
+  EXPECT_EQ(std::get<T>(std::move(constant)), value);
+  EXPECT_EQ(std::get<Index>(std::move(constant)), value);
 
   const color_t alternatives[] = {tjg::no_color, tjg::rgb{},
                                  tjg::term_color::black, tjg::cube_color{0},
@@ -1405,9 +1375,6 @@ TEST(color_test, color_variant_constexpr) {
   static_assert(std::get<3>(cube) == tjg::cube_color{215} &&
                     std::get<4>(gray) == tjg::gray_color{23},
                 "palette access must be constexpr in C++11");
-  static_assert(tjg::detail::unpack_color(tjg::to_underlying(cube)) == cube &&
-                    tjg::detail::unpack_color(tjg::to_underlying(gray)) == gray,
-                "palette packing must round-trip in constant evaluation");
   constexpr auto palette_style = tjg::text_style{cube, gray, tjg::emphasis::bold};
   static_assert(palette_style.fg() == cube && palette_style.bg() == gray &&
                     palette_style.emph() == tjg::emphasis::bold,
@@ -1886,11 +1853,9 @@ TEST(color_test, text_style_color_constructor) {
   constexpr auto style = tjg::text_style{tjg::color::coral,
                                          tjg::term_color::black,
                                          tjg::emphasis::bold};
-  static_assert(tjg::to_underlying(style.get_foreground()) ==
-                    ((uint32_t{1} << 24) | 0xFF7F50),
+  static_assert(style.get_foreground() == tjg::color_t{tjg::color::coral},
                 "constant evaluation must preserve the RGB kind and payload");
-  static_assert(tjg::to_underlying(style.get_background()) ==
-                    (uint32_t{2} << 24),
+  static_assert(style.get_background() == tjg::color_t{tjg::term_color::black},
                 "constant evaluation must preserve specified terminal black");
   static_assert(style.get_emphasis() == tjg::emphasis::bold,
                 "constant evaluation must preserve emphasis");
@@ -2073,9 +2038,9 @@ TEST(color_test, fluent_components) {
   using tjg::emphasis;
   using tjg::text_style;
   constexpr auto empty = text_style{};
-  static_assert(tjg::to_underlying(empty.fg()) == 0,
+  static_assert(empty.fg() == color_t{tjg::no_color},
                 "empty foreground getter must be constexpr");
-  static_assert(tjg::to_underlying(empty.bg()) == 0,
+  static_assert(empty.bg() == color_t{tjg::no_color},
                 "empty background getter must be constexpr");
   static_assert(empty.emph() == emphasis{},
                 "empty emphasis getter must be constexpr");
@@ -2588,7 +2553,6 @@ TEST(color_test, absolute_style_sgr) {
 }
 
 #undef TJG_SGR_EXPECTED
-
 
 TEST(color_test, text_style_underlay) {
   using tc = tjg::term_color;
