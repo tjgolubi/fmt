@@ -374,29 +374,12 @@ struct cube_color {
 
 };  // cube_color
 
-namespace detail {
-
-template <typename T>
-struct is_color
-    : std::integral_constant<
-          bool,
-          std::is_same<typename std::decay<T>::type, rgb>::value ||
-              std::is_same<typename std::decay<T>::type, term_color>::value ||
-              std::is_same<typename std::decay<T>::type, cube_color>::value ||
-              std::is_same<typename std::decay<T>::type, gray_color>::value> {};
-
-template <typename... Colors> struct all_colors;
-template <> struct all_colors<> : std::true_type {};
-template <typename First, typename... Rest>
-struct all_colors<First, Rest...>
-    : std::integral_constant<bool, is_color<First>::value &&
-                                       all_colors<Rest...>::value> {};
-
-}  // namespace detail
-
 /// Identifies types that can be used directly as color values.
 template <typename T>
-concept Color = detail::is_color<T>::value;
+concept Color = std::same_as<std::remove_cvref_t<T>, rgb> ||
+                std::same_as<std::remove_cvref_t<T>, term_color> ||
+                std::same_as<std::remove_cvref_t<T>, cube_color> ||
+                std::same_as<std::remove_cvref_t<T>, gray_color>;
 
 /// Returns a plain color's fixed RGB equivalent without changing the argument.
 template <Color T>
@@ -459,12 +442,9 @@ constexpr auto operator|=(color_t& lhs, color_t rhs) noexcept -> color_t& {
 namespace detail {
 
 template <typename T>
-struct is_blend_color
-    : std::integral_constant<
-          bool,
-          is_color<T>::value ||
-              std::is_same<typename std::decay<T>::type, color_t>::value ||
-              std::is_same<typename std::decay<T>::type, no_color_t>::value> {};
+concept BlendColor = Color<T> ||
+                     std::same_as<std::remove_cvref_t<T>, color_t> ||
+                     std::same_as<std::remove_cvref_t<T>, no_color_t>;
 
 struct blend_rgb {
   constexpr auto operator()(const no_color_t&) const noexcept -> rgb {
@@ -533,9 +513,7 @@ template <Color First, Color Second, Color... Colors>
  * Fractional channels are rounded down after summing all specified colors.
  * The arguments are unchanged. Supports constant evaluation.
  */
-template <typename Second, typename... Colors>
-  requires(detail::is_blend_color<Second>::value &&
-           (detail::is_blend_color<Colors>::value && ...))
+template <detail::BlendColor Second, detail::BlendColor... Colors>
 [[nodiscard]] constexpr auto blend(color_t first, Second second,
                                    Colors... rest) noexcept -> color_t {
   detail::blend_state state;
@@ -1016,15 +994,7 @@ inline auto get_terminal_state() noexcept -> text_style& {
 namespace detail {
 
 template <typename T>
-struct is_text_style : std::is_same<typename std::decay<T>::type, text_style> {
-};
-
-template <typename... Styles> struct all_text_styles;
-template <> struct all_text_styles<> : std::true_type {};
-template <typename First, typename... Rest>
-struct all_text_styles<First, Rest...>
-    : std::integral_constant<bool, is_text_style<First>::value &&
-                                       all_text_styles<Rest...>::value> {};
+concept TextStyle = std::same_as<std::remove_cvref_t<T>, text_style>;
 
 constexpr auto checked_blend_style(const text_style& style) noexcept
     -> const text_style& {
@@ -1061,18 +1031,6 @@ struct style_blend_state {
   }
 };
 
-constexpr auto blend_styles_accumulate(style_blend_state state) noexcept
-    -> style_blend_state {
-  return state;
-}
-
-template <typename First, typename... Rest>
-constexpr auto blend_styles_accumulate(style_blend_state state, First first,
-                                       Rest... rest) noexcept
-    -> style_blend_state {
-  return blend_styles_accumulate(state.add(first), rest...);
-}
-
 }  // namespace detail
 
 /**
@@ -1088,15 +1046,12 @@ constexpr auto blend_styles_accumulate(style_blend_state state, First first,
  * absolute flag is still discarded.
  * Supports constant evaluation.
  */
-template <typename First, typename Second, typename... Styles>
-  requires(detail::is_text_style<First>::value &&
-           detail::is_text_style<Second>::value &&
-           (detail::is_text_style<Styles>::value && ...))
+template <detail::TextStyle First, detail::TextStyle Second,
+          detail::TextStyle... Styles>
 [[nodiscard]] constexpr auto blend(First first, Second second,
                                    Styles... rest) noexcept -> text_style {
-  detail::style_blend_state state;
-  const text_style styles[] = {first, second, rest...};
-  for (auto style : styles) state = state.add(style);
+  auto state = detail::style_blend_state{}.add(first).add(second);
+  ((state = state.add(rest)), ...);
   return state.result();
 }
 

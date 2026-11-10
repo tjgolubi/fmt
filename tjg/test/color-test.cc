@@ -1510,13 +1510,11 @@ TEST(color_test, rgb_blend) {
 }
 
 namespace {
-template<typename... Colors>
-auto can_blend(int) -> decltype(tjg::blend(std::declval<Colors>()...),
-                                std::true_type{});
-template<typename... Colors> auto can_blend(...) -> std::false_type;
-template<typename T>
-auto can_to_rgb(int) -> decltype(tjg::to_rgb(std::declval<T>()), std::true_type{});
-template<typename T> auto can_to_rgb(...) -> std::false_type;
+template <typename... Colors>
+concept CanBlend = requires { tjg::blend(std::declval<Colors>()...); };
+
+template <typename T>
+concept CanConvertToRgb = requires { tjg::to_rgb(std::declval<T>()); };
 } // namespace
 
 TEST(color_test, to_rgb) {
@@ -1533,10 +1531,10 @@ TEST(color_test, to_rgb) {
                     std::is_same<decltype(tjg::to_rgb(tjg::color_t{})),
                                  tjg::color_t>::value,
                 "unspecified and variant conversions preserve their result types");
-  static_assert(!decltype(can_to_rgb<int>(0))::value &&
-                    !decltype(can_to_rgb<const char*>(0))::value &&
-                    !decltype(can_to_rgb<tjg::emphasis>(0))::value &&
-                    !decltype(can_to_rgb<tjg::text_style>(0))::value,
+  static_assert(!CanConvertToRgb<int> &&
+                    !CanConvertToRgb<const char*> &&
+                    !CanConvertToRgb<tjg::emphasis> &&
+                    !CanConvertToRgb<tjg::text_style>,
                 "to_rgb rejects non-color arguments");
   static_assert(noexcept(tjg::to_rgb(tjg::rgb{})) &&
                     noexcept(tjg::to_rgb(tjg::term_color::red)) &&
@@ -1593,11 +1591,11 @@ TEST(color_test, blend_overloads) {
                     std::is_same<decltype(tjg::blend(tjg::rgb{}, tjg::no_color)),
                                  tjg::color_t>::value,
                 "a variant or unspecified argument selects variant blending");
-  static_assert(!decltype(can_blend<>(0))::value &&
-                    !decltype(can_blend<int>(0))::value &&
-                    !decltype(can_blend<tjg::rgb, int>(0))::value &&
-                    !decltype(can_blend<int, tjg::rgb>(0))::value &&
-                    !decltype(can_blend<tjg::color_t, const char*>(0))::value,
+  static_assert(!CanBlend<> &&
+                    !CanBlend<int> &&
+                    !CanBlend<tjg::rgb, int> &&
+                    !CanBlend<int, tjg::rgb> &&
+                    !CanBlend<tjg::color_t, const char*>,
                 "blending requires valid color arguments");
   static_assert(noexcept(tjg::blend(tjg::term_color::red,
                                     std::declval<tjg::gray_color>())) &&
@@ -1620,22 +1618,20 @@ TEST(color_test, blend_overloads) {
 }
 
 TEST(color_test, blend_minimum_arity) {
-  static_assert(!decltype(can_blend<>(0))::value &&
-                    !decltype(can_blend<tjg::rgb>(0))::value &&
-                    !decltype(can_blend<tjg::term_color>(0))::value &&
-                    !decltype(can_blend<tjg::cube_color>(0))::value &&
-                    !decltype(can_blend<tjg::gray_color>(0))::value &&
-                    !decltype(can_blend<tjg::color_t>(0))::value &&
-                    !decltype(can_blend<tjg::no_color_t>(0))::value &&
-                    !decltype(can_blend<tjg::text_style>(0))::value,
+  static_assert(!CanBlend<> &&
+                    !CanBlend<tjg::rgb> &&
+                    !CanBlend<tjg::term_color> &&
+                    !CanBlend<tjg::cube_color> &&
+                    !CanBlend<tjg::gray_color> &&
+                    !CanBlend<tjg::color_t> &&
+                    !CanBlend<tjg::no_color_t> &&
+                    !CanBlend<tjg::text_style>,
                 "public blend requires at least two arguments");
-  static_assert(decltype(can_blend<tjg::rgb, tjg::rgb>(0))::value &&
-                    decltype(can_blend<tjg::rgb, tjg::color_t>(0))::value &&
-                    decltype(can_blend<tjg::color_t, tjg::rgb>(0))::value &&
-                    decltype(can_blend<tjg::no_color_t,
-                                       tjg::no_color_t>(0))::value &&
-                    decltype(can_blend<tjg::text_style,
-                                       tjg::text_style>(0))::value,
+  static_assert(CanBlend<tjg::rgb, tjg::rgb> &&
+                    CanBlend<tjg::rgb, tjg::color_t> &&
+                    CanBlend<tjg::color_t, tjg::rgb> &&
+                    CanBlend<tjg::no_color_t, tjg::no_color_t> &&
+                    CanBlend<tjg::text_style, tjg::text_style>,
                 "two-argument color and style blends remain available");
 }
 
@@ -1685,13 +1681,12 @@ TEST(color_test, text_style_blend) {
   static_assert(std::is_same<decltype(tjg::blend(tjg::text_style{},
                                                 tjg::text_style{})),
                              tjg::text_style>::value &&
-                    decltype(can_blend<const tjg::text_style&,
-                                       tjg::text_style>(0))::value,
+                    CanBlend<const tjg::text_style&, tjg::text_style>,
                 "style blending accepts style values and returns a style");
-  static_assert(!decltype(can_blend<tjg::text_style, tjg::rgb>(0))::value &&
-                    !decltype(can_blend<tjg::rgb, tjg::text_style>(0))::value &&
-                    !decltype(can_blend<tjg::text_style, int>(0))::value &&
-                    !decltype(can_blend<tjg::emphasis>(0))::value,
+  static_assert(!CanBlend<tjg::text_style, tjg::rgb> &&
+                    !CanBlend<tjg::rgb, tjg::text_style> &&
+                    !CanBlend<tjg::text_style, int> &&
+                    !CanBlend<tjg::emphasis>,
                 "style blending requires style arguments without color overlap");
   static_assert(noexcept(tjg::blend(tjg::text_style{}, tjg::text_style{})),
                 "style blending must be noexcept");

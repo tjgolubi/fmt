@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <memory>
 
+#include <concepts>
 #include <utility>
 #include <new>
 #include <limits>
@@ -460,9 +461,8 @@ auto to_styled_text(basic_styled_text<Char> text) -> basic_styled_text<Char> {
 
 template <typename S,
           typename Char = typename decltype(std::basic_string_view{
-              std::declval<S&>()})::value_type,
-          std::enable_if_t<
-              std::is_constructible_v<basic_styled_text<Char>, S&&>, int> = 0>
+              std::declval<S&>()})::value_type>
+  requires std::constructible_from<basic_styled_text<Char>, S&&>
 auto to_styled_text(S&& text) -> basic_styled_text<Char> {
   return basic_styled_text<Char>{std::forward<S>(text)};
 }

@@ -14,6 +14,7 @@
 #include <ostream>
 #include <string_view>
 
+#include <concepts>
 #include <limits>
 
 namespace tjg {
@@ -62,11 +63,9 @@ auto operator<<(std::basic_ostream<Char>& os, emphasis value)
  * Inserts a color or text style using its formatter's readable notation.
  * Stream width, fill, and alignment apply as for ordinary string insertion.
  */
-template <typename Char, typename T,
-          std::enable_if_t<
-              detail::is_color<T>::value || std::is_same_v<T, no_color_t> ||
-                  std::is_same_v<T, color_t> || std::is_same_v<T, text_style>,
-              int> = 0>
+template <typename Char, typename T>
+  requires(Color<T> || std::same_as<T, no_color_t> || std::same_as<T, color_t> ||
+           std::same_as<T, text_style>)
 auto operator<<(std::basic_ostream<Char>& os, const T& value)
     -> std::basic_ostream<Char>& {
   auto buffer = basic_memory_buffer<Char, 64>{};
