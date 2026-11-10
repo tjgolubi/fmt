@@ -312,15 +312,14 @@ void check_overlay() {
   const auto left = node{text<Char>("left"), tjg::italic()};
   const auto right = node{text<Char>("right"), tjg::faint()};
   auto source = left + right;
-  source.style(tjg::fg(tjg::color::blue) | tjg::bg(tjg::gray_color{5}) |
-               tjg::underline());
+  source.style(tjg::fg(tjg::color::blue).bg(tjg::gray_color{5}).underline());
   const auto snapshot = source;
-  const auto overrides = tjg::fg(tjg::term_color::red) | tjg::bold();
+  const auto overrides = tjg::fg(tjg::term_color::red).bold();
   auto expected = node{text<Char>("left"),
                        tjg::fg(tjg::term_color::red).italic().bold()}
       + node{text<Char>("right"), tjg::fg(tjg::term_color::red).faint().bold()};
-  expected.style(tjg::fg(tjg::term_color::red) | tjg::bg(tjg::gray_color{5}) |
-                 tjg::underline() | tjg::bold());
+  expected.style(tjg::fg(tjg::term_color::red).bg(tjg::gray_color{5})
+                     .underline().bold());
   auto member = source;
   EXPECT_EQ(&member.overlay(overrides), &member);
   EXPECT_EQ(member, expected);
@@ -381,8 +380,8 @@ void check_emphasis_modifiers() {
   const auto leaf = node{text<Char>("left"), tjg::underline()};
   const auto sibling = node{text<Char>("right"), tjg::faint()};
   auto source = leaf + sibling;
-  const auto base_style = tjg::fg(tjg::color::blue) |
-                          tjg::bg(tjg::term_color::black) | tjg::italic();
+  const auto base_style = tjg::fg(tjg::color::blue)
+                              .bg(tjg::term_color::black).italic();
   source.style(base_style);
   const auto snapshot = source;
   for (const auto& item : modifiers) {
@@ -434,7 +433,7 @@ TEST(styled_text_test, modifier_literals_and_composition) {
   EXPECT_EQ(line, expected);
   EXPECT_EQ(line.plain_text(), "red text with nested bold still red");
   EXPECT_EQ(tjg::underline(tjg::bold("text")),
-            (tjg::styled_text{"text", tjg::bold() | tjg::underline()}));
+            (tjg::styled_text{"text", tjg::bold().underline()}));
   EXPECT_EQ(tjg::overlay(tjg::italic(), L"wide"),
             (tjg::wstyled_text{L"wide", tjg::italic()}));
   const auto wide = tjg::overlay(tjg::bg(tjg::gray_color{12}),

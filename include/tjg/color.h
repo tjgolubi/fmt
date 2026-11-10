@@ -472,7 +472,7 @@ template <Color T>
   return no_color_t{};
 }
 
-/// A color variant. Its alternative indices match the packed style encoding.
+/// A color variant with alternatives for each supported color kind.
 using color_t = std::variant<no_color_t, rgb, term_color, cube_color, gray_color>;
 
 template <> struct underlying_type<color_t> {
@@ -535,7 +535,7 @@ struct color_payload {
 };
 }  // namespace detail
 
-/// The packed numeric representation used by text_style, not a stable archive.
+/// An explicit packed color representation, not a stable archive.
 constexpr inline auto to_underlying(const color_t& color) noexcept
     -> color_t_value_type {
   if (color.valueless_by_exception()) return 0;
@@ -545,7 +545,7 @@ constexpr inline auto to_underlying(const color_t& color) noexcept
 
 namespace detail {
 
-// Decode valid packed colors produced by text_style using color_kind tags.
+// Decode valid packed colors using color_kind tags.
 constexpr auto unpack_color(color_t_value_type value) -> color_t {
   using kind = color_kind;
   switch (enum_cast<kind>(value >> 24)) {
@@ -665,7 +665,7 @@ template <typename Second, typename... Colors>
  *
  *       auto style2 = fg(color::red).bg(black).bold().underline();
  *
- *       auto style3 = fg(color::red) | bg(black) | bold | underline;
+ *       auto style3 = text_style{bold | underline, color::red, black};
  *
  *       assert(style1 == style2 && style1 == style3);
  *
@@ -676,62 +676,10 @@ template <typename Second, typename... Colors>
  * into `style4`.
  */
 class text_style {
-  // The information is packed as follows:
-  // ┌──┐
-  // │ 0│─┐
-  // │..│ ├── foreground color value
-  // │23│─┘
-  // ├──┤
-  // │24│─┬── discriminator for the above value. 000 if unset, 001 if it's
-  // │..│ │   an RGB color, 010 if it's a terminal color, 011 if it's a cube
-  // │26│─┘   color, and 100 if it's a gray color.
-  // ├──┤
-  // │27│─┐
-  // │..│ │
-  // │50│ │
-  // ├──┤ │
-  // │51│ ├── background color (same format as the foreground color)
-  // │..│ │
-  // │53│─┘
-  // ├──┤
-  // │54│─┐
-  // │..│ ├── emphases
-  // │61│─┘
-  // ├──┤
-  // │62│──── absolute (reset before applying this style)
-  // ├──┤
-  // │63│──── unused
-  // └──┘
-
- public:
-  using value_type = uint64_t;
-
- private:
-  value_type style_ = 0;
-
-  static constexpr auto color_bits = 24;
-  static constexpr auto disc_bits = 3;
-  static constexpr auto emph_bits = 8;
-  static constexpr auto fg_shift = 0;
-  static constexpr auto bg_shift = 27;
-  static constexpr auto emph_shift = 54;
-  static constexpr auto abs_shift = emph_shift + emph_bits;
-
-  static constexpr auto color_mask = (color_t_value_type{1} << color_bits) - 1;
-  static constexpr auto disc_mask = (1U << disc_bits) - 1;
-  static constexpr auto value_bits = color_bits + disc_bits;
-  static constexpr auto value_mask = (color_t_value_type{1} << value_bits) - 1;
-  static constexpr auto abs_mask = value_type{1} << abs_shift;
-
-  static constexpr auto fg_mask = value_type{value_mask} << fg_shift;
-  static constexpr auto bg_mask = value_type{value_mask} << bg_shift;
-  static constexpr auto fg_disc_mask = value_type{disc_mask}
-                                       << (fg_shift + color_bits);
-  static constexpr auto bg_disc_mask = value_type{disc_mask}
-                                       << (bg_shift + color_bits);
-
-  static constexpr auto emph_mask0 = (1U << emph_bits) - 1;
-  static constexpr auto emph_mask = value_type{emph_mask0} << emph_shift;
+  bool _absolute = false;
+  emphasis _emph{};
+  color_t _fg;
+  color_t _bg;
 
  public:
   /**
@@ -755,13 +703,11 @@ class text_style {
    */
   constexpr text_style(color_t fg, color_t bg = no_color,
                        emphasis emp = emphasis{}) noexcept
-      : style_{(value_type{to_underlying(fg)} << fg_shift) |
-               (value_type{to_underlying(bg)} << bg_shift) |
-               (value_type{to_underlying(emp)} << emph_shift)} {}
+      : _emph{emp}, _fg{fg}, _bg{bg} {}
 
   /// Returns true if no colors, emphasis, or absolute flag are set.
   [[nodiscard]] constexpr auto empty() const noexcept -> bool {
-    return style_ == 0;
+    return !_absolute && !has_emph() && !has_fg() && !has_bg();
   }
 
   /**
@@ -769,7 +715,10 @@ class text_style {
    * Returns a reference to this style for chaining.
    */
   constexpr auto clear() noexcept -> text_style& {
-    style_ = 0;
+    _absolute = false;
+    _emph = {};
+    _fg = no_color;
+    _bg = no_color;
     return *this;
   }
 
@@ -780,16 +729,13 @@ class text_style {
    * Absolute does not prevent explicit modification of this style.
    */
   constexpr auto absolute(bool enable = true) noexcept -> text_style& {
-    if (enable)
-      style_ |= abs_mask;
-    else
-      style_ &= ~abs_mask;
+    _absolute = enable;
     return *this;
   }
 
   /// Returns true if this style resets the terminal before applying attributes.
   [[nodiscard]] constexpr auto is_absolute() const noexcept -> bool {
-    return ((style_ & abs_mask) != 0);
+    return _absolute;
   }
 
   /**
@@ -801,14 +747,10 @@ class text_style {
    * absolute if either input is absolute; explicit overlays remain allowed.
    */
   constexpr auto overlay(const text_style& other) noexcept -> text_style& {
-    if (other == *this || other.empty()) return *this;
-
-    if (empty()) return *this = other;
-
-    absolute(is_absolute() || other.is_absolute());
-    emph(emph() | other.emph());
-    if (other.has_fg()) fg(other.fg());
-    if (other.has_bg()) bg(other.bg());
+    _absolute = _absolute || other._absolute;
+    _emph |= other._emph;
+    if (other.has_fg()) _fg = other._fg;
+    if (other.has_bg()) _bg = other._bg;
     return *this;
   }  // overlay
 
@@ -821,70 +763,26 @@ class text_style {
    * remain allowed.
    */
   constexpr auto underlay(const text_style& other) noexcept -> text_style& {
-    if (other == *this || other.empty()) return *this;
-
-    if (empty()) return *this = other;
-
-    absolute(is_absolute() || other.is_absolute());
-    emph(emph() | other.emph());
-    if (!has_fg()) fg(other.fg());
-    if (!has_bg()) bg(other.bg());
+    _absolute = _absolute || other._absolute;
+    _emph |= other._emph;
+    if (!has_fg()) _fg = other._fg;
+    if (!has_bg()) _bg = other._bg;
     return *this;
   }  // underlay
 
-  /**
-   * Combines this style with `rhs` and returns a reference to this style.
-   *
-   * Emphasis bits are combined by OR. An unspecified color channel takes the
-   * other style's color, preserving its kind. If both styles specify colors
-   * in the same channel, they are converted to RGB and their corresponding
-   * component bits are ORed, without averaging or alpha compositing.
-   *
-   * The result is absolute if either input is absolute.
-   * Terminal colors are converted using the fixed Xterm-default RGB palette,
-   * which may differ from the user's terminal theme.
-   */
-  constexpr auto operator|=(text_style rhs) noexcept -> text_style& {
-    constexpr auto mask = value_type{disc_mask & ~1U};
-    constexpr auto promotion_mask =
-        (mask << (fg_shift + color_bits)) | (mask << (bg_shift + color_bits));
-    auto style = style_ | rhs.style_;
-    if ((style & promotion_mask) == 0) {
-      style_ = style;
-      return *this;
-    }
-    fg(fg() | rhs.fg());
-    bg(bg() | rhs.bg());
-    emph(emph() | rhs.emph());
-    absolute(is_absolute() || rhs.is_absolute());
-    return *this;
-  }
-
-  /**
-   * Returns the composition of `lhs` and `rhs`.
-   *
-   * Uses the same color promotion, RGB bitwise-OR, and emphasis combination
-   * rules as `operator|=`.
-   */
-  [[nodiscard]]
-  friend constexpr auto operator|(text_style lhs, text_style rhs) noexcept
-      -> text_style {
-    return lhs |= rhs;
-  }
-
   /// Returns true if a foreground color is specified.
   [[nodiscard]] constexpr auto has_fg() const noexcept -> bool {
-    return ((style_ & fg_disc_mask) != 0);
+    return !detail::is_unspecified(_fg);
   }
 
   /// Returns true if a background color is specified.
   [[nodiscard]] constexpr auto has_bg() const noexcept -> bool {
-    return ((style_ & bg_disc_mask) != 0);
+    return !detail::is_unspecified(_bg);
   }
 
   /// Returns true if at least one emphasis attribute is set.
   [[nodiscard]] constexpr auto has_emph() const noexcept -> bool {
-    return ((style_ & emph_mask) != 0);
+    return _emph != emphasis{};
   }
 
   /// Returns true if a foreground color is specified.
@@ -908,9 +806,7 @@ class text_style {
    */
   [[nodiscard]]
   constexpr auto fg() const noexcept -> color_t {
-    using value_t = color_t_value_type;
-    return detail::unpack_color(
-        narrow_cast<value_t>((style_ >> fg_shift) & value_mask));
+    return _fg;
   }
 
   /**
@@ -919,14 +815,12 @@ class text_style {
    */
   [[nodiscard]]
   constexpr auto bg() const noexcept -> color_t {
-    using value_t = color_t_value_type;
-    return detail::unpack_color(
-        narrow_cast<value_t>((style_ >> bg_shift) & value_mask));
+    return _bg;
   }
 
   /// Returns the combined emphasis bit mask.
   [[nodiscard]] constexpr auto emph() const noexcept -> emphasis {
-    return enum_cast<emphasis>((style_ & emph_mask) >> emph_shift);
+    return _emph;
   }
 
   /**
@@ -958,8 +852,7 @@ class text_style {
    * emphasis attributes.
    */
   constexpr auto fg(color_t color) noexcept -> text_style& {
-    style_ =
-        (style_ & ~fg_mask) | (value_type{to_underlying(color)} << fg_shift);
+    _fg = color;
     return *this;
   }
 
@@ -971,8 +864,7 @@ class text_style {
    * emphasis attributes.
    */
   constexpr auto bg(color_t color) noexcept -> text_style& {
-    style_ =
-        (style_ & ~bg_mask) | (value_type{to_underlying(color)} << bg_shift);
+    _bg = color;
     return *this;
   }
 
@@ -982,14 +874,15 @@ class text_style {
    * Preserves both colors. Bold and faint remain independent bits.
    */
   constexpr auto emph(emphasis em) noexcept -> text_style& {
-    style_ = (style_ & ~emph_mask) | (enum_cast<value_type>(em) << emph_shift);
+    _emph = em;
     return *this;
   }
 
  private:
   constexpr auto set(emphasis em, bool enable = true) noexcept -> text_style& {
-    auto mask = enum_cast<value_type>(em) << emph_shift;
-    style_ = enable ? (style_ | mask) : (style_ & ~mask);
+    const auto bits = to_underlying(_emph);
+    const auto mask = to_underlying(em);
+    _emph = static_cast<emphasis>(enable ? (bits | mask) : (bits & ~mask));
     return *this;
   }
 
@@ -1036,7 +929,7 @@ class text_style {
 
  private:
   [[nodiscard]] constexpr auto is_enabled(emphasis em) const noexcept -> bool {
-    return ((style_ & (enum_cast<value_type>(em) << emph_shift)) != 0);
+    return (to_underlying(_emph) & to_underlying(em)) != 0;
   }
 
  public:
@@ -1090,15 +983,17 @@ class text_style {
     return is_strike();
   }
 
-  [[nodiscard]] constexpr auto operator<=>(const text_style&) const noexcept
-      -> std::strong_ordering = default;
+  [[nodiscard]] constexpr auto operator==(const text_style&) const noexcept
+      -> bool = default;
 
- private:
-  constexpr explicit text_style(value_type style) noexcept : style_{style} {}
-
-  friend constexpr auto to_underlying(text_style value) noexcept -> value_type;
-  friend constexpr auto fg(color_t foreground) noexcept -> text_style;
-  friend constexpr auto bg(color_t background) noexcept -> text_style;
+  [[nodiscard]] constexpr auto operator<=>(const text_style& other) const noexcept
+      -> std::strong_ordering {
+    // Preserve the established ordering without encoding the style as an integer.
+    if (auto order = _absolute <=> other._absolute; order != 0) return order;
+    if (auto order = _emph <=> other._emph; order != 0) return order;
+    if (auto order = _bg <=> other._bg; order != 0) return order;
+    return _fg <=> other._fg;
+  }
 };  // text_style
 
 /**
@@ -1270,15 +1165,6 @@ inline auto get_terminal_state() noexcept -> text_style& {
   return base.underlay(defaults);
 }
 
-template <> struct underlying_type<text_style> {
-  using type = text_style::value_type;
-};
-
-[[nodiscard]] constexpr inline auto to_underlying(text_style value) noexcept
-    -> text_style::value_type {
-  return value.style_;
-}
-
 namespace detail {
 
 template <typename T>
@@ -1373,8 +1259,7 @@ template <typename First, typename Second, typename... Styles>
  */
 [[nodiscard]]
 constexpr inline auto fg(color_t foreground) noexcept -> text_style {
-  return text_style{text_style::value_type{to_underlying(foreground)}
-                    << text_style::fg_shift};
+  return text_style{foreground};
 }
 
 /**
@@ -1384,8 +1269,7 @@ constexpr inline auto fg(color_t foreground) noexcept -> text_style {
  */
 [[nodiscard]]
 constexpr inline auto bg(color_t background) noexcept -> text_style {
-  return text_style{text_style::value_type{to_underlying(background)}
-                    << text_style::bg_shift};
+  return text_style{no_color, background};
 }
 
 /// Upper bound on style SGR output length.
@@ -2504,7 +2388,14 @@ template <> struct hash<tjg::color_t> {
 
 template <> struct hash<tjg::text_style> {
   auto operator()(tjg::text_style value) const noexcept -> size_t {
-    return hash<tjg::text_style::value_type>{}(tjg::to_underlying(value));
+    auto result = hash<bool>{}(value.is_absolute());
+    const auto combine = [&](size_t component) {
+      result ^= component + size_t{0x9e3779b9} + (result << 6) + (result >> 2);
+    };
+    combine(hash<uint8_t>{}(tjg::to_underlying(value.emph())));
+    combine(hash<tjg::color_t>{}(value.fg()));
+    combine(hash<tjg::color_t>{}(value.bg()));
+    return result;
   }
 };
 

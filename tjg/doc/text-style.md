@@ -110,9 +110,9 @@ supports constant evaluation under the same conditions as the member setter.
 For example, `auto red = tjg::absolute(tjg::fg(tjg::color::red));`.
 
 The member `absolute(bool enable = true)` returns `text_style&`; `is_absolute()`
-queries the flag. Both are `noexcept` and support constant evaluation.  The flag uses bit 62 without increasing the style's size. Absolute
-styles can still be explicitly modified using setters, overlays, and
-composition.
+queries the separately stored Boolean flag. Both are `noexcept` and support
+constant evaluation. Absolute styles can still be explicitly modified using
+setters, overlays, and underlays.
 
 An absolute-only style is nonempty and emits `"\x1b[0m"`. Compact SGR output
 combines the reset and attributes, such as `"\x1b[0;4m"`; noncompact output
@@ -194,29 +194,19 @@ For structured text, see
 
 ### Combining styles
 
-`|` returns a combined style and leaves both operands unchanged. `|=` updates
-the left operand and returns `text_style&`. Both operations are `noexcept`.
-The result is absolute if either operand is absolute.
-Emphasis bits combine by OR; foreground and background combine independently:
-
-- If a color channel is unspecified in one operand, it takes the other
-  operand's color and preserves that color's kind.
-- If both operands specify the same channel, both colors convert to RGB and
-  their channel bits combine by OR. That channel then holds `rgb`, including
-  when both original colors have the same palette kind and value.
+Use constructors or fluent setters to select foreground, background, and emphasis.
+Use `overlay` to replace specified colors, `underlay` to fill unspecified colors,
+and `blend` to average them. These named operations combine emphasis bits by OR.
+`text_style` does not provide `operator|` or `operator|=`; those operators remain
+available for [color values](colors.md#composition-comparisons-and-numeric-representation)
+and [emphasis masks](#combining-emphasis-attributes).
 
 ```cpp
-auto style = tjg::fg(tjg::cube_color{1, 2, 3}) | tjg::bg(tjg::gray_color{12});
+auto style = tjg::fg(tjg::cube_color{1, 2, 3}).bg(tjg::gray_color{12});
 // Foreground remains cube_color; background remains gray_color.
-style |= tjg::fg(tjg::gray_color{12});
-// Foreground is now RGB {223, 135, 175}; background is unchanged.
+style.overlay(tjg::fg(tjg::gray_color{12}));
+// Foreground becomes gray_color{12}; background is unchanged.
 ```
-
-Conversion uses fixed RGB values for palette colors; terminal colors use
-the Xterm-default mapping, which may differ from the terminal's current theme.
-Composition does not average colors or perform alpha compositing. See
-[color composition](colors.md#composition-comparisons-and-numeric-representation).
-Use a component setter to replace a color rather than combine its bits.
 
 ### Blending styles
 
@@ -515,31 +505,21 @@ later on supported compilers.
 
 ### Comparisons
 
-`text_style` values support equality and ordering by their packed `uint64_t`
-representations, including color kinds, color values, and emphasis bits.
-An empty style sorts before any nonempty style. Different color kinds
-remain distinct even when their RGB equivalents are equal. Styles can be used
-as keys in `std::map` and `std::set`. In C++20 and later, `operator<=>`
-returns `std::strong_ordering`.
+`text_style` stores its absolute flag, emphasis, foreground, and background as
+separate members. Equality compares all four components. Ordering compares the
+absolute flag first, then emphasis, background, and foreground, preserving the
+previous ordering without packing the style. Different color kinds remain
+distinct even when their RGB equivalents are equal. Styles can be used as keys
+in `std::map` and `std::set`; `operator<=>` returns `std::strong_ordering`.
 
-`std::hash<tjg::text_style>` hashes the packed `uint64_t` representation,
-allowing styles to be keys in `std::unordered_map` and `std::unordered_set`.
-Equal styles have equal hashes. Hash values are not a stable serialization
-format.
+`std::hash<tjg::text_style>` combines the four components, allowing styles to be
+keys in `std::unordered_map` and `std::unordered_set`. Equal styles have equal
+hashes. Hash values are not a stable serialization format.
 
 ### Integer representation
 
-`tjg::underlying_type<tjg::text_style>::type` is `uint64_t`.
-`tjg::to_underlying(style)` returns the packed foreground, background, and
-emphasis representation.  An empty style produces zero.
-
-```cpp
-constexpr auto empty = tjg::to_underlying(tjg::text_style{});  // 0
-auto style  = tjg::fg(tjg::color::red) | tjg::emphasis::bold;
-auto packed = tjg::to_underlying(style);  // uint64_t
-```
-
-The packed encoding is not a stable serialization format.
+`text_style` stores its components directly. No integer representation or
+`to_underlying(text_style)` conversion is provided at present.
 
 ## Combining emphasis attributes
 

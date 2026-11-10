@@ -173,7 +173,7 @@ bool check_sharing() {
   auto styled_move = tjg::strike(tjg::bold(
       tjg::overlay(root_style, std::move(branch_copy))));
   count_allocations = false;
-  expected.style(root_style | tjg::bold() | tjg::strike());
+  expected.style(tjg::text_style{root_style}.bold().strike());
   if (!check<Char>("moving overlay/emphasis chain",
                    allocations_match({0, 0, 0}) && branch_copy.empty() &&
                    styled_move == expected))

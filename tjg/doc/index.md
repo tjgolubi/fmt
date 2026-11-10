@@ -44,7 +44,7 @@ The first call styles the entire message. The second styles only `42`.
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
 | [Colors](colors.md)            | RGB, terminal, cube, and gray colors; `no_color`; public `color_t` values, access and visitation, and integer representations      |
 | [Emphasis](emphasis.md)        | Text attributes and their combination                                                                                              |
-| [Text styles](text-style.md)   | `text_style`, its members and operators, and `fg`/`bg`                                                                             |
+| [Text styles](text-style.md)   | `text_style`, named style operations, and `fg`/`bg`                                                                                |
 | [Styled arguments](styled.md)  | Structured styled text, SGR parsing, ANSI stripping, backslash escaping/unescaping, `styled`, format specifications, and lifetimes |
 | [Styled output](print.md)      | `print`, `println`, `vprint`, and `vprintln`                                                                                       |
 | [Styled formatting](format.md) | `format`, `format_to`, and their `v` variants                                                                                      |
@@ -75,27 +75,26 @@ preserves its color and kind.  When multiple inputs specify the same channel,
 their colors convert to RGB and combine by averaging the color channels; that
 channel then holds RGB.
 
-[`operator|`](text-style.md#combining-styles) and
-[`operator|=`](text-style.md#combining-styles) offer a cheaper
-bitwise operation, but use care when combining colors: they OR the channel
+[Color `operator|`](colors.md#composition-comparisons-and-numeric-representation)
+and `operator|=` perform bitwise composition: they OR the channel
 bits instead of averaging them. OR cannot lower a channel value, so combining
 a bright color with a dim color will not dim the bright color. Use constructors
 or fluent setters to select colors directly, and `blend` to average them.
 
-The examples below compare both operations on foreground styles. Every input
+The examples below compare both operations on color values. Every input
 name is a `tjg::term_color` value. Conversion uses the fixed Xterm-default RGB
 mapping, which may differ from the user's terminal theme. **Both operations
-produce RGB foregrounds**, rather than terminal palette colors.
+produce RGB colors**, rather than terminal palette colors.
 
 ```cpp
-auto red  = tjg::text_style{tjg::term_color::bright_red};
-auto blue = tjg::text_style{tjg::term_color::blue};
+auto red  = tjg::color_t{tjg::term_color::bright_red};
+auto blue = tjg::color_t{tjg::term_color::blue};
 auto averaged = tjg::blend(red, blue); // RGB {127, 0, 119}.
 auto ored = red | blue;                // RGB {255, 0, 238}.
 ```
 
 <table class="color-comparison">
-<thead><tr><th>Inputs (<a href="colors.html#terminal-palette-colors"><code>term_color</code></a>)</th><th><a href="text-style.html#blending-styles"><code>blend()</code></a> — average</th><th><a href="text-style.html#combining-styles"><code>operator|</code></a> — bitwise OR</th></tr></thead>
+<thead><tr><th>Inputs (<a href="colors.html#terminal-palette-colors"><code>term_color</code></a>)</th><th><a href="colors.html#blending-color-variants"><code>blend()</code></a> — average</th><th><a href="colors.html#composition-comparisons-and-numeric-representation"><code>operator|</code></a> — bitwise OR</th></tr></thead>
 <tbody>
 <tr>
 <td><div class="color-inputs"><span class="color-chip" style="background-color:#FF0000;color:#000000"><a href="colors.html#terminal-palette-colors"><code>bright_red</code></a><small>255, 0, 0</small></span><span class="color-chip" style="background-color:#0000EE;color:#FFFFFF"><a href="colors.html#terminal-palette-colors"><code>blue</code></a><small>0, 0, 238</small></span></div></td>

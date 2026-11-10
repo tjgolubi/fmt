@@ -72,7 +72,7 @@ bool specified = style.has_fg(); // true
     values differ.
 
 Use symbolic terminal-color names in styling code. Their numeric values and
-the packed style encoding are not stable serialization formats.
+packed color encodings are not stable serialization formats.
 
 `term_color` has the signed underlying type `int8_t`.
 `tjg::underlying_type<tjg::term_color>::type` and
@@ -587,9 +587,10 @@ variant with a concrete color, use `std::get` or construct a second `color_t`.
 `std::hash<tjg::color_t>` permits use as an unordered-container key.
 
 `tjg::underlying_type<tjg::color_t>::type` is `uint32_t`.
-`tjg::to_underlying(color)` returns the packed representation used by
-`text_style`, including the alternative's discriminator and payload. This
-encoding and its hash values are not stable serialization formats.
+`tjg::to_underlying(color)` returns a packed color representation, including
+the alternative's discriminator and payload. `text_style` stores `color_t`
+members directly rather than using this encoding. The encoding and its hash
+values are not stable serialization formats.
 
 If a throwing operation leaves a variant valueless, TJG treats it as
 unspecified when packing, formatting, blending, or composing colors.
