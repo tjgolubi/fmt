@@ -1,11 +1,10 @@
 # {color}: handoff to the next work session
 
-Updated November 10, 2026. Read this document first when continuing the independent
-{color} library, probably on Terry's PC. The other coordination documents describe
-the separate FMT-based development line; do not apply their C++11 requirement to
-this branch or update them as part of this handoff.
+November 10, 2026 baseline, with older PC notes reconciled November 11. Read this
+document first when continuing the independent {color} library. The other
+coordination documents describe the separate C++11 FMT-based development line.
 
-## Current baseline and checkout state
+## November 10 baseline and checkout state
 
 - Repository: https://github.com/tjgolubi/fmt
 - Development branch: `ref/CPP20`, originally split from `color-dev`.
@@ -146,6 +145,18 @@ remain deliberately available; removing style operators did not remove color OR.
   propagation, and use of colors/styles in unordered containers.
 - `emphasis::none = 0` was discussed but has not been added.
 
+### Compiler compatibility cleanup
+
+The earlier pre-C++20 cleanup removed the pre-C++17 reset storage definition,
+unused C++11 blend helpers, the legacy MSVC stream alignment branch, and test
+gates for three-way comparison, concepts, and constexpr strings. Keep the
+targeted MSVC workaround below and the supported no-exceptions path.
+
+Earlier MSVC fixes renamed the buffer member `_inline` to `_inline_storage`
+to avoid a compiler extension, used `'\xff'` and `Char{255}` for narrow and
+wide backslash tests respectively, and removed unreachable code from the
+deliberately throwing test formatter.
+
 ## Design policy going forward
 
 **Start from standard C++ formatting and printing, extended with explicit
@@ -180,6 +191,13 @@ all of them as part of this documentation update:
    fold expressions instead of recursive C++11-era traits. `all_colors` and
    `all_text_styles` appear unused. Review uses before deleting helpers. Genuine
    MSVC compiler-bug and exception-support gates remain intentional.
+
+The older PC notes identified `std::enable_if_t` in `color-ostream.h` and
+`styled_text.h` as starting points. The later concepts refactor `3333ead59`
+addressed those two headers. The notes also proposed in-place `constexpr`
+updates to the blend accumulator. Preserve equal weighting and ignore
+unspecified colors. Return `no_color` when none are specified, preserve the
+kind and value of a sole specified color, and average two or more as RGB.
 
 The fifth suggested candidate, removal of whole-result formatting entry points,
 was rejected. **Retain both kinds of interface:**
@@ -327,10 +345,16 @@ exceptions terminate at an enabled `noexcept` boundary, not just `std::bad_alloc
 
 `color_t` is now exactly
 `std::variant<no_color_t, rgb, term_color, cube_color, gray_color>`.
-It does not use the former custom variant or public custom `get`/`visit` machinery.
+Use `std::get`, `std::get_if`, `std::holds_alternative`, and `std::visit` for
+access. With exceptions enabled, `std::get` on the wrong alternative throws
+`std::bad_variant_access`.
 
 MSVC rejects valid constexpr transitions back to an empty `no_color_t` alternative
 with C2131, reporting inactive union-member access inside its `std::variant`.
+This failed at compile time in all four Windows jobs for `2d185922f`.
+The [Debug compact job](https://github.com/tjgolubi/fmt/actions/runs/42466322805/job/128686579461)
+identified `check_color_constexpr_assignment`. Linux, macOS, and the guide
+passed at that SHA.
 Assigning a temporary and using `emplace` did not solve it. The final fix is a
 private `char _dummy{'\0'}` in `no_color_t`, gated by:
 
@@ -420,6 +444,13 @@ header; the file was intact. The finalized builds passed without new warnings.
 The documentation source was updated, but MkDocs was unavailable and the guide
 site was not rebuilt locally for these changes.
 
+On the earlier PC baseline `2d185922f`, MSYS2 GCC 16.2 passed all 17 suites in
+each SGR mode and the guide built locally. The installed-package test consumer
+defines `_DEFAULT_SOURCE` only when built with GCC on MSYS2, so strict C++23
+mode exposes the stdio declarations required by libstdc++ `<print>`. The fix was
+present during local testing and was committed in `b6fc79da4` after `fd8dfa256`
+omitted it.
+
 Terry's current tablet toolchain is Termux Clang 21.1.8 targeting
 `aarch64-unknown-linux-android24`, CMake 4.4.5, and Python 3.14.10. He permits use of
 other Python versions in our environment. He confirmed `7253096c` passes on the
@@ -460,6 +491,16 @@ covers GCC 14, Clang 20/libc++, and Debug ASan/UBSan. The original FMT doc job i
 intentionally skipped on this branch; the TJG guide job passed. There are no
 failed, cancelled, or pending applicable jobs in those attempts. These are not
 CI results for the three later integration/refactoring commits.
+
+## Standalone repository follow-up
+
+Rewrite the root `README.md` to introduce {color} as an independent C++23
+project and remove references to the fork and the rejected {fmt} proposal.
+Terry agreed to leave the inherited `doc/api.md` until the inherited
+documentation is removed. Once the refactor is complete and the move is
+authorized, carry the standalone source, tests, demos, and guide into a new
+repository. Check the documentation and build inputs for leftover references
+to or dependencies on the old library.
 
 ## Next session and authorization
 
