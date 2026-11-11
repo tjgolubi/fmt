@@ -57,9 +57,9 @@ throw `std::format_error`. The standard library does not support named arguments
 use positional dynamic width and precision, such as `"{0:>{1}.{2}}"`.
 
 String and iterator formatting inherit and restore the enclosing formatting
-style. The outermost formatting state is reset and is separate from the tracked
-terminal state. Nested `tjg::styled` arguments and owning trees use the active
-formatting style. Formatting state assumes single-threaded use for now.
+style. Formatting and printing use the single shared state returned by
+`get_style_state`, initially reset. Nested `tjg::styled` arguments and owning
+trees use that state. Formatting state assumes single-threaded use for now.
 
 ## Use Make
 

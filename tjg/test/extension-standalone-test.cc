@@ -26,7 +26,7 @@ void check(bool value) {
 int main() {
   const auto red = tjg::fg(tjg::term_color::red);
   check(&terminal_state_from_other_translation_unit() ==
-        &tjg::get_terminal_state());
+        &tjg::get_style_state());
   const auto tree = tjg::bold("hello");
   const auto rendered = std::format("{}", tree);
   check(rendered == "\x1b[1mhello\x1b[0m");
@@ -65,7 +65,7 @@ int main() {
     (void)tjg::vformat(red, "{", std::make_format_args());
     return 1;
   } catch (const std::format_error&) {
-    check(tjg::get_terminal_state() == tjg::text_style{});
+    check(tjg::get_style_state() == tjg::text_style{});
   }
   const auto utf8 = tjg::styled_text{"a\xe7\x95\x8c"};
   check(utf8.display_width() == 3);

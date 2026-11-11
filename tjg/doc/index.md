@@ -161,8 +161,7 @@ See the [table demonstration](styled.md#table-demonstration) for a complete
 example combining column defaults, row emphasis, absolute spans, UTF-8 display
 widths, and fixed-width formatting, with build and run instructions.
 
-`get_terminal_state` returns the separately tracked terminal style. String and
-iterator formatting use their own active state, whose outermost value is reset.
+`get_style_state` returns the single shared style, whose initial value is reset.
 Each nested `format`, `vformat`, `format_to`, or `vformat_to` call inherits and
 restores its enclosing formatting style, including on exceptions. Standard
 formatting contexts carry no added style state.

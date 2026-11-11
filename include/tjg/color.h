@@ -811,11 +811,11 @@ class text_style {
 };  // text_style
 
 /**
- * Returns the shared terminal style state. Formatting saves and restores this
+ * Returns the shared style state. Formatting saves and restores this
  * value across nested calls. This state is single-threaded and is not protected
  * by a mutex. Raw terminal escapes and external terminal state are not tracked.
  */
-inline auto get_terminal_state() noexcept -> text_style& {
+inline auto get_style_state() noexcept -> text_style& {
   static auto state = text_style{};
   return state;
 }
@@ -1294,41 +1294,15 @@ constexpr void append_sgr(Buffer& buf, text_style ts) {
   buf.data()[buf.size() - 1] = static_cast<Char>('m');
 }  // append_sgr
 
-// Nested formatters use the selected state. Independent string formatting
-// selects a local state without changing the tracked terminal state.
-inline auto active_style_state() noexcept -> text_style*& {
-  static auto initial = text_style{};
-  static auto active = &initial;
-  return active;
-}
-
-inline auto get_style_state() noexcept -> text_style& {
-  return *active_style_state();
-}
-
-class format_scope {
-  text_style _state;
-  text_style* _previous;
-
- public:
-  format_scope() noexcept : format_scope{get_style_state()} {}
-
-  explicit format_scope(text_style style) noexcept
-      : _state{style.absolute(false)}, _previous{active_style_state()} {
-    active_style_state() = &_state;
-  }
-
-  ~format_scope() { active_style_state() = _previous; }
-
-  format_scope(const format_scope&) = delete;
-  void operator=(const format_scope&) = delete;
-};
-
 class style_scope {
   text_style _saved;
 
  public:
   style_scope() noexcept : _saved{get_style_state()} {}
+
+  explicit style_scope(text_style style) noexcept : style_scope{} {
+    get_style_state() = style.absolute(false);
+  }
 
   // Restore shared state on exceptions; partial output may remain.
   ~style_scope() { get_style_state() = _saved; }
@@ -1348,7 +1322,7 @@ template <typename Buffer, typename Char = typename Buffer::value_type>
 void vformat_to(Buffer& buf, text_style ts,
                 std::basic_string_view<Char> pattern, format_args<Char> args,
                 const std::locale* locale = nullptr) {
-  format_scope scope{ts};
+  style_scope scope{ts};
   append_sgr(buf, ts);
   if (locale)
     std::vformat_to(std::back_inserter(buf), *locale, pattern, args);
@@ -1479,9 +1453,10 @@ template <typename Char, typename OutputIt> class sgr_scope {
           std::uncaught_exceptions() > _exceptions));
 #if defined(__cpp_exceptions) || defined(_CPPUNWIND)
     } catch (...) {
-      // Closing SGR is best effort. Record restoration only after success.
+      // Closing SGR is best effort.
     }
 #endif
+    _state = _saved;
   }
 
   sgr_scope(const sgr_scope&) = delete;
@@ -1673,14 +1648,12 @@ void println(text_style ts, std::format_string<T...> fmt, T&&... args) {
 
 /**
  * Formats to an iterator using the enclosing formatting style. Outermost
- * formatting uses an independent default state. Output restores its entry style.
- * The enclosing active style and tracked terminal state are preserved.
+ * formatting starts from the shared reset state. Output restores its entry style.
  * Closing SGR is best effort if the output iterator throws.
  */
 template <std::output_iterator<const char&> OutputIt>
 auto vformat_to(OutputIt out, text_style style, std::string_view pattern,
                 std::format_args args) -> OutputIt {
-  detail::format_scope context{};
   {
     detail::sgr_scope<char, OutputIt> scope{out, style};
     std::vformat_to(detail::format_output_iterator<char, OutputIt>{out},
@@ -1693,7 +1666,6 @@ auto vformat_to(OutputIt out, text_style style, std::string_view pattern,
 template <std::output_iterator<const wchar_t&> OutputIt>
 auto vformat_to(OutputIt out, text_style style, std::wstring_view pattern,
                 std::wformat_args args) -> OutputIt {
-  detail::format_scope context{};
   {
     detail::sgr_scope<wchar_t, OutputIt> scope{out, style};
     std::vformat_to(detail::format_output_iterator<wchar_t, OutputIt>{out},
@@ -1705,12 +1677,11 @@ auto vformat_to(OutputIt out, text_style style, std::wstring_view pattern,
 /**
  * Formats directly to an iterator, including opening and closing SGR.
  * Inherits and restores the enclosing formatting style. Outermost formatting
- * uses an independent default state without changing the tracked terminal state.
+ * starts from the shared reset state.
  */
 template <std::output_iterator<const char&> OutputIt, typename... Args>
 auto format_to(OutputIt out, text_style style,
                std::format_string<Args...> fmt, Args&&... args) -> OutputIt {
-  detail::format_scope context{};
   {
     detail::sgr_scope<char, OutputIt> scope{out, style};
     std::format_to(detail::format_output_iterator<char, OutputIt>{out},
@@ -1723,7 +1694,6 @@ auto format_to(OutputIt out, text_style style,
 template <std::output_iterator<const wchar_t&> OutputIt, typename... Args>
 auto format_to(OutputIt out, text_style style,
                std::wformat_string<Args...> fmt, Args&&... args) -> OutputIt {
-  detail::format_scope context{};
   {
     detail::sgr_scope<wchar_t, OutputIt> scope{out, style};
     std::format_to(detail::format_output_iterator<wchar_t, OutputIt>{out},
@@ -1751,7 +1721,7 @@ inline auto vformat(text_style style, std::wstring_view fmt,
 /**
  * Formats directly into the returned string, with opening and closing SGR.
  * Inherits and restores the enclosing formatting style. Outermost formatting
- * uses an independent default state without changing the tracked terminal state.
+ * starts from the shared reset state.
  */
 template <typename... Args>
 auto format(text_style style, std::format_string<Args...> fmt, Args&&... args)

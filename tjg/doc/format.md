@@ -144,16 +144,16 @@ style. Relative styles inherit missing colors and combine emphasis. Absolute
 styles establish their own reset boundary. Nested styled values use the same
 active formatting state.
 
-The formatting state is separate from `get_terminal_state`. A state scope
-restores the enclosing active state on normal exit and exceptions. Only SGR
-generation uses a temporary `memory_buffer`; text goes directly to the returned
+`get_style_state` supplies the single shared state used by formatting and
+printing. Its initial value is reset. Scope guards save and restore that state
+on normal exit and exceptions. Only SGR generation uses a temporary
+`memory_buffer`; text goes directly to the returned
 string or supplied output iterator through standard formatting.
 
 The SGR scope attempts its closing transition on every exit. Closing output is
-best effort. If it fails, that failure is suppressed and the local style is not
+best effort. If it fails, that failure is suppressed and the saved style is
 recorded as restored. A previously thrown formatting or output exception still
-propagates. The enclosing formatting state is restored independently. Partial
-output can remain after errors. An absolute reset-only style needs no additional
+propagates. Partial output can remain after errors. An absolute reset-only style needs no additional
 closing SGR when the entry state was already reset.
 
 ::: format(text_style, std::format_string<Args...>, Args&&...)
