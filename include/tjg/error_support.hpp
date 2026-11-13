@@ -1,6 +1,6 @@
 // Assertion, contract, and exception policies for {color}.
-#ifndef TJG_ERROR_SUPPORT_H_
-#define TJG_ERROR_SUPPORT_H_
+
+#pragma once
 
 #include <source_location>
 
@@ -8,6 +8,7 @@
 #include <cstdlib>
 
 namespace tjg::detail {
+
 // Avoid formatting or allocating while reporting a failure.
 [[noreturn]] inline void assert_fail(
     const char* message,
@@ -17,7 +18,8 @@ namespace tjg::detail {
   std::fflush(stderr);
   std::abort();
 }
-}  // namespace tjg::detail
+
+} // tjg::detail
 
 // Define any policy macro before including a {color} header to override it.
 // Use the same definitions throughout the program.
@@ -56,5 +58,3 @@ namespace tjg::detail {
 #ifndef TJG_NOEXCEPT_UNLESS_BAD_ALLOC
 #  define TJG_NOEXCEPT_UNLESS_BAD_ALLOC
 #endif
-
-#endif  // TJG_ERROR_SUPPORT_H_

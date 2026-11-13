@@ -6,6 +6,7 @@
 .vscode/
 .cache/
 .vs/
+/demo/*.exe
 /CMakeScripts
 /Testing
 /_CPack_Packages

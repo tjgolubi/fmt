@@ -1,9 +1,11 @@
-// Unicode tables adapted from {fmt}, copyright (c) 2012-present Victor
-// Zverovich and {fmt} contributors. Distributed under the repository's license.
+// Unicode tables.
+// Adapted from {fmt}, copyright (c) 2012-present Victor Zverovich and {fmt}
+// contributors. Distributed under the repository's license.
 // Width estimates intentionally retain the accepted baseline's Unicode 16
 // table.
-#ifndef TJG_TEXT_SUPPORT_H_
-#define TJG_TEXT_SUPPORT_H_
+
+#pragma once
+
 #include <string_view>
 
 #include <algorithm>
@@ -14,7 +16,9 @@
 
 #include <cstdint>
 #include <cstddef>
+
 namespace tjg::detail {
+
 using std::size_t;
 using std::uint16_t;
 using std::uint32_t;
@@ -26,7 +30,8 @@ struct wide_cp_range {
 // Code points with display width 2, i.e. those with the Unicode 16.0.0
 // East_Asian_Width property set to W(ide) or F(ullwidth)
 // (https://www.unicode.org/reports/tr11/), sorted and merged.
-template <typename = void> struct wide_cp_data {
+template<typename = void>
+struct wide_cp_data {
   static constexpr wide_cp_range ranges[] = {
       // Hangul Jamo
       {0x1100, 0x115f},
@@ -180,7 +185,7 @@ template <typename = void> struct wide_cp_data {
       // CJK Unified Ideographs Extension G (plane 3)
       {0x30000, 0x3fffd},
   };
-};
+}; // wide_cp_data
 
 constexpr inline auto display_width_of(uint32_t cp) noexcept -> size_t {
   if (cp < 0x1100) return 1;
@@ -196,7 +201,7 @@ constexpr inline auto display_width_of(uint32_t cp) noexcept -> size_t {
       return 2;
   }
   return 1;
-}
+} // display_width_of
 
 struct singleton {
   unsigned char upper;
@@ -207,7 +212,8 @@ inline auto is_printable(uint16_t x, const singleton* singletons,
                          size_t singletons_size,
                          const unsigned char* singleton_lowers,
                          const unsigned char* normal, size_t normal_size)
-    -> bool {
+    -> bool
+{
   auto upper = x >> 8;
   auto lower_start = 0;
   for (size_t i = 0; i < singletons_size; ++i) {
@@ -232,7 +238,7 @@ inline auto is_printable(uint16_t x, const singleton* singletons,
     current = !current;
   }
   return current;
-}
+} // is_printable
 
 // Printable-character data retained from the accepted {fmt} baseline.
 inline auto is_printable(uint32_t cp) -> bool {
@@ -393,12 +399,13 @@ inline auto is_printable(uint32_t cp) -> bool {
   if (0x3347a <= cp && cp < 0xe0100) return false;
   if (0xe01f0 <= cp && cp < 0x110000) return false;
   return cp < 0x110000;
-}
+} // is_printable(uint32_t)
 
 struct utf8_character {
   uint32_t value;
   size_t size;
 };
+
 constexpr auto decode_utf8(std::string_view input) noexcept -> utf8_character {
   const auto first = static_cast<unsigned char>(input[0]);
   if (first < 0x80) return {first, 1};
@@ -418,10 +425,12 @@ constexpr auto decode_utf8(std::string_view input) noexcept -> utf8_character {
       (value >= 0xd800 && value <= 0xdfff))
     return {0xffffffffu, 1};
   return {value, count};
-}
-template <typename Char>
+} // decode_utf8
+
+template<typename Char>
 auto text_prefix(std::basic_string_view<Char> text, size_t limit)
-    -> std::pair<size_t, size_t> {
+  -> std::pair<size_t, size_t>
+{
   if constexpr (!std::is_same_v<Char, char>) {
     const auto size = (std::min)(text.size(), limit);
     return {size, size};
@@ -436,8 +445,9 @@ auto text_prefix(std::basic_string_view<Char> text, size_t limit)
     }
     return {size, width};
   }
-}
-template <typename Char, typename OutputIt>
+} // text_prefix
+
+template<typename Char, typename OutputIt>
 auto quote_text(std::basic_string_view<Char> text, OutputIt out) -> OutputIt {
   *out++ = Char('"');
   for (size_t pos = 0; pos < text.size();) {
@@ -478,6 +488,6 @@ auto quote_text(std::basic_string_view<Char> text, OutputIt out) -> OutputIt {
   }
   *out++ = Char('"');
   return out;
-}
-}  // namespace tjg::detail
-#endif
+} // quote_text
+
+} // tjg::detail

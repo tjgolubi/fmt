@@ -1,29 +1,58 @@
-// String specifications shared by TJG styled text and readable values.
-#ifndef TJG_TREE_FORMAT_SPECS_H_
-#define TJG_TREE_FORMAT_SPECS_H_
-#include "text_support.h"
+/// Common formatting failure handling for the TJG extension.
+/// @copyright 2026 Terry Golubiewski, all rights reserved.
+
+#pragma once
+
+#include "error_support.hpp"
+#include "inline_buffer.hpp"
+#include "text_support.hpp"
+#include "utility.hpp"
 
 #include <format>
-
 #include <iterator>
-
 #include <concepts>
 #include <utility>
 
 namespace tjg::detail {
-template <typename Char> struct tree_format_specs {
+
+[[noreturn]] inline void standard_format_error(const char* message)
+{ TJG_THROW(std::format_error(message)); }
+
+template<typename OutputIt>
+[[nodiscard]] constexpr
+auto write_ascii(OutputIt out, const char* text) -> OutputIt {
+  while (*text)
+    *out++ = *text++;
+  return out;
+}
+
+template<typename OutputIt>
+[[nodiscard]] constexpr
+auto write_ascii(OutputIt out, std::string_view text) -> OutputIt {
+  for (auto ch : text)
+    *out++ = ch;
+  return out;
+}
+
+template<CharType Char>
+struct string_format_specs {
   std::size_t width = 0;
   std::size_t precision = (std::numeric_limits<std::size_t>::max)();
   int width_arg = -1, precision_arg = -1;
   char alignment = '<';
-  Char fill[4] = {Char(' ')};
-  std::size_t fill_size = 1;
   bool debug = false;
+  basic_inline_buffer<Char, 4> _fill;
+
+  constexpr string_format_specs() noexcept { _fill.push_back(Char{' '}); }
+
   constexpr void set_fill(std::basic_string_view<Char> value) {
-    fill_size = value.size();
-    std::copy(value.begin(), value.end(), fill);
+    auto fill = basic_inline_buffer<Char, 4>{};
+    if (!value.empty())
+      fill.append(value.data(), value.data() + value.size());
+    _fill = fill;
   }
-  template <typename Context, typename Fail>
+
+  template<typename Context, typename Fail>
   constexpr auto parse(Context& ctx, Fail fail) -> decltype(ctx.begin()) {
     auto it = ctx.begin();
     const auto end = ctx.end();
@@ -35,6 +64,14 @@ template <typename Char> struct tree_format_specs {
     if constexpr (std::same_as<Char, char>) {
       const auto bytes = std::string_view{it, end};
       next = it + static_cast<std::ptrdiff_t>(decode_utf8(bytes).size);
+    } else if constexpr (sizeof(Char) == 2) {
+      if (next != end) {
+        const auto lead = static_cast<char16_t>(*it);
+        const auto trail = static_cast<char16_t>(*next);
+        if (lead >= 0xd800 && lead <= 0xdbff &&
+            trail >= 0xdc00 && trail <= 0xdfff)
+          ++next;
+      }
     }
     if (next != end && align(*next)) {
       if (*it == Char('{') || *it == Char('}')) fail("invalid fill character");
@@ -64,7 +101,10 @@ template <typename Char> struct tree_format_specs {
       if (it != end && *it == Char('}'))
         id = static_cast<std::size_t>(ctx.next_arg_id());
       else if (it != end && *it >= Char('0') && *it <= Char('9')) {
-        id = number();
+        if (*it == Char('0'))
+          ++it;
+        else
+          id = number();
         ctx.check_arg_id(static_cast<int>(id));
       } else {
         fail("invalid dynamic argument index");
@@ -92,9 +132,10 @@ template <typename Char> struct tree_format_specs {
     if (it != end && *it != Char('}'))
       fail("invalid string format specification");
     return it;
-  }
-  template <typename Context, typename Fail>
-  auto resolve(Context& ctx, Fail fail) const -> tree_format_specs {
+  } // parse
+
+  template<typename Context, typename Fail>
+  auto resolve(Context& ctx, Fail fail) const -> string_format_specs {
     auto result = *this;
     auto get = [&](int id) -> std::size_t {
       auto visitor = [&](auto value) -> std::size_t {
@@ -121,13 +162,68 @@ template <typename Char> struct tree_format_specs {
     if (width_arg >= 0) result.width = get(width_arg);
     if (precision_arg >= 0) result.precision = get(precision_arg);
     return result;
-  }
-  template <typename OutputIt>
+  } // resolve
+
+  template<typename OutputIt>
   auto pad(OutputIt out, std::size_t count) const -> OutputIt {
     for (std::size_t i = 0; i < count; ++i)
-      out = std::copy_n(fill, fill_size, out);
+      out = std::copy_n(_fill.data(), _fill.size(), out);
     return out;
   }
-};
-}  // namespace tjg::detail
-#endif
+}; // string_format_specs
+
+// Parse the original context so argument IDs and its implementation-provided
+// checking information are preserved.
+template<CharType Char>
+class standard_value_specs {
+  string_format_specs<Char> _specs{};
+
+ public:
+  constexpr auto parse(std::basic_format_parse_context<Char>& ctx)
+    -> decltype(ctx.begin())
+  { return _specs.parse(ctx, standard_format_error); }
+
+ protected:
+  [[nodiscard]] constexpr auto debug_format() const noexcept -> bool
+  { return _specs.debug; }
+
+  template<typename FormatContext>
+  auto write(std::basic_string_view<Char> text, FormatContext& ctx) const
+    -> decltype(ctx.out())
+  {
+    const auto specs = _specs.resolve(ctx, standard_format_error);
+    // Color/style notations contain only ASCII, so code units equal columns.
+    const auto count   = (std::min)(text.size(), specs.precision);
+    const auto padding = (specs.width > count) ? specs.width - count : 0;
+    const auto left    = (specs.alignment == '>') ? padding
+                       : (specs.alignment == '^') ? padding / 2 : 0;
+    auto out = specs.pad(ctx.out(), left);
+    out = std::copy_n(text.begin(), count, out);
+    return specs.pad(out, padding - left);
+  }
+}; // standard_value_specs
+
+template<typename OutputIt, typename T>
+[[nodiscard]] constexpr
+auto write_formatted_value(OutputIt out, const T& value, bool debug) -> OutputIt
+{
+  if constexpr (requires { write_debug_value(std::move(out), value); }) {
+    if (debug) return write_debug_value(std::move(out), value);
+  }
+  return write_value(std::move(out), value);
+} // write_formatted_value
+
+/// Formats short fields whose full representation fits in the default inline
+/// buffer (256 code units), even when precision truncates the output.
+template<typename T, CharType Char>
+struct standard_value_formatter : standard_value_specs<Char> {
+  template<typename FormatContext>
+  auto format(const T& value, FormatContext& ctx) const -> decltype(ctx.out()) {
+    auto buffer = basic_inline_buffer<Char>{};
+    (void) write_formatted_value(
+                      std::back_inserter(buffer), value, this->debug_format());
+    return this->write(buffer.view(), ctx);
+  }
+}; // standard_value_formatter
+
+} // tjg::detail

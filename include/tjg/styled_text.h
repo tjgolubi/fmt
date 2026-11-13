@@ -4,6 +4,7 @@
 
 #include "color.h"
 #include "tree_format_specs.h"
+#include "utility.hpp"
 
 #include <string>
 #include <string_view>
@@ -428,8 +429,8 @@ template <typename Char> struct styled_text_renderer {
                       : specs.alignment == '^' ? padding / 2
                                                : 0;
     if (limit == 0) state.stopped = true;
-    const auto initial = get_terminal_state();
-    auto& terminal = get_terminal_state();
+    const auto initial = get_style_state();
+    auto& terminal = get_style_state();
     detail::style_scope scope{};
     auto out = write_node(value, initial, terminal, ctx.out(), state, specs,
                           left, padding - left);
@@ -569,8 +570,7 @@ template <typename T>
 }  // namespace tjg
 
 namespace std {
-template <typename Char>
-  requires(same_as<Char, char> || same_as<Char, wchar_t>)
+template <tjg::CharType Char>
 struct formatter<tjg::basic_styled_text<Char>, Char>
     : tjg::detail::standard_styled_text_formatter<Char> {};
 }  // namespace std

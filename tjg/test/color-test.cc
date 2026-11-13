@@ -375,7 +375,7 @@ TEST(color_test, cube_color_xterm_rgb) {
   for (int red = 0; red != 6; ++red) {
     for (int green = 0; green != 6; ++green) {
       for (int blue = 0; blue != 6; ++blue) {
-        unsigned index = static_cast<unsigned>(36 * red + 6 * green + blue);
+        auto index = 36 * red + 6 * green + blue;
         SCOPED_TRACE(index);
         tjg::cube_color color{index};
         EXPECT_EQ(color.r(), red);
@@ -384,9 +384,9 @@ TEST(color_test, cube_color_xterm_rgb) {
         EXPECT_EQ(color.index(), index);
         EXPECT_EQ(color, (tjg::cube_color{red, green, blue}));
         tjg::rgb converted = color;
-        EXPECT_EQ(converted.r, red == 0 ? 0 : 55 + 40 * red);
+        EXPECT_EQ(converted.r, red   == 0 ? 0 : 55 + 40 * red);
         EXPECT_EQ(converted.g, green == 0 ? 0 : 55 + 40 * green);
-        EXPECT_EQ(converted.b, blue == 0 ? 0 : 55 + 40 * blue);
+        EXPECT_EQ(converted.b, blue  == 0 ? 0 : 55 + 40 * blue);
       }
     }
   }
