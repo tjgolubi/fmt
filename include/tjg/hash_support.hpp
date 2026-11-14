@@ -16,6 +16,8 @@
 
 namespace tjg {
 
+using hash_t = std::size_t;
+
 namespace detail {
 
 // Jon Maiga's mx3 mixer, as used by Boost.ContainerHash.
@@ -44,30 +46,30 @@ constexpr auto hash_mix(std::uint32_t x) noexcept -> std::uint32_t {
 template<typename T>
 [[nodiscard]] auto hash_value(const T& value)
   noexcept(noexcept(std::hash<T>{}(value)))
-  -> std::size_t
+  -> hash_t
 { return std::hash<T>{}(value); }
 
 /// Combines the hash of value into seed. Hash values are not stable storage.
 /// Uses Boost.ContainerHash's mixing algorithm with std::hash<T>.
 template <typename T>
-inline void hash_combine(std::size_t& seed, const T& value)
+inline void hash_combine(hash_t& seed, const T& value)
     noexcept(noexcept(hash_value(value)))
 {
-  constexpr auto bits = std::numeric_limits<std::size_t>::digits;
+  constexpr auto bits = std::numeric_limits<hash_t>::digits;
   static_assert(bits == 32 || bits == 64);
   using mix_type = std::conditional_t<bits == 32, std::uint32_t, std::uint64_t>;
-  const auto sum = seed + std::size_t{0x9e3779b9} + hash_value(value);
+  const auto sum = seed + hash_t{0x9e3779b9} + hash_value(value);
   seed = detail::hash_mix(static_cast<mix_type>(sum));
 }
 
 /// Combines the values in argument order, starting with a zero seed.
 template<typename... T>
 [[nodiscard]] auto hash_values(const T&... values)
-  noexcept((noexcept(tjg::hash_combine(std::declval<std::size_t&>(), values))
+  noexcept((noexcept(tjg::hash_combine(std::declval<hash_t&>(), values))
             && ...))
-  -> std::size_t
+  -> hash_t
 {
-  std::size_t seed{0};
+  hash_t seed{0};
   (tjg::hash_combine(seed, values), ...);
   return seed;
 }

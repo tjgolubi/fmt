@@ -1,34 +1,166 @@
 /// @file
-/// `text_style` formatting
+/// Formatting for `text_style`.
 /// @copyright 2026 Terry Golubiewski, all rights reserved.
-
 #pragma once
 
 #include "text_style.hpp"
-#include "sgr_support.hpp"
+#include "colors-format.hpp"
+#include "emphasis-format.hpp"
 #include "format_support.hpp"
+#include "sgr_support.hpp"
+#include "inline_buffer.hpp"
+#include "error_support.hpp"
+#include "utility.hpp"
 
 #include <print>
 #include <format>
 #include <locale>
-#include <cstdint>
+#include <string>
+#include <string_view>
 
-namespace tjg {
+#include <algorithm>
+#include <iterator>
+#include <system_error>
+#include <exception>
+#include <concepts>
+#include <type_traits>
+#include <utility>
 
-namespace detail {
+#include <cstdio>
+#include <cstddef>
+
+namespace tjg::detail {
+
+[[nodiscard]] inline auto get_style_state() -> text_style& {
+  static text_style _state{};
+  return _state;
+}
 
 class style_scope {
   text_style _saved;
 
  public:
-  style_scope() noexcept : _saved{get_terminal_state()} {}
+  style_scope() noexcept : _saved{get_style_state()} {}
 
   // Restore shared state on exceptions; partial output may remain.
-  ~style_scope() { get_terminal_state() = _saved; }
+  ~style_scope() { get_style_state() = _saved; }
 
   style_scope(const style_scope&) = delete;
   void operator=(const style_scope&) = delete;
-};  // style_scope
+}; // style_scope
+
+template<typename OutputIt> inline
+auto write_reset(OutputIt out) -> OutputIt
+{ return detail::write_ascii(std::move(out), tjg::sgr_reset()); }
+
+template<typename OutputIt> inline
+auto write_debug_value(OutputIt out, text_style value) -> OutputIt {
+  if (value.empty()) {
+    *out++ = '{';
+    *out++ = '}';
+    return out;
+  }
+  if (value.is_absolute()) *out++ = '=';
+  if (value.emph() != emphasis::none)
+    out = tjg::write_debug_value(std::move(out), value.emph());
+  if (!value.has_fg() && !value.has_bg()) return out;
+  if (value.is_absolute() || value.emph() != emphasis::none) *out++ = ' ';
+  if (value.has_fg()) out = tjg::write_value(std::move(out), value.fg());
+  if (value.has_bg()) {
+    *out++ = '/';
+    out = tjg::write_value(std::move(out), value.bg());
+  }
+  return out;
+} // write_debug_value text_style
+
+} // tjg::detail
+
+namespace std {
+
+template<tjg::CharType Char>
+struct formatter<tjg::text_style, Char>
+  : tjg::detail::standard_value_specs<Char>
+{
+  template<typename FormatContext>
+  auto format(const tjg::text_style& value, FormatContext& ctx) const
+    -> decltype(ctx.out())
+  {
+    if (this->debug_format()) {
+      auto buffer = tjg::basic_inline_buffer<Char>{};
+      (void) tjg::detail::write_debug_value(std::back_inserter(buffer), value);
+      return this->write(buffer.view(), ctx);
+    }
+
+    if (value.empty())
+      return ctx.out();
+
+    auto sgr = tjg::sgr_buffer{};
+    tjg::detail::append_sgr(sgr, value);
+    return std::copy(sgr.begin(), sgr.end(), ctx.out());
+  }
+}; // text_style formatter
+
+} // std
+
+namespace tjg {
+
+namespace detail {
+
+template<typename Fn>
+    requires requires(Fn& writer, const char* data, std::size_t size) {
+      writer(data, size);
+    }
+class sgr_scope {
+  Fn _writer;
+  text_style& _state;
+  text_style _saved;
+  int _exceptions = std::uncaught_exceptions();
+  sgr_buffer _sgr;
+  bool _finished = false;
+
+  void transition(text_style target) {
+    _sgr.clear();
+    append_sgr_transition(_sgr, target, _state);
+    if (!_sgr.empty()) _writer(_sgr.data(), _sgr.size());
+    _state = target.absolute(false);
+  }
+
+ public:
+  sgr_scope(Fn writer_, text_style style)
+      : _writer{std::move(writer_)}, _state{get_style_state()}, _saved{_state} {
+    if (!style.is_absolute()) style.underlay(_saved);
+    transition(style);
+  }
+
+  void finish() {
+    transition(_saved);
+    _finished = true;
+  }
+
+  ~sgr_scope() {
+    if (_finished) return;
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
+    try {
+#endif
+      // A throwing nested formatter may have emitted SGR before restoring its
+      // logical state. Rebuild the entry style when unwinding in that case.
+      transition(text_style{_saved}.absolute(
+          std::uncaught_exceptions() > _exceptions));
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
+    } catch (...) {
+      // Closing SGR is best effort.
+    }
+#endif
+    _state = _saved;
+  }
+
+  sgr_scope(const sgr_scope&) = delete;
+  void operator=(const sgr_scope&) = delete;
+}; // sgr_scope
+
+#define SGR_SCOPE(writer, style) \
+  TJG_ASSERT(detail::get_style_state().empty(), " non-default style state"); \
+  detail::sgr_scope scope{writer, style}
 
 template<CharType Char>
 using format_context =
@@ -37,19 +169,79 @@ using format_context =
 template<CharType Char>
 using format_args = std::basic_format_args<format_context<Char>>;
 
-template<typename Buffer, CharType Char = typename Buffer::value_type>
-void vformat_to(Buffer& buf, text_style ts,
-                std::basic_string_view<Char> pattern, format_args<Char> args,
-                const std::locale* locale = nullptr) {
-  style_scope scope{};
-  append_sgr(buf, ts);
-  get_terminal_state() = text_style{ts}.absolute(false);
+template<typename OutputIt, CharType Char>
+auto vformat_to(OutputIt out, text_style style,
+                std::basic_string_view<Char> fmt, format_args<Char> args,
+                const std::locale* locale = nullptr)
+  -> OutputIt
+{
+  bool can_write = true;
+
+  auto writer = [&](const char* data, std::size_t size) {
+    if (!can_write) return;
+    can_write = false;
+    out = std::copy(data, data + size, std::move(out));
+    can_write = true;
+  }; // writer
+
+  SGR_SCOPE(writer, style);
+
+  can_write = false;
   if (locale)
-    std::vformat_to(std::back_inserter(buf), *locale, pattern, args);
+    out = std::vformat_to(std::move(out), *locale, fmt, args);
   else
-    std::vformat_to(std::back_inserter(buf), pattern, args);
-  if (ts != text_style()) reset_color(buf);
+    out = std::vformat_to(std::move(out), fmt, args);
+  can_write = true;
+
+  scope.finish();
+  return out;
 }  // vformat_to
+
+} // detail
+
+/**
+ * The colored analog of
+ * [std::vformat_to()](https://en.cppreference.com/w/cpp/utility/format/vformat_to.html).
+ *
+ * If `ts` is not empty, the formatted text is preceded by SGR sequences for its
+ * specified foreground, background, and emphasis, and followed by an SGR reset
+ * to terminal defaults.
+ */
+template<std::output_iterator<const char&> OutputIt>
+auto vformat_to(OutputIt out, text_style style,
+                std::string_view fmt, std::format_args args)
+  -> OutputIt
+{ return detail::vformat_to(std::move(out), style, fmt, args); }
+
+template<std::output_iterator<const wchar_t&> OutputIt>
+auto vformat_to(OutputIt out, text_style style,
+                std::wstring_view fmt, std::wformat_args args)
+  -> OutputIt
+{ return detail::vformat_to(std::move(out), style, fmt, args); }
+
+template<std::output_iterator<const char&> OutputIt>
+auto vformat_to(OutputIt out, const std::locale& loc, text_style style,
+                std::string_view fmt, std::format_args args)
+  -> OutputIt
+{ return detail::vformat_to(std::move(out), style, fmt, args, &loc); }
+
+template<std::output_iterator<const wchar_t&> OutputIt>
+auto vformat_to(OutputIt out, const std::locale& loc, text_style style,
+                std::wstring_view fmt, std::wformat_args args)
+  -> OutputIt
+{ return detail::vformat_to(std::move(out), style, fmt, args, &loc); }
+
+namespace detail {
+
+inline void write_file(FILE* f, const char* data, std::size_t size)
+{
+  auto count = std::fwrite(data, 1, size, f);
+  if (count == size)
+    return;
+  const auto ec = std::make_error_code(std::io_errc::stream);
+  const auto x =std::system_error{ec, "writing SGR"};
+  TJG_THROW(x);
+}
 
 } // detail
 
@@ -64,31 +256,33 @@ void vformat_to(Buffer& buf, text_style ts,
 inline void vprint_nonunicode(FILE* f, text_style ts, std::string_view fmt,
                               std::format_args args)
 {
-  auto buf = memory_buffer();
-  detail::vformat_to(buf, ts, fmt, args);
-  const auto text = std::string_view{buf.data(), buf.size()};
-  std::vprint_nonunicode(f, "{}", std::make_format_args(text));
-}
+  auto writer = [&](const char* data, std::size_t size)
+                { detail::write_file(f, data, size); };
+
+  SGR_SCOPE(writer, ts);
+  std::vprint_nonunicode(f, fmt, args);
+}  // vprint_nonunicode
 
 /// Prints a styled message to stdout without Unicode-specific handling.
 inline void vprint_nonunicode(text_style ts, std::string_view fmt,
                               std::format_args args)
-{ tjg::vprint_nonunicode(stdout, ts, fmt, args); }
+{ vprint_nonunicode(stdout, ts, fmt, args); }
 
 /// Prints a styled message using the standard Unicode output path.
 inline void vprint_unicode(FILE* f, text_style ts, std::string_view fmt,
                            std::format_args args)
 {
-  auto buf = memory_buffer();
-  detail::vformat_to(buf, ts, fmt, args);
-  const auto text = std::string_view{buf.data(), buf.size()};
-  std::vprint_unicode(f, "{}", std::make_format_args(text));
+  auto writer = [&](const char* data, std::size_t size)
+                { detail::write_file(f, data, size); };
+
+  SGR_SCOPE(writer, ts);
+  std::vprint_unicode(f, fmt, args);
 }
 
 /// Prints a styled message to stdout using the standard Unicode output path.
 inline void vprint_unicode(text_style ts, std::string_view fmt,
                            std::format_args args)
-{ tjg::vprint_unicode(stdout, ts, fmt, args); }
+{ vprint_unicode(stdout, ts, fmt, args); }
 
 /**
  * The colored analog of
@@ -104,10 +298,13 @@ inline void vprint_unicode(text_style ts, std::string_view fmt,
  *                "Elapsed time: {0:.2f} seconds", 1.23);
  */
 template<typename... T>
-void print(FILE* f, text_style ts, std::format_string<T...> fmt, T&&... args) {
-  auto buf = memory_buffer();
-  detail::vformat_to(buf, ts, fmt.get(), std::make_format_args(args...));
-  std::print(f, "{}", std::string_view{buf.data(), buf.size()});
+void print(FILE* f, text_style ts, std::format_string<T...> fmt, T&&... args)
+{
+  auto writer = [&](const char* data, std::size_t size)
+                { detail::write_file(f, data, size); };
+
+  SGR_SCOPE(writer, ts);
+  std::print(f, fmt, std::forward<T>(args)...);
 }
 
 /**
@@ -125,7 +322,7 @@ void print(FILE* f, text_style ts, std::format_string<T...> fmt, T&&... args) {
  */
 template<typename... T>
 void print(text_style ts, std::format_string<T...> fmt, T&&... args)
-{ return print(stdout, ts, fmt, std::forward<T>(args)...); }
+{ print(stdout, ts, fmt, std::forward<T>(args)...); }
 
 /**
  * The colored analog of
@@ -141,12 +338,13 @@ void print(text_style ts, std::format_string<T...> fmt, T&&... args)
  *                  "Elapsed time: {0:.2f} seconds", 1.23);
  */
 template<typename... T>
-void println(FILE* f, text_style ts, std::format_string<T...> fmt,
-             T&&... args)
+void println(FILE* f, text_style ts, std::format_string<T...> fmt, T&&... args)
 {
-  auto buf = memory_buffer();
-  detail::vformat_to(buf, ts, fmt.get(), std::make_format_args(args...));
-  std::println(f, "{}", std::string_view{buf.data(), buf.size()});
+  auto writer = [&](const char* data, std::size_t size)
+                { detail::write_file(f, data, size); };
+
+  print(f, ts, fmt, std::forward<T>(args)...);
+  writer("\n", 1);
 }
 
 /**
@@ -164,7 +362,7 @@ void println(FILE* f, text_style ts, std::format_string<T...> fmt,
  */
 template<typename... T>
 void println(text_style ts, std::format_string<T...> fmt, T&&... args)
-{ return println(stdout, ts, fmt, std::forward<T>(args)...); }
+{ println(stdout, ts, fmt, std::forward<T>(args)...); }
 
 /**
  * The colored analog of
@@ -177,9 +375,14 @@ void println(text_style ts, std::format_string<T...> fmt, T&&... args)
 inline auto vformat(text_style ts, std::string_view fmt, std::format_args args)
   -> std::string
 {
-  auto buf = memory_buffer();
-  detail::vformat_to(buf, ts, fmt, args);
-  return {buf.data(), buf.size()};
+  auto result = std::string{};
+  auto writer = [&](const char* data, std::size_t size)
+                { result.append(data, size); };
+
+  SGR_SCOPE(writer, ts);
+  std::vformat_to(std::back_inserter(result), fmt, args);
+  scope.finish();
+  return result;
 }
 
 /**
@@ -202,33 +405,7 @@ inline auto vformat(text_style ts, std::string_view fmt, std::format_args args)
 template<typename... T>
 inline auto format(text_style ts, std::format_string<T...> fmt, T&&... args)
   -> std::string
-{ return tjg::vformat(ts, fmt.get(), std::make_format_args(args...)); }
-
-/**
- * The colored analog of
- * [std::vformat_to()](https://en.cppreference.com/w/cpp/utility/format/vformat_to.html).
- *
- * If `ts` is not empty, the formatted text is preceded by SGR sequences for its
- * specified foreground, background, and emphasis, and followed by an SGR reset
- * to terminal defaults.
- */
-template<std::output_iterator<const char&> OutputIt>
-auto vformat_to(OutputIt out, text_style ts, std::string_view pattern,
-                std::format_args args)
-  -> OutputIt
-{
-  detail::style_scope scope{};
-  auto sgr = basic_inline_buffer<char, sgr_max_length>{};
-  detail::append_sgr(sgr, ts);
-  out = std::copy(sgr.begin(), sgr.end(), out);
-  get_terminal_state() = text_style{ts}.absolute(false);
-  out = std::vformat_to(std::move(out), pattern, args);
-  if (ts != text_style()) {
-    const auto reset = sgr_reset();
-    out = std::copy(reset.begin(), reset.end(), out);
-  }
-  return out;
-}
+{ return vformat(ts, fmt.get(), std::make_format_args(args...)); }
 
 /**
  * The colored analog of
@@ -248,88 +425,41 @@ template<std::output_iterator<const char&> OutputIt, typename... T>
 inline auto format_to(OutputIt out, text_style ts, std::format_string<T...> fmt,
                       T&&... args)
   -> OutputIt
-{ return vformat_to(out, ts, fmt.get(), std::make_format_args(args...)); }
+{
+  return vformat_to(std::move(out), ts, fmt.get(),
+                    std::make_format_args(args...));
+}
 
 inline auto vformat(text_style ts, std::wstring_view pattern,
                     std::wformat_args args)
   -> std::wstring
 {
-  auto buf = basic_memory_buffer<wchar_t>{};
-  detail::vformat_to(buf, ts, pattern, args);
-  return {buf.data(), buf.size()};
+  auto result = std::wstring{};
+  auto writer = [&](const char* data, std::size_t size)
+                { result.append(data, data + size); };
+
+  SGR_SCOPE(writer, ts);
+  std::vformat_to(std::back_inserter(result), pattern, args);
+  scope.finish();
+  return result;
 }
 
 template<typename... T>
 inline auto format(text_style ts, std::wformat_string<T...> pattern,
                    T&&... args)
- -> std::wstring
-{ return tjg::vformat(ts, pattern.get(), std::make_wformat_args(args...)); }
-
-template<std::output_iterator<const wchar_t&> OutputIt>
-auto vformat_to(OutputIt out, text_style ts, std::wstring_view pattern,
-                std::wformat_args args)
-  -> OutputIt
-{
-  detail::style_scope scope{};
-  auto sgr = basic_inline_buffer<wchar_t, sgr_max_length>{};
-  detail::append_sgr(sgr, ts);
-  out = std::copy(sgr.begin(), sgr.end(), out);
-  get_terminal_state() = text_style{ts}.absolute(false);
-  out = std::vformat_to(std::move(out), pattern, args);
-  if (ts != text_style()) {
-    const auto reset = sgr_reset<wchar_t>();
-    out = std::copy(reset.begin(), reset.end(), out);
-  }
-  return out;
-}
+  -> std::wstring
+{ return vformat(ts, pattern.get(), std::make_wformat_args(args...)); }
 
 template<std::output_iterator<const wchar_t&> OutputIt, typename... T>
 auto format_to(OutputIt out, text_style ts, std::wformat_string<T...> pattern,
                T&&... args)
   -> OutputIt
 {
-  return tjg::vformat_to(std::move(out), ts, pattern.get(),
-                         std::make_wformat_args(args...));
+  return vformat_to(std::move(out), ts, pattern.get(),
+                    std::make_wformat_args(args...));
 }
 
 namespace detail {
-
-template<typename OutputIt, CharType Char = char>
-auto write_debug(OutputIt out, text_style value) -> OutputIt {
-  if (value.empty()) {
-    *out++ = Char{'{'};
-    *out++ = Char{'}'};
-    return out;
-  }
-  if (value.is_absolute()) *out++ = Char{'='};
-  const auto bits = std::to_underlying(value.emph());
-  for (int bit = 0; bit < 8; ++bit) {
-    if (bits & (1u << bit)) *out++ = Char{"bfi_!r?-"[bit]};
-  }
-  if (!value.has_fg() && !value.has_bg()) return out;
-  if (value.is_absolute() || bits != 0) *out++ = Char{' '};
-  if (value.has_fg()) out = write_color<Char>(out, value.fg());
-  if (value.has_bg()) {
-    *out++ = Char{'/'};
-    out = write_color<Char>(out, value.bg());
-  }
-  return out;
-} // write_debug text_style
-
-template<CharType Char, typename OutputIt>
-auto write_style_value(OutputIt out, emphasis value) -> OutputIt {
-  return write_emphasis<Char>(out, value);
-}
-
-template<typename T, CharType Char>
-struct standard_style_value_formatter : standard_value_specs<Char> {
-  template<typename FormatContext>
-  auto format(const T& value, FormatContext& ctx) const -> decltype(ctx.out()) {
-    auto buffer = basic_inline_buffer<Char, 64>{};
-    write_style_value<Char>(std::back_inserter(buffer), value);
-    return this->write(buffer.view(), ctx);
-  }
-};
 
 template<typename T>
 struct styled_arg {
@@ -345,18 +475,18 @@ struct basic_styled_arg_formatter : Formatter {
   auto format(const detail::styled_arg<T>& arg, FormatContext& ctx) const
     -> decltype(ctx.out())
   {
-    const auto initial = get_terminal_state();
+    const auto initial = get_style_state();
     const auto effective =
         arg.style.is_absolute() ? arg.style : tjg::overlay(initial, arg.style);
     detail::style_scope scope{};
-    auto sgr = basic_inline_buffer<Char, sgr_max_length>{};
+    auto sgr = sgr_buffer{};
     detail::append_sgr_transition(sgr, effective, initial);
     auto out = std::copy(sgr.begin(), sgr.end(), ctx.out());
     ctx.advance_to(out);
-    get_terminal_state() = text_style{effective}.absolute(false);
+    get_style_state() = text_style{effective}.absolute(false);
     out = Formatter::format(arg.value, ctx);
     sgr.clear();
-    detail::append_sgr_transition(sgr, initial, get_terminal_state());
+    detail::append_sgr_transition(sgr, initial, get_style_state());
     return std::copy(sgr.begin(), sgr.end(), out);
   }
 };  // basic_styled_arg_formatter
@@ -390,9 +520,11 @@ constexpr auto styled(const T& value, text_style ts)
   -> detail::styled_arg<std::remove_cvref_t<T>>
 { return detail::styled_arg<std::remove_cvref_t<T>>{value, ts}; }
 
+} // tjg
+
 namespace std {
 
-template<typename T, CharType Char>
+template<typename T, tjg::CharType Char>
   requires formattable<decay_t<const T>, Char>
 struct formatter<tjg::detail::styled_arg<T>, Char>
     : tjg::detail::basic_styled_arg_formatter<

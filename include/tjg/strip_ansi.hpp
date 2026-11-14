@@ -18,8 +18,8 @@ struct ansi_escape_scan {
 
 template<typename Char>
 constexpr
-auto scan_ansi_escape(std::basic_string_view<Char> input, std::size_t start) noexcept
-  -> ansi_escape_scan
+auto scan_ansi_escape(std::basic_string_view<Char> input, std::size_t start)
+  noexcept -> ansi_escape_scan
 {
   auto pos = start + 1;
   if (pos == input.size())
@@ -35,7 +35,7 @@ auto scan_ansi_escape(std::basic_string_view<Char> input, std::size_t start) noe
       if (input[pos] == Char('\x18') || input[pos] == Char('\x1a'))
         return {pos, false};  // CAN/SUB cancel the control string.
       if (input[pos] == Char('\x1b')
-                    && pos + 1 < input.size() && input[pos + 1] == Char('\\'))
+                && pos + 1 < input.size() && input[pos + 1] == Char('\\'))
       { return {pos + 2, true}; }
       ++pos;
     }
@@ -82,7 +82,7 @@ template<typename Char>
 [[nodiscard]] constexpr
 auto strip_ansi(std::basic_string_view<Char> input) -> std::basic_string<Char> {
   auto result = std::basic_string<Char>{};
-  for (std::size_t pos = 0; pos < input.size();) {
+  for (std::size_t pos = 0; pos < input.size(); ) {
     if (input[pos] != Char('\x1b')) {
       const auto start = pos++;
       while (pos < input.size() && input[pos] != Char('\x1b'))

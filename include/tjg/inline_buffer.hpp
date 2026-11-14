@@ -147,6 +147,7 @@ class basic_inline_buffer {
 }; // basic_inline_buffer
 
 /// A narrow character buffer with the default capacity of 256 characters.
-using inline_buffer = basic_inline_buffer<char>;
+template<std::size_t N = 256>
+using inline_buffer = basic_inline_buffer<char, N>;
 
 } // tjg

@@ -29,18 +29,18 @@ constexpr auto sgr_max_length = std::size_t{60};
 /// Length of the terminal-reset SGR sequence.
 constexpr auto sgr_reset_length = std::size_t{4};
 
+using sgr_buffer = inline_buffer<sgr_max_length>;
+
 #if defined(__cpp_constexpr) && __cpp_constexpr >= 202211L
 
 /**
  * Returns the ANSI SGR sequence that resets colors and emphasis to terminal
- * defaults. The returned view refers to static storage. `Char`
- * defaults to `char`.
+ * defaults. The returned view refers to static storage.
  */
-template<CharType Char = char>
 [[nodiscard]] constexpr
-auto sgr_reset() noexcept -> std::basic_string_view<Char> {
+auto sgr_reset() noexcept -> std::string_view {
   static constexpr auto reset =
-                      std::array<Char, sgr_reset_length>{'\x1b', '[', '0', 'm'};
+                      std::array<char, sgr_reset_length>{'\x1b', '[', '0', 'm'};
   return {reset.data(), reset.size()};
 }
 
@@ -48,23 +48,20 @@ auto sgr_reset() noexcept -> std::basic_string_view<Char> {
 
 namespace detail {
 
-template<CharType Char>
 struct sgr_reset_storage {
   static constexpr auto value =
-                      std::array<Char, sgr_reset_length>{'\x1b', '[', '0', 'm'};
+                      std::array<char, sgr_reset_length>{'\x1b', '[', '0', 'm'};
 };
 
 } // detail
 
 /**
  * Returns the ANSI SGR sequence that resets colors and emphasis to terminal
- * defaults. The returned view refers to static storage. `Char`
- * defaults to `char`.
+ * defaults. The returned view refers to static storage.
  */
-template<CharType Char = char>
 [[nodiscard]] constexpr
-auto sgr_reset() noexcept -> std::basic_string_view<Char> {
-  const auto& storage = detail::sgr_reset_storage<Char>::value;
+auto sgr_reset() noexcept -> std::string_view {
+  const auto& storage = detail::sgr_reset_storage::value;
   return {storage.data(), storage.size()};
 }
 
@@ -101,12 +98,11 @@ inline constexpr const char* decimal_strings[256] = {
   "250", "251", "252", "253", "254", "255"
 };  // decimal_strings
 
-template<CharType Char>
 class ansi_color_escape {
 
   // Maximum color SGR is "\x1b[38;2;255;255;255m"
-  // Masimum emph  SGR is "\x1b[1;2;3;4;5;7;8;9m
-  basic_inline_buffer<Char, 20> _buf;
+  // Maximum emphasis SGR is "\x1b[1;2;3;4;5;7;8;9m"
+  inline_buffer<20> _buf;
 
   constexpr void append(char c) noexcept { _buf.push_back(c); }
 
@@ -143,7 +139,7 @@ class ansi_color_escape {
 
   constexpr void append(rgb clr, bool is_bg) noexcept {
     append("38;2;");
-    if (is_bg) *_buf.data() = Char{'4'};
+    if (is_bg) *_buf.data() = '4';
     append(clr.r, ';');
     append(clr.g, ';');
     append(clr.b, ';');
@@ -151,14 +147,14 @@ class ansi_color_escape {
 
   constexpr void append(cube_color clr, bool is_bg) noexcept {
     append("38;5;");
-    if (is_bg) *_buf.data() = Char{'4'};
+    if (is_bg) *_buf.data() = '4';
     auto index = narrow_cast<uint8_t>(clr.index() + 16);
     append(index, ';');
   }
 
   constexpr void append(gray_color clr, bool is_bg) noexcept {
     append("38;5;");
-    if (is_bg) *_buf.data() = Char{'4'};
+    if (is_bg) *_buf.data() = '4';
     auto index = narrow_cast<uint8_t>(clr.index() + 232);
     append(index, ';');
   }
@@ -193,63 +189,58 @@ class ansi_color_escape {
     }
   }
 
-  constexpr operator const Char*() const noexcept { return _buf.data(); }
+  constexpr operator const char*() const noexcept { return _buf.data(); }
 
-  [[nodiscard]] constexpr auto begin() const noexcept -> const Char*
+  [[nodiscard]] constexpr auto begin() const noexcept -> const char*
   { return _buf.data(); }
 
-  [[nodiscard]] constexpr auto end() const noexcept -> const Char*
+  [[nodiscard]] constexpr auto end() const noexcept -> const char*
   { return _buf.data() + _buf.size(); }
 
-  [[nodiscard]] constexpr auto view() const noexcept
-    -> std::basic_string_view<Char>
+  [[nodiscard]] constexpr auto view() const noexcept -> std::string_view
   { return {_buf.data(), _buf.size()}; }
 };  // ansi_color_escape
 
-template<typename Char>
 [[nodiscard]] constexpr
-auto make_foreground(color_t foreground) noexcept -> ansi_color_escape<Char>
-{ return ansi_color_escape<Char>(foreground, false); }
+auto make_foreground(color_t foreground) noexcept -> ansi_color_escape
+{ return ansi_color_escape{foreground, false}; }
 
-template<typename Char>
 [[nodiscard]] constexpr
-auto make_background(color_t background) noexcept
-  -> ansi_color_escape<Char>
-{ return ansi_color_escape<Char>(background, true); }
+auto make_background(color_t background) noexcept -> ansi_color_escape
+{ return ansi_color_escape{background, true}; }
 
-template<typename Char>
 [[nodiscard]] constexpr
-auto make_emphasis(emphasis em) noexcept -> ansi_color_escape<Char>
-{ return ansi_color_escape<Char>(em); }
+auto make_emphasis(emphasis em) noexcept -> ansi_color_escape
+{ return ansi_color_escape{em}; }
 
-template<typename Buffer, typename Char = typename Buffer::value_type>
+template<typename Buffer>
 constexpr inline void reset_color(Buffer& buffer) {
-  constexpr auto reset_color = sgr_reset<Char>();
+  constexpr auto reset_color = sgr_reset();
   buffer.append(reset_color.data(), reset_color.data() + reset_color.size());
 }
 
-template<typename Buffer, CharType Char = typename Buffer::value_type>
+template<typename Buffer>
 constexpr void append_sgr_raw(Buffer& buf, text_style ts) {
   if (ts.empty()) return;
   if (ts.is_absolute()) {
-    buf.push_back(Char('0'));
-    buf.push_back(Char(';'));
+    buf.push_back('0');
+    buf.push_back(';');
   }
-  auto emphasis = make_emphasis<Char>(ts.emph());
+  auto emphasis = make_emphasis(ts.emph());
   buf.append(emphasis.view());
-  auto foreground = make_foreground<Char>(ts.fg());
+  auto foreground = make_foreground(ts.fg());
   buf.append(foreground.view());
-  auto background = make_background<Char>(ts.bg());
+  auto background = make_background(ts.bg());
   buf.append(background.view());
 }  // append_sgr_raw
 
-template<typename Buffer, CharType Char = typename Buffer::value_type>
+template<typename Buffer>
 constexpr void append_sgr(Buffer& buf, text_style ts) {
   if (ts.empty()) return;
-  buf.push_back(static_cast<Char>('\x1b'));
-  buf.push_back(static_cast<Char>('['));
+  buf.push_back('\x1b');
+  buf.push_back('[');
   append_sgr_raw(buf, ts);
-  buf.data()[buf.size() - 1] = static_cast<Char>('m');
+  buf.data()[buf.size() - 1] = 'm';
 }  // append_sgr
 
 } // detail
@@ -263,27 +254,24 @@ constexpr void append_sgr(Buffer& buf, text_style ts) {
  * Unspecified color channels emit no color parameters. For absolute styles,
  * the leading reset selects terminal defaults for those channels.
  */
-template<CharType Char = char>
 [[nodiscard]] inline
-auto to_sgr(const text_style& ts) TJG_NOEXCEPT_UNLESS_BAD_ALLOC
-  -> std::basic_string<Char>
-{
+auto to_sgr(const text_style& ts) TJG_NOEXCEPT_UNLESS_BAD_ALLOC -> std::string {
   if (ts.empty()) return {};
-  auto sgr = basic_inline_buffer<Char, sgr_max_length>{};
+  auto sgr = sgr_buffer{};
   detail::append_sgr(sgr, ts);
-  return std::basic_string<Char>{sgr.view()};
+  return std::string{sgr.view()};
 }
 
 namespace detail {
 
-template<typename Buffer, CharType Char = typename Buffer::value_type>
+template<typename Buffer>
 constexpr void append_transition_code(Buffer& buf, uint8_t code) {
   for (auto cp = decimal_strings[code]; *cp; ++cp)
-    buf.push_back(Char(*cp));
-  buf.push_back(Char(';'));
+    buf.push_back(*cp);
+  buf.push_back(';');
 }
 
-template<typename Buffer, typename Char = typename Buffer::value_type>
+template<typename Buffer>
 constexpr
 void append_transition(Buffer& buf, text_style target, text_style initial) {
   auto before = static_cast<unsigned>(std::to_underlying(initial.emph()));
@@ -300,13 +288,13 @@ void append_transition(Buffer& buf, text_style target, text_style initial) {
   }
   after &= ~before;
   if (after != 0) {
-    auto sgr = make_emphasis<Char>(enum_cast<emphasis>(after));
+    auto sgr = make_emphasis(enum_cast<emphasis>(after));
     buf.append(sgr.view());
   }
   auto fg = target.fg();
   if (!is_unspecified(fg)) {
     if (fg != initial.fg()) {
-      auto sgr = make_foreground<Char>(fg);
+      auto sgr = make_foreground(fg);
       buf.append(sgr.view());
     }
   } else if (initial.has_fg()) {
@@ -315,7 +303,7 @@ void append_transition(Buffer& buf, text_style target, text_style initial) {
   auto bg = target.bg();
   if (!is_unspecified(bg)) {
     if (bg != initial.bg()) {
-      auto sgr = make_background<Char>(bg);
+      auto sgr = make_background(bg);
       buf.append(sgr.view());
     }
   } else if (initial.has_bg()) {
@@ -323,13 +311,12 @@ void append_transition(Buffer& buf, text_style target, text_style initial) {
   }
 }  // append_transition
 
-template<typename Buffer, CharType Char = typename Buffer::value_type>
+template<typename Buffer>
 constexpr
 void append_sgr_transition(Buffer& buf, text_style target, text_style initial) {
   if (target.is_absolute()) return append_sgr(buf, target);
   initial.absolute(false);
   if (target == initial) return;
-  using sgr_buffer = basic_inline_buffer<Char, sgr_max_length>;
   auto relative = sgr_buffer{};
   append_transition(relative, target, initial);
   if (relative.empty()) return;
@@ -337,10 +324,10 @@ void append_sgr_transition(Buffer& buf, text_style target, text_style initial) {
   append_sgr_raw(absolute, text_style{target}.absolute());
   const auto& parameters = (absolute.size() < relative.size()) ? absolute
                                                                : relative;
-  buf.push_back(Char('\x1b'));
-  buf.push_back(Char('['));
+  buf.push_back('\x1b');
+  buf.push_back('[');
   buf.append(parameters.view());
-  buf.data()[buf.size() - 1] = Char('m');
+  buf.data()[buf.size() - 1] = 'm';
 } // append_sgr_transition
 
 } // detail
@@ -355,16 +342,15 @@ void append_sgr_transition(Buffer& buf, text_style target, text_style initial) {
  *
  * For relative targets, uses one unpadded sequence, choosing the shorter of
  * selective changes and reset followed by the target attributes.
- * Equal lengths prefer selective changes. `Char` defaults to `char`.
+ * Equal lengths prefer selective changes.
  */
-template<CharType Char = char>
 [[nodiscard]] inline
 auto to_sgr(const text_style& target, const text_style& initial)
-  TJG_NOEXCEPT_UNLESS_BAD_ALLOC -> std::basic_string<Char>
+  TJG_NOEXCEPT_UNLESS_BAD_ALLOC -> std::string
 {
-  auto sgr = basic_inline_buffer<Char, sgr_max_length>{};
+  auto sgr = sgr_buffer{};
   detail::append_sgr_transition(sgr, target, initial);
-  return std::basic_string<Char>{sgr.view()};
+  return std::string{sgr.view()};
 }
 
 /**
@@ -373,21 +359,21 @@ auto to_sgr(const text_style& target, const text_style& initial)
  * text. The text is copied without formatting or interpreting embedded escapes.
  * The reset restores terminal defaults, not a previously active style.
  */
-template<CharType Char = char>
+ template<CharType Char>
 [[nodiscard]] inline
 auto wrap_sgr(const text_style& ts, std::basic_string_view<Char> sv)
   -> std::basic_string<Char>
 {
   if (sv.empty()) return {};
   if (ts.empty()) return std::basic_string<Char>{sv};
-  constexpr auto reset = sgr_reset<Char>();
-  auto sgr = basic_inline_buffer<Char, sgr_max_length>{};
+  constexpr auto reset = sgr_reset();
+  auto sgr = sgr_buffer{};
   detail::append_sgr(sgr, ts);
   auto result = std::basic_string<Char>{};
   result.reserve(sgr.size() + sv.size() + reset.size());
-  result.append(sgr.view());
+  result.append(sgr.begin(), sgr.end());
   result.append(sv);
-  result.append(reset);
+  result.append(reset.begin(), reset.end());
   return result;
 }  // wrap_sgr
 

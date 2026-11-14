@@ -89,7 +89,7 @@ constexpr
 auto backslash_unescape_to(OutputIt out, std::basic_string_view<Char> input)
   -> OutputIt
 {
-  while (input.size() != 0) {
+  while (!input.empty()) {
     if (input[0] != Char('\\')) {
       *out++ = input[0];
       input.remove_prefix(1);
