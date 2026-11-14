@@ -6,10 +6,14 @@
 
 #pragma once
 
+#include "utility.hpp"
+
 #include <string_view>
 
 #include <algorithm>
+#include <iterator>
 
+#include <concepts>
 #include <type_traits>
 #include <utility>
 #include <limits>
@@ -427,7 +431,7 @@ constexpr auto decode_utf8(std::string_view input) noexcept -> utf8_character {
   return {value, count};
 } // decode_utf8
 
-template<typename Char>
+template<CharType Char>
 auto text_prefix(std::basic_string_view<Char> text, size_t limit)
   -> std::pair<size_t, size_t>
 {
@@ -447,7 +451,7 @@ auto text_prefix(std::basic_string_view<Char> text, size_t limit)
   }
 } // text_prefix
 
-template<typename Char, typename OutputIt>
+template<CharType Char, std::output_iterator<Char> OutputIt>
 auto quote_text(std::basic_string_view<Char> text, OutputIt out) -> OutputIt {
   *out++ = Char('"');
   for (size_t pos = 0; pos < text.size();) {
@@ -482,7 +486,8 @@ auto quote_text(std::basic_string_view<Char> text, OutputIt out) -> OutputIt {
         for (size_t i = 0; i < cp.size; ++i)
           hex(static_cast<uint32_t>(text[pos + i]) & 255u, 2, 'x');
     } else {
-      out = std::copy_n(text.data() + pos, cp.size, out);
+      for (std::size_t i = 0; i < cp.size; ++i)
+        *out++ = text[pos + i];
     }
     pos += cp.size;
   }

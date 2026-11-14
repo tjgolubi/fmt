@@ -23,7 +23,7 @@ namespace tjg {
 namespace detail {
 
 struct styled_text_ansi_stripper;
-template<typename Char> struct styled_text_renderer;
+template<CharType Char> struct styled_text_renderer;
 
 template<CharType Char>
 auto styled_text_width(std::basic_string_view<Char> text) noexcept
@@ -285,9 +285,9 @@ using wstyled_text = basic_styled_text<wchar_t>;
 
 namespace detail {
 
-template<CharType Char, typename OutIter>
+template<CharType Char, std::output_iterator<Char> OutputIt>
 [[nodiscard]] constexpr inline
-auto copy(const std::basic_string<Char>& str, OutIter out) -> OutIter
+auto copy(const std::basic_string<Char>& str, OutputIt out) -> OutputIt
 { return std::copy(str.begin(), str.end(), out); }
 
 } // detail
@@ -300,12 +300,12 @@ auto copy(const std::basic_string<Char>& str, OutIter out) -> OutIter
  */
 namespace detail {
 
-template<typename Char>
+template<CharType Char>
 struct styled_text_renderer {
  private:
   using render_state = detail::styled_text_render_state;
 
-  template<typename OutputIt>
+  template<std::output_iterator<Char> OutputIt>
   static auto write_debug(const basic_styled_text<Char>& node, OutputIt out,
                           std::size_t indent = 0)
     -> OutputIt
@@ -353,7 +353,7 @@ struct styled_text_renderer {
     return width;
   }
 
-  template<typename OutputIt>
+  template<std::output_iterator<Char> OutputIt>
   static auto transition(text_style style, text_style& terminal, OutputIt out)
     -> OutputIt
   {
@@ -363,7 +363,7 @@ struct styled_text_renderer {
     return detail::copy<Char>(sgr, out);
   }
 
-  template<typename OutputIt>
+  template<std::output_iterator<Char> OutputIt>
   static auto write_node(const basic_styled_text<Char>& node,
                          text_style enclosing, text_style& terminal,
                          OutputIt out, render_state& state,
@@ -462,7 +462,7 @@ struct styled_text_renderer {
 
 };  // styled_text_renderer
 
-template<typename Char>
+template<CharType Char>
 struct standard_styled_text_formatter : styled_text_renderer<Char> {
   string_format_specs<Char> specs;
 
@@ -483,12 +483,12 @@ struct standard_styled_text_formatter : styled_text_renderer<Char> {
 
 namespace detail {
 
-template<typename Char>
+template<CharType Char>
 auto to_styled_text(basic_styled_text<Char> text) -> basic_styled_text<Char>
 { return text; }
 
 template<typename S,
-          typename Char = typename decltype(std::basic_string_view{
+          CharType Char = typename decltype(std::basic_string_view{
               std::declval<S&>()})::value_type>
   requires std::constructible_from<basic_styled_text<Char>, S&&>
 auto to_styled_text(S&& text) -> basic_styled_text<Char>

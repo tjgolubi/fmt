@@ -23,12 +23,12 @@
 
 namespace tjg {
 
-template<typename OutIter>
+template<std::output_iterator<char> OutIter>
 [[nodiscard]] constexpr
 auto write_value(OutIter out, no_color_t) -> OutIter
 { return detail::write_ascii(std::move(out), "no_color"); }
 
-template<typename OutIter>
+template<std::output_iterator<char> OutIter>
 [[nodiscard]] constexpr
 auto write_value(OutIter out, const rgb& value) -> OutIter {
   const auto packed = static_cast<std::uint32_t>(value);
@@ -38,12 +38,12 @@ auto write_value(OutIter out, const rgb& value) -> OutIter {
   return out;
 }
 
-template<typename OutIter>
+template<std::output_iterator<char> OutIter>
 [[nodiscard]] constexpr
 auto write_value(OutIter out, term_color value) -> OutIter
 { return detail::write_ascii(std::move(out), tjg::name_of(value)); }
 
-template<typename OutIter>
+template<std::output_iterator<char> OutIter>
 [[nodiscard]] constexpr
 auto write_value(OutIter out, const cube_color& value) -> OutIter {
   out = detail::write_ascii(std::move(out), "cube");
@@ -53,7 +53,7 @@ auto write_value(OutIter out, const cube_color& value) -> OutIter {
   return out;
 }
 
-template<typename OutIter>
+template<std::output_iterator<char> OutIter>
 [[nodiscard]] constexpr
 auto write_value(OutIter out, const gray_color& value) -> OutIter {
   out = detail::write_ascii(std::move(out), "gray");
@@ -64,7 +64,7 @@ auto write_value(OutIter out, const gray_color& value) -> OutIter {
   return out;
 }
 
-template<typename OutIter>
+template<std::output_iterator<char> OutIter>
 [[nodiscard]] constexpr
 auto write_value(OutIter out, const color_t& value) -> OutIter {
   auto format_color = [&]<typename T>(const T& color) {

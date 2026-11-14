@@ -49,11 +49,11 @@ class style_scope {
   void operator=(const style_scope&) = delete;
 }; // style_scope
 
-template<typename OutputIt> inline
+template<std::output_iterator<char> OutputIt> inline
 auto write_reset(OutputIt out) -> OutputIt
 { return detail::write_ascii(std::move(out), tjg::sgr_reset()); }
 
-template<typename OutputIt> inline
+template<std::output_iterator<char> OutputIt> inline
 auto write_debug_value(OutputIt out, text_style value) -> OutputIt {
   if (value.empty()) {
     *out++ = '{';
@@ -160,7 +160,7 @@ class sgr_scope {
 
 #define SGR_SCOPE(writer, style) \
   TJG_ASSERT(detail::get_style_state().empty(), " non-default style state"); \
-  detail::sgr_scope scope{writer, style}
+  auto scope = detail::sgr_scope{writer, style}
 
 template<CharType Char>
 using format_context =
@@ -169,7 +169,7 @@ using format_context =
 template<CharType Char>
 using format_args = std::basic_format_args<format_context<Char>>;
 
-template<typename OutputIt, CharType Char>
+template<CharType Char, std::output_iterator<Char> OutputIt>
 auto vformat_to(OutputIt out, text_style style,
                 std::basic_string_view<Char> fmt, format_args<Char> args,
                 const std::locale* locale = nullptr)
@@ -180,7 +180,8 @@ auto vformat_to(OutputIt out, text_style style,
   auto writer = [&](const char* data, std::size_t size) {
     if (!can_write) return;
     can_write = false;
-    out = std::copy(data, data + size, std::move(out));
+    for (std::size_t i = 0; i < size; ++i)
+      *out++ = static_cast<Char>(data[i]);
     can_write = true;
   }; // writer
 
@@ -475,19 +476,26 @@ struct basic_styled_arg_formatter : Formatter {
   auto format(const detail::styled_arg<T>& arg, FormatContext& ctx) const
     -> decltype(ctx.out())
   {
-    const auto initial = get_style_state();
-    const auto effective =
-        arg.style.is_absolute() ? arg.style : tjg::overlay(initial, arg.style);
-    detail::style_scope scope{};
-    auto sgr = sgr_buffer{};
-    detail::append_sgr_transition(sgr, effective, initial);
-    auto out = std::copy(sgr.begin(), sgr.end(), ctx.out());
-    ctx.advance_to(out);
-    get_style_state() = text_style{effective}.absolute(false);
+    auto out = ctx.out();
+    auto can_write = true;
+
+    auto writer = [&](const char* data, std::size_t size) {
+      if (!can_write) return;
+      can_write = false;
+      for (auto i = std::size_t{0}; i < size; ++i)
+        *out++ = static_cast<Char>(data[i]);
+      can_write = true;
+    }; // writer
+
+    auto scope = sgr_scope{writer, arg.style};
+
+    can_write = false;
+    ctx.advance_to(std::move(out));
     out = Formatter::format(arg.value, ctx);
-    sgr.clear();
-    detail::append_sgr_transition(sgr, initial, get_style_state());
-    return std::copy(sgr.begin(), sgr.end(), out);
+    can_write = true;
+
+    scope.finish();
+    return out;
   }
 };  // basic_styled_arg_formatter
 
@@ -527,7 +535,8 @@ namespace std {
 template<typename T, tjg::CharType Char>
   requires formattable<decay_t<const T>, Char>
 struct formatter<tjg::detail::styled_arg<T>, Char>
-    : tjg::detail::basic_styled_arg_formatter<
-          T, Char, formatter<decay_t<const T>, Char>> {};
+  : tjg::detail::basic_styled_arg_formatter<
+                                    T, Char, formatter<decay_t<const T>, Char>>
+{};
 
 } // std

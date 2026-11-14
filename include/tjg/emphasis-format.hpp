@@ -24,7 +24,7 @@ namespace tjg {
  * @param value Attributes to write.
  * @return The advanced output iterator.
  */
-template<typename OutputIt>
+template<std::output_iterator<char> OutputIt>
 auto write_value(OutputIt out, emphasis value) -> OutputIt {
   using namespace std::string_view_literals;
   static constexpr auto names = std::array{
@@ -52,7 +52,7 @@ auto write_value(OutputIt out, emphasis value) -> OutputIt {
  * @param value Attributes to write.
  * @return The advanced output iterator.
  */
-template<typename OutputIt>
+template<std::output_iterator<char> OutputIt>
 auto write_debug_value(OutputIt out, emphasis value) -> OutputIt {
   if (value == emphasis::none) return detail::write_ascii(std::move(out), "{}");
   const auto bits = std::to_underlying(value);

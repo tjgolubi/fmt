@@ -29,43 +29,22 @@ constexpr auto sgr_max_length = std::size_t{60};
 /// Length of the terminal-reset SGR sequence.
 constexpr auto sgr_reset_length = std::size_t{4};
 
-using sgr_buffer = inline_buffer<sgr_max_length>;
+template<CharType Char>
+using basic_sgr_buffer = basic_inline_buffer<Char, sgr_max_length>;
 
-#if defined(__cpp_constexpr) && __cpp_constexpr >= 202211L
+using sgr_buffer = basic_sgr_buffer<char>;
 
 /**
  * Returns the ANSI SGR sequence that resets colors and emphasis to terminal
  * defaults. The returned view refers to static storage.
  */
+template<CharType Char = char>
 [[nodiscard]] constexpr
-auto sgr_reset() noexcept -> std::string_view {
+auto sgr_reset() noexcept -> std::basic_string_view<Char> {
   static constexpr auto reset =
-                      std::array<char, sgr_reset_length>{'\x1b', '[', '0', 'm'};
+                      std::array<Char, sgr_reset_length>{'\x1b', '[', '0', 'm'};
   return {reset.data(), reset.size()};
 }
-
-#else
-
-namespace detail {
-
-struct sgr_reset_storage {
-  static constexpr auto value =
-                      std::array<char, sgr_reset_length>{'\x1b', '[', '0', 'm'};
-};
-
-} // detail
-
-/**
- * Returns the ANSI SGR sequence that resets colors and emphasis to terminal
- * defaults. The returned view refers to static storage.
- */
-[[nodiscard]] constexpr
-auto sgr_reset() noexcept -> std::string_view {
-  const auto& storage = detail::sgr_reset_storage::value;
-  return {storage.data(), storage.size()};
-}
-
-#endif
 
 namespace detail {
 

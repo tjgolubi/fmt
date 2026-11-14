@@ -18,7 +18,7 @@ namespace tjg::detail {
 [[noreturn]] inline void standard_format_error(const char* message)
 { TJG_THROW(std::format_error(message)); }
 
-template<typename OutputIt>
+template<std::output_iterator<char> OutputIt>
 [[nodiscard]] constexpr
 auto write_ascii(OutputIt out, const char* text) -> OutputIt {
   while (*text)
@@ -26,7 +26,7 @@ auto write_ascii(OutputIt out, const char* text) -> OutputIt {
   return out;
 }
 
-template<typename OutputIt>
+template<std::output_iterator<char> OutputIt>
 [[nodiscard]] constexpr
 auto write_ascii(OutputIt out, std::string_view text) -> OutputIt {
   for (auto ch : text)
@@ -214,10 +214,12 @@ struct string_format_specs {
     return result;
   } // resolve
 
-  template<typename OutputIt>
+  template<std::output_iterator<Char> OutputIt>
   auto pad(OutputIt out, int count) const -> OutputIt {
-    for (int i = 0; i < count; ++i)
-      out = std::copy_n(_fill.data(), _fill.size(), out);
+    for (int i = 0; i < count; ++i) {
+      for (const auto ch : _fill.view())
+        *out++ = ch;
+    }
     return out;
   }
 }; // string_format_specs
@@ -250,12 +252,13 @@ class standard_value_specs {
     const auto left    = (specs.alignment == '>') ? padding
                        : (specs.alignment == '^') ? padding / 2 : 0;
     auto out = specs.pad(ctx.out(), left);
-    out = std::copy_n(text.begin(), static_cast<std::size_t>(count), out);
-    return specs.pad(out, padding - left);
+    for (std::size_t i = 0; i < static_cast<std::size_t>(count); ++i)
+      *out++ = text[i];
+    return specs.pad(std::move(out), padding - left);
   }
 }; // standard_value_specs
 
-template<typename OutputIt, typename T>
+template<std::output_iterator<char> OutputIt, typename T>
 [[nodiscard]] constexpr
 auto write_formatted_value(OutputIt out, const T& value, bool debug) -> OutputIt
 {
