@@ -261,14 +261,12 @@ dynamic arguments.
 
 ### Stream insertion
 
-Include both `<tjg/styled_text.h>` and `<tjg/color-ostream.h>` to insert a tree
-into a narrow or wide ostream. Insertion produces normal ANSI-styled output.
-It shares the formatter's rendering machinery and passes options directly,
-without constructing or parsing a format-specification string.
+Include `<tjg/color-ostream.hpp>` to insert a `styled_text` tree into a narrow
+stream or a `wstyled_text` tree into a wide stream. Insertion uses the same ANSI
+rendering as the styled-text formatter.
 
 ```cpp
-#include <tjg/styled_text.h>
-#include <tjg/color-ostream.h>
+#include <tjg/color-ostream.hpp>
 #include <iomanip>
 #include <sstream>
 
@@ -279,13 +277,16 @@ os << std::left << std::setfill('*') << std::setw(14)
 ```
 
 Stream width, fill, and alignment control padding. Left alignment pads after
-the text; right, internal, and default alignment pad before it. Stream precision
-is ignored, matching ordinary string insertion; the complete text is emitted.
-To truncate a tree, use the styled-text formatter with an explicit precision.
-Padding uses the effective root style, and generated SGR does not consume width.
-Field width resets to zero after insertion; precision, fill, and flags remain.
-Stream failures follow the stream's exception mask. For tree debug output on a
-stream, insert the string returned by `std::format("{:?}", text)`.
+the text. Right, internal, and default alignment pad before it. Padding uses
+the effective root style, and generated SGR takes no columns. A negative or
+zero width adds no padding. Stream precision has no effect on the tree. Use
+the styled-text formatter with an explicit precision to truncate it.
+
+Insertion consumes the field width and resets it to zero. It preserves fill,
+precision, and flags. A stream already in an error state keeps its pending
+width. A short write sets `badbit`, and the stream's exception mask controls
+whether the failure throws. For a debug tree dump, insert the result of
+`std::format("{:?}", text)` or its wide equivalent.
 
 ### Table demonstration
 
@@ -606,12 +607,15 @@ enclosing style afterward. For examples, see
 [Text style rendering](index.md#TextStyleRendering).
 
 To insert a styled value directly into an ostream, include
-`<tjg/color-ostream.h>` and use `os << tjg::styled(value, style)`.
+`<tjg/color-ostream.hpp>` and use `os << tjg::styled(value, style)`.
 [Styled stream insertion](print.md#styled-stream-insertion) describes stream
 formatting, wide streams, and the wrapper's reference lifetime.
 
 ```cpp
-#include <numbers>  // C++20
+#include <tjg/color-ostream.hpp>
+#include <iomanip>
+#include <iostream>
+#include <numbers>
 
 auto style = tjg::fg(tjg::color::green).bold();
 std::cout << "Pi: " << std::fixed << std::setprecision(2)

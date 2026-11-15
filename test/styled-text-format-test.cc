@@ -412,7 +412,6 @@ TEST(styled_text_format_test, unsupported_specifications) {
 #endif
 }
 
-#if 0 // Restore when styled_text stream insertion is enabled.
 TEST(styled_text_format_test, stream_insertion_options) {
   const auto tree = tjg::bold(tjg::styled_text{"ab"} +
                              tjg::styled_text{"cdefgh", tjg::fg(tjg::term_color::red)});
@@ -506,8 +505,6 @@ TEST(styled_text_format_test, stream_insertion_failure) {
   EXPECT_THROW(failing << tjg::bold("text"), std::ios_base::failure);
 #endif
 }
-
-#endif
 
 TEST(styled_text_format_test, all_parent_child_emphasis_pairs) {
   const auto colors = tjg::text_style{tjg::term_color::red,

@@ -573,8 +573,8 @@ otherwise exceptions from that hasher propagate. It requires a working
 ## Readable color output
 
 All color types, including `no_color_t` and `color_t`, support `{}` and `{:?}`
-with the same unquoted notation. Include `<tjg/colors-format.hpp>` for formatting and
-`<tjg/color-ostream.h>` for narrow or wide ostream insertion.
+with the same unquoted notation. Include `<tjg/colors-format.hpp>` for
+formatting and `<tjg/color-ostream.hpp>` for narrow or wide ostream insertion.
 
 | Stored color kind | Example output | Meaning                          |
 | ----------------- | -------------- | -------------------------------- |

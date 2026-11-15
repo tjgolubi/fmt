@@ -58,12 +58,10 @@ tjg::vprint_unicode(stdout, tjg::fg(tjg::color::green), "Result: {}", args);
 
 ## Styled ostream output
 
-Include `<tjg/color-ostream.h>` to use the styled `std::ostream` overloads.
-This bridge includes `<tjg/color.h>` and standard ostream support. It does not
-include the {fmt} engine.
+Include `<tjg/color-ostream.hpp>` to use the styled `std::ostream` overloads.
 
 ```cpp
-#include <tjg/color-ostream.h>
+#include <tjg/color-ostream.hpp>
 #include <sstream>
 
 std::ostringstream os;
@@ -71,12 +69,14 @@ tjg::print(os, tjg::text_style{tjg::emphasis::bold}, "Result: {}", 42);
 tjg::println(os, tjg::fg(tjg::term_color::red), "Status: {}", "failed");
 ```
 
-The style applies to the entire formatted message. An empty style emits no
-SGR sequences. A nonempty style ends with a reset to terminal defaults, which
-does not restore an enclosing style. `println` places its newline after the
-reset. The formatted-output functions use the stream's locale for localized
-format specifications and leave settings such as field width and numeric base
-alone.
+The style applies to the entire formatted message. A nonempty style ends with
+a reset to terminal defaults. `println` places its newline after the reset.
+The formatted-output functions use the stream's locale for localized format
+specifications and preserve settings such as field width and numeric base.
+
+Restore terminal defaults with `tjg::sgr_reset()` after writing your own SGR
+and before calling the library's styled printing or formatting functions.
+Those functions assume terminal defaults at the start of an outermost call.
 
 ::: print(std::ostream&, text_style, std::format_string<T...>, T&&...)
     options:
@@ -99,14 +99,14 @@ result, or use the styled stream insertion described below.
 
 ## Styled stream insertion
 
-With `<tjg/color-ostream.h>`, insert the result of `tjg::styled(value, style)`
+With `<tjg/color-ostream.hpp>`, insert the result of `tjg::styled(value, style)`
 directly into a stream. The operator returns the same stream by reference for
 chaining and supports both `std::ostream` and `std::wostream` in C++23 and later.
 The value must support insertion into that stream; a standard formatter is not
 required.
 
 ```cpp
-#include <tjg/color-ostream.h>
+#include <tjg/color-ostream.hpp>
 #include <iomanip>
 #include <sstream>
 
@@ -142,3 +142,5 @@ The operator also supports builds with exceptions disabled.
 `styled` stores a reference to the value and a copy of the style. Immediate
 insertion of a temporary value is valid for that expression. If you save the
 wrapper, its referenced value must remain alive until insertion is complete.
+
+To insert an owning tree directly, see [styled-text stream insertion](styled.md#stream-insertion).

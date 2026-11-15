@@ -3,6 +3,7 @@
 /// @copyright 2026 Terry Golubiewski, all rights reserved.
 #pragma once
 
+#include "styled_text-format.hpp"
 #include "text_style-format.hpp"
 #include "colors-format.hpp"
 #include "emphasis-format.hpp"
@@ -122,50 +123,42 @@ void println(std::ostream& os, text_style ts, std::format_string<T...> fmt,
   os.put('\n');
 }
 
-} // tjg
-
-#if 0 // to do later
-
-namespace tjg::detail {
-
 /**
  * Inserts styled text using the formatter's ANSI rendering machinery.
  * Stream width, fill, and alignment control padding. Stream precision is
  * ignored, as for string insertion. Internal alignment behaves as right
  * alignment; only left places padding after text.
  * Field width is consumed; other stream settings are preserved.
- * Include `tjg/styled_text.h` as well as this header.
  */
 template<CharType Char>
 auto operator<<(std::basic_ostream<Char>& os,
                 const basic_styled_text<Char>& value)
-    -> std::basic_ostream<Char>& {
-  typename std::basic_ostream<Char>::sentry sentry{os};
-  if (!sentry) return os;
-  auto specs = detail::tree_format_specs<Char>{};
+  -> std::basic_ostream<Char>&
+{
+  if (!os.good())
+    return os;
+  auto specs = detail::string_format_specs<Char>{};
   const auto width = os.width();
-  const auto max_int = (std::numeric_limits<int>::max)();
-  if (width > max_int)
+  if (width > static_cast<decltype(width)>(std::numeric_limits<int>::max()))
     detail::standard_format_error("styled text stream width is too large");
-  if (width > 0) specs.width = static_cast<int>(width);
+  if (width > 0) specs.width = static_cast<std::size_t>(width);
   const auto fill = os.fill();
   specs.set_fill(std::basic_string_view<Char>{&fill, 1});
   specs.alignment =
-      (os.flags() & std::ios_base::adjustfield) == std::ios_base::left ? '<'
-                                                                       : '>';
+      ((os.flags() & std::ios_base::adjustfield) == std::ios_base::left) ? '<'
+                                                                         : '>';
   os.width(0);
-  auto buffer = basic_memory_buffer<Char>{};
+  auto buffer = std::basic_string<Char>{};
   auto output = std::back_inserter(buffer);
+
   struct output_context {
     decltype(output) iterator;
     auto out() { return iterator; }
   };
+
   auto ctx = output_context{output};
   detail::styled_text_renderer<Char>::format_with_specs(value, ctx, specs);
-  detail::write_color_buffer(os, buffer);
-  return os;
-}
+  return os.write(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+} // << styled_text
 
-} // tjg::detail
-
-#endif
+} // tjg
