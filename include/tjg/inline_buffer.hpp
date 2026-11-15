@@ -7,19 +7,19 @@
 #include "utility.hpp"
 
 #include <string_view>
-
 #include <algorithm>
 #include <array>
 
 #include <concepts>
+#include <utility>
 
 namespace tjg {
 
 /**
  * A fixed-capacity character buffer that starts empty.
  * The output is the range `[data(), data() + size())`. A terminating null
- * character is not guaranteed. Copies have independent storage and retain
- * the source's size.
+ * character is not guaranteed. Copies have independent storage and copy
+ * only the source's output characters.
  *
  * A `wchar_t` buffer also accepts `char` input. Each input byte is widened
  * through `unsigned char`, preserving its numeric byte value.
@@ -31,7 +31,7 @@ namespace tjg {
 template<CharType Char, std::size_t Size = 256>
   requires (Size > 0)
 class basic_inline_buffer {
-  std::array<Char, Size> _storage{};
+  std::array<Char, Size> _storage;
   std::size_t _size{0};
 
   static constexpr std::size_t _capacity{Size};
@@ -40,8 +40,31 @@ class basic_inline_buffer {
   /// The stored character type.
   using value_type = Char;
 
-  /// Constructs an empty buffer.
-  constexpr basic_inline_buffer() noexcept = default;
+  /// Constructs an empty buffer. At runtime, storage is left uninitialized.
+  constexpr basic_inline_buffer() noexcept {
+    if consteval { _storage = {}; }
+  }
+
+  /// Copies the source's output. At runtime, the remaining storage is
+  /// uninitialized.
+  constexpr basic_inline_buffer(const basic_inline_buffer& other) noexcept
+    : _size{other._size}
+  {
+    // A constexpr object needs initialized storage beyond its output.
+    if consteval { _storage = {}; }
+    std::copy(other.begin(), other.end(), data());
+  }
+
+  /// Copies the source's output and leaves the remaining storage intact.
+  constexpr auto operator=(const basic_inline_buffer& other) noexcept
+    -> basic_inline_buffer&
+  {
+    if (this != &other) {
+      std::copy(other.begin(), other.end(), data());
+      _size = other._size;
+    }
+    return *this;
+  }
 
   /// Returns whether the buffer contains no output characters.
   constexpr auto empty() const noexcept -> bool { return (_size == 0); }
@@ -69,11 +92,33 @@ class basic_inline_buffer {
   /// Resets the size to zero. Stored character values are left intact.
   constexpr void clear() noexcept { _size = 0; }
 
-  /// Changes the output size without changing any stored character values.
+  /// Changes the output size. Growing fills newly exposed characters with
+  /// `fill`, which defaults to zero.
+  /// Shrinking leaves the stored character values intact.
   /// @pre `new_size` is at most `Size`.
-  constexpr void resize(std::size_t new_size) noexcept {
+  constexpr void resize(std::size_t new_size, Char fill = Char{0}) noexcept {
     TJG_EXPECTS(new_size <= _capacity, "tjg::inline_buffer::resize: too large");
+    if (new_size > _size)
+      std::fill_n(_storage.data() + _size, new_size - _size, fill);
     _size = new_size;
+  }
+
+  /// Lets `op` write up to limit characters directly into the buffer.
+  /// @pre `limit` is at most the buffer's capacity.
+  /// @pre `op` does not throw and returns a `std::size_t <= limit`.
+  /// @pre On return from `op`, every character in the reported prefix is
+  ///      initialized.
+  template<typename Operation>
+  constexpr void resize_and_overwrite(std::size_t limit, Operation op) noexcept
+  {
+    TJG_EXPECTS(limit <= _capacity,
+            "tjg::inline_buffer::resize_and_overwrite: limit exceeds capacity");
+
+    const std::size_t written = std::move(op)(data(), limit);
+    TJG_EXPECTS(written <= limit,
+              "tjg::inline_buffer::resize_and_overwrite: result exceeds limit");
+
+    _size = written;
   }
 
   /// Appends one character.
