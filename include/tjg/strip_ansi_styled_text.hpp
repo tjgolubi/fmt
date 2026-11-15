@@ -16,22 +16,21 @@ namespace tjg {
 namespace detail {
 
 struct styled_text_ansi_stripper {
-  template<typename Char>
+  template<CharType Char>
   static void strip(basic_styled_text<Char>& text) TJG_NOEXCEPT_UNLESS_BAD_ALLOC
   {
-    if (text._is_branch) {
-      for (auto& child : text._data.children)
+    if (!text._children.empty()) {
+      for (auto& child : text._children)
         strip(child);
-    } else if (text._data.text) {
+    } else if (text._text) {
       auto stripped =
-        tjg::strip_ansi<Char>(
-                        std::basic_string_view<Char>{text._data.text->data(),
-                                                     text._data.text->size()});
-      if (stripped == *text._data.text) return;
+              tjg::strip_ansi<Char>(std::basic_string_view<Char>{*text._text});
+      if (stripped == *text._text)
+        return;
       if (stripped.empty()) {
-        text._data.text.reset();
+        text._text.reset();
       } else {
-        text._data.text =
+        text._text =
           std::make_shared<const std::basic_string<Char>>(std::move(stripped));
       }
     }
@@ -46,7 +45,7 @@ struct styled_text_ansi_stripper {
  * including leaves that become empty. Sequences spanning leaves are retained.
  * Does not modify the input; unchanged leaf strings remain shared.
  */
-template<typename Char>
+template<CharType Char>
 [[nodiscard]]
 auto strip_ansi(basic_styled_text<Char> input) TJG_NOEXCEPT_UNLESS_BAD_ALLOC
   -> basic_styled_text<Char>

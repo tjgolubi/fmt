@@ -1,6 +1,10 @@
-#include "tjg/parse_styled_text.h"
-#include "standard-format-test.h"
+#include "tjg/parse_styled_text.hpp"
+#include "tjg/styled_text-format.hpp"
 #include "test-support.h"
+
+#include <format>
+#include <string>
+#include <string_view>
 
 namespace {
 template<typename Char>
@@ -64,11 +68,11 @@ void check_sgr() {
     check(sequence.c_str(), tjg::text_style{static_cast<tjg::term_color>(i),
                                            static_cast<tjg::term_color>(i)});
   }
-  for (unsigned i = 0; i < 256; ++i) {
+  for (int i = 0; i < 256; ++i) {
     const auto color = [i]() -> tjg::color_t {
       if (i < 16) return static_cast<tjg::term_color>(i);
       if (i < 232) return tjg::cube_color{i - 16};
-      return tjg::gray_color{static_cast<int>(i - 232)};
+      return tjg::gray_color{i - 232};
     }();
     const auto sequence = std::format("\x1b[38;5;{};48;5;{}m", i, i);
     check(sequence.c_str(), tjg::text_style{color, color});

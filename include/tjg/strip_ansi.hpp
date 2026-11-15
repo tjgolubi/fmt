@@ -1,8 +1,9 @@
 /// @file
 /// Remove syntactically complete ESC-prefixed ANSI control sequences.
 /// @copyright 2026 Terry Golubiewski, all rights reserved.
-
 #pragma once
+
+#include "utility.hpp"
 
 #include <string>
 #include <string_view>
@@ -16,7 +17,7 @@ struct ansi_escape_scan {
   bool complete;
 };
 
-template<typename Char>
+template<CharType Char>
 constexpr
 auto scan_ansi_escape(std::basic_string_view<Char> input, std::size_t start)
   noexcept -> ansi_escape_scan
@@ -25,44 +26,44 @@ auto scan_ansi_escape(std::basic_string_view<Char> input, std::size_t start)
   if (pos == input.size())
     return {pos, false};
   const auto kind = input[pos];
-  if ( kind == Char(']') || kind == Char('P') || kind == Char('X')
-    || kind == Char('^') || kind == Char('_'))
+  if ( kind == Char{']'} || kind == Char{'P'} || kind == Char{'X'}
+    || kind == Char{'^'} || kind == Char{'_'})
   {
     ++pos;
     while (pos < input.size()) {
-      if (kind == Char(']') && input[pos] == Char('\a'))
+      if (kind == Char{']'} && input[pos] == Char{'\a'})
         return {pos + 1, true};
-      if (input[pos] == Char('\x18') || input[pos] == Char('\x1a'))
+      if (input[pos] == Char{'\x18'} || input[pos] == Char{'\x1a'})
         return {pos, false};  // CAN/SUB cancel the control string.
-      if (input[pos] == Char('\x1b')
-                && pos + 1 < input.size() && input[pos + 1] == Char('\\'))
+      if (input[pos] == Char{'\x1b'}
+                && pos + 1 < input.size() && input[pos + 1] == Char{'\\'})
       { return {pos + 2, true}; }
       ++pos;
     }
     // An unterminated string is preserved whole, including embedded escapes.
     return {pos, false};
   }
-  if (kind == Char('[')) {
+  if (kind == Char{'['}) {
     ++pos;
     // CSI: parameters, then intermediates, then a final byte. The numeric
     // meaning is irrelevant; private/unknown commands have the same grammar.
     while (pos < input.size()
-                          && input[pos] >= Char('0') && input[pos] <= Char('?'))
+                          && input[pos] >= Char{'0'} && input[pos] <= Char{'?'})
     { ++pos; }
     while (pos < input.size()
-                          && input[pos] >= Char(' ') && input[pos] <= Char('/'))
+                          && input[pos] >= Char{' '} && input[pos] <= Char{'/'})
     { ++pos; }
     if (pos < input.size()
-                          && input[pos] >= Char('@') && input[pos] <= Char('~'))
+                          && input[pos] >= Char{'@'} && input[pos] <= Char{'~'})
     { return {pos + 1, true}; }
     return {pos, false};
   }
   // Other ESC sequences: zero or more intermediates and a final byte.
   while (pos < input.size()
-                          && input[pos] >= Char(' ') && input[pos] <= Char('/'))
+                          && input[pos] >= Char{' '} && input[pos] <= Char{'/'})
   { ++pos; }
   if (pos < input.size()
-                          && input[pos] >= Char('0') && input[pos] <= Char('~'))
+                          && input[pos] >= Char{'0'} && input[pos] <= Char{'~'})
   { return {pos + 1, true}; }
   return {pos, false};
 } // scan_ansi_escape
@@ -78,14 +79,14 @@ auto scan_ansi_escape(std::basic_string_view<Char> input, std::size_t start)
  * are removed with the sequence. This removes controls; it does not simulate
  * terminal editing or sanitize text.
  */
-template<typename Char>
+template<CharType Char>
 [[nodiscard]] constexpr
 auto strip_ansi(std::basic_string_view<Char> input) -> std::basic_string<Char> {
   auto result = std::basic_string<Char>{};
   for (std::size_t pos = 0; pos < input.size(); ) {
-    if (input[pos] != Char('\x1b')) {
+    if (input[pos] != Char{'\x1b'}) {
       const auto start = pos++;
-      while (pos < input.size() && input[pos] != Char('\x1b'))
+      while (pos < input.size() && input[pos] != Char{'\x1b'})
         ++pos;
       result.append(input.data() + start, pos - start);
       continue;

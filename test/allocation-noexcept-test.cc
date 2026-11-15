@@ -1,5 +1,6 @@
 #include "tjg/sgr_support.hpp"
 #include "tjg/backslash.hpp"
+#include "tjg/strip_ansi_styled_text.hpp"
 #include "test-support.h"
 
 #include <type_traits>
@@ -38,7 +39,6 @@ TEST(allocation_noexcept_test, decoding_errors_still_throw) {
   EXPECT_THROW((void)tjg::backslash_unescape("\\xzz"), std::invalid_argument);
 }
 
-#if 0 // Restore when styled_text is integrated.
 template <typename Char> constexpr bool check_tree_policy() {
   using text = tjg::basic_styled_text<Char>;
   using string = std::basic_string<Char>;
@@ -70,4 +70,3 @@ TEST(allocation_noexcept_test, copy_and_strip_tree) {
   EXPECT_EQ(stripped.plain_text(), "leftright");
   EXPECT_EQ(original.plain_text(), "left\x1b[31mright");
 }
-#endif

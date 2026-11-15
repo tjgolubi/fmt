@@ -4,7 +4,6 @@
 #pragma once
 
 #include "text_style.hpp"
-#include "unicode.hpp"
 #include "utility.hpp"
 
 #include <string>
@@ -16,7 +15,6 @@
 
 #include <concepts>
 #include <utility>
-#include <new>
 #include <limits>
 
 namespace tjg {
@@ -26,45 +24,15 @@ namespace detail {
 struct styled_text_ansi_stripper;
 template<CharType Char> struct styled_text_renderer;
 
-template<CharType Char>
-auto styled_text_width(std::basic_string_view<Char> text) noexcept
-  -> std::size_t
-{
-  return tjg::unicode::text_prefix(
-      text, (std::numeric_limits<std::size_t>::max)()).second;
-}
-
-struct styled_text_render_state {
-  std::size_t remaining;
-  bool stopped = false;
-  explicit styled_text_render_state(std::size_t limit) : remaining{limit} {}
-};
-
-struct styled_text_prefix {
-  std::size_t size;
-  std::size_t width;
-};
-
-template<CharType Char>
-auto styled_text_take(std::basic_string_view<Char> text,
-                      styled_text_render_state& state)
-  -> styled_text_prefix
-{
-  const auto prefix = tjg::unicode::text_prefix(text, state.remaining);
-  state.remaining -= prefix.second;
-  state.stopped = (prefix.first < text.size() || state.remaining == 0);
-  return {prefix.first, prefix.second};
-}
-
 } // detail
 
 /// An owned string or sequence of styled children, with a style for this node.
 template<CharType Char>
 class basic_styled_text {
 public:
-  using char_type = Char;
+  using char_type   = Char;
   using string_type = std::basic_string<Char>;
-  using view_type = std::basic_string_view<Char>;
+  using view_type   = std::basic_string_view<Char>;
 
 private:
   using leaf   = std::shared_ptr<const string_type>;
@@ -73,95 +41,38 @@ private:
   friend struct detail::styled_text_ansi_stripper;
 
   text_style _style{};
-  bool _is_branch = false;
-
-  union storage {
-    leaf text;
-    branch children;
-    storage() {}
-    storage(leaf value) noexcept : text{std::move(value)} {}
-    ~storage() {}
-  } _data;
-
-#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 13 && __GNUC__ <= 14
-  // GCC 13/14 can report an inactive union member as uninitialized when this
-  // vector move is inlined through concatenation. Keep leaf moves inline.
-  [[gnu::noinline]]
-  static void move_branch(branch* target, branch& source) noexcept
-  { new (target) branch{std::move(source)}; }
-#endif
-
-  void destroy() noexcept {
-    if (_is_branch)
-      _data.children.~branch();
-    else
-      _data.text.~leaf();
-  }
-
-  // Avoid GCC 13/14 recursive-inlining warnings about the inactive union
-  // member.
-#if defined(__GNUC__)
-  [[gnu::noinline]]
-#endif
-  static
-  auto branch_display_width(const branch& children) noexcept -> std::size_t {
-    auto width = std::size_t{0};
-    for (const auto& child : children) width += child.display_width();
-    return width;
-  }
+  leaf       _text{};
+  branch     _children{}; // A node is a leaf when this is empty.
 
   void append_plain_text(string_type& result) const {
-    if (_is_branch) {
-      for (const auto& child : _data.children)
-        child.append_plain_text(result);
-    } else if (_data.text) {
-      result.append(*_data.text);
-    }
+    if (_text) result.append(*_text);
+    for (const auto& child : _children)
+      child.append_plain_text(result);
   }
 
  public:
-  basic_styled_text() : _style{}, _is_branch{false}, _data{leaf{}} {}
+  basic_styled_text() = default;
 
   basic_styled_text(string_type text, text_style style = {})
     TJG_NOEXCEPT_UNLESS_BAD_ALLOC
     : _style{style}
-    , _is_branch{false}
-    , _data{text.empty() ? leaf{}
+    , _text{text.empty() ? leaf{}
                          : std::make_shared<const string_type>(std::move(text))}
     {}
 
   basic_styled_text(const Char* text, text_style style = {})
     : basic_styled_text{string_type{text}, style} {}
 
-  basic_styled_text(const basic_styled_text& other)
-      TJG_NOEXCEPT_UNLESS_BAD_ALLOC
-    : _style{other._style}, _is_branch{other._is_branch}
-  {
-    if (_is_branch)
-      new (&_data.children) branch{other._data.children};
-    else
-      new (&_data.text) leaf{other._data.text};
-  }
+  basic_styled_text(const basic_styled_text&) TJG_NOEXCEPT_UNLESS_BAD_ALLOC
+    = default;
 
   basic_styled_text(basic_styled_text&& other) noexcept
-    : _style{other._style}, _is_branch{other._is_branch}
+    : _style{std::exchange(other._style, text_style{})}
+    , _text{std::move(other._text)}
+    , _children{std::move(other._children)}
   {
-    if (_is_branch) {
-#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 13 && __GNUC__ <= 14
-      move_branch(&_data.children, other._data.children);
-#else
-      new (&_data.children) branch{std::move(other._data.children)};
-#endif
-    } else {
-      new (&_data.text) leaf{std::move(other._data.text)};
-    }
-    other.destroy();
-    new (&other._data.text) leaf{};
-    other._is_branch = false;
-    other._style = text_style{};
+    other._children.clear();
   }
-
-  ~basic_styled_text() { destroy(); }
 
   auto operator=(const basic_styled_text& other) TJG_NOEXCEPT_UNLESS_BAD_ALLOC
     -> basic_styled_text&
@@ -173,10 +84,9 @@ private:
 
   auto operator=(basic_styled_text&& other) noexcept -> basic_styled_text& {
     if (this == &other) return *this;
-    // Preserve the value before replacing the active union alternative.
-    auto moved = basic_styled_text{std::move(other)};
-    this->~basic_styled_text();
-    new (this) basic_styled_text{std::move(moved)};
+    _style    = std::exchange(other._style, text_style{});
+    _text     = std::move(other._text);
+    _children = std::move(other._children);
     return *this;
   }
 
@@ -197,10 +107,8 @@ private:
   auto overlay(text_style overrides) noexcept -> basic_styled_text& {
     if (_style.is_absolute()) return *this;
     _style.overlay(overrides);
-    if (_is_branch) {
-      for (auto& child : _data.children)
-        child.overlay(overrides);
-    }
+    for (auto& child : _children)
+      child.overlay(overrides);
     return *this;
   }
 
@@ -215,7 +123,7 @@ private:
   }
 
   // Empty leaves are concatenation identities.
-  auto empty() const noexcept -> bool { return !_is_branch && !_data.text; }
+  auto empty() const noexcept -> bool { return _children.empty() && !_text; }
 
   /**
    * Returns an independent string containing all leaf text in order, without
@@ -228,26 +136,11 @@ private:
     return result;
   }
 
-  /**
-   * Returns the sum of leaf widths using the extension's retained Unicode width
-   * table. Narrow leaves are decoded as UTF-8; other character types count code
-   * units. Styles do not contribute width. Raw escapes are not interpreted.
-   */
-  [[nodiscard]] auto display_width() const noexcept -> std::size_t {
-    using view_type = std::basic_string_view<Char>;
-    if (!_is_branch)
-      return _data.text
-                 ? detail::styled_text_width(
-                             view_type{_data.text->data(), _data.text->size()})
-                 : 0;
-    return branch_display_width(_data.children);
-  } // display_width
-
   auto operator+=(basic_styled_text rhs) -> basic_styled_text& {
     if (rhs.empty()) return *this;
     if (empty()) return *this = std::move(rhs);
-    if (_is_branch && _style.empty()) {
-      _data.children.push_back(std::move(rhs));
+    if (!_children.empty() && _style.empty()) {
+      _children.push_back(std::move(rhs));
       return *this;
     }
     auto children = branch{};
@@ -255,21 +148,16 @@ private:
     children.reserve(2);
     children.push_back(std::move(*this));
     children.push_back(std::move(rhs));
-    destroy();
-    new (&_data.children) branch{std::move(children)};
-    _is_branch = true;
-    _style = text_style{};  // For exposition only.
+    _children = std::move(children);
     return *this;
   } // operator+=
 
   friend
   bool operator==(const basic_styled_text& lhs, const basic_styled_text& rhs) {
-    if (lhs._style != rhs._style || lhs._is_branch != rhs._is_branch)
+    if (lhs._style != rhs._style || lhs._children != rhs._children)
       return false;
-    if (lhs._is_branch)
-      return lhs._data.children == rhs._data.children;
-    return lhs._data.text == rhs._data.text
-    || (lhs._data.text && rhs._data.text && *lhs._data.text == *rhs._data.text);
+    return lhs._text == rhs._text
+        || (lhs._text && rhs._text && *lhs._text == *rhs._text);
   }
 
   friend
@@ -286,204 +174,6 @@ private:
 
 using styled_text  = basic_styled_text<char>;
 using wstyled_text = basic_styled_text<wchar_t>;
-
-namespace detail {
-
-template<CharType Char, std::output_iterator<Char> OutputIt>
-[[nodiscard]] constexpr inline
-auto copy(const std::basic_string<Char>& str, OutputIt out) -> OutputIt
-{ return std::copy(str.begin(), str.end(), out); }
-
-} // detail
-
-/**
- * Formats an owning styled-text tree using ordinary ANSI SGR sequences.
- * Relative nodes inherit their enclosing style; absolute nodes start from
- * terminal defaults. Debug presentation (`?`) displays stored node styles and
- * quoted leaf strings, indenting children by two spaces per level.
- */
-namespace detail {
-
-template<CharType Char>
-struct styled_text_renderer {
- private:
-  using render_state = detail::styled_text_render_state;
-
-  template<std::output_iterator<Char> OutputIt>
-  static auto write_debug(const basic_styled_text<Char>& node, OutputIt out,
-                          std::size_t indent = 0)
-    -> OutputIt
-  {
-    for (std::size_t i = 0; i < indent; ++i)
-      *out++ = Char(' ');
-    if (!node._style.empty()) {
-      out = detail::write_style_value<Char>(out, node._style);
-      *out++ = Char(' ');
-    }
-    if (!node._is_branch) {
-      const auto text = node._data.text
-                            ? std::basic_string_view<Char>{*node._data.text}
-                            : std::basic_string_view<Char>{};
-      out = tjg::unicode::quote_text(text, out);
-      if (indent != 0) *out++ = Char('\n');
-      return out;
-    }
-    *out++ = Char('{');
-    *out++ = Char('\n');
-    for (const auto& child : node._data.children)
-      out = write_debug(child, out, indent + 2);
-    for (std::size_t i = 0; i < indent; ++i)
-      *out++ = Char(' ');
-    *out++ = Char('}');
-    *out++ = Char('\n');
-    return out;
-  }
-
-  static auto measure(const basic_styled_text<Char>& node, render_state& state)
-    -> std::size_t
-  {
-    if (node.empty() || state.stopped) return 0;
-    if (!node._is_branch) {
-      const auto& text = *node._data.text;
-      return detail::styled_text_take(
-                 std::basic_string_view<Char>{text.data(), text.size()}, state)
-          .width;
-    }
-    auto width = std::size_t{0};
-    for (const auto& child : node._data.children) {
-      width += measure(child, state);
-      if (state.stopped) break;
-    }
-    return width;
-  }
-
-  template<std::output_iterator<Char> OutputIt>
-  static auto transition(text_style style, text_style& terminal, OutputIt out)
-    -> OutputIt
-  {
-    if (style == terminal) return out;
-    const auto sgr = tjg::to_sgr<Char>(style, terminal);
-    terminal = style.absolute(false);
-    return detail::copy<Char>(sgr, out);
-  }
-
-  template<std::output_iterator<Char> OutputIt>
-  static auto write_node(const basic_styled_text<Char>& node,
-                         text_style enclosing, text_style& terminal,
-                         OutputIt out, render_state& state,
-                         const string_format_specs<Char>& specs,
-                         int left = 0, int right = 0)
-      -> OutputIt
-  {
-    if ((node.empty() || state.stopped) && left == 0 && right == 0)
-      return out;
-    auto effective = node._style;
-    // Output absolute style changes immediately; otherwise wait until before
-    // text output.
-    if (effective.is_absolute()) {
-      out = transition(effective, terminal, out);
-      effective = terminal;
-    } else {
-      effective = tjg::underlay(effective, enclosing);
-    }
-    if (left != 0) {
-      out = transition(effective, terminal, out);
-      out = specs.pad(out, left);
-    }
-    if (node._is_branch) {
-      for (const auto& child : node._data.children) {
-        if (state.stopped) break;
-        out = write_node(child, effective, terminal, out, state, specs);
-      }
-    } else if (!node.empty() && !state.stopped) {
-      const auto& text  = *node._data.text;
-      const auto prefix = detail::styled_text_take(
-          std::basic_string_view<Char>{text.data(), text.size()}, state);
-      if (prefix.size != 0) {
-        out = transition(effective, terminal, out);
-        out = std::copy(text.data(), text.data() + prefix.size, out);
-      }
-    }
-    if (right != 0) {
-      out = transition(effective, terminal, out);
-      out = specs.pad(out, right);
-    }
-    return out;
-  } // write_node
-
- public:
-
-  // Shared by the formatter and ostream bridge. Options are already resolved;
-  // stream insertion never builds or parses a format-specification string.
-  template<typename FormatContext>
-  static auto format_with_specs(const basic_styled_text<Char>& value,
-                                FormatContext& ctx,
-                                string_format_specs<Char> specs)
-    -> decltype(ctx.out())
-  {
-    const auto limit = specs.precision < 0
-        ? (std::numeric_limits<std::size_t>::max)()
-        : static_cast<std::size_t>(specs.precision);
-    if (specs.debug) {
-      if (specs.width == 0 && specs.precision < 0)
-        return write_debug(value, ctx.out());
-      auto buffer = basic_memory_buffer<Char>{};
-      write_debug(value, std::back_inserter(buffer));
-      const auto prefix = tjg::unicode::text_prefix(
-                    std::basic_string_view<Char>{buffer.data(), buffer.size()},
-                    limit);
-      const int padding = std::cmp_greater(specs.width, prefix.second)
-                        ? specs.width - static_cast<int>(prefix.second) : 0;
-      const auto left = (specs.alignment == '>')
-                      ? padding : specs.alignment == '^' ? padding / 2
-                                                 : 0;
-      auto out = specs.pad(ctx.out(), left);
-      out = std::copy_n(buffer.data(), prefix.first, out);
-      return specs.pad(out, padding - left);
-    }
-    auto state = render_state{limit};
-    int padding = 0;
-    if (specs.width != 0 || specs.precision >= 0)
-    {
-      auto measuring   = render_state{limit};
-      const auto width = measure(value, measuring);
-      if (std::cmp_greater(specs.width, width))
-        padding = specs.width - static_cast<int>(width);
-      if (width == 0 && padding == 0)
-        return ctx.out();
-    }
-    const auto left = (specs.alignment == '>')
-                    ? padding : (specs.alignment == '^')
-                              ? (padding / 2) : 0;
-    if (limit == 0) state.stopped = true;
-    const auto initial = get_style_state();
-    auto& terminal = get_style_state();
-    detail::style_scope scope{};
-    auto out = write_node(value, initial, terminal, ctx.out(), state, specs,
-                          left, padding - left);
-    return transition(initial, terminal, out);
-  } // format_with_specs
-
-};  // styled_text_renderer
-
-template<CharType Char>
-struct standard_styled_text_formatter : styled_text_renderer<Char> {
-  string_format_specs<Char> specs;
-
-  constexpr auto parse(std::basic_format_parse_context<Char>& ctx)
-    -> decltype(ctx.begin())
-  { return specs.parse(ctx, standard_format_error); }
-
-  template<typename Context>
-  auto format(const basic_styled_text<Char>& value, Context& ctx) const
-    -> decltype(ctx.out())
-  {
-    return this->format_with_specs(value, ctx,
-                                   specs.resolve(ctx, standard_format_error));
-  }
-}; // standard_styled_text_formatter
-
-} // detail
 
 namespace detail {
 
@@ -591,11 +281,3 @@ template<typename T>
 { return tjg::underlay(tjg::strike(), std::forward<T>(text)); }
 
 } // tjg
-
-namespace std {
-
-template<tjg::CharType Char>
-struct formatter<tjg::basic_styled_text<Char>, Char>
-  : tjg::detail::standard_styled_text_formatter<Char> {};
-
-} // std

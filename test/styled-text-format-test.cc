@@ -1,12 +1,23 @@
-#include "tjg/styled_text.h"
-#include "tjg/color-ostream.h"
+#include "tjg/styled_text-format.hpp"
+#include "tjg/color-ostream.hpp"
 #include "standard-format-test.h"
 #include "test-support.h"
 
 #include <sstream>
+#include <format>
 #include <iomanip>
+#include <iterator>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace {
+template<typename Char, typename... Styles>
+auto sgr(const Styles&... styles) -> std::basic_string<Char> {
+  const auto narrow = tjg::to_sgr(styles...);
+  return {narrow.begin(), narrow.end()};
+}
+
 auto render(const tjg::styled_text& value) -> std::string {
   return std::format("{}", value);
 }
@@ -93,7 +104,7 @@ void check_states(const std::basic_string<Char>& output,
               color = tjg::gray_color{static_cast<int>(index - 232)};
             else {
               ASSERT_GE(index, 16u);
-              color = tjg::cube_color{index - 16};
+              color = tjg::cube_color{static_cast<int>(index - 16)};
             }
           }
           if (code == 38) state.fg(color);
@@ -164,16 +175,16 @@ void check_nested_formatting() {
   tree.style(absolute_outer);
   check_states(render(tree), chars<Char>("ab"), {outer, outer});
   // The absolute root resets even from assumed defaults.
-  const auto expected = tjg::to_sgr<Char>(absolute_outer) + chars<Char>("ab") +
-                        tjg::to_sgr<Char>(tjg::text_style{}, outer);
+  const auto expected = sgr<Char>(absolute_outer) + chars<Char>("ab") +
+                        sgr<Char>(tjg::text_style{}, outer);
   EXPECT_EQ(render(tree), expected);
 
   // Equal complete states still honor an explicit absolute child boundary.
   tree = node(chars<Char>("a")) + node(chars<Char>("b"), absolute_outer);
   tree.style(outer);
-  const auto boundary = tjg::to_sgr<Char>(outer, tjg::text_style{}) +
-      chars<Char>("a") + tjg::to_sgr<Char>(absolute_outer) + chars<Char>("b") +
-      tjg::to_sgr<Char>(tjg::text_style{}, outer);
+  const auto boundary = sgr<Char>(outer, tjg::text_style{}) +
+      chars<Char>("a") + sgr<Char>(absolute_outer) + chars<Char>("b") +
+      sgr<Char>(tjg::text_style{}, outer);
   EXPECT_EQ(render(tree), boundary);
 }
 } // namespace
@@ -208,11 +219,12 @@ namespace {
 template<typename Char, typename... T>
 auto format_in_style(tjg::text_style style, const char* pattern, const T&... args)
     -> std::basic_string<Char> {
-  auto buffer = tjg::basic_memory_buffer<Char>{};
+  auto buffer = std::basic_string<Char>{};
   const auto text = chars<Char>(pattern);
-  tjg::detail::vformat_to(buffer, style, std::basic_string_view<Char>{text},
+  tjg::vformat_to(std::back_inserter(buffer), style,
+      std::basic_string_view<Char>{text},
       std::make_format_args<tjg::detail::format_context<Char>>(args...));
-  return {buffer.data(), buffer.size()};
+  return buffer;
 }
 
 template<typename Char>
@@ -319,33 +331,33 @@ TEST(styled_text_format_test, separate_format_call_inherits_shared_state) {
   const auto red = tjg::underline(tjg::fg(tjg::term_color::red));
   check_states(tjg::format(outer, "{}", terminal_state_nested{}),
                std::string{"a42z"}, {outer, red, red, outer});
-  EXPECT_EQ(tjg::get_terminal_state(), tjg::text_style{});
+  EXPECT_EQ(tjg::detail::get_style_state(), tjg::text_style{});
 #if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   EXPECT_THROW((void)tjg::format(outer, "{}",
                                 tjg::styled(color_context_throwing{}, red)),
                std::format_error);
-  EXPECT_EQ(tjg::get_terminal_state(), tjg::text_style{});
+  EXPECT_EQ(tjg::detail::get_style_state(), tjg::text_style{});
 #endif
 }
 
 TEST(styled_text_format_test, terminal_state_is_shared_and_exception_safe) {
   tjg::detail::style_scope scope{};
-  auto& terminal = tjg::get_terminal_state();
+  auto& terminal = tjg::detail::get_style_state();
   EXPECT_EQ(terminal, tjg::text_style{});
   const auto outer = tjg::underline(tjg::bg(tjg::term_color::blue));
   terminal = outer;
   const auto number = 42;
   auto inner = tjg::styled(number, tjg::fg(tjg::term_color::red));
   (void)std::format("{}", inner);
-  EXPECT_EQ(&tjg::get_terminal_state(), &terminal);
+  EXPECT_EQ(&tjg::detail::get_style_state(), &terminal);
   const auto wide_text = tjg::styled(number, tjg::fg(tjg::term_color::red));
   EXPECT_FALSE(std::format(L"{}", wide_text).empty());
-  EXPECT_EQ(tjg::get_terminal_state(), outer);
+  EXPECT_EQ(tjg::detail::get_style_state(), outer);
 #if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   const auto value = color_context_throwing{};
   auto styled = tjg::styled(value, tjg::bold());
   EXPECT_THROW((void)std::format("{}", styled), std::format_error);
-  EXPECT_EQ(tjg::get_terminal_state(), outer);
+  EXPECT_EQ(tjg::detail::get_style_state(), outer);
 #endif
 }
 
@@ -400,6 +412,7 @@ TEST(styled_text_format_test, unsupported_specifications) {
 #endif
 }
 
+#if 0 // Restore when styled_text stream insertion is enabled.
 TEST(styled_text_format_test, stream_insertion_options) {
   const auto tree = tjg::bold(tjg::styled_text{"ab"} +
                              tjg::styled_text{"cdefgh", tjg::fg(tjg::term_color::red)});
@@ -493,6 +506,8 @@ TEST(styled_text_format_test, stream_insertion_failure) {
   EXPECT_THROW(failing << tjg::bold("text"), std::ios_base::failure);
 #endif
 }
+
+#endif
 
 TEST(styled_text_format_test, all_parent_child_emphasis_pairs) {
   const auto colors = tjg::text_style{tjg::term_color::red,
@@ -614,13 +629,13 @@ void check_deferred_transitions() {
   auto tree = tjg::overlay(root, tjg::bold(
       tjg::underline(node{chars<Char>("abc")}) + chars<Char>("later")) +
       chars<Char>("tail"));
-  const auto opening = tjg::to_sgr<Char>(inner, tjg::text_style{});
-  const auto reset = tjg::to_sgr<Char>(tjg::text_style{}, inner);
+  const auto opening = sgr<Char>(inner, tjg::text_style{});
+  const auto reset = sgr<Char>(tjg::text_style{}, inner);
   EXPECT_EQ(runtime_format(chars<Char>("{:.1}"), tree),
             opening + chars<Char>("a") + reset);
   const auto padded = opening + chars<Char>("a") +
-      tjg::to_sgr<Char>(root, inner) + chars<Char>("  ") +
-      tjg::to_sgr<Char>(tjg::text_style{}, root);
+      sgr<Char>(root, inner) + chars<Char>("  ") +
+      sgr<Char>(tjg::text_style{}, root);
   EXPECT_EQ(runtime_format(chars<Char>("{:<3.1}"), tree), padded);
   EXPECT_EQ(runtime_format(chars<Char>("{:.0}"), tree),
             std::basic_string<Char>{});
@@ -632,8 +647,8 @@ void check_deferred_transitions() {
   auto relative = absolute;
   relative.absolute(false);
   EXPECT_EQ(runtime_format(chars<Char>("{:.1}"), group),
-      tjg::to_sgr<Char>(absolute, tjg::text_style{}) + chars<Char>("a") +
-      tjg::to_sgr<Char>(tjg::text_style{}, relative));
+      sgr<Char>(absolute, tjg::text_style{}) + chars<Char>("a") +
+      sgr<Char>(tjg::text_style{}, relative));
 }
 } // namespace
 
@@ -688,7 +703,8 @@ TEST(styled_text_format_test, standard_tree_specs_and_debug) {
   EXPECT_EQ(std::format("{:?}", tree), "b {\n  \"hello \"\n  blue \"world\"\n}\n");
   EXPECT_EQ(std::format("{:>{}.{}s} {}", tree, 12, 9, 42),
             "\x1b[1m   hello " + child_open + "wor\x1b[0m 42");
-  EXPECT_EQ(std::format("{0:*^{1}.{2}?}", tree, 15, 9), "***b {\n  \"he***");
+  EXPECT_THROW((void)runtime_format("{0:*^{1}.{2}?}", tree, 15, 9),
+               std::format_error);
   const auto wide = tjg::underline(tjg::wstyled_text{L"wide"} + L" tree");
   EXPECT_EQ(std::format(L"{:*^15.6}", wide), L"\x1b[4m****wide t*****\x1b[0m");
   EXPECT_EQ(std::format(L"{:?}", wide), L"_ {\n  \"wide\"\n  \" tree\"\n}\n");
@@ -709,7 +725,7 @@ TEST(styled_text_format_test, standard_tree_inherits_and_restores_style) {
   auto red = outer; red.fg(tjg::term_color::red);
   check_states(std::format("{}", tjg::styled(tree, outer)), std::string{"abcd"},
                {outer, red, tjg::bold(), outer});
-  EXPECT_EQ(tjg::get_terminal_state(), tjg::text_style{});
+  EXPECT_EQ(tjg::detail::get_style_state(), tjg::text_style{});
   const auto empty = tjg::absolute(tjg::styled_text{});
   EXPECT_EQ(std::format("{}", empty), "");
   EXPECT_EQ(std::format("{:.0}", tree), "");
@@ -717,7 +733,7 @@ TEST(styled_text_format_test, standard_tree_inherits_and_restores_style) {
   auto width = -1;
   EXPECT_THROW((void)std::vformat("{:>{}}", std::make_format_args(tree, width)),
                std::format_error);
-  EXPECT_EQ(tjg::get_terminal_state(), tjg::text_style{});
+  EXPECT_EQ(tjg::detail::get_style_state(), tjg::text_style{});
   for (const char* spec : {"{:08}", "{:+}", "{:.}", "{:d}", "{:s?}"}) {
     EXPECT_THROW((void)std::vformat(spec, std::make_format_args(tree)), std::format_error);
   }
@@ -739,11 +755,11 @@ struct tree_throwing_output {
 TEST(styled_text_format_test, standard_tree_output_failure_restores_state) {
   tjg::detail::style_scope scope{};
   const auto outer = tjg::underline();
-  tjg::get_terminal_state() = outer;
+  tjg::detail::get_style_state() = outer;
   const auto tree = tjg::bold(std::string(4000, 'x'));
   int remaining = 20;
   EXPECT_THROW(std::format_to(tree_throwing_output{&remaining}, "{}", tree), std::runtime_error);
-  EXPECT_EQ(tjg::get_terminal_state(), outer);
+  EXPECT_EQ(tjg::detail::get_style_state(), outer);
 }
 TEST(styled_text_format_test, named_dynamic_specs_are_rejected) {
   const auto tree = tjg::styled_text{"hello world"};

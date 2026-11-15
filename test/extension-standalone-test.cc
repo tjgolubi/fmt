@@ -2,6 +2,7 @@
 #include "tjg/strip_ansi.hpp"
 #include "tjg/color-ostream.hpp"
 #include "tjg/backslash.hpp"
+#include "tjg/styled_text-format.hpp"
 
 #include <sstream>
 
@@ -64,9 +65,6 @@ int main() {
   } catch (const std::format_error&) {
     check(tjg::detail::get_style_state() == tjg::text_style{});
   }
-#if 0 // Restore when styled_text is integrated.
   const auto utf8 = tjg::styled_text{"a\xe7\x95\x8c"};
-  check(utf8.display_width() == 3);
   check(std::format("{:.2}", utf8) == "a");
-#endif
 }

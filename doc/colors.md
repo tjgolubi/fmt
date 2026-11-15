@@ -555,7 +555,7 @@ variant's alternative index, including `std::variant_npos` when valueless.
 
 ### Combining hashes
 
-Include `<tjg/hash_support.h>` to use `tjg::hash_combine(seed, value)`.
+Include `<tjg/hash_support.hpp>` to use `tjg::hash_combine(seed, value)`.
 It updates a `std::size_t` seed using `std::hash<T>` for the value and
 Boost.ContainerHash 1.85's mixing algorithm. Start with a zero seed and combine
 members in a consistent order:
@@ -573,7 +573,7 @@ otherwise exceptions from that hasher propagate. It requires a working
 ## Readable color output
 
 All color types, including `no_color_t` and `color_t`, support `{}` and `{:?}`
-with the same unquoted notation. Include `<tjg/color.h>` for formatting and
+with the same unquoted notation. Include `<tjg/colors-format.hpp>` for formatting and
 `<tjg/color-ostream.h>` for narrow or wide ostream insertion.
 
 | Stored color kind | Example output | Meaning                          |

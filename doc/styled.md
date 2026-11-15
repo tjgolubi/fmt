@@ -3,8 +3,12 @@
 ## Structured styled text
 
 Use `styled_text` to compose text with independently styled parts. Include
-`<tjg/styled_text.h>` and format the result with `{}` using `std::format` or
-`std::format_to`. Use `{:?}` for tree inspection. No {fmt} adapter or library is needed.
+`<tjg/styled_text.hpp>` for the owning type and its composition operations.
+Include `<tjg/styled_text-format.hpp>` to use it with `std::format`,
+`std::format_to`, or `std::println`. Use `{:?}` to inspect the tree.
+
+The tree owns its text. Copies share immutable leaf strings and have their own
+styles and child lists. Moves leave the source empty and unstyled.
 
 ### Concatenation preserves each part's style
 
@@ -119,11 +123,12 @@ usual. Outer recursive overlays also skip the absolute node and its entire
 subtree.
 After the absolute span, the surrounding appearance resumes.
 
-An absolute node emits an SGR reset before applying its style, unless it
-produces no output. This applies even when the recorded terminal state already
-has the same attributes. Relative
-descendants inherit the resulting style without repeating the group's absolute
-reset. An explicitly absolute descendant establishes its own reset boundary.
+On entry to an absolute group, the formatter emits an SGR reset and applies
+the group's style before visiting its children. This can emit SGR even when
+the remaining precision clips all of the group's text. An absolute leaf resets
+when it writes text or padding. These resets occur even when the terminal
+already has the same attributes. Relative descendants inherit the group's
+style, and an absolute descendant establishes its own reset boundary.
 
 ```cpp
 auto underline_only = tjg::absolute(tjg::underline("underline only"));
@@ -171,7 +176,8 @@ root temporarily replaces the enclosing style, then restores it on completion.
 
 Styled text accepts ordinary string fill, alignment (`<`, `>`, `^`), width,
 and precision, with optional `s` presentation. Width and precision may also be
-dynamic arguments. Debug presentation (`?`) is not supported.
+dynamic arguments. For tree inspection, use the separate `?` presentation
+described below.
 
 ```cpp
 std::println("{:*>12.9}", tjg::bold("hello " + tjg::styled_text{"world", tjg::fg(tjg::color::blue)}));
@@ -182,16 +188,12 @@ Expected output (followed by a newline):
 
 <pre class="color-output"><span style="font-weight: bold">***hello <span style="color: #0000FF">wor</span></span></pre>
 
-Precision limits the whole tree rather than each leaf. Narrow text uses the extension's
-UTF-8 display-width estimate without splitting code points; wide text uses
-code-unit counts. If the next code point does not fit, later text is not
-printed. Width supplies padding after truncation. Padding receives the root
-style, including for empty text or precision zero; child styles affect only
-their own text. Relative transitions are emitted only before text or padding.
-Absolute nodes reset before applying their styles, unless there is no output.
-Truncation stops traversal of later text and nodes. It does not emit
-intermediate group restorations; after any right padding, the field transitions
-directly from its last emitted style to the enclosing shared style.
+One precision limit applies across the whole tree. If the next character
+does not fit, traversal stops. Width sets a minimum for the displayed field
+after truncation. Padding uses the root style, including for empty text or
+precision zero. Child styles apply to their own text. After any right padding,
+the formatter restores the enclosing shared style directly from the last
+emitted style.
 
 Use `plain_text` when you need an independent string containing just the stored
 text, without applying the styles:
@@ -206,24 +208,20 @@ terminal escapes. Raw escapes are not interpreted or removed and can interfere
 with the expected appearance. Express styling through the API when composing
 styled text. Terminal support and themes can affect the displayed appearance.
 
-For wide text, use `wstyled_text`. Both character types are supported by the
-extension headers without `<fmt/xchar.h>`. The same composition and grouping rules apply.
+For wide text, use `wstyled_text` and a wide format string. The same composition
+and grouping rules apply.
 
 ### Measuring text width
 
-`text.display_width()` sums the widths of the leaf strings using the same rules
-as the extension's retained Unicode width table. Narrow strings are decoded as UTF-8: for
-example, `"caf\xc3\xa9"` has width 4 and `"\xe7\x95\x8c"` has width 2.
-Wide strings use code-unit counts, matching this version's wide-string formatter.
-Styles add no width, and empty text has width zero.
+The formatter estimates display width for narrow text from UTF-8 code points
+using tables generated from Unicode 18.0.0. For example, `Café` occupies four
+columns and `界` occupies two. Each malformed UTF-8 byte counts as one column.
+Wide text uses code-unit counts. With 16-bit `wchar_t`, truncation keeps
+surrogate pairs together within a leaf.
 
-The extension owns its UTF-8 decoder and the retained Unicode 16 wide/fullwidth
-table. These preserve the previous code-point width estimates; full terminal
-and grapheme measurement remain future work.
-Each leaf is measured independently; keep UTF-8 code points within a single
-leaf. Raw escape sequences inside text are not recognized or excluded.
-Each leaf must contain complete UTF-8 code points for width and precision to
-match formatting the equivalent ordinary concatenated string.
+Each leaf is measured independently, so keep encoded characters within one
+leaf. Generated SGR sequences take no columns. Raw escape sequences stored in
+leaves are measured as text.
 
 ### Debug output
 
@@ -257,8 +255,9 @@ Every child leaf and every closing brace ends with a newline. A top-level leaf
 has no trailing newline: an empty unstyled leaf displays `""`, and a bold leaf
 displays `b "hello"`. No additional outer enclosure is added. Debug output
 shows stored node styles, without resolving inheritance or modifying the tree.
-Wide trees support the same presentation. Fill, alignment, width, and precision
-apply to the completed debug representation; precision can truncate that text.
+Wide trees support the same presentation. Use `{:?}` for the complete tree.
+Combining `?` with a width or precision is a format error, including with
+dynamic arguments.
 
 ### Stream insertion
 
@@ -317,7 +316,7 @@ constexpr auto notes_color =
     tjg::fg(tjg::term_color::white).bg(tjg::color::indigo);
 
 auto cell(tjg::styled_text text, tjg::text_style column) -> tjg::styled_text {
-  return tjg::underlay(column, std::move(text));
+  return tjg::underlay(column, text);
 }
 
 auto nas_note = tjg::styled_text{"All",
@@ -367,34 +366,21 @@ auto db_note = tjg::styled_text{"Connection refused: "}
     + " Database service is unavailable";
 ```
 
-`CRITICAL!` uses its complete style instead of inheriting the indigo column
-background or row emphasis. The column style resumes for the field's right
-padding. The trailing explanation is omitted because the Notes field has a
-precision of 30.
+`CRITICAL!` uses its own foreground, background, and emphasis. The column style
+resumes after it. The Notes field's precision of 30 cuts off the trailing
+explanation.
 
-Expected display (followed by a newline):
+![TableDemo in a Windows terminal with colored columns, aligned UTF-8 text, and highlighted alerts](table-demo.png)
 
-<pre class="color-output" style="white-space: pre; overflow-x: auto; background-color: #101010" aria-label="System health dashboard with column colors, row emphasis, and an absolute warning"><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">SYSTEM HEALTH DASHBOARD
-
-</span><span style="color:#e5e5e5;background-color:#00008b;font-weight:700;font-style:normal;text-decoration-line:underline">Service         </span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:underline"> </span><span style="color:#e5e5e5;background-color:#006400;font-weight:700;font-style:normal;text-decoration-line:underline">   Status   </span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:underline"> </span><span style="color:#e5e5e5;background-color:#b8860b;font-weight:700;font-style:normal;text-decoration-line:underline">     Latency</span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:underline"> </span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:700;font-style:normal;text-decoration-line:underline">Notes                         </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">
-</span><span style="color:#e5e5e5;background-color:#00008b;font-weight:400;font-style:normal;text-decoration-line:none">NAS             </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#00ff00;background-color:#006400;font-weight:400;font-style:normal;text-decoration-line:none">     OK     </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#b8860b;font-weight:400;font-style:normal;text-decoration-line:none">       12 ms</span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#cd0000;background-color:#00cdcd;font-weight:400;font-style:normal;text-decoration-line:none">All</span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none"> volumes </span><span style="color:#00cd00;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none">healthy</span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none">           </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">
-</span><span style="color:#e5e5e5;background-color:#00008b;font-weight:400;font-style:normal;text-decoration-line:none">東京 NAS         </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#00ff00;background-color:#006400;font-weight:400;font-style:normal;text-decoration-line:none">     OK     </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#b8860b;font-weight:400;font-style:normal;text-decoration-line:none">        9 ms</span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none">Café 東京: all systems normal </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">
-</span><span style="color:#e5e5e5;background-color:#00008b;font-weight:400;font-style:normal;text-decoration-line:none">VPN             </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#00ff00;background-color:#006400;font-weight:400;font-style:normal;text-decoration-line:none">     OK     </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#b8860b;font-weight:400;font-style:normal;text-decoration-line:none">       38 ms</span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none">Encrypted </span><span style="color:#7fffd4;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none">connection</span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none">          </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">
-</span><span style="color:#e5e5e5;background-color:#00008b;font-weight:700;font-style:normal;text-decoration-line:none">Backup          </span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:none"> </span><span style="color:#cdcd00;background-color:#006400;font-weight:700;font-style:normal;text-decoration-line:none">    WARN    </span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#b8860b;font-weight:700;font-style:normal;text-decoration-line:none">      215 ms</span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:none"> </span><span style="color:#ffff00;background-color:#4b0082;font-weight:700;font-style:normal;text-decoration-line:none">Slow</span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:700;font-style:normal;text-decoration-line:none"> - retry scheduled        </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">
-</span><span style="color:#e5e5e5;background-color:#00008b;font-weight:700;font-style:normal;text-decoration-line:none">Database        </span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:none"> </span><span style="color:#ff0000;background-color:#006400;font-weight:700;font-style:normal;text-decoration-line:none">    FAIL    </span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#b8860b;font-weight:700;font-style:normal;text-decoration-line:none">          --</span><span style="color:#d0d0d0;background-color:#101010;font-weight:700;font-style:normal;text-decoration-line:none"> </span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:700;font-style:normal;text-decoration-line:none">Connection refused: </span><span style="color:#ff0000;background-color:#ffffff;font-weight:700;font-style:normal;text-decoration-line:none">CRITICAL!</span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:700;font-style:normal;text-decoration-line:none"> </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">
-</span><span style="color:#e5e5e5;background-color:#00008b;font-weight:400;font-style:normal;text-decoration-line:none;opacity:0.6">Old server      </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none;opacity:0.6"> </span><span style="color:#e5e5e5;background-color:#006400;font-weight:400;font-style:normal;text-decoration-line:none;opacity:0.6">  OFFLINE   </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none;opacity:0.6"> </span><span style="color:#e5e5e5;background-color:#b8860b;font-weight:400;font-style:normal;text-decoration-line:none;opacity:0.6">          --</span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none;opacity:0.6"> </span><span style="color:#e5e5e5;background-color:#4b0082;font-weight:400;font-style:normal;text-decoration-line:none;opacity:0.6">Maintenance mode              </span><span style="color:#d0d0d0;background-color:#101010;font-weight:400;font-style:normal;text-decoration-line:none">
-</span></pre>
-
-`東京` occupies six UTF-8 bytes but has an estimated display width of four;
-`Café` occupies five bytes and also has width four. Their columns remain aligned
-because formatting measures display width rather than byte length. View the demo in an ANSI-capable terminal to see its native styling, including
-blink where supported.
+`東京` occupies six UTF-8 bytes and `Café` occupies five. Both have an estimated
+display width of four columns. An ANSI-capable terminal shows the native
+styling, including blink where supported.
 
 ## Parsing SGR text
 
-Include `<tjg/parse_styled_text.h>` and call `parse_styled_text` to turn text
+Include `<tjg/parse_styled_text.hpp>` and call `parse_styled_text` to turn text
 containing ordinary ANSI SGR into an owned `styled_text` (or `wstyled_text` for
-wide input):
+wide input). Include `<tjg/styled_text-format.hpp>` to format the result.
 
 ```cpp
 auto message = tjg::parse_styled_text("plain \x1b[31mred\x1b[0m plain");
@@ -457,7 +443,7 @@ can affect the terminal outside the style model; parsing is not sanitization.
 
 ## Stripping ANSI sequences
 
-Include `<tjg/strip_ansi.h>` and call `strip_ansi` to obtain an owning string
+Include `<tjg/strip_ansi.hpp>` and call `strip_ansi` to obtain an owning string
 with complete ESC-prefixed ANSI sequences removed:
 
 ```cpp
@@ -486,7 +472,8 @@ returns, or other terminal behavior, and is not a security sanitizer. Unlike
 `parse_styled_text(...).plain_text()`, it removes non-SGR escapes too, without
 constructing a styled tree.
 
-The styled-text overload returns a new `basic_styled_text<Char>` with the same
+Include `<tjg/strip_ansi_styled_text.hpp>` for the styled-text overload. It
+returns a new `basic_styled_text<Char>` with the same
 tree structure, styles, and absolute boundaries. It strips ANSI sequences from
 each leaf independently, retaining leaves that become empty and sharing
 unchanged leaf strings. The input is unchanged. Sequences split across leaves
@@ -504,13 +491,13 @@ complete sequences formed across leaf boundaries.
 
 ## Backslash escaping and unescaping
 
-Include `<tjg/backslash.h>` for `backslash_escape` and `backslash_unescape`.
+Include `<tjg/backslash.hpp>` for `backslash_escape` and `backslash_unescape`.
 These independent text utilities return owning strings and support narrow and
 wide text, including embedded NULs when passed a string or a length-bearing view.
 They require neither ANSI parsing nor styled text.
 
 ```cpp
-#include <tjg/backslash.h>
+#include <tjg/backslash.hpp>
 
 auto readable = tjg::backslash_escape("\x1b[31mred\x1b[0m\n");
 // readable contains the literal text: \e[31mred\e[0m\n
@@ -554,12 +541,11 @@ accepts one to three octal digits (`\0` through `\377`). Hex escapes consume
 exactly two digits; octal escapes consume at most three. Subsequent digits
 remain ordinary text.
 
-Unknown or malformed escapes throw `std::format_error`. This includes `\q`,
-`\x`, `\xG1`, a trailing backslash, and octal values above 255. Unicode and
-braced numeric escapes are not supported and also throw. Decoding is one pass:
-a decoded backslash does not start another escape. Surrounding quotes are
-retained. If `backslash_unescape_to` throws, output written before the invalid
-escape remains in the destination; the invalid escape itself writes nothing.
+Unknown or malformed escapes throw `std::invalid_argument`. Examples include
+`\q`, `\x`, `\xG1`, a trailing backslash, and Unicode or braced numeric escapes.
+Octal values above 255 throw `std::out_of_range`. The decoder preserves
+surrounding quotes and processes each escape once. If `backslash_unescape_to`
+throws, output already written remains in the destination.
 
 To write into an existing destination, use `backslash_escape_to(out, text)` or
 `backslash_unescape_to(out, text)`. Both accept output iterators and return the
@@ -592,8 +578,8 @@ interpret ANSI sequences or remove explicit styles.
 
 ## Individual styled arguments
 
-Style an individual replacement field with `styled`. Its format
-specifications still apply to the underlying value.
+Include `<tjg/text_style-format.hpp>` to style an individual replacement
+field with `styled`. Its format specifications apply to the underlying value.
 
 ::: styled(const T&, text_style)
     options:

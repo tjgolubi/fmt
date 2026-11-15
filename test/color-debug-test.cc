@@ -1,5 +1,7 @@
 #include "tjg/strip_ansi.hpp"
+#include "tjg/strip_ansi_styled_text.hpp"
 #include "tjg/color-ostream.hpp"
+#include "tjg/styled_text-format.hpp"
 #include "standard-format-test.h"
 #include "test-support.h"
 
@@ -161,9 +163,8 @@ TEST(color_debug_test, string_specifications) {
 #endif
 }
 
-#if 0 // Restore when styled_text is integrated.
 TEST(color_debug_test, tree_layout) {
-  check_output(tjg::text_style{}, "{}");
+  check_style(tjg::text_style{}, "{}");
   EXPECT_EQ(std::format("{:?}", tjg::styled_text{}), "\"\"");
   EXPECT_EQ(std::format("{:?}", tjg::bold("hello")), "b \"hello\"");
   const auto child =
@@ -185,9 +186,11 @@ TEST(color_debug_test, tree_layout) {
   const auto end = std::format_to(&output[0], "{:?}", tree);
   EXPECT_EQ(std::string(output, end), expected);
   const auto bounded = std::format_to_n(output, 7, "{:?}", tree);
-  EXPECT_EQ(bounded.size, expected.size());
+  EXPECT_EQ(bounded.size, static_cast<std::ptrdiff_t>(expected.size()));
   EXPECT_EQ(std::string(output, output + 7), expected.substr(0, 7));
-  EXPECT_EQ(std::format("{:>10.4?}", tree), "      b {\n");
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
+  EXPECT_THROW((void)runtime_format("{:>10.4?}", tree), std::format_error);
+#endif
 }
 
 TEST(color_debug_test, tree_strings_and_stored_styles) {
@@ -211,4 +214,3 @@ TEST(color_debug_test, tree_strings_and_stored_styles) {
   EXPECT_EQ(std::format("{:?}", moved), "\"\"");
   EXPECT_EQ(std::format("{:?}", owner), "\"old\"");
 }
-#endif

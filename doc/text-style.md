@@ -8,9 +8,10 @@
 
 ### Readable style output
 
-`text_style` supports `{}` and `{:?}` using the same compact notation. With
-`<tjg/color-ostream.h>`, narrow and wide ostream insertion uses that notation
-too. These operations describe the style without emitting SGR sequences.
+With `<tjg/text_style-format.hpp>`, `{}` emits the style's SGR escape sequence.
+An empty style emits an empty string. Use `{:?}` for compact readable notation.
+With `<tjg/color-ostream.h>`, narrow and wide ostream insertion uses that notation
+too.
 
 Output starts with `=` if the style is absolute, immediately followed by the
 characters for its set emphasis bits, in this order:
@@ -34,23 +35,24 @@ the slash; with background alone, begin with `/`. With neither, omit the color
 component. An empty style displays `{}`; an absolute-only style displays `=`.
 
 ```cpp
-std::format("{}", tjg::text_style{});                  // "{}"
-std::format("{}", tjg::bg(tjg::gray_color{12}));        // "/gray12"
+std::format("{:?}", tjg::text_style{});                // "{}"
+std::format("{:?}", tjg::bg(tjg::gray_color{12}));      // "/gray12"
 std::format("{:?}", tjg::absolute(tjg::bold().underline()
     .fg(tjg::term_color::bright_red).bg(tjg::rgb{26, 43, 60})));
 // "=b_ bright_red/#1a2b3c"
 ```
 
-String fill, alignment, width, and precision are supported, including dynamic
-width and precision. Stream width, fill, and alignment behave as for an ordinary
+Readable formatting supports fill, alignment, width, and precision, including
+dynamic width and precision. Stream width, fill, and alignment behave as for an ordinary
 string. A [styled-text debug view](styled.md#debug-output) omits empty node
 styles.
 
-With `<tjg/color.h>`, formatting an `emphasis` value with `{}` or `{:?}` lists
-its set attribute names in declaration order, separated by spaces inside braces.
-For example, `bold | faint | strike` displays
-`{bold faint strike}`. `emphasis::none` displays `{}`. Narrow and wide formatting
-accepts string fill, alignment, width, precision, optional `s` or `?`, and
+With `<tjg/emphasis-format.hpp>`, `{}` lists the set emphasis names in
+declaration order, separated by spaces inside braces. For example,
+`bold | faint | strike` displays `{bold faint strike}`. The `{:?}` presentation
+uses the compact codes `bf-`. `emphasis::none` displays `{}` in either form.
+Narrow and wide formatting accepts string fill, alignment, width, precision,
+optional `s` or `?`, and
 dynamic specifications.
 With `<tjg/color-ostream.h>`, ostream insertion uses the same named form. Stream
 width, fill, and alignment apply as for a string; precision is ignored. This

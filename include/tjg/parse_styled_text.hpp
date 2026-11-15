@@ -1,7 +1,8 @@
 // Parse ordinary ANSI SGR into owned styled text.
 #pragma once
 
-#include "styled_text.h"
+#include "styled_text.hpp"
+#include "utility.hpp"
 
 #include <string_view>
 
@@ -9,12 +10,13 @@ namespace tjg {
 
 namespace detail {
 
-template<typename Char>
+template<CharType Char>
 auto sgr_number(std::basic_string_view<Char> input, int& value) -> bool {
   value = 0;
   for (auto c : input) {
-    if (c < Char('0') || c > Char('9')) return false;
-    const auto digit = static_cast<int>(c - Char('0'));
+    if (c < Char{'0'} || c > Char{'9'})
+      return false;
+    const auto digit = static_cast<int>(c - Char{'0'});
     if (value > ((std::numeric_limits<int>::max)() - digit) / 10)
       return false;
     value = value * 10 + digit;
@@ -22,7 +24,7 @@ auto sgr_number(std::basic_string_view<Char> input, int& value) -> bool {
   return true;
 }  // sgr_number
 
-template<typename Char>
+template<CharType Char>
 struct sgr_fields {
   std::basic_string_view<Char> input{};
   std::size_t position{0};
@@ -30,9 +32,10 @@ struct sgr_fields {
   explicit sgr_fields(std::basic_string_view<Char> value) : input{value} {}
 
   auto next(std::basic_string_view<Char>& field) -> bool {
-    if (position > input.size()) return false;
+    if (position > input.size())
+      return false;
     const auto start = position;
-    while (position < input.size() && input[position] != Char(';'))
+    while (position < input.size() && input[position] != Char{';'})
       ++position;
     field = {input.data() + start, position - start};
     ++position;
@@ -51,20 +54,20 @@ inline auto sgr_index_color(int index) -> color_t {
   return gray_color{index - 232};
 }
 
-template<typename Char>
+template<CharType Char>
 auto apply_sgr(std::basic_string_view<Char> parameters, text_style& style)
   -> bool
 {
   // Validate atomically before the caller commits the resulting style.
   for (auto c : parameters) {
-    if ((c < Char('0') || c > Char('9')) && c != Char(';') && c != Char(':'))
+    if ((c < Char{'0'} || c > Char{'9'}) && c != Char{';'} && c != Char{':'})
       return false;
   }
   auto fields = sgr_fields<Char>{parameters};
   auto field  = std::basic_string_view<Char>{};
   while (fields.next(field)) {
     auto colon = std::size_t{0};
-    while (colon < field.size() && field[colon] != Char(':'))
+    while (colon < field.size() && field[colon] != Char{':'})
       ++colon;
     int code = 0;
     if (!sgr_number(std::basic_string_view<Char>{field.data(), colon}, code))
@@ -77,14 +80,13 @@ auto apply_sgr(std::basic_string_view<Char> parameters, text_style& style)
       auto start = std::size_t{0};
       bool too_many = false;
       for (std::size_t i = 0; i <= field.size(); ++i) {
-        if (i != field.size() && field[i] != Char(':')) continue;
+        if (i != field.size() && field[i] != Char{':'})
+          continue;
         int value = 0;
         if (!sgr_number(
                 std::basic_string_view<Char>{field.data() + start, i - start},
                 value))
-        {
-          return false;
-        }
+        { return false; }
         if (count < 6)
           values[count] = value;
         else
@@ -92,21 +94,24 @@ auto apply_sgr(std::basic_string_view<Char> parameters, text_style& style)
         ++count;
         start = i + 1;
       }
-      if (code != 38 && code != 48) continue;
+      if (code != 38 && code != 48)
+        continue;
       auto color = color_t{};
       if (!too_many && count == 3 && values[1] == 5) {
-        if (values[2] > 255) return false;
+        if (values[2] > 255)
+          return false;
         color = sgr_index_color(values[2]);
       } else if (!too_many && values[1] == 2 && (count == 5 || count == 6)) {
-        if (count == 6 && values[2] != 0) continue;  // Unsupported color space.
+        if (count == 6 && values[2] != 0)
+          continue;  // Unsupported color space.
         const auto offset = count - 3;
         if  (values[offset] > 255 || values[offset + 1] > 255
-          || values[offset + 2] > 255) {
-          return false;
-        }
+          || values[offset + 2] > 255)
+        { return false; }
         color = rgb{values[offset], values[offset + 1], values[offset + 2]};
       } else {
-        if (values[1] == 2 || values[1] == 5) return false;
+        if (values[1] == 2 || values[1] == 5)
+          return false;
         continue;
       }
       if (code == 38)
@@ -117,24 +122,25 @@ auto apply_sgr(std::basic_string_view<Char> parameters, text_style& style)
     }
     if (code == 38 || code == 48) {
       int mode = 0, a = 0, b = 0, c = 0;
-      if (!fields.number(mode)) return false;
+      if (!fields.number(mode))
+        return false;
       auto color = color_t{};
       if (mode == 5) {
-        if (!fields.number(a) || a > 255) return false;
+        if (!fields.number(a) || a > 255)
+          return false;
         color = sgr_index_color(a);
       } else if (mode == 2) {
         if (!fields.number(a) || !fields.number(b) || !fields.number(c)
           || a > 255 || b > 255 || c > 255)
-        {
-          return false;
-        }
+        { return false; }
         color = rgb{a, b, c};
       } else {
         // Unknown extended-color syntax has no known payload boundary.
         // Ignore the remainder rather than interpreting color data as emphasis.
         while (fields.next(field)) {
           int ignored = 0;
-          if (!sgr_number(field, ignored)) return false;
+          if (!sgr_number(field, ignored))
+            return false;
         }
         return true;
       }
@@ -179,48 +185,45 @@ auto apply_sgr(std::basic_string_view<Char> parameters, text_style& style)
 }  // apply_sgr
 
 // Preserve non-SGR escape sequences as opaque text, including OSC/DCS payloads.
-template<typename Char>
+template<CharType Char>
 auto sgr_escape_end(std::basic_string_view<Char> input, std::size_t start)
   -> std::size_t
 {
-  constexpr auto Esc = Char('\x1b');
+  constexpr auto Esc = Char{'\x1b'};
   auto pos = start + 1;
   if (pos == input.size()) return pos;
   const auto kind = input[pos++];
-  if  (kind == Char(']') || kind == Char('P') || kind == Char('X')
-    || kind == Char('^') || kind == Char('_'))
+  if  (kind == Char{']'} || kind == Char{'P'} || kind == Char{'X'}
+    || kind == Char{'^'} || kind == Char{'_'})
   {
     while (pos < input.size()) {
-      if (kind == Char(']') && input[pos] == Char('\a')) return pos + 1;
+      if (kind == Char{']'} && input[pos] == Char{'\a'})
+        return pos + 1;
       if (input[pos] == Esc && pos + 1 < input.size()
-        && input[pos + 1] == Char('\\'))
-    {
-        return pos + 2;
-      }
+          && input[pos + 1] == Char{'\\'})
+      { return pos + 2; }
       ++pos;
     }
     return pos;
   }
-  if (kind == Char('[')) {
+  if (kind == Char{'['}) {
     while (pos < input.size()) {
       const auto c = input[pos];
-      if (c >= Char('@') && c <= Char('~')) return pos + 1;
-      if (c < Char(' ') || c > Char('?')) return pos;
+      if (c >= Char{'@'} && c <= Char{'~'})
+        return pos + 1;
+      if (c < Char{' '} || c > Char{'?'})
+        return pos;
       ++pos;
     }
     return pos;
   }
-  if (kind >= Char(' ') && kind <= Char('/')) {
-    while (pos < input.size() && input[pos] >= Char(' ')
-           && input[pos] <= Char('/'))
-    {
-      ++pos;
-    }
-    if (pos < input.size() && input[pos] >= Char('0')
-      && input[pos] <= Char('~'))
-    {
-      ++pos;
-    }
+  if (kind >= Char{' '} && kind <= Char{'/'}) {
+    while (pos < input.size() && input[pos] >= Char{' '}
+           && input[pos] <= Char{'/'})
+    { ++pos; }
+    if (pos < input.size() && input[pos] >= Char{'0'}
+        && input[pos] <= Char{'~'})
+    { ++pos; }
   }
   return pos;
 } // sgr_escape_end
@@ -236,11 +239,11 @@ auto sgr_escape_end(std::basic_string_view<Char> input, std::size_t start)
  * verbatim. Malformed SGR is retained atomically; unknown valid parameters are
  * ignored. This parses appearance, not an exact escape-byte round trip.
  */
-template<typename Char>
+template<CharType Char>
 [[nodiscard]] auto parse_styled_text(std::basic_string_view<Char> input)
   -> basic_styled_text<Char>
 {
-  constexpr auto Esc = Char('\x1b');
+  constexpr auto Esc = Char{'\x1b'};
   auto result = basic_styled_text<Char>{};
   auto group  = basic_styled_text<Char>{};
   bool in_absolute_group = false;
@@ -253,7 +256,7 @@ template<typename Char>
     auto& destination = in_absolute_group ? group : result;
     destination += basic_styled_text<Char>{std::move(text), ts};
     text.clear();
-  };
+  }; // flush
 
   const auto append = [&](const Char* data, std::size_t size) {
     if (style.is_absolute()) {
@@ -266,19 +269,20 @@ template<typename Char>
     if (!text.empty() && ts != style) flush();
     if (text.empty()) ts = style;
     text.append(data, size);
-  };
+  }; // append
 
   for (std::size_t pos = 0; pos < input.size(); ) {
     if (input[pos] != Esc) {
       const auto start = pos++;
-      while (pos < input.size() && input[pos] != Esc) ++pos;
+      while (pos < input.size() && input[pos] != Esc)
+        ++pos;
       append(input.data() + start, pos - start);
       continue;
     }
     const auto end = detail::sgr_escape_end(input, pos);
     auto next = style;
-    if ( end >= pos + 3 && input[pos + 1] == Char('[')
-      && input[end - 1] == Char('m')
+    if ( end >= pos + 3 && input[pos + 1] == Char{'['}
+      && input[end - 1] == Char{'m'}
       && detail::apply_sgr(
             std::basic_string_view<Char>{input.data() + pos + 2, end - pos - 3},
             next))
@@ -292,7 +296,8 @@ template<typename Char>
   flush();
   if (!group.empty()) {
     group.style(tjg::absolute(group.style()));
-    if (result.empty()) return group;
+    if (result.empty())
+      return group;
     result += std::move(group);
   }
   return result;

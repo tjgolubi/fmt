@@ -1,6 +1,8 @@
 # Styled Formatting
 
-The formatting overloads produce text containing styling sequences.
+Include `<tjg/text_style-format.hpp>` for the formatting overloads and
+`<tjg/sgr_support.hpp>` for the SGR helpers. Formatting produces text containing
+styling sequences.
 See [Text style rendering](index.md#TextStyleRendering) for the shared rules.
 
 ## `to_sgr`
@@ -9,11 +11,9 @@ See [Text style rendering](index.md#TextStyleRendering) for the shared rules.
     options:
       color_reference: true
 
-`tjg::to_sgr<Char>(style)` renders a style as a `std::basic_string<Char>`
-containing ANSI SGR escape sequences. `Char` defaults to `char`, so
-`tjg::to_sgr(style)` returns `std::string`; `tjg::to_sgr<wchar_t>(style)`
-returns `std::wstring`. It leaves the style unchanged and includes no text or
-trailing reset. An empty relative style produces an empty string. Unspecified
+`tjg::to_sgr(style)` returns a `std::string` containing the ASCII bytes of
+the ANSI SGR escape sequence. The result contains only the opening sequence.
+An empty relative style produces an empty string. Unspecified
 color channels emit no parameters. A relative style leaves those colors
 unchanged; an absolute style begins with a reset, selecting terminal defaults
 for them. An absolute-only style emits `"\x1b[0m"`.
@@ -22,8 +22,7 @@ for them. An absolute-only style emits `"\x1b[0m"`.
 const auto style = tjg::text_style{tjg::emphasis::bold,
                                    tjg::rgb{1, 2, 3},
                                    tjg::term_color::black};
-auto sgr      = tjg::to_sgr(style);
-auto wide_sgr = tjg::to_sgr<wchar_t>(style);
+auto sgr = tjg::to_sgr(style);
 ```
 
 The example emits one SGR sequence with unpadded parameters,
@@ -64,8 +63,7 @@ SGR `39` or `49`. Bold and faint share SGR `22` for removal, so a surviving
 intensity attribute is reapplied when necessary. Colors are compared by kind
 and value, preserving terminal palette semantics.
 
-Both overloads support narrow and wide characters; transitions can allocate and
-are not `noexcept`.
+Both overloads return `std::string`. Constructing the result can allocate.
 
 ## `sgr_reset`
 
@@ -87,9 +85,7 @@ auto message     = tjg::to_sgr(style) + "message";
 const auto reset = tjg::sgr_reset();
 message.append(reset.data(), reset.size());
 
-auto wide_message     = tjg::to_sgr<wchar_t>(style) + L"message";
-const auto wide_reset = tjg::sgr_reset<wchar_t>();
-wide_message.append(wide_reset.data(), wide_reset.size());
+auto wide_message = tjg::wrap_sgr<wchar_t>(style, L"message");
 ```
 
 ## `wrap_sgr`
@@ -130,7 +126,7 @@ Both constants are `constexpr std::size_t` values available in C++23 and later:
 | `tjg::sgr_max_length`   | `60`  | Capacity bound for generating SGR output.                                   |
 | `tjg::sgr_reset_length` | `4`   | Length of the reset sequence returned by `sgr_reset`.                       |
 
-Lengths count `Char` elements, including ESC, brackets, parameters, and the
+Lengths count sequence characters, including ESC, brackets, parameters, and the
 final `m`. They exclude any terminating null. `sgr_max_length` excludes the
 text and trailing reset and is a capacity bound, not the actual output length.
 Use the returned string's `size` for the actual opening length.

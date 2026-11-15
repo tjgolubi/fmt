@@ -1,17 +1,17 @@
 # Terminal Colors and Text Styles
 
-Include `<tjg/color.h>` to combine foreground and background colors with
-emphasis attributes, style individual formatting arguments, and produce
-formatted strings or output.
+Include `<tjg/text_style-format.hpp>` to combine foreground and background
+colors with emphasis, style individual arguments, and produce formatted strings
+or output.
 
-On `ref/CPP20`, the extension API lives in namespace `tjg` and targets C++23.
+The library API lives in namespace `tjg` and targets C++23.
 Text utilities and SGR helpers use `std::basic_string_view`, including
 `std::string_view` and `std::wstring_view`. Formatting and printing use `std::format` and `std::print`; the extension
 uses `<tjg/...>` headers and requires no {fmt} headers or library.
-The standalone `tjg/` CMake project provides the installable `tjg::tjg` target. Owning-tree specifications,
-UTF-8 decoding, width estimates, and debug escaping are extension-owned. `tjg::color_t` stores an
-unspecified color, an RGB value, or a terminal, cube, or gray palette color
-in one public type.
+The repository's root CMake project provides the installable `tjg::tjg` target.
+The library implements styled-text format specs, UTF-8 decoding, width
+estimates, and debug escaping. `tjg::color_t` stores an unspecified color,
+an RGB value, or a terminal, cube, or gray palette color in one public type.
 
 Convenience is a major design goal. The API deliberately provides several ways
 to express common styling operations: constructors for complete styles, fluent
@@ -21,7 +21,8 @@ for each use, from concise one-off styles to attributes controlled by user
 configuration.
 
 ```cpp
-#include <tjg/color.h>
+#include <tjg/text_style-format.hpp>
+#include <print>
 
 int main() {
   auto style = tjg::fg(tjg::color::forest_green).bold();
@@ -161,11 +162,10 @@ See the [table demonstration](styled.md#table-demonstration) for a complete
 example combining column defaults, row emphasis, absolute spans, UTF-8 display
 widths, and fixed-width formatting, with build and run instructions.
 
-`get_terminal_state` returns a reference to one function-local static
-`text_style` in `color.h`, initially terminal defaults. Styled formatting saves
-and restores that value, including on exceptions. Nested `format` and
-`format_to` calls share the active style even when they construct a new
-formatting context. Formatting contexts carry no terminal state.
+The library keeps one shared `text_style`, initially set to terminal defaults.
+Styled formatting saves and restores that value, including on exceptions.
+Nested `format` and `format_to` calls share the active style even when they
+construct a new formatting context. Formatting contexts carry no terminal state.
 
 This implementation is single-threaded, with no mutex or thread-local state.
 Styled formatting runs at runtime, including with compiled format strings;
@@ -182,13 +182,13 @@ sequences in their result. For format string syntax, see the
 
 ## Standard formatting
 
-Include `<tjg/color.h>` to use colors, `color_t`, `text_style`, `emphasis`,
+Include `<tjg/text_style-format.hpp>` to use colors, `color_t`, `text_style`, `emphasis`,
 and borrowed `styled` arguments with `std::format` and `std::format_to`.
 Both narrow and wide formatting are supported.
 
 ```cpp
 #include <format>
-#include <tjg/color.h>
+#include <tjg/text_style-format.hpp>
 
 auto color = std::format("{}", tjg::color::red); // "#ff0000"
 auto style = std::format("{:?}", tjg::bold());  // "b"
@@ -197,18 +197,20 @@ auto text = std::format("{:04}", tjg::styled(42, tjg::bold()));
 // Bold "0042", followed by restoration of the enclosing style.
 ```
 
-Readable values retain the same unquoted notation for `{}` and `{:?}`.
-Standard string fill, alignment, width, precision, and dynamic arguments apply.
+Colors retain the same unquoted notation for `{}` and `{:?}`. Emphasis uses
+names with `{}` and compact codes with `{:?}`. A `text_style` emits SGR with
+`{}` and uses readable notation with `{:?}`. String fill, alignment, width,
+and precision apply to the readable forms, including dynamic arguments.
 `styled` uses its underlying type's standard formatter, including padding and
 numeric specifications. Nested styled fields inherit and restore the shared
 terminal state; absolute fields temporarily replace it. The wrapper still
 borrows its value, so stored wrappers need a surviving referent.
 
-Include `<tjg/styled_text.h>` for standard formatting of owning `styled_text`
-and `wstyled_text` trees, including nested styles, padding, truncation, dynamic
-specifications, and `?` tree inspection. The extension uses standard formatting
-throughout; old {fmt} adapters are removed. Formatting reports specification
-errors through `std::format_error`.
+Include `<tjg/styled_text-format.hpp>` for standard formatting of owning
+`styled_text` and `wstyled_text` trees, including nested styles, padding,
+truncation, dynamic specifications, and `?` tree inspection. The `?`
+presentation rejects width and precision. Formatting reports invalid runtime
+specifications through `std::format_error`.
 
 ## Inline buffer
 
@@ -220,6 +222,13 @@ characters inline, with a default capacity of 256. SGR construction uses a
 Use `view()` to read the contents, `push_back` or `append` to write, and
 `clear()` to reuse the buffer. The caller supplies enough capacity for each
 write. Use the view or the buffer's size to determine the end of the output.
+
+Runtime construction leaves the character storage uninitialized. Copies copy
+only the populated characters. `resize(size, fill)` fills newly exposed
+characters with `fill`, which defaults to zero. Use
+`resize_and_overwrite(limit, op)` to let a producer such as `std::fread` write
+directly into the buffer. The callable receives a pointer and the limit, and
+returns the number of initialized characters to keep.
 
 ::: basic_inline_buffer
     options:

@@ -1,6 +1,6 @@
 # Styled Output
 
-Include `<tjg/color.h>` to use these output overloads. See
+Include `<tjg/text_style-format.hpp>` to use these output overloads. See
 [Text style rendering](index.md#TextStyleRendering) for the shared styling rules.
 
 ## print to a stream

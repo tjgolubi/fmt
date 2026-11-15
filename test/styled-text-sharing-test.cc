@@ -1,7 +1,10 @@
 // Isolated allocation regression: replacing global new must not affect other tests.
-#include "tjg/styled_text.h"
+#include "tjg/styled_text.hpp"
 
 #include <new>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <cstdio>
 #include <cstdlib>
@@ -136,7 +139,8 @@ bool check_sharing() {
   assigned = source;
   count_allocations = false;
   if (!check<Char>("leaf copy/assignment",
-                   allocation_count == 0 && copy == source && assigned == source))
+                   allocations_match({0, 0, 0}) && copy == source &&
+                   assigned == source))
     return false;
 
   const auto branch = source + source;
