@@ -1,12 +1,8 @@
-site_name: '{fmt}'
+site_name: FmtColor
 
 docs_dir: ../doc
 
-# Read TJG sources from tjg/doc while retaining the color/ site routes.
-hooks:
-  - python/tjg_docs.py
-
-repo_url: https://github.com/fmtlib/fmt
+repo_url: https://github.com/tjgolubi/fmt
 
 theme:
   name: material
@@ -28,11 +24,11 @@ theme:
 
 extra_javascript:
   - https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/highlight.min.js
-  - fmt.js
+  - color.js
 
 extra_css:
   - https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/styles/default.min.css
-  - fmt.css
+  - color.css
 
 markdown_extensions:
   - admonition
@@ -51,23 +47,14 @@ plugins:
   - mkdocstrings:
       default_handler: cxx
 nav:
-  - Home: index.md
-  - Get Started: get-started.md
-  - API: api.md
-  - Color:
-      - Overview: color/index.md
-      - Colors: color/colors.md
-      - Named colors: color/named-colors.md
-      - Emphasis: color/emphasis.md
-      - Text styles: color/text-style.md
-      - Styled arguments: color/styled.md
-      - Styled output: color/print.md
-      - Styled formatting: color/format.md
-  - Syntax: syntax.md
-
-exclude_docs: ChangeLog-old.md
+  - Overview: index.md
+  - Colors: colors.md
+  - Named colors: named-colors.md
+  - Emphasis: emphasis.md
+  - Text styles: text-style.md
+  - Styled arguments: styled.md
+  - Styled output: print.md
+  - Styled formatting: format.md
 
 extra:
-  version:
-    provider: mike
   generator: false

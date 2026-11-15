@@ -50,13 +50,13 @@ jobs:
 
       - name: Configure TJG
         run: >-
-          cmake -S tjg -B build/tjg -G Ninja
+          cmake -S . -B build/color -G Ninja
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DCMAKE_CXX_STANDARD=23 -DCMAKE_CXX_STANDARD_REQUIRED=ON
           -DTJG_TEST=ON -DTJG_WERROR=ON
 
       - name: Build TJG tests
-        run: cmake --build build/tjg --parallel 4
+        run: cmake --build build/color --parallel 4
 
       - name: Test TJG
-        run: ctest --test-dir build/tjg -L tjg --output-on-failure
+        run: ctest --test-dir build/color -L tjg --output-on-failure

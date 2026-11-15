@@ -10,7 +10,7 @@ import re
 from html import escape
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from subprocess import PIPE, STDOUT, CalledProcessError, Popen
+from subprocess import PIPE, STDOUT, Popen
 
 from markupsafe import Markup
 from mkdocstrings import BaseHandler
@@ -61,6 +61,7 @@ tag_map = {
     "para": "p",
     "itemizedlist": "ul",
     "listitem": "li",
+    "ref": "span",
 }
 
 # A map from Doxygen tags to text.
@@ -96,6 +97,12 @@ def doxyxml2html(nodes: "list[ET.Element]"):
     for n in nodes:
         tag = tag_map.get(n.tag)
         if tag:
+            if tag == "p" and any(
+                child.tag in ("itemizedlist", "parameterlist", "simplesect",
+                              "programlisting", "verbatim")
+                for child in n
+            ):
+                tag = "div"
             out += convert_node(n, tag)
             continue
         if n.tag == "programlisting" or n.tag == "verbatim":
@@ -105,6 +112,22 @@ def doxyxml2html(nodes: "list[ET.Element]"):
             continue
         if n.tag == "ulink":
             out += convert_node(n, "a", {"href": n.attrib["url"]})
+            continue
+        if n.tag == "parameterlist":
+            out += "<dl>"
+            for item in n.findall("parameteritem"):
+                names = item.findall("parameternamelist/parametername")
+                out += "".join(convert_node(name, "dt") for name in names)
+                description = item.find("parameterdescription")
+                if description is not None:
+                    out += convert_node(description, "dd")
+            out += "</dl>"
+            continue
+        if n.tag == "simplesect":
+            labels = {"pre": "Precondition", "post": "Postcondition"}
+            kind = n.get("kind", "")
+            label = escape(labels.get(kind, kind.capitalize()))
+            out += f"<section><strong>{label}</strong>{doxyxml2html(list(n))}</section>"
             continue
         out += tag_text_map[n.tag]
     return out
@@ -345,48 +368,17 @@ class CxxHandler(BaseHandler):
         self.base_dir = base_dir
         """The base directory of the project."""
 
-        headers = [
-            "args.h",
-            "chrono.h",
-            "compile.h",
-            "core.h",
-            "enum.h",
-            "format.h",
-            "os.h",
-            "ostream.h",
-            "printf.h",
-            "ranges.h",
-            "std.h",
-            "xchar.h",
-        ]
-
-        tjg_headers = [
-            "color.h",
-            "color-ostream.h",
-            "styled_text.h",
-            "parse_styled_text.h",
-            "strip_ansi.h",
-            "backslash.h",
-            "memory_buffer.h",
-            "text_support.h",
-            "tree_format_specs.h",
-            "format_support.h",
-        ]
-        headers += tjg_headers
-
-        # Run doxygen.
+        # Run Doxygen on the standalone TJG headers.
         cmd = ["doxygen", "-"]
-        support_dir = Path(__file__).parents[3]
-        top_dir = os.path.dirname(support_dir)
-        include_dir = os.path.join(top_dir, "include")
+        top_dir = Path(__file__).resolve().parents[4]
+        headers = sorted((top_dir / "include" / "tjg").glob("*.hpp"))
         self._ns2doxyxml: "dict[str, ET.ElementTree[ET.Element[str]]]" = {}
-        build_dir = os.path.join(top_dir, "build")
-        os.makedirs(build_dir, exist_ok=True)
-        self._doxyxml_dir = os.path.join(build_dir, "doxyxml")
-        p = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-        _, _ = p.communicate(
+        xml_dir = Path("build/doxyxml")
+        self._doxyxml_dir = str(top_dir / xml_dir)
+        p = Popen(cmd, cwd=top_dir, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        output, _ = p.communicate(
             input=r"""
-            PROJECT_NAME     = fmt
+            PROJECT_NAME     = FmtColor
             GENERATE_XML     = YES
             GENERATE_LATEX   = NO
             GENERATE_HTML    = NO
@@ -395,29 +387,20 @@ class CxxHandler(BaseHandler):
             QUIET            = YES
             AUTOLINK_SUPPORT = NO
             MACRO_EXPANSION  = YES
-            PREDEFINED       = _WIN32=1 \
-                               __linux__=1 \
-                               FMT_ENABLE_IF(...)= \
-                               FMT_USE_USER_LITERALS=1 \
-                               FMT_USE_ALIAS_TEMPLATES=1 \
-                               FMT_USE_NONTYPE_TEMPLATE_ARGS=1 \
-                               FMT_API= \
-                               "FMT_BEGIN_NAMESPACE=namespace fmt {{" \
-                               "FMT_END_NAMESPACE=}}" \
-                               "FMT_DOC=1"
+            PREDEFINED       = TJG_NOEXCEPT_UNLESS_BAD_ALLOC=
             """.format(
-                " ".join([os.path.join(include_dir, "tjg" if h in tjg_headers else "fmt", h)
-                          for h in headers]),
-                self._doxyxml_dir,
+                " ".join(header.relative_to(top_dir).as_posix() for header in headers),
+                xml_dir.as_posix(),
             ).encode("utf-8")
         )
         if p.returncode != 0:
-            raise CalledProcessError(p.returncode, cmd)
+            raise RuntimeError(output.decode("utf-8", errors="replace").strip())
 
         # Merge all file-level XMLs into one to simplify search.
         self._file_doxyxml: "ET.ElementTree[ET.Element[str]] | None" = None
-        for h in headers:
-            filename = h.replace("_", "__").replace(".h", "_8h.xml")
+        index = ET.parse(os.path.join(self._doxyxml_dir, "index.xml"))
+        for compound in index.findall("compound[@kind='file']"):
+            filename = compound.attrib["refid"] + ".xml"
             doxyxml = ET.parse(os.path.join(self._doxyxml_dir, filename))
             if self._file_doxyxml is None:
                 self._file_doxyxml = doxyxml

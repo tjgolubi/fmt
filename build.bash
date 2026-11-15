@@ -4,23 +4,14 @@ set -euo pipefail
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$repo_dir"
 
-# Keep TJG separate from any existing top-level FMT build cache.
-build_dir=build/tjg
-if (( $# > 1 )); then
-  echo "Usage: $0 [taskwarrior]" >&2
+build_dir=build/color
+if (( $# != 0 )); then
+  echo "Usage: $0" >&2
   exit 2
 fi
-case "${1:-}" in
-  "") ;;
-  taskwarrior) build_dir=build/tjg-taskwarrior ;;
-  *)
-    echo "Usage: $0 [taskwarrior]" >&2
-    exit 2
-    ;;
-esac
 
 set -x
-cmake -S tjg -B "$build_dir" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++ \
+cmake -S . -B "$build_dir" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++ \
   -DCMAKE_CXX_STANDARD=23 -DCMAKE_CXX_STANDARD_REQUIRED=ON \
   -DTJG_TEST=ON -DTJG_WERROR=ON
 cmake --build "$build_dir" --parallel 4

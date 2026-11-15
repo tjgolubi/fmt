@@ -1,17 +1,10 @@
-// Formatting library for C++ - Noexception tests
-//
-// Copyright (c) 2012 - present, Victor Zverovich and {fmt} contributors
-// All rights reserved.
-//
-// For the license information refer to format.h.
+#include "tjg/text_style-format.hpp"
 
-#include "fmt/args.h"
-#include "fmt/core.h"
-#include "fmt/chrono.h"
-#include "fmt/compile.h"
-#include "fmt/format.h"
-#include "fmt/os.h"
-#include "fmt/ostream.h"
-#include "fmt/printf.h"
-#include "fmt/ranges.h"
-#include "fmt/xchar.h"
+int main() {
+  const auto value = tjg::styled("hello", tjg::bold());
+  const auto narrow = tjg::format(tjg::underline(), "{}", value);
+  const auto wide = tjg::format(tjg::bold(), L"{}", L"wide");
+  return narrow != "\x1b[4m\x1b[1mhello\x1b[22m\x1b[0m" ||
+         wide != L"\x1b[1mwide\x1b[0m" ||
+         tjg::detail::get_style_state() != tjg::text_style{};
+}

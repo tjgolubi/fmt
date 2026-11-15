@@ -1,150 +1,226 @@
----
-hide:
-  - navigation
-  - toc
----
+# Terminal Colors and Text Styles
 
-# A modern formatting library
+Include `<tjg/color.h>` to combine foreground and background colors with
+emphasis attributes, style individual formatting arguments, and produce
+formatted strings or output.
 
-<div class="features-container">
+On `ref/CPP20`, the extension API lives in namespace `tjg` and targets C++23.
+Text utilities and SGR helpers use `std::basic_string_view`, including
+`std::string_view` and `std::wstring_view`. Formatting and printing use `std::format` and `std::print`; the extension
+uses `<tjg/...>` headers and requires no {fmt} headers or library.
+The standalone `tjg/` CMake project provides the installable `tjg::tjg` target. Owning-tree specifications,
+UTF-8 decoding, width estimates, and debug escaping are extension-owned. `tjg::color_t` stores an
+unspecified color, an RGB value, or a terminal, cube, or gray palette color
+in one public type.
 
-<div class="feature">
-<h2>Safety</h2>
-<p>
-  Inspired by Python's formatting facility, {fmt} provides a safe replacement
-  for the <code>printf</code> family of functions. Errors in format strings,
-  which are a common source of vulnerabilities in C, are <b>reported at
-  compile time</b>. For example:
+Convenience is a major design goal. The API deliberately provides several ways
+to express common styling operations: constructors for complete styles, fluent
+member functions for updating values, and free functions for creating or
+deriving styles. These overlapping forms let you choose the clearest expression
+for each use, from concise one-off styles to attributes controlled by user
+configuration.
 
-  <pre><code class="language-cpp"
-  >fmt::format("{:d}", "I am not a number");</code></pre>
+```cpp
+#include <tjg/color.h>
 
-  will give a compile-time error because <code>d</code> is not a valid
-  format specifier for strings. APIs like <a href="api/#format">
-  <code>fmt::format</code></a> <b>prevent buffer overflow errors</b> via
-  automatic memory management.
-</p>
-<a href="api#compile-time-checks">→ Learn more</a>
-</div>
+int main() {
+  auto style = tjg::fg(tjg::color::forest_green).bold();
+  tjg::println(style, "The result is {}.", 42);
+  std::println("The result is {}.",
+               tjg::styled(42, tjg::fg(tjg::term_color::red)));
+}
+```
 
-<div class="feature">
-<h2>Extensibility</h2>
-<p>
-  Formatting of most <b>standard types</b>, including all containers, dates,
-  and times is <b>supported out-of-the-box</b>. For example:
-  
-  <pre><code class="language-cpp"
-  >fmt::print("{}", std::vector{1, 2, 3});</code></pre>
+<pre class="color-output"><span style="color: #228B22; font-weight: bold">The result is 42.</span>
+The result is <span style="color: #CD0000">42</span>.</pre>
 
-  prints the vector in a JSON-like format:
+Illustrative output using Xterm's default red (`#CD0000`) for the terminal color.
 
-  <pre><code>[1, 2, 3]</code></pre>
+The first call styles the entire message. The second styles only `42`.
 
-  You can <b>make your own types formattable</b> and even make compile-time
-  checks work for them.
-</p>
-<a href="api#udt">→ Learn more</a>
-</div>
+## Reference
 
-<div class="feature">
-<h2>Performance</h2>
-<p>
-  {fmt} can be anywhere from <b>tens of percent to 20-30 times faster</b> than
-  iostreams and <code>sprintf</code>, especially for numeric formatting.
+| Page                           | Contents                                                                                                                           |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| [Colors](colors.md)            | RGB, terminal, cube, and gray colors; `no_color`; public `color_t` values, access and visitation, and integer representations      |
+| [Emphasis](emphasis.md)        | Text attributes and their combination                                                                                              |
+| [Text styles](text-style.md)   | `text_style`, named style operations, and `fg`/`bg`                                                                                |
+| [Styled arguments](styled.md)  | Structured styled text, SGR parsing, ANSI stripping, backslash escaping/unescaping, `styled`, format specifications, and lifetimes |
+| [Styled output](print.md)      | `print`, `println`, `vprint_unicode`, and `vprint_nonunicode`                                                                                    |
+| [Styled formatting](format.md) | `format`, `format_to`, and their `v` variants                                                                                      |
 
-<a href="https://github.com/fmtlib/fmt?tab=readme-ov-file#benchmarks">
-<img src="perf.svg">
-</a>
+## Choosing and combining styles
 
-  The library <b>minimizes dynamic memory allocations</b> and can optionally
-  <a href="api#compile-api">compile format strings</a> to optimal code.
-</p>
-</div>
+Use constants in the [`color`](colors.md#named-rgb-colors) namespace for named
+RGB values, [`rgb`](colors.md#rgb-values) for explicit RGB components, and
+[`term_color`](colors.md#terminal-palette-colors) for the terminal's 16 named
+palette colors.  Use [`cube_color`](colors.md#cube-palette-colors) for its
+6×6×6 cube and [`gray_color`](colors.md#gray-palette-colors) for its 24 gray
+levels.  Pass a color to [`fg`](text-style.md#foreground-and-background) or
+[`bg`](text-style.md#foreground-and-background) to create a foreground or
+background style.
 
-<div class="feature">
-<h2>Unicode support</h2>
-<p>
-  {fmt} provides <b>portable Unicode support</b> on major operating systems
-  with UTF-8 and <code>char</code> strings. For example:
+```cpp
+auto style = tjg::text_style{tjg::rgb{30, 144, 255},
+                             tjg::term_color::black,
+                             tjg::emphasis::bold |
+                             tjg::emphasis::underline};
+```
 
-  <pre><code class="language-cpp"
-  >fmt::print("Слава Україні!");</code></pre>
+A default-constructed [`text_style`](text-style.md#text_style) has no colors or
+emphasis. Combine styles with [`blend`](text-style.md#blending-styles).
+Foreground and background are handled independently, unspecified colors are
+ignored, and emphasis bits are ORed. A channel specified by only one input
+preserves its color and kind.  When multiple inputs specify the same channel,
+their colors convert to RGB and combine by averaging the color channels; that
+channel then holds RGB.
 
-  will be printed correctly on Linux, macOS, and even Windows console,
-  irrespective of the codepages.
-</p>
-<p>
-  The default is <b>locale-independent</b>, but you can opt into localized
-  formatting and {fmt} makes it work with Unicode, addressing issues in the
-  standard library.
-</p>
-</div>
+[RGB `operator|`](colors.md#combining-rgb-values) and `operator|=` combine
+the corresponding channel bits. OR cannot lower a channel value. Use `blend`
+to average colors.
 
-<div class="feature">
-<h2>Fast compilation</h2>
-<p>
-  The library makes extensive use of <b>type erasure</b> to achieve fast
-  compilation. <code>fmt/core.h</code> provides a subset of the API with
-  <b>minimal include dependencies</b> and enough functionality to replace
-  all uses of <code>*printf</code>.
-</p>
-<p>
-  Code using {fmt} is usually several times faster to compile than the
-  equivalent iostreams code, and while <code>printf</code> compiles faster
-  still, the gap is narrowing.
-</p>
-<a href=
-"https://github.com/fmtlib/fmt?tab=readme-ov-file#compile-time-and-code-bloat">
-→ Learn more</a>
-</div>
+These examples convert terminal colors to RGB using the fixed Xterm-default
+palette, which may differ from the user's terminal theme.
 
-<div class="feature">
-<h2>Small binary footprint</h2>
-<p>
-  Type erasure is also used to prevent template bloat, resulting in <b>compact
-  per-call binary code</b>. For example, a call to <code>fmt::print</code> with
-  a single argument is just <a href="https://godbolt.org/g/TZU4KF">a few
-  instructions</a>, comparable to <code>printf</code> despite adding
-  runtime safety, and much smaller than the equivalent iostreams code.
-</p>
-<p>
-  The library itself has small binary footprint and some components such as
-  floating-point formatting can be disabled to make it even smaller for
-  resource-constrained devices.
-</p>
-</div>
+```cpp
+auto red = tjg::to_rgb(tjg::term_color::bright_red);
+auto blue = tjg::to_rgb(tjg::term_color::blue);
+auto averaged = tjg::blend(red, blue); // RGB {127, 0, 119}.
+auto combined = red | blue;           // RGB {255, 0, 238}.
+```
 
-<div class="feature">
-<h2>Portability</h2>
-<p>
-  {fmt} has a <b>small self-contained codebase</b> with the core consisting of
-  just three headers and no external dependencies.
-</p>
-<p>
-  The library is highly portable and requires only a minimal <b>subset of
-  C++11</b> features which are available in GCC 4.9, Clang 3.6, MSVC 19.10
-  (2017) and later. Newer compiler and standard library features are used
-  if available, and enable additional functionality.
-</p>
-<p>
-  Where possible, the output of formatting functions is <b>consistent across
-  platforms</b>.
-</p>
-</div>
+<table class="color-comparison">
+<thead><tr><th>Inputs (<a href="colors.html#terminal-palette-colors"><code>term_color</code></a>)</th><th><a href="colors.html#averaging-rgb-values"><code>blend()</code></a> — average</th><th><a href="colors.html#combining-rgb-values"><code>operator|</code></a> — bitwise OR</th></tr></thead>
+<tbody>
+<tr>
+<td><div class="color-inputs"><span class="color-chip" style="background-color:#FF0000;color:#000000"><a href="colors.html#terminal-palette-colors"><code>bright_red</code></a><small>255, 0, 0</small></span><span class="color-chip" style="background-color:#0000EE;color:#FFFFFF"><a href="colors.html#terminal-palette-colors"><code>blue</code></a><small>0, 0, 238</small></span></div></td>
+<td><span class="color-chip" style="background-color:#7F0077;color:#FFFFFF"><code>rgb{127, 0, 119}</code><small>#7F0077</small></span></td>
+<td><span class="color-chip" style="background-color:#FF00EE;color:#000000"><code>rgb{255, 0, 238}</code><small>#FF00EE</small></span></td>
+</tr>
+<tr>
+<td><div class="color-inputs"><span class="color-chip" style="background-color:#FF0000;color:#000000"><a href="colors.html#terminal-palette-colors"><code>bright_red</code></a><small>255, 0, 0</small></span><span class="color-chip" style="background-color:#5C5CFF;color:#FFFFFF"><a href="colors.html#terminal-palette-colors"><code>bright_blue</code></a><small>92, 92, 255</small></span></div></td>
+<td><span class="color-chip" style="background-color:#AD2E7F;color:#FFFFFF"><code>rgb{173, 46, 127}</code><small>#AD2E7F</small></span></td>
+<td><span class="color-chip" style="background-color:#FF5CFF;color:#000000"><code>rgb{255, 92, 255}</code><small>#FF5CFF</small></span></td>
+</tr>
+<tr>
+<td><div class="color-inputs"><span class="color-chip" style="background-color:#CD0000;color:#FFFFFF"><code>red</code><small>205, 0, 0</small></span><span class="color-chip" style="background-color:#0000EE;color:#FFFFFF"><a href="colors.html#terminal-palette-colors"><code>blue</code></a><small>0, 0, 238</small></span></div></td>
+<td><span class="color-chip" style="background-color:#660077;color:#FFFFFF"><code>rgb{102, 0, 119}</code><small>#660077</small></span></td>
+<td><span class="color-chip" style="background-color:#CD00EE;color:#000000"><code>rgb{205, 0, 238}</code><small>#CD00EE</small></span></td>
+</tr>
+<tr>
+<td><div class="color-inputs"><span class="color-chip" style="background-color:#CD0000;color:#FFFFFF"><code>red</code><small>205, 0, 0</small></span><span class="color-chip" style="background-color:#5C5CFF;color:#FFFFFF"><a href="colors.html#terminal-palette-colors"><code>bright_blue</code></a><small>92, 92, 255</small></span></div></td>
+<td><span class="color-chip" style="background-color:#942E7F;color:#FFFFFF"><code>rgb{148, 46, 127}</code><small>#942E7F</small></span></td>
+<td><span class="color-chip" style="background-color:#DD5CFF;color:#000000"><code>rgb{221, 92, 255}</code><small>#DD5CFF</small></span></td>
+</tr>
+</tbody>
+</table>
 
-<div class="feature">
-<h2>Open source</h2>
-<p>
-  {fmt} is in the top hundred open-source C++ libraries on GitHub and has
-  <a href="https://github.com/fmtlib/fmt/graphs/contributors">hundreds of
-  all-time contributors</a>.
-</p>
-<p>
-  The library is distributed under a permissive MIT
-  <a href="https://github.com/fmtlib/fmt#license">license</a> and is
-  <b>relied upon by many open-source projects</b>, including Blender, PyTorch,
-  Apple's FoundationDB, Windows Terminal, MongoDB, and others.
-</p>
-</div>
+## Text style rendering
 
-</div>
+<a id="TextStyleRendering"></a>
+
+If a style is not empty, the formatted text is preceded by [SGR] (Select Graphic
+Rendition) sequences for its specified foreground, background, and emphasis,
+and followed by an SGR reset to terminal defaults. An empty style adds no
+sequences of its own. `println` appends its newline after
+the reset.
+
+A shared terminal style carries the enclosing style through replacement fields.
+Relative styled arguments and structured text inherit missing colors and combine
+emphasis with that style. Each field restores the enclosing style afterward:
+
+```cpp
+tjg::print(tjg::emphasis::underline,
+           "The result is {} after rounding.",
+           tjg::styled(42, tjg::fg(tjg::term_color::bright_red)));
+```
+
+<pre class="color-output"><span style="text-decoration: underline">The result is <span style="color: #FF0000">42</span> after rounding.</span></pre>
+
+Illustrative output using our fixed terminal-to-RGB palette: bright red is
+`rgb{255, 0, 0}` (`#FF0000`). The terminal theme may display it differently.
+
+| Text               | Appearance                |
+| ------------------ | ------------------------- |
+| `The result is `   | Underlined                |
+| `42`               | Bright red and underlined |
+| ` after rounding.` | Underlined                |
+
+After `42`, the foreground returns to its enclosing value and underline remains
+active. The outer call resets to terminal defaults at the end. An absolute
+replacement field temporarily uses its own complete style, then also restores
+the enclosing style.
+
+The same rules apply to
+[structured styled text](styled.md#structured-styled-text):
+concatenate complete spans with `+` or `+=`, and use `underlay` to supply group
+defaults while preserving explicit colors. Use `overlay` to replace specified
+colors throughout relative nodes; absolute scopes are protected.
+
+See the [table demonstration](styled.md#table-demonstration) for a complete
+example combining column defaults, row emphasis, absolute spans, UTF-8 display
+widths, and fixed-width formatting, with build and run instructions.
+
+`get_terminal_state` returns a reference to one function-local static
+`text_style` in `color.h`, initially terminal defaults. Styled formatting saves
+and restores that value, including on exceptions. Nested `format` and
+`format_to` calls share the active style even when they construct a new
+formatting context. Formatting contexts carry no terminal state.
+
+This implementation is single-threaded, with no mutex or thread-local state.
+Styled formatting runs at runtime, including with compiled format strings;
+it cannot be constant-evaluated because it accesses mutable static storage.
+Raw SGR embedded in strings and external terminal styling are not tracked.
+
+The [output functions](print.md) emit escape sequences even when output is
+redirected to a file. The [formatting functions](format.md) store those
+sequences in their result. For format string syntax, see the
+[C++23 format specifiers](https://timsong-cpp.github.io/cppwp/n4950/format.string.std).
+
+[SGR]: https://en.wikipedia.org/wiki/ANSI_escape_code#Select_Graphic_Rendition_parameters
+
+
+## Standard formatting
+
+Include `<tjg/color.h>` to use colors, `color_t`, `text_style`, `emphasis`,
+and borrowed `styled` arguments with `std::format` and `std::format_to`.
+Both narrow and wide formatting are supported.
+
+```cpp
+#include <format>
+#include <tjg/color.h>
+
+auto color = std::format("{}", tjg::color::red); // "#ff0000"
+auto style = std::format("{:?}", tjg::bold());  // "b"
+auto names = std::format("{}", tjg::emphasis::bold); // "{bold}"
+auto text = std::format("{:04}", tjg::styled(42, tjg::bold()));
+// Bold "0042", followed by restoration of the enclosing style.
+```
+
+Readable values retain the same unquoted notation for `{}` and `{:?}`.
+Standard string fill, alignment, width, precision, and dynamic arguments apply.
+`styled` uses its underlying type's standard formatter, including padding and
+numeric specifications. Nested styled fields inherit and restore the shared
+terminal state; absolute fields temporarily replace it. The wrapper still
+borrows its value, so stored wrappers need a surviving referent.
+
+Include `<tjg/styled_text.h>` for standard formatting of owning `styled_text`
+and `wstyled_text` trees, including nested styles, padding, truncation, dynamic
+specifications, and `?` tree inspection. The extension uses standard formatting
+throughout; old {fmt} adapters are removed. Formatting reports specification
+errors through `std::format_error`.
+
+## Inline buffer
+
+`<tjg/inline_buffer.hpp>` provides `tjg::basic_inline_buffer<Char, Size>` and
+its `char` alias, `tjg::inline_buffer`. The buffer stores up to `Size`
+characters inline, with a default capacity of 256. SGR construction uses a
+60-character buffer.
+
+Use `view()` to read the contents, `push_back` or `append` to write, and
+`clear()` to reuse the buffer. The caller supplies enough capacity for each
+write. Use the view or the buffer's size to determine the end of the output.
+
+::: basic_inline_buffer
+    options:
+      color_reference: true

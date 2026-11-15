@@ -1,18 +1,17 @@
 #:schema https://www.schemastore.org/git-cliff.json
-# Draft FmtColor configuration; verify with git-cliff 2.14.2 on PC and tablet.
-# This generates FmtColorChangeLog.md, not upstream's ChangeLog.md.
+# {color} configuration.
+# This generates CHANGELOG.md.
 #
-# Always supply the accepted FmtColor history range explicitly. Tag filtering
+# Always supply the accepted {color} history range explicitly. Tag filtering
 # alone does not exclude upstream commits or select the correct branch.
-# Current upstream baseline: b4ffa39b9994c961418406f47358791d89a5aa48
+# Current upstream baseline: TBD
 # Example preview (stdout only):
-#   git cliff --config cliff.toml --offline --no-exec \
-#     b4ffa39b9994c961418406f47358791d89a5aa48..FmtColor
+#   git cliff --config cliff.toml --offline --no-exec TBD..dev
 #
 # Before creating a squash commit, preview its reviewed message with
 # --with-commit so its changelog entry can be included in the same commit.
 # Do not generate from the feature branch's intermediate commits.
-# Use --output FmtColorChangeLog.md only when the generated result is approved.
+# Use --output CHANGELOG.md only when the generated result is approved.
 # No automatic version bumping: fork release numbering is not yet agreed.
 
 [changelog]

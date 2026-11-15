@@ -1,4 +1,4 @@
-name: doc
+name: Color guide
 
 on:
   push:
@@ -8,45 +8,8 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    if: github.ref != 'refs/heads/ref/CPP20' && github.head_ref != 'ref/CPP20' && github.base_ref != 'ref/CPP20'
-    runs-on: ubuntu-22.04
-
-    steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-    - name: Add Ubuntu mirrors
-      run: |
-        # Github Actions caching proxy is at times unreliable
-        # see https://github.com/actions/runner-images/issues/7048
-        printf 'http://azure.archive.ubuntu.com/ubuntu\tpriority:1\n' | sudo tee /etc/apt/mirrors.txt
-        curl http://mirrors.ubuntu.com/mirrors.txt | sudo tee --append /etc/apt/mirrors.txt
-        sudo sed -i 's~http://azure.archive.ubuntu.com/ubuntu/~mirror+file:/etc/apt/mirrors.txt~' /etc/apt/sources.list
-
-    - name: Create build environment
-      run: |
-        sudo apt update
-        sudo apt install doxygen
-        pip install --require-hashes -r support/doc-requirements.txt
-        cmake -E make_directory ${{github.workspace}}/build
-        # Workaround https://github.com/actions/checkout/issues/13:
-        git config --global user.name "$(git --no-pager log --format=format:'%an' -n 1)"
-        git config --global user.email "$(git --no-pager log --format=format:'%ae' -n 1)"
-
-    - name: Build
-      working-directory: ${{github.workspace}}/build
-      run: $GITHUB_WORKSPACE/support/mkdocs deploy dev
-
-    - name: Deploy
-      env:
-        KEY: "${{secrets.KEY}}"
-      if: env.KEY != '' && github.ref == 'refs/heads/main'
-      working-directory: ${{github.workspace}}/build/fmt.dev
-      run: git push https://$KEY@github.com/fmtlib/fmt.dev.git
-
   tjg-docs:
-    if: github.ref == 'refs/heads/ref/CPP20' || github.head_ref == 'ref/CPP20' || github.base_ref == 'ref/CPP20'
-    name: Build TJG guide
+    name: Build color guide
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -61,9 +24,9 @@ jobs:
         sudo apt-get install --yes doxygen
         python -m pip install --require-hashes -r support/doc-requirements.txt
 
-    - name: Build TJG guide
+    - name: Build color guide
       env:
         PYTHONPATH: support/python
       run: >-
         python -m mkdocs build --config-file support/mkdocs-pages.yml
-        --site-dir build/doc-html --no-directory-urls
+        --site-dir "$GITHUB_WORKSPACE/build/doc-html" --no-directory-urls

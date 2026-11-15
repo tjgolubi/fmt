@@ -112,7 +112,7 @@ auto accent = tjg::rgb{red, green, 255};
 
 ### Converting colors to RGB
 
-::: to_rgb(T)
+::: to_rgb(const T&)
     options:
       color_reference: true
 
@@ -120,7 +120,7 @@ auto accent = tjg::rgb{red, green, 255};
     options:
       color_reference: true
 
-::: to_rgb(color_t)
+::: to_rgb(const color_t&)
     options:
       color_reference: true
 

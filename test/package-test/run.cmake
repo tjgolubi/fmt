@@ -35,13 +35,14 @@ set(consumer_build "${TJG_TEST_BINARY_DIR}/consumer-build")
 file(REMOVE_RECURSE "${source}" "${package_build}" "${prefix}" "${relocated}"
      "${consumer_build}")
 file(MAKE_DIRECTORY "${source}/include")
-file(COPY "${TJG_SOURCE_DIR}/tjg" "${TJG_SOURCE_DIR}/LICENSE"
-     DESTINATION "${source}")
+file(COPY "${TJG_SOURCE_DIR}/CMakeLists.txt"
+     "${TJG_SOURCE_DIR}/color-config.cmake.in" "${TJG_SOURCE_DIR}/LICENSE"
+     "${TJG_SOURCE_DIR}/THIRD-PARTY-NOTICES" DESTINATION "${source}")
 file(COPY "${TJG_SOURCE_DIR}/include/tjg" DESTINATION "${source}/include")
 
 run("${CMAKE_COMMAND}"
     -S
-    "${source}/tjg"
+    "${source}"
     -B
     "${package_build}"
     ${generator_options}
@@ -74,7 +75,7 @@ endif ()
 # The consumer sets no language standard, or include path itself.
 run("${CMAKE_COMMAND}"
     -S
-    "${TJG_SOURCE_DIR}/tjg/test/package-test"
+    "${CMAKE_CURRENT_LIST_DIR}"
     -B
     "${consumer_build}"
     ${generator_options}

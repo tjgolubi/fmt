@@ -26,22 +26,18 @@ open **Actions → FmtColor documentation** to follow the build and deployment.
 The deployment step reports the final URL. Confirm the overview, links, and
 color swatches there before adding a link on the project website.
 
-Expected URLs (available only after a successful deployment):
-
-- Documentation: <https://tjgolubi.github.io/fmt/>
-- Color overview: <https://tjgolubi.github.io/fmt/color/index.html>
+The [color guide](https://tjgolubi.github.io/fmt/) appears at the site root
+after a successful deployment.
 
 The fork-specific `support/mkdocs-pages.yml` inherits the normal documentation
-configuration. It sets the fork URL and repository links and disables the
-version selector because this deployment publishes a single version. Generated
-HTML is uploaded as a Pages artifact, rather than committed to the source tree.
+configuration and sets the fork URL and repository links. The workflow uploads
+the generated HTML as a Pages artifact.
 
-The guide Markdown sources live in `tjg/doc/`. The shared configuration uses
-`support/python/tjg_docs.py` to include them at the existing `color/` site paths,
-so source moves do not change published guide URLs.
+The guide Markdown sources live in `doc/`. MkDocs publishes those pages
+directly, with the guide overview as the home page.
 
-The upstream `doc.yml` workflow and `support/mkdocs` publication helper retain
-their upstream destinations; this workflow uses neither for deployment.
+The `Color guide` workflow builds the guide on pushes and pull requests.
+The `FmtColor documentation` workflow publishes the GitHub Pages site.
 
 The VPS remains an alternative host. Its deployment can use the same generated
 HTML with a configuration for that host's URL.
