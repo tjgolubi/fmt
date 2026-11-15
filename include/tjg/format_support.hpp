@@ -5,7 +5,7 @@
 
 #include "error_support.hpp"
 #include "inline_buffer.hpp"
-#include "text_support.hpp"
+#include "unicode.hpp"
 #include "utility.hpp"
 
 #include <format>
@@ -68,7 +68,8 @@ struct string_format_specs {
     auto next = it + 1;
     if constexpr (std::same_as<Char, char>) {
       const auto bytes = std::string_view{it, end};
-      next = it + static_cast<std::ptrdiff_t>(decode_utf8(bytes).size);
+      next = it + static_cast<std::ptrdiff_t>(
+                      tjg::unicode::decode_utf8(bytes).size);
     } else if constexpr (sizeof(Char) == 2) {
       if (next != end) {
         const auto lead  = static_cast<char16_t>(*it);

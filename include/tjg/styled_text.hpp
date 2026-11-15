@@ -4,6 +4,7 @@
 #pragma once
 
 #include "text_style.hpp"
+#include "unicode.hpp"
 #include "utility.hpp"
 
 #include <string>
@@ -28,7 +29,10 @@ template<CharType Char> struct styled_text_renderer;
 template<CharType Char>
 auto styled_text_width(std::basic_string_view<Char> text) noexcept
   -> std::size_t
-{ return text_prefix(text, (std::numeric_limits<std::size_t>::max)()).second; }
+{
+  return tjg::unicode::text_prefix(
+      text, (std::numeric_limits<std::size_t>::max)()).second;
+}
 
 struct styled_text_render_state {
   std::size_t remaining;
@@ -46,7 +50,7 @@ auto styled_text_take(std::basic_string_view<Char> text,
                       styled_text_render_state& state)
   -> styled_text_prefix
 {
-  const auto prefix = text_prefix(text, state.remaining);
+  const auto prefix = tjg::unicode::text_prefix(text, state.remaining);
   state.remaining -= prefix.second;
   state.stopped = (prefix.first < text.size() || state.remaining == 0);
   return {prefix.first, prefix.second};
@@ -320,7 +324,7 @@ struct styled_text_renderer {
       const auto text = node._data.text
                             ? std::basic_string_view<Char>{*node._data.text}
                             : std::basic_string_view<Char>{};
-      out = quote_text(text, out);
+      out = tjg::unicode::quote_text(text, out);
       if (indent != 0) *out++ = Char('\n');
       return out;
     }
@@ -425,7 +429,7 @@ struct styled_text_renderer {
         return write_debug(value, ctx.out());
       auto buffer = basic_memory_buffer<Char>{};
       write_debug(value, std::back_inserter(buffer));
-      const auto prefix = text_prefix(
+      const auto prefix = tjg::unicode::text_prefix(
                     std::basic_string_view<Char>{buffer.data(), buffer.size()},
                     limit);
       const int padding = std::cmp_greater(specs.width, prefix.second)

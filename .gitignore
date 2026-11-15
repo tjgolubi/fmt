@@ -18,6 +18,7 @@ CPack*.cmake
 CTestTestfile.cmake
 FMT.build
 Makefile
+!/tools/Makefile
 bin/
 build/
 cmake_install.cmake
