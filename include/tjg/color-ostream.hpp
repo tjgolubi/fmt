@@ -135,8 +135,10 @@ auto operator<<(std::basic_ostream<Char>& os,
                 const basic_styled_text<Char>& value)
   -> std::basic_ostream<Char>&
 {
-  if (!os.good())
+  auto sentry = typename std::basic_ostream<Char>::sentry{os};
+  if (!sentry)
     return os;
+
   auto specs = detail::string_format_specs<Char>{};
   const auto width = os.width();
   if (width > static_cast<decltype(width)>(std::numeric_limits<int>::max()))
@@ -148,8 +150,8 @@ auto operator<<(std::basic_ostream<Char>& os,
       ((os.flags() & std::ios_base::adjustfield) == std::ios_base::left) ? '<'
                                                                          : '>';
   os.width(0);
-  auto buffer = std::basic_string<Char>{};
-  auto output = std::back_inserter(buffer);
+
+  auto output = std::ostreambuf_iterator<Char>{os};
 
   struct output_context {
     decltype(output) iterator;
@@ -157,8 +159,27 @@ auto operator<<(std::basic_ostream<Char>& os,
   };
 
   auto ctx = output_context{output};
-  detail::styled_text_renderer<Char>::format_with_specs(value, ctx, specs);
-  return os.write(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+
+  bool failed;
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
+  try {
+#endif
+    failed = detail::styled_text_renderer<Char>::format_with_specs(
+                                                    value, ctx, specs).failed();
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
+  } catch (...) {
+    const bool rethrow = (os.exceptions() & std::ios_base::badbit) != 0;
+    // Keep the stream buffer's exception if setstate() also throws.
+    try { os.setstate(std::ios_base::badbit); }
+    catch (...) { }
+    if (rethrow) throw;
+    return os;
+  }
+#endif
+
+  if (failed)
+    os.setstate(std::ios_base::badbit);
+  return os;
 } // << styled_text
 
 } // tjg

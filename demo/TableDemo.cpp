@@ -11,6 +11,8 @@ using tjg::bg;
 using tc = tjg::term_color;
 namespace color = tjg::color;
 
+namespace {
+
 // Each column has a distinct background color.
 constexpr auto service_color = fg(tc::white).bg(color::dark_blue);
 constexpr auto status_color  = fg(tc::white).bg(color::dark_green);
@@ -39,6 +41,8 @@ void print_row(styled_text service, styled_text status,
                cell(std::move(notes),   notes_color));
 }
 
+} // local
+
 int main() {
   std::println("SYSTEM HEALTH DASHBOARD\n");
 
@@ -46,10 +50,9 @@ int main() {
   print_row("Service", "Status", "Latency", "Notes", tjg::bold().underline());
 
   // Normal row.
-  auto ok = styled_text{"OK", fg(tc::bright_green)};
-  auto nas_note = styled_text{"All", fg(tc::red).bg(tc::cyan)}
-                + " volumes "
-                + styled_text{"healthy", fg(tc::green)};
+  const auto ok = styled_text{"OK", fg(tc::bright_green)};
+  const auto nas_note = styled_text{"All", fg(tc::red).bg(tc::cyan)}
+                      + " volumes " + styled_text{"healthy", fg(tc::green)};
   print_row("NAS", ok, "12 ms", nas_note);
 
   // UTF-8 display widths: "東京" is 6 bytes but 4 terminal columns.
@@ -57,21 +60,21 @@ int main() {
   print_row("東京 NAS", ok, "9 ms", "Café 東京: all systems normal");
 
   // Two fragments with different foreground colors.
-  auto vpn_note = styled_text{"Encrypted "}
-                + styled_text{"connection", fg(color::aquamarine)};
+  const auto vpn_note = "Encrypted "
+                      + styled_text{"connection", fg(color::aquamarine)};
   print_row("VPN", ok, "38 ms", vpn_note);
 
   // Bold row with an independently colored warning.
-  auto warn = styled_text{"WARN", fg(tc::yellow)};
-  auto backup_note = styled_text{"Slow", fg(color::yellow)}
-                   + " - retry scheduled";
+  const auto warn = styled_text{"WARN", fg(tc::yellow)};
+  const auto backup_note = styled_text{"Slow", fg(color::yellow)}
+                         + " - retry scheduled";
   print_row("Backup", warn, "215 ms", backup_note, tjg::bold());
 
   // An absolute red-on-white fragment within the Notes column.
-  auto fail = styled_text{"FAIL", fg(tc::bright_red)};
-  auto db_note = styled_text{"Connection refused: "}
-               + styled_text{"CRITICAL!", critical_style}
-               + " Database service is unavailable";
+  const auto fail = styled_text{"FAIL", fg(tc::bright_red)};
+  const auto db_note = "Connection refused: "
+                     + styled_text{"CRITICAL!", critical_style}
+                     + " Database service is unavailable";
   print_row("Database", fail, "--", db_note, tjg::bold());
 
   // Faint row emphasis, retaining the column backgrounds.

@@ -506,6 +506,30 @@ TEST(styled_text_format_test, stream_insertion_failure) {
 #endif
 }
 
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
+TEST(styled_text_format_test, stream_insertion_buffer_exception) {
+  struct write_error {};
+  struct throwing_buffer : std::streambuf {
+    int_type overflow(int_type) override { throw write_error{}; }
+    std::streamsize xsputn(const char*, std::streamsize) override {
+      throw write_error{};
+    }
+  } buffer;
+  std::ostream os{&buffer};
+  const auto text = tjg::bold("text");
+
+  EXPECT_NO_THROW(os << text);
+  EXPECT_TRUE(os.bad());
+  EXPECT_TRUE(tjg::detail::get_style_state().empty());
+
+  os.clear();
+  os.exceptions(std::ios_base::badbit);
+  EXPECT_THROW(os << text, write_error);
+  EXPECT_TRUE(os.bad());
+  EXPECT_TRUE(tjg::detail::get_style_state().empty());
+}
+#endif
+
 TEST(styled_text_format_test, all_parent_child_emphasis_pairs) {
   const auto colors = tjg::text_style{tjg::term_color::red,
                                       tjg::cube_color{1, 2, 3}};
