@@ -1,8 +1,10 @@
-#include "tjg/backslash.h"
+#include "tjg/backslash.hpp"
 
 #include "standard-format-test.h"
 #include "test-support.h"
 
+#include <initializer_list>
+#include <stdexcept>
 #include <type_traits>
 
 namespace {
@@ -108,25 +110,30 @@ TEST(backslash_test, examples) {
 
 #if defined(__cpp_exceptions) || defined(_CPPUNWIND)
 namespace {
-template <typename Char> void check_invalid_escapes() {
-  const char* malformed[] = {
-      "\\", "\\q", "\\x", "\\x1", "\\xG1", "\\x1G", "\\x\\n",
-      "\\400", "\\777", "\\8", "\\9", "\\u001b", "\\U0000001b",
-      "\\x{1b}", "\\o{33}", "\\\n"};
+template <typename Char, typename Error>
+void check_invalid_escapes(std::initializer_list<const char*> malformed) {
   for (auto spelling : malformed) {
     const auto input = text<Char>(spelling);
-    EXPECT_THROW((void)tjg::backslash_unescape(input), std::format_error);
+    EXPECT_THROW((void)tjg::backslash_unescape(input), Error);
     auto output = text<Char>("prefix:");
     const auto prefixed = text<Char>("ok\\n") + input;
     EXPECT_THROW(tjg::backslash_unescape_to(std::back_inserter(output), prefixed),
-                 std::format_error);
+                 Error);
     EXPECT_EQ(output, text<Char>("prefix:ok\n"));
     Char buffer[8] = {};
-    EXPECT_THROW(tjg::backslash_unescape_to(buffer, input), std::format_error);
+    EXPECT_THROW(tjg::backslash_unescape_to(buffer, input), Error);
     EXPECT_EQ(buffer[0], Char{}); // The invalid escape writes nothing.
   }
+}
+
+template <typename Char> void check_invalid_escapes() {
+  check_invalid_escapes<Char, std::invalid_argument>({
+      "\\", "\\q", "\\x", "\\x1", "\\xG1", "\\x1G", "\\x\\n",
+      "\\8", "\\9", "\\u001b", "\\U0000001b",
+      "\\x{1b}", "\\o{33}", "\\\n"});
+  check_invalid_escapes<Char, std::out_of_range>({"\\400", "\\777"});
   const auto nul_escape = std::basic_string<Char>{Char('\\'), Char{}};
-  EXPECT_THROW((void)tjg::backslash_unescape(nul_escape), std::format_error);
+  EXPECT_THROW((void)tjg::backslash_unescape(nul_escape), std::invalid_argument);
   const auto nul_suffix = text<Char>("\\0") + Char('8');
   EXPECT_EQ(tjg::backslash_unescape(nul_suffix),
             (std::basic_string<Char>{Char{}, Char('8')}));

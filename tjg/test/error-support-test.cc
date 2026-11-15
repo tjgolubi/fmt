@@ -1,4 +1,4 @@
-#include "tjg/error_support.h"
+#include "tjg/error_support.hpp"
 #include "test-support.h"
 
 #include <stdexcept>

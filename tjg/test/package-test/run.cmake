@@ -56,7 +56,20 @@ run("${CMAKE_COMMAND}" --install "${package_build}" --config Debug)
 if (EXISTS "${prefix}/include/fmt")
   message(FATAL_ERROR "The standalone install must contain only TJG headers")
 endif ()
-file(RENAME "${prefix}" "${relocated}")
+# A freshly installed directory can be briefly locked on Windows.
+foreach (attempt RANGE 1 3)
+  execute_process(
+    COMMAND "${CMAKE_COMMAND}" -E rename "${prefix}" "${relocated}"
+    RESULT_VARIABLE result
+    ERROR_VARIABLE error)
+  if (result EQUAL 0)
+    break()
+  endif ()
+  run("${CMAKE_COMMAND}" -E sleep 1)
+endforeach ()
+if (NOT result EQUAL 0)
+  message(FATAL_ERROR "Could not relocate the installed TJG package:\n${error}")
+endif ()
 
 # The consumer sets no language standard, or include path itself.
 run("${CMAKE_COMMAND}"

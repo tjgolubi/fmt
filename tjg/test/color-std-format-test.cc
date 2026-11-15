@@ -1,4 +1,4 @@
-#include "tjg/color.h"
+#include "tjg/text_style-format.hpp"
 #include "standard-format-test.h"
 #include "test-support.h"
 
@@ -78,17 +78,18 @@ TEST(color_std_format_test, invalid_specs) {
 
 TEST(color_std_format_test, output_iterators_and_counts) {
   const auto style = tjg::absolute(tjg::bold(tjg::fg(tjg::term_color::red)));
-  const auto expected = std::string{"=b red"};
+  const auto expected = std::string_view{"\x1b[0;1;31m"};
   auto text = std::string{"prefix:"};
   std::format_to(std::back_inserter(text), "{}", style);
-  EXPECT_EQ(text, "prefix:" + expected);
+  EXPECT_EQ(text, "prefix:\x1b[0;1;31m");
   EXPECT_EQ(std::formatted_size("{}", style), expected.size());
   char output[32] = {};
   const auto end = std::format_to(output, "{:>10?}", style);
   EXPECT_EQ(std::string(output, end), "    =b red");
   const auto bounded = std::format_to_n(output, 3, "{}", style);
   EXPECT_EQ(bounded.size, static_cast<std::ptrdiff_t>(expected.size()));
-  EXPECT_EQ(std::string(output, output + 3), "=b ");
+  EXPECT_EQ(std::string(output, bounded.out), expected.substr(0, 3));
+  EXPECT_EQ(bounded.out, output + 3);
 }
 
 TEST(color_std_format_test, styled_underlying_specs_and_padding) {
@@ -112,7 +113,7 @@ TEST(color_std_format_test, styled_underlying_specs_and_padding) {
   const auto bounded = std::format_to_n(output, 5, "{}", number);
   EXPECT_EQ(bounded.size, static_cast<std::ptrdiff_t>(text.size()));
   EXPECT_EQ(std::string(output, output + 5), text.substr(0, 5));
-  EXPECT_EQ(tjg::get_terminal_state(), tjg::text_style{});
+  EXPECT_EQ(tjg::detail::get_style_state(), tjg::text_style{});
   static_assert(!std::formattable<decltype(tjg::styled(not_formattable{}, {})),
                                   char>);
 }
@@ -131,7 +132,7 @@ TEST(color_std_format_test, nested_native_formatting_and_absolute_styles) {
     EXPECT_EQ(std::format("{}", value), expected);
     EXPECT_EQ(std::format(L"{}", value),
               (std::wstring{expected.begin(), expected.end()}));
-    EXPECT_EQ(tjg::get_terminal_state(), tjg::text_style{});
+    EXPECT_EQ(tjg::detail::get_style_state(), tjg::text_style{});
   }
   const int integer = 42;
   const auto inner = tjg::styled(integer, tjg::fg(tjg::term_color::red));
@@ -142,15 +143,15 @@ TEST(color_std_format_test, nested_native_formatting_and_absolute_styles) {
 TEST(color_std_format_test, exception_restores_shared_state) {
   tjg::detail::style_scope scope{};
   const auto outer = tjg::underline(tjg::bg(tjg::term_color::blue));
-  tjg::get_terminal_state() = outer;
+  tjg::detail::get_style_state() = outer;
   const auto body = native_throwing{};
   const auto value = tjg::styled(body, tjg::bold());
   EXPECT_THROW((void)std::format("{}", value), std::format_error);
-  EXPECT_EQ(tjg::get_terminal_state(), outer);
+  EXPECT_EQ(tjg::detail::get_style_state(), outer);
   auto output = std::string{};
   EXPECT_THROW(std::format_to(std::back_inserter(output), "{}", value),
                std::format_error);
-  EXPECT_EQ(tjg::get_terminal_state(), outer);
+  EXPECT_EQ(tjg::detail::get_style_state(), outer);
 }
 
 TEST(color_std_format_test, styled_character_arrays_use_c_string_semantics) {

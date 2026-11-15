@@ -1,10 +1,10 @@
-#include "tjg/styled_text.h"
-#include "tjg/backslash.h"
+#include "tjg/text_style-format.hpp"
 
 int main() {
-  const auto tree = tjg::bold("hello");
-  const auto narrow = tjg::format(tjg::underline(), "{}", tree);
-  const auto wide = tjg::format(tjg::bold(), L"{}", tjg::wstyled_text{L"wide"});
-  return narrow.empty() || wide.empty() ||
-         tjg::get_terminal_state() != tjg::text_style{};
+  const auto value = tjg::styled("hello", tjg::bold());
+  const auto narrow = tjg::format(tjg::underline(), "{}", value);
+  const auto wide = tjg::format(tjg::bold(), L"{}", L"wide");
+  return narrow != "\x1b[4m\x1b[1mhello\x1b[22m\x1b[0m" ||
+         wide != L"\x1b[1mwide\x1b[0m" ||
+         tjg::detail::get_style_state() != tjg::text_style{};
 }

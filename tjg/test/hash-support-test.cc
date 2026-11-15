@@ -1,4 +1,4 @@
-#include "tjg/hash_support.h"
+#include "tjg/hash_support.hpp"
 
 #include "test-support.h"
 

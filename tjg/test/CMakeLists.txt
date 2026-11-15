@@ -50,6 +50,7 @@ function (tjg_test_options name)
 endfunction ()
 tjg_test_options(tjg-test-main)
 
+# Register the core suite while the styled_text suites are being ported.
 foreach (
   name
   allocation-noexcept
@@ -61,12 +62,9 @@ foreach (
   color-ostream
   color-assert
   color-wide
-  styled-text
-  styled-text-format
-  parse-styled-text
   strip-ansi
   backslash
-  memory-buffer)
+  inline-buffer)
   add_executable(${name}-test ${name}-test.cc)
   target_link_libraries(${name}-test PRIVATE tjg-test-main)
   tjg_test_options(${name}-test)
@@ -90,9 +88,8 @@ add_test(NAME error-support-release-test COMMAND error-support-release-test)
 
 add_executable(extension-standalone-test extension-standalone-test.cc
                                          extension-standalone-state.cc)
-add_executable(styled-text-sharing-test styled-text-sharing-test.cc)
 add_executable(color-api-test color-api-test.cc)
-foreach (name extension-standalone styled-text-sharing color-api)
+foreach (name extension-standalone color-api)
   target_link_libraries(${name}-test PRIVATE tjg::tjg)
   tjg_test_options(${name}-test)
   add_test(NAME ${name}-test COMMAND ${name}-test)

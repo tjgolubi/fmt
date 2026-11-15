@@ -1,8 +1,6 @@
-#include <tjg/strip_ansi.h>
-#include <tjg/parse_styled_text.h>
-#include <tjg/styled_text.h>
-#include <tjg/color-ostream.h>
-#include <tjg/backslash.h>
+#include <tjg/strip_ansi.hpp>
+#include <tjg/color-ostream.hpp>
+#include <tjg/backslash.hpp>
 
 #include <print>
 #include <sstream>
@@ -19,18 +17,17 @@ static_assert(__cplusplus >= 202100L);
 #endif
 
 int main() {
-  const auto tree = tjg::bold("hello") + " world";
-  const auto rendered = std::format("{}", tree);
+  const auto hello = tjg::styled("hello", tjg::bold());
+  const auto rendered = std::format("{} world", hello);
   if (rendered != "\x1b[1mhello\x1b[0m world") return 1;
   if (tjg::strip_ansi(rendered) != "hello world") return 2;
-  if (tjg::parse_styled_text(rendered).plain_text() != "hello world") return 3;
   if (tjg::backslash_unescape(tjg::backslash_escape(rendered)) != rendered)
-    return 4;
+    return 3;
   std::ostringstream output;
-  output << tree;
-  if (output.str() != rendered) return 5;
-  if (tjg::format(tjg::underline(), L"{}", tjg::wstyled_text{L"wide"}) !=
+  output << hello << " world";
+  if (output.str() != rendered) return 4;
+  if (tjg::format(tjg::underline(), L"{}", L"wide") !=
       L"\x1b[4mwide\x1b[0m")
-    return 6;
-  std::println("{}", tree);
+    return 5;
+  std::println("{}", hello);
 }

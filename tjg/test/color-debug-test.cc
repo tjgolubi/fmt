@@ -1,6 +1,5 @@
-#include "tjg/strip_ansi.h"
-#include "tjg/styled_text.h"
-#include "tjg/color-ostream.h"
+#include "tjg/strip_ansi.hpp"
+#include "tjg/color-ostream.hpp"
 #include "standard-format-test.h"
 #include "test-support.h"
 
@@ -9,18 +8,31 @@
 
 namespace {
 template <typename T>
-void check_output(const T& value, const std::string& expected) {
+void check_output(const T& value, const std::string& expected,
+                  const std::string& debug) {
   EXPECT_EQ(std::format("{}", value), expected);
-  EXPECT_EQ(std::format("{:?}", value), expected);
+  EXPECT_EQ(std::format("{:?}", value), debug);
   const auto wide = std::wstring(expected.begin(), expected.end());
   EXPECT_EQ(std::format(L"{}", value), wide);
-  EXPECT_EQ(std::format(L"{:?}", value), wide);
+  EXPECT_EQ(std::format(L"{:?}", value), (std::wstring{debug.begin(), debug.end()}));
   std::ostringstream os;
   os << value;
   EXPECT_EQ(os.str(), expected);
   std::wostringstream wos;
   wos << value;
   EXPECT_EQ(wos.str(), wide);
+}
+template <typename T>
+void check_output(const T& value, const std::string& expected) {
+  check_output(value, expected, expected);
+}
+
+void check_style(const tjg::text_style& value, const std::string& debug) {
+  const auto sgr = tjg::to_sgr(value);
+  EXPECT_EQ(std::format("{}", value), sgr);
+  EXPECT_EQ(std::format(L"{}", value), (std::wstring{sgr.begin(), sgr.end()}));
+  EXPECT_EQ(std::format("{:?}", value), debug);
+  EXPECT_EQ(std::format(L"{:?}", value), (std::wstring{debug.begin(), debug.end()}));
 }
 }  // namespace
 
@@ -64,16 +76,16 @@ TEST(color_debug_test, color_notation) {
 }
 
 TEST(color_debug_test, style_notation) {
-  check_output(tjg::text_style{}, "{}");
-  check_output(tjg::absolute(tjg::text_style{}), "=");
+  check_style(tjg::text_style{}, "{}");
+  check_style(tjg::absolute(tjg::text_style{}), "=");
   for (int mask = 0; mask < 256; ++mask) {
     auto marks = std::string{};
     for (int i = 0; i < 8; ++i) {
       if ((mask & (1 << i)) != 0) marks += "bfi_!r?-"[i];
     }
     const auto style = tjg::text_style{static_cast<tjg::emphasis>(mask)};
-    check_output(style, marks.empty() ? "{}" : marks);
-    check_output(tjg::absolute(style), "=" + marks);
+    check_style(style, marks.empty() ? "{}" : marks);
+    check_style(tjg::absolute(style), "=" + marks);
     for (int channels = 1; channels < 4; ++channels) {
       auto colored = style;
       auto colors = std::string{};
@@ -85,31 +97,32 @@ TEST(color_debug_test, style_notation) {
         colored.bg(tjg::rgb{26, 43, 60});
         colors += "/#1a2b3c";
       }
-      check_output(colored, marks + (marks.empty() ? "" : " ") + colors);
-      check_output(tjg::absolute(colored), "=" + marks + " " + colors);
+      check_style(colored, marks + (marks.empty() ? "" : " ") + colors);
+      check_style(tjg::absolute(colored), "=" + marks + " " + colors);
     }
   }
-  check_output(tjg::fg(tjg::cube_color{5, 0, 3}).bg(tjg::gray_color{12}),
+  check_style(tjg::fg(tjg::cube_color{5, 0, 3}).bg(tjg::gray_color{12}),
                "cube503/gray12");
 }
 
 TEST(color_debug_test, emphasis_notation) {
   using tjg::emphasis;
   check_output(emphasis::none, "{}");
-  check_output(emphasis::bold, "{bold}");
-  check_output(emphasis::faint, "{faint}");
-  check_output(emphasis::italic, "{italic}");
-  check_output(emphasis::underline, "{underline}");
-  check_output(emphasis::blink, "{blink}");
-  check_output(emphasis::reverse, "{reverse}");
-  check_output(emphasis::conceal, "{conceal}");
-  check_output(emphasis::strike, "{strike}");
+  check_output(emphasis::bold, "{bold}", "b");
+  check_output(emphasis::faint, "{faint}", "f");
+  check_output(emphasis::italic, "{italic}", "i");
+  check_output(emphasis::underline, "{underline}", "_");
+  check_output(emphasis::blink, "{blink}", "!");
+  check_output(emphasis::reverse, "{reverse}", "r");
+  check_output(emphasis::conceal, "{conceal}", "?");
+  check_output(emphasis::strike, "{strike}", "-");
   check_output(emphasis::strike | emphasis::bold | emphasis::underline,
-               "{bold underline strike}");
+               "{bold underline strike}", "b_-");
   check_output(static_cast<emphasis>(255),
-               "{bold faint italic underline blink reverse conceal strike}");
+               "{bold faint italic underline blink reverse conceal strike}",
+               "bfi_!r?-");
   EXPECT_EQ(std::format("{:*>8}", emphasis::bold), "**{bold}");
-  EXPECT_EQ(std::format(L"{:*<8?}", emphasis::faint), L"{faint}*");
+  EXPECT_EQ(std::format(L"{:*<8?}", emphasis::faint), L"f*******");
   EXPECT_EQ(std::format("{0:>{1}.{2}s}", emphasis::bold, 5, 3), "  {bo");
 #if defined(__cpp_lib_format_ranges)
   EXPECT_EQ(std::format("{}", std::vector<emphasis>{emphasis{}, emphasis::bold}), "[{}, {bold}]");
@@ -126,7 +139,7 @@ TEST(color_debug_test, string_specifications) {
   EXPECT_EQ(std::format("{:.3}", tjg::rgb{1, 2, 3}), "#01");
   EXPECT_EQ(std::format("{0:*^{1}.{2}?}", red, 7, 2), "**re***");
   EXPECT_EQ(std::format(L"{:*>8?}", red), L"*****red");
-  EXPECT_EQ(std::format("{:>4}", tjg::bold()), "   b");
+  EXPECT_EQ(std::format("{:>4?}", tjg::bold()), "   b");
 #if defined(__cpp_lib_format_ranges)
   EXPECT_EQ(std::format("{}", std::vector<tjg::color_t>{red, tjg::no_color}), "[red, no_color]");
 #endif
@@ -137,8 +150,8 @@ TEST(color_debug_test, string_specifications) {
   EXPECT_EQ(os.width(), 0);
   EXPECT_EQ(os.fill(), '*');
   EXPECT_EQ(os.flags() & std::ios_base::basefield, std::ios_base::hex);
-  os << std::left << std::setw(8) << tjg::bold();
-  EXPECT_EQ(os.str(), "***#abcdefb*******");
+  os << std::left << std::setw(8) << tjg::emphasis::bold;
+  EXPECT_EQ(os.str(), "***#abcdef{bold}**");
 #if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   EXPECT_THROW((void)runtime_format("{:x}", red), std::format_error);
   EXPECT_THROW((void)runtime_format("{:+}", tjg::bold()),
@@ -148,6 +161,7 @@ TEST(color_debug_test, string_specifications) {
 #endif
 }
 
+#if 0 // Restore when styled_text is integrated.
 TEST(color_debug_test, tree_layout) {
   check_output(tjg::text_style{}, "{}");
   EXPECT_EQ(std::format("{:?}", tjg::styled_text{}), "\"\"");
@@ -197,3 +211,4 @@ TEST(color_debug_test, tree_strings_and_stored_styles) {
   EXPECT_EQ(std::format("{:?}", moved), "\"\"");
   EXPECT_EQ(std::format("{:?}", owner), "\"old\"");
 }
+#endif

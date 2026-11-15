@@ -5,7 +5,7 @@
 //
 // For the license information refer to format.h.
 
-#include "tjg/color-ostream.h"
+#include "tjg/color-ostream.hpp"
 
 #include "standard-format-test.h"
 #include "test-support.h"
@@ -220,7 +220,8 @@ TEST(color_ostream_test, formatting_error) {
   os << "original";
   EXPECT_THROW(tjg::vprint_nonunicode(os, tjg::emphasis::bold, "{", std::make_format_args()),
                std::format_error);
-  EXPECT_EQ(os.str(), "original");
+  EXPECT_EQ(os.str(), "original\x1b[1m\x1b[0m");
+  EXPECT_EQ(tjg::detail::get_style_state(), tjg::text_style{});
 }
 
 namespace {

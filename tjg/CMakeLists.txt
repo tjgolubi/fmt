@@ -30,7 +30,7 @@ if (TJG_INSTALL)
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
     COMPONENT tjg
     FILES_MATCHING
-    PATTERN "*.h")
+    PATTERN "*.hpp")
   install(
     EXPORT tjg-targets
     NAMESPACE tjg::

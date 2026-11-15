@@ -5,7 +5,7 @@
 //
 // For the license information refer to format.h.
 
-#include "tjg/color.h"
+#include "tjg/text_style-format.hpp"
 
 #include "standard-format-test.h"
 #include "test-support.h"  // EXPECT_WRITE
@@ -325,11 +325,12 @@ TEST(color_test, cube_color) {
                     noexcept(std::declval<cube_color&>().b(0)),
                 "cube setters must be noexcept");
 #ifdef NDEBUG
-  const unsigned invalid_indices[] = {216, 217, 251, 255, 256,
-                                     (std::numeric_limits<unsigned>::max)()};
+  const int invalid_indices[] = {(std::numeric_limits<int>::min)(), -1,
+                                 216, 217, 251, 255, 256,
+                                 (std::numeric_limits<int>::max)()};
   for (auto index : invalid_indices) {
     SCOPED_TRACE(index);
-    EXPECT_EQ(cube_color{index}, cube_color{215});
+    EXPECT_EQ(cube_color{index}, cube_color{index < 0 ? 0 : 215});
   }
   const int invalid_channels[] = {-1, 6, 255, 256,
                                  (std::numeric_limits<int>::min)(),
@@ -842,23 +843,17 @@ namespace {
 void check_to_sgr(const tjg::text_style& style, const std::string& expected) {
   static_assert(std::is_same<decltype(tjg::to_sgr(style)), std::string>::value,
                 "the default character type must be char");
-  static_assert(std::is_same<decltype(tjg::to_sgr<char>(style)),
-                             std::string>::value,
-                "explicit char rendering must return std::string");
-  static_assert(std::is_same<decltype(tjg::to_sgr<wchar_t>(style)),
-                             std::wstring>::value,
-                "wide rendering must return std::wstring");
   const auto original = style;
   EXPECT_EQ(tjg::to_sgr(style), expected);
-  EXPECT_EQ(tjg::to_sgr<char>(style), expected);
-  EXPECT_EQ(tjg::to_sgr<wchar_t>(style),
-            (std::wstring{expected.begin(), expected.end()}));
+  auto wide = tjg::basic_sgr_buffer<wchar_t>{};
+  tjg::detail::append_sgr(wide, style);
+  EXPECT_EQ(wide.view(), (std::wstring{expected.begin(), expected.end()}));
   EXPECT_EQ(style, original);
 }
 
 template<typename Char>
 std::basic_string<Char> color_escape(tjg::color_t color, bool background) {
-  const auto escape = tjg::detail::ansi_color_escape<Char>{color, background};
+  const auto escape = tjg::detail::ansi_color_escape{color, background};
   return std::basic_string<Char>{escape.begin(), escape.end()};
 }
 }  // namespace
@@ -870,15 +865,16 @@ void check_sgr_transition(const tjg::text_style& target,
   const auto target_copy = target;
   const auto initial_copy = initial;
   EXPECT_EQ(tjg::to_sgr(target, initial), expected);
-  EXPECT_EQ(tjg::to_sgr<char>(target, initial), expected);
-  EXPECT_EQ(tjg::to_sgr<wchar_t>(target, initial),
-            (std::wstring{expected.begin(), expected.end()}));
+  auto wide = tjg::basic_sgr_buffer<wchar_t>{};
+  tjg::detail::append_sgr_transition(wide, target, initial);
+  EXPECT_EQ(wide.view(), (std::wstring{expected.begin(), expected.end()}));
   // The initial value describes a complete state regardless of its flag.
   auto absolute_initial = initial;
   absolute_initial.absolute();
   EXPECT_EQ(tjg::to_sgr(target, absolute_initial), expected);
-  EXPECT_EQ(tjg::to_sgr<wchar_t>(target, absolute_initial),
-            (std::wstring{expected.begin(), expected.end()}));
+  wide.clear();
+  tjg::detail::append_sgr_transition(wide, target, absolute_initial);
+  EXPECT_EQ(wide.view(), (std::wstring{expected.begin(), expected.end()}));
   EXPECT_EQ(target, target_copy);
   EXPECT_EQ(initial, initial_copy);
 }
@@ -2306,7 +2302,7 @@ TEST(color_test, compact_sgr_combined_style) {
             sgr + "value\x1b[0mplain");
 
   // Appending a style must preserve existing buffer contents.
-  auto buf = tjg::memory_buffer();
+  auto buf = tjg::sgr_buffer{};
   const auto prefix = std::string{"prefix"};
   buf.append(prefix.data(), prefix.data() + prefix.size());
   tjg::detail::append_sgr(buf, style);

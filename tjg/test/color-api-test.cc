@@ -1,4 +1,4 @@
-#include "tjg/color.h"
+#include "tjg/text_style-format.hpp"
 
 void test_text_style() {
   tjg::print(fg(tjg::rgb(255, 20, 30)), "{}", "rgb(255,20,30)");

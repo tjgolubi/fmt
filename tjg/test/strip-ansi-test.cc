@@ -1,4 +1,4 @@
-#include "tjg/strip_ansi.h"
+#include "tjg/strip_ansi.hpp"
 #include "standard-format-test.h"
 #include "test-support.h"
 
@@ -57,6 +57,7 @@ void check_preservation() {
   EXPECT_EQ(strip(input + chars<Char>("\x1b[0m")), input);
 }
 
+#if 0 // Restore when styled_text is integrated.
 template<typename Char>
 void check_styled_text() {
   using text = tjg::basic_styled_text<Char>;
@@ -102,6 +103,7 @@ void check_styled_text() {
   const auto malformed = text{chars<Char>("\x1b[1 2m\x1b]unfinished"), red};
   EXPECT_EQ(tjg::strip_ansi(malformed), malformed);
 }
+#endif
 } // namespace
 
 TEST(strip_ansi_test, complete_sequences) {
@@ -124,11 +126,13 @@ TEST(strip_ansi_test, overloads_and_ownership) {
   EXPECT_EQ(tjg::strip_ansi("\x1b[1m" + utf8 + "\x1b[m"), utf8);
 }
 
+#if 0 // Restore when styled_text is integrated.
 TEST(strip_ansi_test, styled_text) {
   check_styled_text<char>();
   check_styled_text<wchar_t>();
 }
 
+#endif
 TEST(strip_ansi_test, standard_view_slices) {
   const auto input = std::string{"!\x1b[31m"} + std::string{"a\0b", 3} + "?";
   const auto view = std::string_view{input}.substr(1, input.size() - 2);

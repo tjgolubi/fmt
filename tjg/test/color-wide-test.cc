@@ -1,4 +1,4 @@
-#include "tjg/color.h"
+#include "tjg/text_style-format.hpp"
 #include "test-support.h"
 
 TEST(color_wide_test, format) {

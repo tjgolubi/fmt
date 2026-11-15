@@ -1,9 +1,9 @@
 CXX = g++
 TJG_ROOT = ..
 CPPFLAGS += -I$(TJG_ROOT)/include
-CXXFLAGS += -std=c++23 -Wall -Wextra -Werror
+CXXFLAGS += -std=gnu++23 -Wall -Wextra -Werror
 
-DEMOS = FmtColorDemo2 TableDemo
+DEMOS = FmtColorDemo1 # TableDemo
 
 .PHONY: all run clean
 all: $(DEMOS)
@@ -12,8 +12,8 @@ $(DEMOS): %: %.cpp $(wildcard $(TJG_ROOT)/include/tjg/*.h)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< $(LDFLAGS) $(LDLIBS) -o $@
 
 run: all
-	./FmtColorDemo2
-	./TableDemo
+	./FmtColorDemo1
+#	./TableDemo
 
 clean:
 	$(RM) $(DEMOS)
