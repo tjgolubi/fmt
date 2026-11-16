@@ -22,7 +22,7 @@ namespace tjg {
 namespace detail {
 
 struct styled_text_ansi_stripper;
-template<CharType Char> struct styled_text_renderer;
+template<CharType Char> class styled_text_renderer;
 
 } // detail
 
@@ -37,7 +37,7 @@ public:
 private:
   using leaf   = std::shared_ptr<const string_type>;
   using branch = std::vector<basic_styled_text>;
-  friend struct detail::styled_text_renderer<Char>;
+  friend class detail::styled_text_renderer<Char>;
   friend struct detail::styled_text_ansi_stripper;
 
   text_style _style{};

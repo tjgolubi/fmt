@@ -29,28 +29,6 @@ auto styled_text_width(std::basic_string_view<Char> text) noexcept
                           text, std::numeric_limits<std::size_t>::max()).second;
 }
 
-struct styled_text_render_state {
-  std::size_t remaining;
-  bool stopped = false;
-  explicit styled_text_render_state(std::size_t limit) : remaining{limit} {}
-};
-
-struct styled_text_prefix {
-  std::size_t size;
-  std::size_t width;
-};
-
-template<CharType Char>
-auto styled_text_take(std::basic_string_view<Char> text,
-                      styled_text_render_state& state)
-  -> styled_text_prefix
-{
-  const auto prefix = tjg::unicode::text_prefix(text, state.remaining);
-  state.remaining -= prefix.second;
-  state.stopped = (prefix.first < text.size() || state.remaining == 0);
-  return {prefix.first, prefix.second};
-}
-
 /**
  * Formats an owning styled-text tree using ordinary ANSI SGR sequences.
  * Relative nodes inherit their enclosing style; absolute nodes start from
@@ -59,9 +37,29 @@ auto styled_text_take(std::basic_string_view<Char> text,
  */
 
 template<CharType Char>
-struct styled_text_renderer {
+class styled_text_renderer {
  private:
-  using render_state = detail::styled_text_render_state;
+  const string_format_specs<Char> _specs;
+  std::size_t _remaining = 0;
+  bool _stopped = false;
+
+  void reset() {
+    _remaining = _specs.precision;
+    _stopped = false;
+  }
+
+  template<std::output_iterator<Char> OutputIt>
+  static auto transition(text_style& style, OutputIt out) -> OutputIt {
+    auto& terminal = get_style_state();
+    if (style == terminal)
+      return out;
+    auto sgr = sgr_buffer{};
+    detail::append_sgr_transition(sgr, style, terminal);
+    terminal = style.absolute(false);
+    for (const auto ch : sgr.view())
+      *out++ = static_cast<Char>(ch);
+    return out;
+  } // transition
 
   template<std::output_iterator<Char> OutputIt>
   static auto write_debug(const basic_styled_text<Char>& node, OutputIt out,
@@ -93,66 +91,57 @@ struct styled_text_renderer {
     return out;
   } // write_debug
 
-  static auto measure(const basic_styled_text<Char>& node, render_state& state)
-    -> std::size_t
-  {
-    if (node.empty() || state.stopped)
+  struct styled_text_prefix {
+    std::size_t size;
+    std::size_t width;
+  };
+
+  auto take(std::basic_string_view<Char> text) -> styled_text_prefix {
+    const auto prefix = tjg::unicode::text_prefix(text, _remaining);
+    _remaining -= prefix.second;
+    _stopped = (prefix.first < text.size() || _remaining == 0);
+    return {prefix.first, prefix.second};
+  } // take
+
+  auto measure(const basic_styled_text<Char>& node) -> std::size_t {
+    if (node.empty() || _stopped)
       return 0;
-    if (node._children.empty()) {
-      const auto& text = *node._text;
-      return detail::styled_text_take(
-                 std::basic_string_view<Char>{text.data(), text.size()}, state)
-          .width;
-    }
+    if (node._children.empty())
+      return take(*(node._text)).width;
     auto width = std::size_t{0};
     for (const auto& child : node._children) {
-      width += measure(child, state);
-      if (state.stopped) break;
+      width += measure(child);
+      if (_stopped) break;
     }
     return width;
   } // measure
 
   template<std::output_iterator<Char> OutputIt>
-  static auto transition(text_style& style, OutputIt out) -> OutputIt {
-    auto& terminal = get_style_state();
-    if (style == terminal)
-      return out;
-    auto sgr = sgr_buffer{};
-    detail::append_sgr_transition(sgr, style, terminal);
-    terminal = style.absolute(false);
-    for (const auto ch : sgr.view())
-      *out++ = static_cast<Char>(ch);
-    return out;
-  } // transition
-
-  template<std::output_iterator<Char> OutputIt>
-  static auto write_node(const basic_styled_text<Char>& node,
-                         text_style enclosing,
-                         OutputIt out, render_state& state,
-                         const string_format_specs<Char>& specs,
-                         std::size_t left = 0, std::size_t right = 0)
-      -> OutputIt
+  auto write_node(const basic_styled_text<Char>& node,
+                  text_style enclosing,
+                  OutputIt out,
+                  std::size_t left = 0, std::size_t right = 0)
+    -> OutputIt
   {
-    if ((node.empty() || state.stopped) && left == 0 && right == 0)
+    if ((node.empty() || _stopped) && left == 0 && right == 0)
       return out;
     auto effective = node._style;
     if (!effective.is_absolute())
       effective.underlay(enclosing);
     if (left != 0) {
       out = transition(effective, std::move(out));
-      out = specs.pad(std::move(out), left);
+      out = _specs.pad(std::move(out), left);
     }
     if (!node._children.empty()) {
       if (effective.is_absolute())
         out = transition(effective, std::move(out));
       for (const auto& child : node._children) {
-        if (state.stopped) break;
-        out = write_node(child, effective, std::move(out), state, specs);
+        if (_stopped) break;
+        out = write_node(child, effective, std::move(out));
       }
-    } else if (!node.empty() && !state.stopped) {
+    } else if (!node.empty() && !_stopped) {
       const auto& text  = *node._text;
-      const auto prefix = detail::styled_text_take(
-          std::basic_string_view<Char>{text.data(), text.size()}, state);
+      const auto prefix = take(text);
       if (prefix.size != 0) {
         out = transition(effective, std::move(out));
         out = std::copy(text.data(), text.data() + prefix.size, std::move(out));
@@ -160,49 +149,51 @@ struct styled_text_renderer {
     }
     if (right != 0) {
       out = transition(effective, std::move(out));
-      out = specs.pad(std::move(out), right);
+      out = _specs.pad(std::move(out), right);
     }
     return out;
   } // write_node
 
  public:
+  explicit styled_text_renderer(const string_format_specs<Char>& specs)
+    : _specs{specs}, _remaining{specs.precision}, _stopped{false} { }
 
   // Shared by the formatter and ostream bridge. Options are already resolved;
   // stream insertion never builds or parses a format-specification string.
-  template<typename FormatContext>
-  static auto format_with_specs(const basic_styled_text<Char>& value,
-                                FormatContext& ctx,
-                                string_format_specs<Char> specs)
-    -> decltype(ctx.out())
+  template<std::output_iterator<Char> OutputIt>
+  auto format(const basic_styled_text<Char>& value, OutputIt out)
+    -> OutputIt
   {
-    const auto limit = specs.precision;
-    if (specs.debug)
-      return write_debug(value, ctx.out());
-    auto state   = render_state{limit};
+    if (_specs.debug)
+      return write_debug(value, std::move(out));
+
     auto padding = std::size_t{0};
-    if (specs.width != 0 || limit != std::numeric_limits<std::size_t>::max()) {
-      auto measuring   = render_state{limit};
-      const auto width = measure(value, measuring);
-      if (specs.width > width) padding = specs.width - width;
+    if ( _specs.width != 0
+      || _specs.precision != std::numeric_limits<std::size_t>::max())
+    {
+      reset();
+      const auto width = measure(value);
+      if (_specs.width > width) padding = _specs.width - width;
       if (width == 0 && padding == 0)
-        return ctx.out();
+        return out;
     }
-    const auto left = (specs.alignment == '>')
-                    ? padding : (specs.alignment == '^')
+
+    reset();
+    const auto left = (_specs.alignment == '>')
+                    ? padding : (_specs.alignment == '^')
                               ? (padding / 2) : 0;
-    if (limit == 0) state.stopped = true;
+    if (_specs.precision == 0) _stopped = true;
     auto initial = get_style_state();
     auto scope = detail::style_scope{};
-    auto out = write_node(value, initial, ctx.out(), state, specs,
-                          left, padding - left);
+    out = write_node(value, initial, std::move(out), left, padding - left);
     return transition(initial, std::move(out));
-  } // format_with_specs
+  } // format
 
 };  // styled_text_renderer
 
 template<CharType Char>
-struct standard_styled_text_formatter : styled_text_renderer<Char> {
-  string_format_specs<Char> specs;
+struct standard_styled_text_formatter {
+  string_format_specs<Char> specs{};
 
   constexpr auto parse(std::basic_format_parse_context<Char>& ctx)
     -> decltype(ctx.begin())
@@ -217,14 +208,16 @@ struct standard_styled_text_formatter : styled_text_renderer<Char> {
                 "styled_text debug format does not accept width or precision");
     }
     return end;
-  }
+  } // parse
 
   template<typename Context>
   auto format(const basic_styled_text<Char>& value, Context& ctx) const
     -> decltype(ctx.out())
   {
-    return this->format_with_specs(value, ctx, specs.resolve(ctx));
-  }
+    auto renderer = styled_text_renderer<Char>{specs.resolve(ctx)};
+    return renderer.format(value, ctx.out());
+  } // format
+
 }; // standard_styled_text_formatter
 
 } // tjg::detail

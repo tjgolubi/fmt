@@ -153,19 +153,12 @@ auto operator<<(std::basic_ostream<Char>& os,
 
   auto output = std::ostreambuf_iterator<Char>{os};
 
-  struct output_context {
-    decltype(output) iterator;
-    auto out() { return iterator; }
-  };
-
-  auto ctx = output_context{output};
-
   bool failed;
 #if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   try {
 #endif
-    failed = detail::styled_text_renderer<Char>::format_with_specs(
-                                                    value, ctx, specs).failed();
+    auto renderer = detail::styled_text_renderer<Char>{specs};
+    failed = renderer.format(value, output).failed();
 #if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   } catch (...) {
     const bool rethrow = (os.exceptions() & std::ios_base::badbit) != 0;

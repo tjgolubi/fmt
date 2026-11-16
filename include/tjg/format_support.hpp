@@ -50,10 +50,8 @@ struct string_format_specs {
   constexpr string_format_specs() noexcept { _fill.push_back(Char{' '}); }
 
   constexpr void set_fill(std::basic_string_view<Char> value) {
-    auto fill = basic_inline_buffer<Char, 4>{};
-    if (!value.empty())
-      fill.append(value.data(), value.data() + value.size());
-    _fill = fill;
+    _fill.clear();
+    _fill.append(value.data(), value.data() + value.size());
   }
 
   template<typename Context>
