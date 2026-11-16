@@ -284,7 +284,8 @@ void check_context_styles() {
 } // namespace
 
 struct color_context_nested {};
-struct color_context_throwing {};
+// A volatile condition keeps the normal return path reachable to the compiler.
+struct color_context_throwing { volatile bool should_throw = true; };
 struct terminal_state_nested {};
 
 namespace std {
@@ -305,8 +306,10 @@ template<> struct formatter<terminal_state_nested> : formatter<int> {
 };
 template<> struct formatter<color_context_throwing> : formatter<int> {
   template<typename Context>
-  auto format(color_context_throwing, Context& ctx) const -> decltype(ctx.out()) {
-    throw format_error("color context test");
+  auto format(const color_context_throwing& value, Context& ctx) const
+      -> decltype(ctx.out()) {
+    if (value.should_throw) throw format_error("color context test");
+    return ctx.out();
   }
 };
 }

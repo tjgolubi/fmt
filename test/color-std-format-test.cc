@@ -9,7 +9,8 @@
 
 namespace {
 struct native_nested { bool absolute = false; };
-struct native_throwing {};
+// A volatile condition keeps the normal return path reachable to the compiler.
+struct native_throwing { volatile bool should_throw = true; };
 struct not_formattable {};
 }
 
@@ -30,9 +31,10 @@ struct formatter<native_nested, Char> : formatter<int, Char> {
 template <typename Char>
 struct formatter<native_throwing, Char> : formatter<int, Char> {
   template <typename Context>
-  auto format(native_throwing, Context& ctx) const -> decltype(ctx.out()) {
-    (void)ctx;
-    throw format_error("native formatter failure");
+  auto format(const native_throwing& value, Context& ctx) const
+      -> decltype(ctx.out()) {
+    if (value.should_throw) throw format_error("native formatter failure");
+    return ctx.out();
   }
 };
 }

@@ -83,10 +83,8 @@ struct string_format_specs {
       }
     }
     if (next != end && align(*next)) {
-      if (*it == Char{'{'} || *it == Char{'}'}) {
+      if (*it == Char{'{'} || *it == Char{'}'})
         fail("invalid fill character");
-        return end;
-      }
       set_fill(std::basic_string_view<Char>{it, next});
       alignment = static_cast<char>(*next);
       it = next + 1;
