@@ -10,6 +10,7 @@
 #include "standard-format-test.h"
 #include "test-support.h"
 
+#include <print>
 #include <sstream>
 #include <locale>
 #include <iomanip>
@@ -195,17 +196,47 @@ TEST(color_ostream_test, empty_style_and_text) {
 
 TEST(color_ostream_test, literal_text_and_stream_state) {
   std::ostringstream os;
-  os.width(30);
-  os.fill('*');
-  os << std::hex;
+  std::ostringstream plain;
+  os << std::hex << std::setfill('*') << std::setw(30);
+  plain.copyfmt(os);
   const char text[] = "a\0{}b";
-  tjg::print(os, tjg::emphasis::bold, "{} {}",
-             std::string_view(text, sizeof(text) - 1), 42);
-  const char expected[] = "\x1b[1ma\0{}b 42\x1b[0m";
-  EXPECT_EQ(os.str(), std::string(expected, sizeof(expected) - 1));
-  EXPECT_EQ(os.width(), 30);
+  const auto value = std::string_view(text, sizeof(text) - 1);
+  std::print(plain, "{} {}", value, 42);
+  tjg::print(os, tjg::emphasis::bold, "{} {}", value, 42);
+  EXPECT_EQ(os.str(), "\x1b[1m" + plain.str() + "\x1b[0m");
+  EXPECT_EQ(os.width(), plain.width());
   EXPECT_EQ(os.fill(), '*');
   EXPECT_EQ(os.flags() & std::ios_base::basefield, std::ios_base::hex);
+}
+
+TEST(color_ostream_test, empty_style_matches_std_print) {
+  const auto check = []<typename... T>(std::format_string<const T&...> fmt,
+                                      const T&... values) {
+    for (auto alignment : {std::ios_base::left, std::ios_base::right}) {
+      SCOPED_TRACE(fmt.get());
+      SCOPED_TRACE(alignment == std::ios_base::left ? "left" : "right");
+      std::ostringstream plain;
+      std::ostringstream styled;
+      plain.setf(alignment, std::ios_base::adjustfield);
+      plain << std::setfill('*') << std::setw(30);
+      styled.copyfmt(plain);
+
+      std::print(plain, fmt, values...);
+      tjg::print(styled, tjg::text_style{}, fmt, values...);
+      EXPECT_EQ(styled.str(), plain.str());
+      EXPECT_EQ(styled.width(), plain.width());
+
+      plain << '!';
+      styled << '!';
+      EXPECT_EQ(styled.str(), plain.str());
+    }
+  };
+
+  const auto text = std::string{"ready"};
+  check("{:04}", 42);
+  check("{:.2f}", 1.25f);
+  check("[{}]", text);
+  check("Result: {:04} {:.2f} [{}]", 42, 1.25f, text);
 }
 
 TEST(color_ostream_test, long_output) {

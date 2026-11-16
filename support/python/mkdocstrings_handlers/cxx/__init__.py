@@ -374,7 +374,9 @@ class CxxHandler(BaseHandler):
         headers = sorted((top_dir / "include" / "tjg").glob("*.hpp"))
         self._ns2doxyxml: "dict[str, ET.ElementTree[ET.Element[str]]]" = {}
         xml_dir = Path("build/doxyxml")
-        self._doxyxml_dir = str(top_dir / xml_dir)
+        xml_path = top_dir / xml_dir
+        xml_path.mkdir(parents=True, exist_ok=True)
+        self._doxyxml_dir = str(xml_path)
         p = Popen(cmd, cwd=top_dir, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
         output, _ = p.communicate(
             input=r"""

@@ -290,9 +290,9 @@ class cube_color {
   /// Constructs a zero-based index 0-215.
   constexpr explicit cube_color(int value) noexcept {
     auto v = check_index(value);
-    _r = v / 36;
-    _g = (v / 6) % 6;
-    _b = v % 6;
+    _r = narrow_cast<chan_type>(v / 36);
+    _g = narrow_cast<chan_type>((v / 6) % 6);
+    _b = narrow_cast<chan_type>(v % 6);
   }
 
 private:
@@ -396,8 +396,11 @@ struct blend_state {
                narrow_cast<rgb::chan_type>(b / count)};
   }
 
-  constexpr auto result() const noexcept -> color_t
-  { return count < 2 ? _first : color_t{average()}; }
+  constexpr auto result() const noexcept -> color_t {
+    if (count == 0) return no_color;
+    if (count == 1) return _first;
+    return color_t{average()};
+  }
 
  private:
   color_t _first{no_color};
