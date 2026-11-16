@@ -369,11 +369,10 @@ class CxxHandler(BaseHandler):
         """The base directory of the project."""
 
         # Run Doxygen on the standalone TJG headers.
-        cmd = ["doxygen", "-"]
+        cmd = [os.environ.get("TJG_DOXYGEN", "doxygen"), "-"]
         top_dir = Path(__file__).resolve().parents[4]
-        headers = sorted((top_dir / "include" / "tjg").glob("*.hpp"))
         self._ns2doxyxml: "dict[str, ET.ElementTree[ET.Element[str]]]" = {}
-        xml_dir = Path("build/doxyxml")
+        xml_dir = Path(os.environ.get("TJG_DOXYXML", "build/doxyxml"))
         xml_path = top_dir / xml_dir
         xml_path.mkdir(parents=True, exist_ok=True)
         self._doxyxml_dir = str(xml_path)
@@ -384,16 +383,16 @@ class CxxHandler(BaseHandler):
             GENERATE_XML     = YES
             GENERATE_LATEX   = NO
             GENERATE_HTML    = NO
-            INPUT            = {0}
-            XML_OUTPUT       = {1}
+            INPUT            = include/tjg
+            FILE_PATTERNS    = *.hpp
+            RECURSIVE        = YES
+            INCLUDE_PATH     = include
+            XML_OUTPUT       = "{0}"
             QUIET            = YES
             AUTOLINK_SUPPORT = NO
             MACRO_EXPANSION  = YES
             PREDEFINED       = TJG_NOEXCEPT_UNLESS_BAD_ALLOC=
-            """.format(
-                " ".join(header.relative_to(top_dir).as_posix() for header in headers),
-                xml_dir.as_posix(),
-            ).encode("utf-8")
+            """.format(xml_dir.as_posix()).encode("utf-8")
         )
         if p.returncode != 0:
             raise RuntimeError(output.decode("utf-8", errors="replace").strip())

@@ -3,7 +3,7 @@
 /// @copyright 2026 Terry Golubiewski, all rights reserved.
 #pragma once
 
-#include "styled_text.hpp"
+#include <tjg/styled_text.hpp>
 #include "format_support.hpp"
 #include "sgr_support.hpp"
 #include "text_style-format.hpp"

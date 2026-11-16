@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "text_style.hpp"
-#include "colors.hpp"
+#include <tjg/text_style.hpp>
+#include <tjg/colors.hpp>
 #include "emphasis.hpp"
 #include "inline_buffer.hpp"
 #include "error_support.hpp"

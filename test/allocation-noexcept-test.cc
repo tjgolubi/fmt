@@ -1,6 +1,4 @@
-#include "tjg/sgr_support.hpp"
-#include "tjg/backslash.hpp"
-#include "tjg/strip_ansi_styled_text.hpp"
+#include "tjg/color.hpp"
 #include "test-support.h"
 
 #include <type_traits>

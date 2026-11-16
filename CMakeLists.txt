@@ -56,3 +56,41 @@ if (TJG_TEST)
   enable_testing()
   add_subdirectory(test)
 endif ()
+
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/support/mkdocs-pages.yml")
+  find_package(Python3 QUIET COMPONENTS Interpreter)
+  find_program(TJG_DOXYGEN NAMES doxygen)
+  if (Python3_Interpreter_FOUND AND TJG_DOXYGEN)
+    set(doc_venv "${CMAKE_CURRENT_BINARY_DIR}/doc-venv")
+    set(doc_requirements "${CMAKE_CURRENT_SOURCE_DIR}/support/doc-requirements.txt")
+    execute_process(
+      COMMAND "${Python3_EXECUTABLE}" -c
+              "import os; print('Scripts/python.exe' if os.name == 'nt' else 'bin/python')"
+      OUTPUT_VARIABLE doc_python_relative
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      COMMAND_ERROR_IS_FATAL ANY)
+    set(doc_python "${doc_venv}/${doc_python_relative}")
+    add_custom_command(
+      OUTPUT "${doc_venv}/requirements-installed"
+      COMMAND "${Python3_EXECUTABLE}" -m venv "${doc_venv}"
+      COMMAND "${doc_python}" -m pip install --require-hashes -r "${doc_requirements}"
+      COMMAND "${CMAKE_COMMAND}" -E touch "${doc_venv}/requirements-installed"
+      DEPENDS "${doc_requirements}" "${Python3_EXECUTABLE}"
+      COMMENT "Installing the pinned guide dependencies"
+      VERBATIM)
+    add_custom_target(
+      doc
+      COMMAND
+        "${CMAKE_COMMAND}" -E env "PYTHONPATH=support/python"
+        "TJG_DOXYGEN=${TJG_DOXYGEN}"
+        "TJG_DOXYXML=${CMAKE_CURRENT_BINARY_DIR}/doxyxml"
+        "${doc_python}" -m mkdocs build --config-file support/mkdocs-pages.yml
+        --site-dir "${CMAKE_CURRENT_BINARY_DIR}/doc-html" --no-directory-urls
+      DEPENDS "${doc_venv}/requirements-installed"
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+      COMMENT "Building the color guide"
+      VERBATIM)
+  else ()
+    message(STATUS "Target 'doc' requires Python 3 and Doxygen")
+  endif ()
+endif ()

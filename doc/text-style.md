@@ -8,7 +8,7 @@
 
 ### Readable style output
 
-With `<tjg/text_style-format.hpp>`, `{}` emits the style's SGR escape sequence.
+With `<tjg/color.hpp>`, `{}` emits the style's SGR escape sequence.
 An empty style emits an empty string. Use `{:?}` for compact readable notation.
 To write that notation to a stream, insert the string returned by
 `std::format("{:?}", style)` or `std::format(L"{:?}", style)`.
@@ -46,14 +46,14 @@ Readable formatting supports fill, alignment, width, and precision, including
 dynamic width and precision. A [styled-text debug view](styled.md#debug-output)
 omits empty node styles.
 
-With `<tjg/emphasis-format.hpp>`, `{}` lists the set emphasis names in
+With `<tjg/color.hpp>`, `{}` lists the set emphasis names in
 declaration order, separated by spaces inside braces. For example,
 `bold | faint | strike` displays `{bold faint strike}`. The `{:?}` presentation
 uses the compact codes `bf-`. `emphasis::none` displays `{}` in either form.
 Narrow and wide formatting accepts string fill, alignment, width, precision,
 optional `s` or `?`, and
 dynamic specifications.
-With `<tjg/color-ostream.hpp>`, ostream insertion uses the same named form. Stream
+Ostream insertion uses the same named form. Stream
 width, fill, and alignment apply as for a string; precision is ignored. This
 named form is separate from the compact characters used inside `text_style` output.
 

@@ -1,5 +1,4 @@
-#include <tjg/text_style.hpp>
-#include <tjg/text_style-format.hpp>
+#include <tjg/color.hpp>
 
 #include <print>
 

@@ -20,7 +20,7 @@ BIN2 := $(addprefix $(BUILD_DIR)/,$(addsuffix $(EXEEXT),$(PRG2)))
 
 BINARIES := $(BIN1) $(BIN2)
 
-INCLUDE := $(PROJDIR)/include/tjg
+INCLUDE := $(PROJDIR)/include/tjg/bits
 
 .PHONY: all clean
 all: $(addprefix $(INCLUDE)/, UnicodeData.hpp EastAsianWidth.hpp)

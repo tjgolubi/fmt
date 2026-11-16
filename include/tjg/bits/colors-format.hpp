@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "colors.hpp"
+#include <tjg/colors.hpp>
 
 #include "format_support.hpp"
 #include "inline_buffer.hpp"

@@ -1,4 +1,4 @@
-#include "tjg/text_style-format.hpp"
+#include "tjg/color.hpp"
 #include "test-support.h"
 
 #if GTEST_HAS_DEATH_TEST && !defined(NDEBUG)

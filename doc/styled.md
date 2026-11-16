@@ -4,7 +4,7 @@
 
 Use `styled_text` to compose text with independently styled parts. Include
 `<tjg/styled_text.hpp>` for the owning type and its composition operations.
-Include `<tjg/styled_text-format.hpp>` to use it with `std::format`,
+Include `<tjg/color.hpp>` to use it with `std::format`,
 `std::format_to`, or `std::println`. Use `{:?}` to inspect the tree.
 
 The tree owns its text. Copies share immutable leaf strings and have their own
@@ -261,12 +261,12 @@ dynamic arguments.
 
 ### Stream insertion
 
-Include `<tjg/color-ostream.hpp>` to insert a `styled_text` tree into a narrow
+Include `<tjg/color.hpp>` to insert a `styled_text` tree into a narrow
 stream or a `wstyled_text` tree into a wide stream. Insertion uses the same ANSI
 rendering as the styled-text formatter.
 
 ```cpp
-#include <tjg/color-ostream.hpp>
+#include <tjg/color.hpp>
 #include <iomanip>
 #include <sstream>
 
@@ -379,9 +379,8 @@ styling, including blink where supported.
 
 ## Parsing SGR text
 
-Include `<tjg/parse_styled_text.hpp>` and call `parse_styled_text` to turn text
-containing ordinary ANSI SGR into an owned `styled_text` (or `wstyled_text` for
-wide input). Include `<tjg/styled_text-format.hpp>` to format the result.
+Include `<tjg/color.hpp>` and call `parse_styled_text` to turn text containing
+ordinary ANSI SGR into an owned `styled_text` (or `wstyled_text` for wide input).
 
 ```cpp
 auto message = tjg::parse_styled_text("plain \x1b[31mred\x1b[0m plain");
@@ -473,7 +472,7 @@ returns, or other terminal behavior, and is not a security sanitizer. Unlike
 `parse_styled_text(...).plain_text()`, it removes non-SGR escapes too, without
 constructing a styled tree.
 
-Include `<tjg/strip_ansi_styled_text.hpp>` for the styled-text overload. It
+Include `<tjg/color.hpp>` for the styled-text overload. It
 returns a new `basic_styled_text<Char>` with the same
 tree structure, styles, and absolute boundaries. It strips ANSI sequences from
 each leaf independently, retaining leaves that become empty and sharing
@@ -588,7 +587,7 @@ interpret ANSI sequences or remove explicit styles.
 
 ## Individual styled arguments
 
-Include `<tjg/text_style-format.hpp>` to style an individual replacement
+Include `<tjg/color.hpp>` to style an individual replacement
 field with `styled`. Its format specifications apply to the underlying value.
 
 ::: styled(const T&, text_style)
@@ -616,12 +615,12 @@ enclosing style afterward. For examples, see
 [Text style rendering](index.md#TextStyleRendering).
 
 To insert a styled value directly into an ostream, include
-`<tjg/color-ostream.hpp>` and use `os << tjg::styled(value, style)`.
+`<tjg/color.hpp>` and use `os << tjg::styled(value, style)`.
 [Styled stream insertion](print.md#styled-stream-insertion) describes stream
 formatting, wide streams, and the wrapper's reference lifetime.
 
 ```cpp
-#include <tjg/color-ostream.hpp>
+#include <tjg/color.hpp>
 #include <iomanip>
 #include <iostream>
 #include <numbers>

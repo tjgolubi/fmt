@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "error_support.hpp"
-#include "utility.hpp"
+#include <tjg/bits/error_support.hpp>
+#include <tjg/bits/utility.hpp>
 
 #include <stdexcept>
 #include <string>

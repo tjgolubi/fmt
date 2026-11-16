@@ -1,7 +1,7 @@
 // Parse ordinary ANSI SGR into owned styled text.
 #pragma once
 
-#include "styled_text.hpp"
+#include <tjg/styled_text.hpp>
 #include "utility.hpp"
 
 #include <string_view>

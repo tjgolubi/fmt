@@ -1,8 +1,7 @@
 # Styled Formatting
 
-Include `<tjg/text_style-format.hpp>` for the formatting overloads and
-`<tjg/sgr_support.hpp>` for the SGR helpers. Formatting produces text containing
-styling sequences.
+Include `<tjg/color.hpp>` for the formatting overloads and SGR helpers.
+Formatting produces text containing styling sequences.
 See [Text style rendering](index.md#TextStyleRendering) for the shared rules.
 
 ## `to_sgr`

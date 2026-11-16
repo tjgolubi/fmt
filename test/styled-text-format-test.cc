@@ -1,5 +1,4 @@
-#include "tjg/styled_text-format.hpp"
-#include "tjg/color-ostream.hpp"
+#include "tjg/color.hpp"
 #include "standard-format-test.h"
 #include "test-support.h"
 

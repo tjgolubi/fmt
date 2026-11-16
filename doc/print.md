@@ -1,6 +1,6 @@
 # Styled Output
 
-Include `<tjg/text_style-format.hpp>` to use these output overloads. See
+Include `<tjg/color.hpp>` to use these output overloads. See
 [Text style rendering](index.md#TextStyleRendering) for the shared styling rules.
 
 ## print to a stream
@@ -58,10 +58,10 @@ tjg::vprint_unicode(stdout, tjg::fg(tjg::color::green), "Result: {}", args);
 
 ## Styled ostream output
 
-Include `<tjg/color-ostream.hpp>` to use the styled `std::ostream` overloads.
+Include `<tjg/color.hpp>` to use the styled `std::ostream` overloads.
 
 ```cpp
-#include <tjg/color-ostream.hpp>
+#include <tjg/color.hpp>
 #include <sstream>
 
 std::ostringstream os;
@@ -99,14 +99,14 @@ result, or use the styled stream insertion described below.
 
 ## Styled stream insertion
 
-With `<tjg/color-ostream.hpp>`, insert the result of `tjg::styled(value, style)`
+With `<tjg/color.hpp>`, insert the result of `tjg::styled(value, style)`
 directly into a stream. The operator returns the same stream by reference for
 chaining and supports both `std::ostream` and `std::wostream` in C++23 and later.
 The value must support insertion into that stream; a standard formatter is not
 required.
 
 ```cpp
-#include <tjg/color-ostream.hpp>
+#include <tjg/color.hpp>
 #include <iomanip>
 #include <sstream>
 

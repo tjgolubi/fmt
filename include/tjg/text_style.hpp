@@ -4,11 +4,11 @@
 
 #pragma once
 
-#include "colors.hpp"
-#include "emphasis.hpp"
-#include "error_support.hpp"
-#include "hash_support.hpp"
-#include "utility.hpp"
+#include <tjg/colors.hpp>
+#include <tjg/bits/emphasis.hpp>
+#include <tjg/bits/error_support.hpp>
+#include <tjg/bits/hash_support.hpp>
+#include <tjg/bits/utility.hpp>
 
 #include <functional>
 

@@ -11,7 +11,7 @@ Add this checkout's `include/` directory to your compiler's include path.
 Use a C++23 compiler and standard library with `<format>` and `<print>`.
 
 ```cpp
-#include <tjg/text_style-format.hpp>
+#include <tjg/color.hpp>
 
 int main() {
   const auto green = tjg::fg(tjg::term_color::green);
@@ -22,22 +22,25 @@ int main() {
 The whole line is bold, and `passed` is green. Styled arguments inherit and
 restore their enclosing style. An ANSI-capable terminal displays the colors.
 
-Run `make -C demo run` to try [FmtColorDemo1](demo/FmtColorDemo1.cpp).
+Run `make -C demo FmtColorDemo1` and then `./demo/FmtColorDemo1` to try the
+[first demo](demo/FmtColorDemo1.cpp). See the [demo README](demo/README.md) for
+the full set of examples and the {fmt} comparison builds.
 
 ## Headers
 
-| Header | Provides |
-| --- | --- |
-| `<tjg/colors.hpp>` | Named RGB colors, terminal colors, 216-color cube and grayscale palettes |
-| `<tjg/text_style.hpp>` | Foreground, background, and emphasis, with style composition and absolute styles |
-| `<tjg/text_style-format.hpp>` | Styled formatting and printing, and `styled(value, style)` for use with standard format strings |
-| `<tjg/color-ostream.hpp>` | Styled insertion into narrow and wide streams, and styled printing to `std::ostream` |
-| `<tjg/sgr_support.hpp>` | SGR conversion, reset sequences, and wrapping text with a style |
-| `<tjg/strip_ansi.hpp>` | ANSI escape sequence removal from strings |
-| `<tjg/backslash.hpp>` | Backslash escaping and unescaping |
+| Header                  | Provides                                                             |
+| ----------------------- | -------------------------------------------------------------------- |
+| `<tjg/color.hpp>`       | Full library, including formatting, printing, streams, and SGR tools |
+| `<tjg/colors.hpp>`      | Named RGB colors, terminal and palette colors, and `color_t`         |
+| `<tjg/text_style.hpp>`  | Color values, emphasis, `text_style`, and style composition          |
+| `<tjg/styled_text.hpp>` | Owning styled-text trees and their composition                       |
+| `<tjg/backslash.hpp>`   | Backslash escaping and unescaping                                    |
+| `<tjg/strip_ansi.hpp>`  | ANSI escape sequence removal from strings                            |
 
-Owning `styled_text` trees and SGR parsing into those trees are still being
-refactored.
+Use `<tjg/color.hpp>` for formatted output, SGR generation and parsing, or
+ANSI stripping on a styled-text tree. The narrower headers support code
+that only needs the value types or string utilities. Headers in `tjg/bits/`
+are implementation headers.
 
 ## CMake
 
@@ -68,10 +71,19 @@ Test sources live in `test/`. The suite uses the vendored Google Test in
 
 ## Documentation and licenses
 
+With Python 3 and Doxygen available, configure CMake and build the guide from
+the repository root.
+
+```sh
+cmake -S . -B build
+cmake --build build --target doc
+```
+
+Open `build/doc-html/index.html`. The first documentation build installs the
+pinned Python packages into a virtual environment under `build/`.
+
 - [Color user guide](https://tjgolubi.github.io/fmt/)
 - [Color user guide source](doc/index.md)
 - [Change log](CHANGELOG.md)
 - [Project website and design rationale](https://fmtcolor.tjgolubi.chatgpt.site)
 - [License](LICENSE) and [Boost Software License](https://www.boost.org/LICENSE_1_0.txt)
-
-The guide still uses some header names from before the C++23 refactor.

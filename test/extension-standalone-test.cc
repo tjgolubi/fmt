@@ -1,8 +1,5 @@
 // This target deliberately has no {fmt} library or test harness dependency.
-#include "tjg/strip_ansi.hpp"
-#include "tjg/color-ostream.hpp"
-#include "tjg/backslash.hpp"
-#include "tjg/styled_text-format.hpp"
+#include "tjg/color.hpp"
 
 #include <sstream>
 

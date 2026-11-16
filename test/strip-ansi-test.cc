@@ -1,5 +1,5 @@
 #include "tjg/strip_ansi.hpp"
-#include "tjg/strip_ansi_styled_text.hpp"
+#include "tjg/color.hpp"
 #include "test-support.h"
 
 #include <string>

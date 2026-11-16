@@ -1,4 +1,4 @@
-#include "tjg/text_style-format.hpp"
+#include "tjg/color.hpp"
 
 int main() {
   const auto value = tjg::styled("hello", tjg::bold());

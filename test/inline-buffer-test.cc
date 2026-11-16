@@ -1,4 +1,4 @@
-#include "tjg/inline_buffer.hpp"
+#include "tjg/bits/inline_buffer.hpp"
 #include "test-support.h"
 
 #include <string>

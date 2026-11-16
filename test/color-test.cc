@@ -5,7 +5,7 @@
 //
 // For the license information refer to format.h.
 
-#include "tjg/text_style-format.hpp"
+#include "tjg/color.hpp"
 
 #include "standard-format-test.h"
 #include "test-support.h"  // EXPECT_WRITE

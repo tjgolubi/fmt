@@ -1,4 +1,4 @@
-#include <tjg/color-ostream.hpp>
+#include <tjg/color.hpp>
 
 #include <iomanip>
 #include <iostream>

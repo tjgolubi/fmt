@@ -1,7 +1,4 @@
-#include "tjg/strip_ansi.hpp"
-#include "tjg/strip_ansi_styled_text.hpp"
-#include "tjg/color-ostream.hpp"
-#include "tjg/styled_text-format.hpp"
+#include "tjg/color.hpp"
 #include "standard-format-test.h"
 #include "test-support.h"
 

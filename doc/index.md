@@ -1,6 +1,6 @@
 # Terminal Colors and Text Styles
 
-Include `<tjg/text_style-format.hpp>` to combine foreground and background
+Include `<tjg/color.hpp>` to combine foreground and background
 colors with emphasis, style individual arguments, and produce formatted strings
 or output.
 
@@ -21,7 +21,7 @@ for each use, from concise one-off styles to attributes controlled by user
 configuration.
 
 ```cpp
-#include <tjg/text_style-format.hpp>
+#include <tjg/color.hpp>
 #include <print>
 
 int main() {
@@ -38,6 +38,20 @@ The result is <span style="color: #CD0000">42</span>.</pre>
 Illustrative output using Xterm's default red (`#CD0000`) for the terminal color.
 
 The first call styles the entire message. The second styles only `42`.
+
+## Headers
+
+| Header                  | Provides                                           |
+| ----------------------- | -------------------------------------------------- |
+| `<tjg/color.hpp>`       | The full library, including formatting and streams |
+| `<tjg/colors.hpp>`      | Color values, named colors, and `color_t`          |
+| `<tjg/text_style.hpp>`  | Color values, emphasis, and `text_style`           |
+| `<tjg/styled_text.hpp>` | Owning styled-text trees and their composition     |
+| `<tjg/backslash.hpp>`   | Backslash escaping and unescaping for strings      |
+| `<tjg/strip_ansi.hpp>`  | ANSI escape removal from strings                   |
+
+The five narrower headers can be used without formatting, printing, or
+stream support. Headers under `tjg/bits/` are implementation headers.
 
 ## Reference
 
@@ -182,13 +196,13 @@ sequences in their result. For format string syntax, see the
 
 ## Standard formatting
 
-Include `<tjg/text_style-format.hpp>` to use colors, `color_t`, `text_style`, `emphasis`,
+Include `<tjg/color.hpp>` to use colors, `color_t`, `text_style`, `emphasis`,
 and borrowed `styled` arguments with `std::format` and `std::format_to`.
 Both narrow and wide formatting are supported.
 
 ```cpp
 #include <format>
-#include <tjg/text_style-format.hpp>
+#include <tjg/color.hpp>
 
 auto color = std::format("{}", tjg::color::red); // "#ff0000"
 auto style = std::format("{:?}", tjg::bold());  // "b"
@@ -206,15 +220,15 @@ numeric specifications. Nested styled fields inherit and restore the shared
 terminal state; absolute fields temporarily replace it. The wrapper still
 borrows its value, so stored wrappers need a surviving referent.
 
-Include `<tjg/styled_text-format.hpp>` for standard formatting of owning
-`styled_text` and `wstyled_text` trees, including nested styles, padding,
+The same header enables standard formatting of owning `styled_text` and
+`wstyled_text` trees, including nested styles, padding,
 truncation, dynamic specifications, and `?` tree inspection. The `?`
 presentation rejects width and precision. Formatting reports invalid runtime
 specifications through `std::format_error`.
 
 ## Inline buffer
 
-`<tjg/inline_buffer.hpp>` provides `tjg::basic_inline_buffer<Char, Size>` and
+`<tjg/color.hpp>` provides `tjg::basic_inline_buffer<Char, Size>` and
 its `char` alias, `tjg::inline_buffer`. The buffer stores up to `Size`
 characters inline, with a default capacity of 256. SGR construction uses a
 60-character buffer.

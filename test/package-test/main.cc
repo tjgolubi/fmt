@@ -1,6 +1,4 @@
-#include <tjg/strip_ansi.hpp>
-#include <tjg/color-ostream.hpp>
-#include <tjg/backslash.hpp>
+#include <tjg/color.hpp>
 
 #include <print>
 #include <sstream>

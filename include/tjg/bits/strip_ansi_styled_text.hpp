@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include "styled_text.hpp"
-#include "strip_ansi.hpp"
+#include <tjg/styled_text.hpp>
+#include <tjg/strip_ansi.hpp>
 
 #include <string>
 #include <string_view>
