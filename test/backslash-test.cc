@@ -47,6 +47,20 @@ constexpr auto check_constexpr_decoding() -> bool {
 static_assert(check_constexpr_decoding(),
               "constexpr octal, hex, quotes, question mark, and empty input");
 
+constexpr auto check_constexpr_unicode_decoding() -> bool {
+  char narrow[16] = {};
+  const auto narrow_end = tjg::backslash_unescape_to(
+      narrow, "\\u0041\\u00e9\\u754C\\U0001F600");
+  if (std::string_view{narrow, narrow_end} !=
+      "A\xc3\xa9\xe7\x95\x8c\xf0\x9f\x98\x80") return false;
+
+  wchar_t wide[8] = {};
+  const auto wide_end = tjg::backslash_unescape_to(
+      wide, L"\\u0041\\u00e9\\u754C\\U0001F600");
+  return std::wstring_view{wide, wide_end} == L"A\u00e9\u754c\U0001f600";
+}
+static_assert(check_constexpr_unicode_decoding());
+
 constexpr auto check_constexpr_strings() -> bool {
   const auto encoded = tjg::backslash_escape("\x1b\n\x7f");
   const auto wide = tjg::backslash_escape(L"\x1b\n\x7f");
@@ -108,6 +122,18 @@ TEST(backslash_test, examples) {
   check_examples<wchar_t>();
 }
 
+TEST(backslash_test, unicode_escapes) {
+  EXPECT_EQ(tjg::backslash_unescape("\\u007f\\u0080\\u07ff\\u0800"),
+            "\x7f\xc2\x80\xdf\xbf\xe0\xa0\x80");
+  EXPECT_EQ(tjg::backslash_unescape("\\uffff\\U00010000\\U0010ffff"),
+            "\xef\xbf\xbf\xf0\x90\x80\x80\xf4\x8f\xbf\xbf");
+  EXPECT_EQ(tjg::backslash_unescape("\\u0000\\u0041f\\U00000042a\\u005cn"),
+            (std::string{"\0AfBa\\n", 7}));
+  EXPECT_EQ(tjg::backslash_unescape(L"\\u0000\\u0041f\\U00000042a\\u005cn"),
+            (std::wstring{L"\0AfBa\\n", 7}));
+  EXPECT_EQ(tjg::backslash_unescape(L"\\U0001f600"), L"\U0001f600");
+}
+
 #if defined(__cpp_exceptions) || defined(_CPPUNWIND)
 namespace {
 template <typename Char, typename Error>
@@ -129,9 +155,11 @@ void check_invalid_escapes(std::initializer_list<const char*> malformed) {
 template <typename Char> void check_invalid_escapes() {
   check_invalid_escapes<Char, std::invalid_argument>({
       "\\", "\\q", "\\x", "\\x1", "\\xG1", "\\x1G", "\\x\\n",
-      "\\8", "\\9", "\\u001b", "\\U0000001b",
-      "\\x{1b}", "\\o{33}", "\\\n"});
-  check_invalid_escapes<Char, std::out_of_range>({"\\400", "\\777"});
+      "\\8", "\\9", "\\u", "\\u123", "\\u123g", "\\U0000123", "\\U0000123g",
+      "\\uD800", "\\uDFFF", "\\U0000D800", "\\uD83D\\uDE00",
+      "\\x{1b}", "\\o{33}", "\\u{1234}", "\\\n"});
+  check_invalid_escapes<Char, std::out_of_range>({
+      "\\400", "\\777", "\\U00110000", "\\UFFFFFFFF"});
   const auto nul_escape = std::basic_string<Char>{Char('\\'), Char{}};
   EXPECT_THROW((void)tjg::backslash_unescape(nul_escape), std::invalid_argument);
   const auto nul_suffix = text<Char>("\\0") + Char('8');

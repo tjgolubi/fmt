@@ -526,6 +526,8 @@ the canonical spelling produced by `backslash_escape` and `backslash_escape_to`.
 | `\x7f` | Delete (DEL)         | `0x7f` | Yes   |
 | `\xhh` | Exactly 2 hex digits | `0xhh` | Yes   |
 | `\nnn` | 1 to 3 octal digits  |        | No    |
+| `\u`   | Exactly 4 hex digits |        | No    |
+| `\U`   | Exactly 8 hex digits |        | No    |
 
 `backslash_escape` uses `\a`, `\b`, `\e`, `\f`, `\n`, `\r`, `\t`, and `\v` for
 the corresponding controls. `\e` represents ESC (`0x1b`); it is an extension to
@@ -538,13 +540,20 @@ are added.
 `backslash_unescape` recognizes those forms, plus `\'` for an apostrophe and
 `\?` for a question mark. Ordinary apostrophes and question marks remain
 unchanged when escaping. Hex digits may use either case. The decoder also
-accepts one to three octal digits (`\0` through `\377`). Hex escapes consume
-exactly two digits; octal escapes consume at most three. Subsequent digits
-remain ordinary text.
+accepts one to three octal digits (`\0` through `\377`). A `\x` escape consumes
+exactly two hex digits, and an octal escape consumes at most three digits.
+Subsequent digits remain ordinary text.
+
+Unicode escapes take exactly four hex digits after `\u` and eight after `\U`.
+For example, `backslash_unescape("\\u754C\\U0001F600")` produces the UTF-8 string
+`界😀`. Wide output uses UTF-16 with 16-bit `wchar_t` and UTF-32 with 32-bit
+`wchar_t`. Use `\U` for a code point above `U+FFFF`.
 
 Unknown or malformed escapes throw `std::invalid_argument`. Examples include
-`\q`, `\x`, `\xG1`, a trailing backslash, and Unicode or braced numeric escapes.
-Octal values above 255 throw `std::out_of_range`. The decoder preserves
+`\q`, `\xG1`, `\u123`, a trailing backslash, and braced numeric escapes.
+Unicode escapes naming surrogates also throw `std::invalid_argument`.
+Octal values above 255 and Unicode values above `U+10FFFF` throw
+`std::out_of_range`. The decoder preserves
 surrounding quotes and processes each escape once. If `backslash_unescape_to`
 throws, output already written remains in the destination.
 
