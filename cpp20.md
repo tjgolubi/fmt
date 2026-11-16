@@ -8,14 +8,15 @@ the published site. The filename predates the decision to target C++23.
 
 - Source is on `ref/Reorg` in the [FmtColor fork](https://github.com/tjgolubi/fmt).
   The PC checkout and its local `origin/ref/Reorg` tracking ref match
-  `601029e697a256edb108f364c37d19c7e937a087`.
+  `db14a2bee42173c1217213f47c3d3b7df6604bfa`.
 - The project is called **{color}**. It uses namespace `tjg`, headers under
   `include/tjg/`, and the exported CMake target `tjg::tjg`.
 - **C++23 is the supported target.** Consider a C++20 backport if someone asks
   for it. The current library uses standard `<format>`, `<print>`, and
   `std::to_underlying`.
-- All 22 local CTest suites passed on this source with MSYS2 GCC 16.2.0.
-  All four GitHub push workflows failed at the same commit. See
+- All 10 GitHub Actions jobs passed on attempt 1 for this commit.
+  All 22 local CTest suites passed with MSYS2 GCC 16.2.0 at the earlier
+  `601029e69` baseline. See
   [Build, platforms, and verified results](#build-platforms-and-verified-results).
   Tablet results for this commit are unverified.
 - Terry plans to start a fresh repository at `tjg/color` with the current
@@ -59,6 +60,10 @@ branches or synchronizing.
   consumes the pending width. A write failure sets `badbit`. The exception
   regression checks the stream's mask, preservation of the original write
   exception, and restoration of the tracked style.
+- Styled ostream printing follows the active standard library's
+  `std::print` behavior for pending width, padding, and width consumption.
+  Regression tests compare output and stream width against `std::print`,
+  including left and right alignment with an empty style.
 - `inline_buffer.hpp` provides fixed-capacity storage for bounded output.
   Runtime construction starts empty without filling the array. Copy and
   assignment copy only the populated characters. It supports a fill value for
@@ -122,6 +127,14 @@ Earlier MSVC fixes renamed the buffer member `_inline` to `_inline_storage`
 to avoid a compiler extension, used `'\xff'` and `Char{255}` for narrow and
 wide backslash tests respectively, and removed unreachable code from the
 deliberately throwing test formatter.
+
+The indexed cube constructor explicitly converts validated channel values to
+`chan_type` for MSVC. To address GCC Release diagnostics, blending zero
+specified colors returns `no_color` directly. Styled-text constructors take
+the supplied style by `const text_style&`, and unspecified `text_style` color
+parameters default-initialize their `color_t` variants. Format parsing omits the
+unreachable return after reporting invalid fill, and the formatter exception
+tests keep both paths reachable to the compiler.
 
 ## Design policy going forward
 
@@ -343,27 +356,27 @@ indentation and brace choices are his preference.
 
 Run `./build.bash` from the repository root. It configures a C++23 Debug
 build with `g++`, enables `TJG_TEST` and `TJG_WERROR`, builds in
-`build/color`, and runs CTest. For Clang, configure a separate build
+`build`, and runs CTest. For Clang, configure a separate build
 directory and select `clang++` with `CMAKE_CXX_COMPILER`. Visual Studio
 multi-configuration builds also need a configuration for build and CTest.
 
+All 10 GitHub Actions jobs passed on attempt 1 for the November 15 push of
+`db14a2bee42173c1217213f47c3d3b7df6604bfa`. All four run head SHAs match.
+
+| Workflow                                                                           | Result   | Coverage                                          |
+| ---------------------------------------------------------------------------------- | -------- | ------------------------------------------------- |
+| [TJG Linux](https://github.com/tjgolubi/fmt/actions/runs/43794522270/attempts/1)   | 5 passed | GCC 14 and Clang 20 Debug/Release, GCC ASan/UBSan |
+| [TJG macOS](https://github.com/tjgolubi/fmt/actions/runs/43794522246/attempts/1)   | 2 passed | LLVM 20 libc++ Debug/Release                      |
+| [TJG Windows](https://github.com/tjgolubi/fmt/actions/runs/43794522262/attempts/1) | 2 passed | MSVC v143 x64 Debug/Release                       |
+| [Color guide](https://github.com/tjgolubi/fmt/actions/runs/43794522268/attempts/1) | 1 passed | MkDocs build with pinned dependencies             |
+
+The guide's C++ handler creates `build/doxyxml` before invoking Doxygen.
+The Pages deployment workflow still targets `color-dev` in `tjgolubi/fmt`.
+Review its routing as part of the move to the new repository.
+
 All 22 local suites, including the re-enabled styled-text checks,
 no-exceptions coverage, and package relocation, passed on November 15
-with MSYS2 GCC 16.2.0 at `601029e69`. The Linux, macOS, and Windows
-workflow definitions now configure C++23. The current guide build uses
-MkDocs from the pinned documentation requirements. The Pages deployment
-workflow still targets `color-dev` in `tjgolubi/fmt`. Review its routing
-as part of the move to the new repository.
-
-GitHub Actions reported these results for the November 15 push of `601029e69`.
-Two of ten jobs passed.
-
-| Workflow | Result | Diagnostic |
-| --- | --- | --- |
-| [TJG Linux](https://github.com/tjgolubi/fmt/actions/runs/43779011765) | 2 passed, 3 failed | GCC 14 Debug and Debug ASan/UBSan passed. GCC 14 Release hit `-Werror=maybe-uninitialized` in color blending. Both Clang jobs failed `color_ostream_test.literal_text_and_stream_state`. |
-| [TJG macOS](https://github.com/tjgolubi/fmt/actions/runs/43779011782) | 2 failed | LLVM 20 libc++ Debug and Release failed the same ostream test. The stream applied its pending width to the output and consumed the width. |
-| [TJG Windows](https://github.com/tjgolubi/fmt/actions/runs/43779011784) | 2 failed | MSVC Debug and Release failed to build with C4244 promoted to an error for the `int` to `cube_color::chan_type` assignment in `colors.hpp:293`. |
-| [Color guide](https://github.com/tjgolubi/fmt/actions/runs/43779011795) | 1 failed | Doxygen could not create `build/doxyxml` while MkDocs rendered `index.md`. |
+with MSYS2 GCC 16.2.0 at `601029e69`.
 
 The older GCC 14.2 and Clang 21.1.8 runs at `f93e4159` passed 22 suites
 in both former SGR modes. The historical cross-platform results below
@@ -419,6 +432,9 @@ CI results for the three later integration/refactoring commits.
 
 ## Demos and comparison material
 
+- `FmtColorDemo1.cpp` uses whole-result printing with styled arguments and
+  the same surrounding white foreground, gray background, and strikethrough
+  as `FmtColorDemo2.cpp`.
 - `FmtColorDemo2.cpp` demonstrates underlay and overlay. `TableDemo.cpp`
   demonstrates styled columns, Unicode width, and truncation.
   `OstreamDemo.cpp` uses the stream API for the same dashboard.
@@ -429,9 +445,10 @@ CI results for the three later integration/refactoring commits.
   reapplies the underline, and the {color} version that restores it.
   `demo/NestedDemo.png` captures all five outputs. The user guide uses a
   separate terminal screenshot for its TableDemo walkthrough.
-- On Terry's PC, `make -C demo -B run` rebuilt and ran all six demos.
+- `make -C demo -B run` rebuilds and runs all seven demos. The earlier PC run
+  at `601029e69` covered the six demos configured at that commit.
   `FmtColorDemo0` and `NestedDemo` use `FMT_ROOT` and `FMT_LIB`, which
-  default to `$HOME/App/fmt` and its `build/color/libfmtd.a`.
+  default to `$HOME/App/fmt` and its `build/libfmtd.a`.
 
 ## Repository and website
 
