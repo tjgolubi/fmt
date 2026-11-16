@@ -53,14 +53,14 @@ private:
  public:
   basic_styled_text() = default;
 
-  basic_styled_text(string_type text, text_style style = {})
+  basic_styled_text(string_type text, const text_style& style = {})
     TJG_NOEXCEPT_UNLESS_BAD_ALLOC
     : _style{style}
     , _text{text.empty() ? leaf{}
                          : std::make_shared<const string_type>(std::move(text))}
     {}
 
-  basic_styled_text(const Char* text, text_style style = {})
+  basic_styled_text(const Char* text, const text_style& style = {})
     : basic_styled_text{string_type{text}, style} {}
 
   basic_styled_text(const basic_styled_text&) TJG_NOEXCEPT_UNLESS_BAD_ALLOC

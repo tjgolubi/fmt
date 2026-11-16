@@ -63,8 +63,8 @@ class text_style {
    *
    * Default construction produces an empty style.
    */
-  constexpr text_style(emphasis emp = emphasis::none, color_t fg = no_color,
-                       color_t bg = no_color) noexcept
+  constexpr text_style(emphasis emp = emphasis::none, color_t fg = {},
+                       color_t bg = {}) noexcept
     : text_style{fg, bg, emp} {}
 
   /**
@@ -75,7 +75,7 @@ class text_style {
    * The background and emphasis default to unspecified and empty, respectively.
    * The foreground is required; `no_color` specifies a background-only style.
    */
-  constexpr text_style(color_t fg, color_t bg = no_color,
+  constexpr text_style(color_t fg, color_t bg = {},
                        emphasis emp = emphasis::none) noexcept
     : _emph{emp}, _fg{fg}, _bg{bg} {}
 
