@@ -1,29 +1,26 @@
 # FmtColor coordination
 
-Updated November 7, 2026.
+Updated November 15, 2026.
 
-FmtColor develops color and text-style extensions for C++. We plan two
-sequential deliverables:
+**{color} is the standalone C++23 library going forward.** It uses standard
+formatting and printing and exposes its API in namespace `tjg`. Start with
+[cpp20.md](cpp20.md) for current development, tests, demos, and the handoff.
+The filename predates the decision to target C++23.
 
-1. A focused extension to [{fmt}](https://github.com/fmtlib/fmt), offered
-   upstream while preserving its formatting engine and compatibility machinery.
-2. An independent styling library built on standard C++23 formatting and
-   `std::variant`, without {fmt}'s unrelated extensions or older-compiler compatibility machinery.
-
-The entire {fmt}-based release must support C++11, including every feature
-and the styling API in namespace `fmt`; the include path selects the
-installation. Shared-source intent covers the common styling API, not arbitrary
-fmtlib-specific application code or identical binary representations.
+The original [{fmt}](https://github.com/fmtlib/fmt) extension remains available
+on the fork. It supports C++11 and uses namespace `fmt`. The sections below
+record that contribution, its validation, and its public documentation.
 
 ## Documents
 
 | Document                           | Purpose                                                       |
 | ---------------------------------- | ------------------------------------------------------------- |
+| [cpp20.md](cpp20.md)               | Current C++23 {color} implementation, validation, and next work. |
 | [Workflow.md](Workflow.md)         | Authorization, Git, integration, and release rules.           |
-| [CppDesign.md](CppDesign.md)       | Implemented foundation, future design, and open decisions.    |
-| [BuildAndTest.md](BuildAndTest.md) | Build commands, compatibility checks, and current validation. |
+| [CppDesign.md](CppDesign.md)       | Design and implementation of the original {fmt} extension.    |
+| [BuildAndTest.md](BuildAndTest.md) | Original extension builds, compatibility checks, and tests.   |
 | [Website.md](Website.md)           | Website content, publication, and maintenance.                |
-| [StyledText.md](StyledText.md)     | Owning styled text, context state, and future work.           |
+| [StyledText.md](StyledText.md)     | Styled text and context state in the original extension.      |
 
 Maintain these files in the `coord/` Git worktree on `docs/Coord`, separate
 from the library checkout. `cd coord` enters the documentation worktree;
@@ -39,7 +36,24 @@ implemented behavior; newer explicit instructions from Terry override older
 wording. Proposals are not implementation authorization. Earlier development
 records remain available in Git history.
 
-## Current baseline
+## Standalone {color} baseline
+
+`ref/Reorg` at `601029e69` is the current source in Terry's PC checkout and
+matches its `origin/ref/Reorg` tracking ref. All 22 local regression suites
+passed with MSYS2 GCC 16.2.0. The six demos build and run, including the
+plain C++23, upstream {fmt}, and {color} comparisons. The nested-style
+comparison has a terminal screenshot in `demo/NestedDemo.png`.
+
+All four GitHub workflows failed on the same commit, with two Linux jobs
+passing. See the [CI diagnostics](cpp20.md#build-platforms-and-verified-results).
+
+Terry plans to start `tjg/color` from a fresh snapshot and archive the fork.
+The existing OpenAI site will introduce the standalone library and host the
+comparisons, with the original {fmt} contribution still available. The
+generated user guide remains the usage reference. See the handoff for the
+[repository and website plan](cpp20.md#repository-and-website).
+
+## Original {fmt} baseline
 
 The published development baseline is `color-dev` and `pr/color` at
 `bb58bf265d51faddb02293aa7342aabb65f630c5`, rebased by Terry onto upstream/main
@@ -277,6 +291,5 @@ stream example uses C++20 `std::numbers::pi` and displays bold-green `3.14`.
 The API Reference header list includes `fmt/color-ostream.h`, linking to its
 existing guide section; it has no separate new API Reference section.
 
-The owning tree, nested formatter, context inheritance, parser, and stripper are
-integrated in the consolidated baseline; see [StyledText.md](StyledText.md). The independent
-library requires C++23 and `std::variant`; the fmt release retains C++11.
+The owning tree, nested formatter, context inheritance, parser, and stripper
+are integrated in the original contribution. See [StyledText.md](StyledText.md).

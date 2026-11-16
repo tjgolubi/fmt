@@ -1,106 +1,73 @@
-# {color}: handoff to the next work session
+# {color} C++23 handoff
 
-Updated November 10, 2026. Read this document first when continuing the independent
-{color} library, probably on Terry's PC. The other coordination documents describe
-the separate FMT-based development line; do not apply their C++11 requirement to
-this branch or update them as part of this handoff.
+Updated November 15, 2026. This document tracks the standalone {color} library.
+The other coordination documents record the original C++11 {fmt} extension and
+the published site. The filename predates the decision to target C++23.
 
-## Current baseline and checkout state
+## Current baseline
 
-- Repository: https://github.com/tjgolubi/fmt
-- Development branch: `ref/CPP20`, originally split from `color-dev`.
-- Latest committed and pushed source: `f93e4159548809d0017d0d32403fa6b95312f9dc`.
-- GitHub's branch tip was verified to match the cloud checkout at that commit.
-- The project is called **{color}**. Namespace `tjg`, headers under `include/tjg/`,
-  and CMake target `tjg::tjg` retain their existing names.
-- **C++23 is the current target.** C++20 support will be added later through
-  separate patches; it is not a current compatibility requirement.
-- All 22 local test suites pass on this source with GCC 14.2 and Clang 21.1.8,
-  in both compact and noncompact SGR modes (C++23 Debug, warnings as errors,
-  CMake 4.4.5).
-- CI and tablet results for this latest SHA have not been checked in this
-  session. The successful CI/tablet results recorded below concern the earlier
-  `7253096c` baseline, not the current source.
+- Source is on `ref/Reorg` in the [FmtColor fork](https://github.com/tjgolubi/fmt).
+  The PC checkout and its local `origin/ref/Reorg` tracking ref match
+  `601029e697a256edb108f364c37d19c7e937a087`.
+- The project is called **{color}**. It uses namespace `tjg`, headers under
+  `include/tjg/`, and the exported CMake target `tjg::tjg`.
+- **C++23 is the supported target.** Consider a C++20 backport if someone asks
+  for it. The current library uses standard `<format>`, `<print>`, and
+  `std::to_underlying`.
+- All 22 local CTest suites passed on this source with MSYS2 GCC 16.2.0.
+  All four GitHub push workflows failed at the same commit. See
+  [Build, platforms, and verified results](#build-platforms-and-verified-results).
+  Tablet results for this commit are unverified.
+- Terry plans to start a fresh repository at `tjg/color` with the current
+  refactor and archive the fork. See [Repository and website](#repository-and-website).
 
-The cloud library checkout is `/workspace/fmt` on `ref/CPP20`, with a clean working
-tree. Its separate documentation worktree is `/workspace/fmt-coord` on `docs/Coord`.
-This handoff update is being prepared there; its commit/push status must be reported
-separately from the already committed and pushed library source.
-
-Inspect the PC's branch, changes, remotes, and worktrees before synchronizing.
-Preserve local work; do not reset, stash, or rewrite history automatically. The
-MSVC test-only commit was amended during diagnosis: `ea1ae7eb` was replaced by
-`447a368e`. The final production workaround `7253096c` is a normal subsequent
-commit. A checkout containing `ea1ae7eb` needs deliberate synchronization rather
-than an ordinary pull. Terry deferred pulling during diagnosis; inspect his actual
-PC history rather than assuming where it stopped.
+The PC checkout is `C:/msys64/home/tjgolubi/prj/fmt`, with the `docs/Coord`
+worktree under `coord/`. This worktree uses a Git metadata path in MSYS2
+syntax. From MSYS2, use `git -C coord` for its Git operations. Under native
+Windows Git, use `git --git-dir=.git/worktrees/coord --work-tree=coord` from
+the library root to inspect it. Check current worktree state before changing
+branches or synchronizing.
 
 ## Implemented independent library
 
-The extension uses standard formatting and TJG utilities without including or
-linking the FMT library. The original FMT engine remains in the repository; leave
-it alone when working on {color}.
-
-- Public headers: `include/tjg/`, used as `#include <tjg/color.h>` and similar.
-- Standalone project: `tjg/CMakeLists.txt`; exported target: `tjg::tjg`.
-- Tests and independent helpers: `tjg/test/`. GoogleTest is reused from
-  `test/gtest/`, without FMT libraries or FMT test helpers.
-- Guide sources: `tjg/doc/`. Existing published guide paths are preserved by
-  `support/python/tjg_docs.py`.
-- Demos: `demo/FmtColorDemo2.cpp` and `demo/TableDemo.cpp`.
-- Installation/relocation tests build a consumer with `find_package(tjg)` and
-  `tjg::tjg`, without FMT installed.
-
-Headers include `color.h`, `color-ostream.h`, `styled_text.h`,
-`parse_styled_text.h`, `strip_ansi.h`, `backslash.h`, `memory_buffer.h`,
-`text_support.h`, `tree_format_specs.h`, `format_support.h`, `error_support.h`,
-and `hash_support.h`.
-
-The own memory buffer replaces FMT buffers. UTF-8 decoding, width estimates,
-truncation, and escaping live in `text_support.h`, with attribution. Audit these
-against the standard formatting rules described below; current width handling
-must not be presumed to implement full grapheme segmentation or the newly
-clarified policy already.
-
-Standard formatters support colors, styles, emphasis, borrowing styled arguments,
-and owning narrow/wide styled text, including nesting, absolute styles, dynamic
-width/precision, padding, and tree inspection with `?`. Readable color/style values
-use `?` without quoting. The shared specification parser uses the original standard
-parse context, preserving argument indices and MSVC's checking data. Named format
-arguments are unsupported by standard formatting; positional dynamic specifications
-work. Errors use `std::format_error` through the failure policy below.
-
-Terminal state is separate from standard formatting contexts.
-`tjg::get_terminal_state()` returns a reference to a function-local static
-`text_style`. Terry explicitly requested one shared instance for now, without locks
-or `thread_local`. Formatting scopes restore enclosing state after nesting and
-exceptions. Do not add synchronization without discussion.
-
-## Code changes completed since the previous handoff
-
-All three integration commits below are committed and pushed to `ref/CPP20`:
-
-| Commit | Change |
-| ------ | ------ |
-| `66d9775b` | Squash integration of `ref/MemBuf`: user-reworked buffer, reserve/resize, inline default 256. |
-| `86124394` | Squash integration of `ref/TextStyle`: separate style components and removal of packed style APIs. |
-| `f93e4159` | Remove custom underlying conversions; add palette index members and Boost-derived hashing. |
-
-The feature branches originated at `7253096c`. `ref/MemBuf` contains original
-commit `51c7fb5f` and was pushed. `ref/TextStyle` contains original commit
-`7cffae7e`; that feature branch was committed locally, with its changes subsequently
-pushed through the squash integration on `ref/CPP20`.
-
-### Buffer
-
-`basic_memory_buffer<Char, InitSize = 256>` now has `reserve(size)` and
-`resize(size)`; growth through resize does not initialize added characters.
-The private growth helper is constexpr and uses `TJG_NOEXCEPT_UNLESS_BAD_ALLOC`.
-The attached user revision had a missing helper argument and a missing constexpr
-qualification; these were corrected. Appended source ranges must not refer to the
-buffer's own storage. Self-append support was deliberately not added, and no
-aliasing precondition check was added. Tests now use external source ranges and
-cover reserve/resize and constant evaluation.
+- The root CMake project installs the header-only library and a package for
+  `find_package(tjg CONFIG REQUIRED)`. The installed-package test builds a
+  consumer after relocation.
+- The original `include/fmt/` headers are gone from this branch. The
+  standalone regressions live in `test/` and use the GoogleTest sources in
+  `ext/gtest/`. The library needs only the standard library. Two comparison
+  demos use an external {fmt} build.
+- The temporary split headers include `colors.hpp`, `text_style.hpp`,
+  `text_style-format.hpp`, `styled_text.hpp`, `styled_text-format.hpp`, and
+  `color-ostream.hpp`. The guide source is in `doc/`, and the root changelog
+  is `CHANGELOG.md`.
+- Owning styled text has separate leaf and child members. An empty child
+  vector denotes a leaf. Formatting lives in the separate formatter header,
+  and streams share its renderer. The parser and ANSI stripper have their own
+  headers.
+- Ordinary tree formatting supports narrow and wide output, padding, and
+  static or dynamic width and precision. Debug tree output uses `?` and
+  rejects width and precision. An absolute group emits its transition before
+  visiting children, so a very small precision can leave SGR with no visible
+  text. Terry accepted that result.
+- Width and precision are stored as `std::size_t`. The format-spec parser
+  and dynamic argument visitor use checked `int` values for format numbers
+  and IDs. Use signed types where subtraction makes sense and keep
+  `std::size_t` where the existing size convention applies.
+- Styled ostream insertion uses a sentry and renders directly to an
+  `std::ostreambuf_iterator`. It handles width, fill, and alignment and
+  consumes the pending width. A write failure sets `badbit`. The exception
+  regression checks the stream's mask, preservation of the original write
+  exception, and restoration of the tracked style.
+- `inline_buffer.hpp` provides fixed-capacity storage for bounded output.
+  Runtime construction starts empty without filling the array. Copy and
+  assignment copy only the populated characters. It supports a fill value for
+  `resize` and a `resize_and_overwrite` operation. The former
+  `memory_buffer` is gone.
+- `unicode.hpp` consumes the generated `UnicodeData.hpp` and
+  `EastAsianWidth.hpp` tables. The C++23 generators and Unicode 18.0.0 inputs
+  live in `support/unicode/` and run separately from the normal build.
+  Preserve the generated headers as generator output.
 
 ### Style representation
 
@@ -117,8 +84,7 @@ The fluent interface remains. Style `operator|` and `operator|=` are removed;
 use overlay/underlay or blend as appropriate. There is no packed-integer style
 constructor, `to_underlying(text_style)`, `text_style::value_type`, custom
 underlying-type specialization, or serialization API. Diagnostic formatters use
-the components and still work. Equality is defaulted; ordering currently preserves
-the old packed order, which is a cleanup candidate below. Color bitwise operators
+the components and still work. Equality and three-way comparison are defaulted. Color bitwise operators
 remain deliberately available; removing style operators did not remove color OR.
 
 ### Numeric access and hashing
@@ -138,13 +104,24 @@ remain deliberately available; removing style operators did not remove color OR.
   internal unpack helper are removed. Its hasher combines the alternative index
   with the active value; palette alternatives use their indices. Styles hash
   their components. No packed variant representation or serialization is offered.
-- `<tjg/hash_support.h>` provides `tjg::hash_combine(seed, value)`, adapted from
+- `<tjg/hash_support.hpp>` provides `tjg::hash_combine(seed, value)`, adapted from
   Boost.ContainerHash 1.85.0 using `std::hash<T>` and Boost's 32/64-bit mixers.
   It propagates exceptions from a throwing hasher and is otherwise conditionally
   noexcept. The Boost attribution and `tjg/LICENSE-Boost` are included; CMake
   installs the license. Tests check both mixers, combining vectors, exception
   propagation, and use of colors/styles in unordered containers.
-- `emphasis::none = 0` was discussed but has not been added.
+
+### Compiler compatibility cleanup
+
+The earlier pre-C++20 cleanup removed the pre-C++17 reset storage definition,
+unused C++11 blend helpers, the legacy MSVC stream alignment branch, and test
+gates for three-way comparison, concepts, and constexpr strings. Keep the
+targeted MSVC workaround below and the supported no-exceptions path.
+
+Earlier MSVC fixes renamed the buffer member `_inline` to `_inline_storage`
+to avoid a compiler extension, used `'\xff'` and `Char{255}` for narrow and
+wide backslash tests respectively, and removed unreachable code from the
+deliberately throwing test formatter.
 
 ## Design policy going forward
 
@@ -160,38 +137,22 @@ containing `!` or `BREAKING CHANGE` record the old framing; do not keep using th
 framing or retain aliases merely to protect nonexistent users. This does not
 itself authorize creating the new repository or rewriting current history.
 
-### Four agreed cleanup candidates
+### Completed cleanup and retained interfaces
 
-These are agreed directions, not completed changes or authorization to implement
-all of them as part of this documentation update:
+The refactor removed the legacy noncompact SGR option, compatibility aliases,
+and C++11-only template scaffolding. Style ordering is defaulted and follows
+member order: absolute, emphasis, foreground, background. Retain the targeted
+MSVC workaround and supported no-exceptions path.
 
-1. **Remove legacy SGR output.** Standardize on compact output and remove the
-   noncompact path, zero-padded RGB fields, and the dual-mode option/test burden.
-   Both modes still exist today and must be tested until this cleanup is done.
-2. **Remove compatibility aliases.** Candidates are `terminal_color` for
-   `term_color`; `strikethrough` for `strike` (enum and style setter/query);
-   `get_foreground/get_background/get_emphasis` for `fg/bg/emph`; and
-   `has_foreground/has_background/has_emphasis` for `has_fg/has_bg/has_emph`.
-   Update uses, tests, and guide together; no deprecation period is needed.
-3. **Simplify style ordering.** The manual comparison preserves the former
-   packed ordering: absolute, emphasis, background, foreground. It can be
-   defaulted to follow member order: absolute, emphasis, foreground, background.
-4. **Remove old template scaffolding.** Use C++23 concepts, modern traits, and
-   fold expressions instead of recursive C++11-era traits. `all_colors` and
-   `all_text_styles` appear unused. Review uses before deleting helpers. Genuine
-   MSVC compiler-bug and exception-support gates remain intentional.
+For color blending, preserve equal weighting and ignore unspecified colors.
+Return `no_color` when none are specified, preserve the kind and value of a
+sole specified color, and average two or more as RGB. Color bitwise
+composition remains available.
 
-The fifth suggested candidate, removal of whole-result formatting entry points,
-was rejected. **Retain both kinds of interface:**
-
-- `format(text_style, format_string, ...)`, `format_to`, `print`, `println`,
-  and applicable runtime-argument and stream overloads style the entire result,
-  including literal text in the format string. For printing, the style is before
-  the format string (and after the output destination where applicable).
-- `styled(value, text_style)` styles an individual argument inside that result.
-
-These serve different purposes. Neither replaces the other. Retain bitwise color
-composition, which Terry explicitly allowed; blend remains available for averaging.
+Retain both styling interfaces. Style-taking `format`, `format_to`,
+`print`, and `println` overloads style the entire result, including format
+string literals. The style follows the output destination where applicable.
+`styled(value, text_style)` styles an individual replacement argument.
 
 ### Delegate to <format> and <print>
 
@@ -202,13 +163,17 @@ actual styling and styled-tree work. Standard C++ exposes no general public
 Unicode display-width or grapheme-boundary helper, so some supporting code may
 still be necessary for trees spanning multiple text leaves.
 
-The intended whole-result operation is: save our tracked style, emit the SGR
-transition to the requested style, call the corresponding standard formatting or
-printing operation, then emit restoration and restore tracked state before exit.
-Handle exception paths so tracked state is restored; design output restoration
-carefully during unwinding. The current whole-result functions generally append
-a reset to terminal defaults, so they have not yet implemented this target model.
-Track only the state managed by our library; do not assume it queries the terminal.
+The whole-result wrappers delegate to the standard library. A writer-backed
+`sgr_scope` saves the tracked style, emits a transition, and restores it at
+scope exit. Nested styled arguments inherit the current style. Absolute
+styles rebuild terminal attributes explicitly. During unwinding, closing SGR
+is best effort and the scope restores logical state.
+
+The tracked style is a shared function-local static returned by
+`tjg::detail::get_style_state`. The outermost color-aware call assumes
+terminal defaults. Callers that emit their own SGR through a stream manage
+their terminal state and should restore defaults before a color-aware
+print or format call.
 
 Relevant standard facilities are `std::format`, `std::format_to`, `std::vformat`,
 and `std::vformat_to` in `<format>`, and `std::print`, `std::println`,
@@ -217,10 +182,9 @@ function named exactly `std::vprint`. Choose delegation that preserves standard
 encoding and output behavior; the name similarity alone is insufficient. Keep
 our applicable ostream conveniences as well.
 
-Printing need not first buffer the entire formatted result merely because the
-current implementation does so. String-returning formatting can use
-`std::basic_string`. **Threading is explicitly out of scope.** Do not repeatedly
-raise interleaving/synchronization objections or add threading machinery.
+The direct print and ostream paths can write incrementally.
+String-returning formatting uses `std::basic_string`. Threading and
+synchronization are outside the current design.
 
 ### Width, precision, encoding, and embedded escapes
 
@@ -259,22 +223,7 @@ width, grapheme, normalization, or decoding/transcoding facility. Its existence
 is not a reason to claim the standard has supplied these missing helpers. The
 project still targets C++23.
 
-### Buffer direction and attribution
-
-Keep `memory_buffer` for now while migrating gradually. It currently buffers
-whole formatted results in format/print/ostream paths and some styled-tree debug
-output, as well as SGR. The SGR bound is 60 code units (under 64 bytes for `char`),
-not a bound on complete formatted output. Use fixed-capacity storage for bounded
-SGR generation when appropriate; after delegation and replacement of other uses,
-the growable buffer may disappear entirely. Do not rename it or add a new buffer
-framework merely because naming was discussed.
-
-If a general growable inline buffer remains useful, Terry favors capacity before
-element type, e.g. `inline_buffer<N = 256, T = char>`. He predominantly uses `char`,
-often chooses larger inline capacities for I/O, and considers 256 suitable here.
-This is distinct from his fixed-capacity `static_string`, which never grows onto
-the heap. C++26 `std::inplace_vector<T, N>` is fixed capacity, not an inline buffer
-with heap overflow. These are design discussions, not completed API changes.
+### Attribution
 
 Credit {fmt} for the origins of `text_style` and `styled()`. Reference the
 [CSS named-color table](https://www.w3.org/TR/css-color-4/#named-colors) for the
@@ -289,7 +238,7 @@ hashing code. Do not remove required notices in a blanket cleanup.
 
 ## Assertion and exception toolkit
 
-`<tjg/error_support.h>` supplies six configurable macros:
+`<tjg/error_support.hpp>` supplies six configurable macros:
 
 | Macro                             | Policy                                                          |
 | --------------------------------- | --------------------------------------------------------------- |
@@ -327,10 +276,16 @@ exceptions terminate at an enabled `noexcept` boundary, not just `std::bad_alloc
 
 `color_t` is now exactly
 `std::variant<no_color_t, rgb, term_color, cube_color, gray_color>`.
-It does not use the former custom variant or public custom `get`/`visit` machinery.
+Use `std::get`, `std::get_if`, `std::holds_alternative`, and `std::visit` for
+access. With exceptions enabled, `std::get` on the wrong alternative throws
+`std::bad_variant_access`.
 
 MSVC rejects valid constexpr transitions back to an empty `no_color_t` alternative
 with C2131, reporting inactive union-member access inside its `std::variant`.
+This failed at compile time in all four Windows jobs for `2d185922f`.
+The [Debug compact job](https://github.com/tjgolubi/fmt/actions/runs/42466322805/job/128686579461)
+identified `check_color_constexpr_assignment`. Linux, macOS, and the guide
+passed at that SHA.
 Assigning a temporary and using `emplace` did not solve it. The final fix is a
 private `char _dummy{'\0'}` in `no_color_t`, gated by:
 
@@ -364,13 +319,11 @@ Terry wants includes to expose missing direct dependencies:
 5. C compatibility headers such as `<cstdio>`, `<cstdlib>`, `<cstdint>`, and
    `<cstddef>` last; platform C headers are also last.
 
-The {color} headers, tests, and demos follow this order. `.clang-format` has
+Use this order when adding or touching includes. `.clang-format` has
 explicit include categories and sort priorities for the project and standard
 headers, and regroups their includes accordingly. Extend those categories when
-new headers require deliberate ordering. Clang-format 21.1.8 was used to verify
-that it preserves the ordering. All 11 public headers compiled independently;
-both demos passed syntax checks. No missing includes surfaced in these checks.
-Function bodies and existing brace layouts were not reformatted.
+new headers require deliberate ordering. The earlier Clang-format 21.1.8 check
+verified this ordering.
 
 Terry prefers an 80-column limit. A trailing return type and opening brace may stay
 on the signature line when they fit. Otherwise he prefers this layout:
@@ -388,37 +341,40 @@ indentation and brace choices are his preference.
 
 ## Build, platforms, and verified results
 
-Build and test **only {color}/TJG**, not the original FMT library/regressions.
-Use C++23 or newer and test both compact and noncompact SGR. The compiler and
-standard library must implement `<format>`, `<print>`, and `std::formattable`.
-The option is `TJG_COLOR_COMPACT_SGR`, not the historical FMT option.
+Run `./build.bash` from the repository root. It configures a C++23 Debug
+build with `g++`, enables `TJG_TEST` and `TJG_WERROR`, builds in
+`build/color`, and runs CTest. For Clang, configure a separate build
+directory and select `clang++` with `CMAKE_CXX_COMPILER`. Visual Studio
+multi-configuration builds also need a configuration for build and CTest.
 
-The root `build.bash` explicitly selects `g++`, configures Debug with warnings as
-errors, builds, and runs CTest for both modes in `build/tjg/ON` and `OFF`. It stops
-at the first failed command, so a compact-mode failure prevents the noncompact
-run. For an explicit Clang build, preserve existing GCC caches by using separate
-build directories:
+All 22 local suites, including the re-enabled styled-text checks,
+no-exceptions coverage, and package relocation, passed on November 15
+with MSYS2 GCC 16.2.0 at `601029e69`. The Linux, macOS, and Windows
+workflow definitions now configure C++23. The current guide build uses
+MkDocs from the pinned documentation requirements. The Pages deployment
+workflow still targets `color-dev` in `tjgolubi/fmt`. Review its routing
+as part of the move to the new repository.
 
-```bash
-for mode in ON OFF; do
-  cmake -S tjg -B "build/tjg-clang/$mode" \
-    -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++ \
-    -DCMAKE_CXX_STANDARD=23 -DCMAKE_CXX_STANDARD_REQUIRED=ON \
-    -DTJG_TEST=ON -DTJG_WERROR=ON -DTJG_COLOR_COMPACT_SGR="$mode"
-  cmake --build "build/tjg-clang/$mode" --parallel 4
-  ctest --test-dir "build/tjg-clang/$mode" --output-on-failure
-done
-```
+GitHub Actions reported these results for the November 15 push of `601029e69`.
+Two of ten jobs passed.
 
-Visual Studio multi-configuration builds also need the configuration passed to
-build and CTest. Local Linux now has 22 suites including the new hash-support
-suite, policy tests, installation/relocation, and no-exceptions coverage; platform
-counts can differ. All 22 passed on `f93e4159`'s source using GCC 14.2 and Clang
-21.1.8, both SGR modes, C++23 Debug, warnings as errors, and CMake 4.4.5. The final
-Clang compact-mode retry passed after an initial compiler crash while reading a
-header; the file was intact. The finalized builds passed without new warnings.
-The documentation source was updated, but MkDocs was unavailable and the guide
-site was not rebuilt locally for these changes.
+| Workflow | Result | Diagnostic |
+| --- | --- | --- |
+| [TJG Linux](https://github.com/tjgolubi/fmt/actions/runs/43779011765) | 2 passed, 3 failed | GCC 14 Debug and Debug ASan/UBSan passed. GCC 14 Release hit `-Werror=maybe-uninitialized` in color blending. Both Clang jobs failed `color_ostream_test.literal_text_and_stream_state`. |
+| [TJG macOS](https://github.com/tjgolubi/fmt/actions/runs/43779011782) | 2 failed | LLVM 20 libc++ Debug and Release failed the same ostream test. The stream applied its pending width to the output and consumed the width. |
+| [TJG Windows](https://github.com/tjgolubi/fmt/actions/runs/43779011784) | 2 failed | MSVC Debug and Release failed to build with C4244 promoted to an error for the `int` to `cube_color::chan_type` assignment in `colors.hpp:293`. |
+| [Color guide](https://github.com/tjgolubi/fmt/actions/runs/43779011795) | 1 failed | Doxygen could not create `build/doxyxml` while MkDocs rendered `index.md`. |
+
+The older GCC 14.2 and Clang 21.1.8 runs at `f93e4159` passed 22 suites
+in both former SGR modes. The historical cross-platform results below
+cover their recorded commit.
+
+On the earlier PC baseline `2d185922f`, MSYS2 GCC 16.2 passed all 17 suites in
+each SGR mode and the guide built locally. The installed-package test consumer
+defines `_DEFAULT_SOURCE` only when built with GCC on MSYS2, so strict C++23
+mode exposes the stdio declarations required by libstdc++ `<print>`. The fix was
+present during local testing and was committed in `b6fc79da4` after `fd8dfa256`
+omitted it.
 
 Terry's current tablet toolchain is Termux Clang 21.1.8 targeting
 `aarch64-unknown-linux-android24`, CMake 4.4.5, and Python 3.14.10. He permits use of
@@ -461,27 +417,42 @@ intentionally skipped on this branch; the TJG guide job passed. There are no
 failed, cancelled, or pending applicable jobs in those attempts. These are not
 CI results for the three later integration/refactoring commits.
 
-## Next session and authorization
+## Demos and comparison material
 
-Source is committed and pushed through `f93e4159`. The Termux and MSVC fixes
-remain in place. The agreed cleanup and standard-delegation directions above
-are the next-work policy; no implementation changes for those directions were
-made in this documentation task. Terry's current imperative authorizes updating
-this handoff, not implementing every discussed change. The targeted MSVC bug
-workaround and exception-support gates remain intentional.
+- `FmtColorDemo2.cpp` demonstrates underlay and overlay. `TableDemo.cpp`
+  demonstrates styled columns, Unicode width, and truncation.
+  `OstreamDemo.cpp` uses the stream API for the same dashboard.
+- `Cpp23Demo.cpp` uses standard formatting for plain-text layout and emits
+  SGR explicitly. `FmtColorDemo0.cpp` uses upstream {fmt} for the same table.
+- `NestedDemo.cpp` shows two plain C++23 examples, the direct {fmt} version
+  that loses the underline after the red argument, the {fmt} version that
+  reapplies the underline, and the {color} version that restores it.
+  `demo/NestedDemo.png` captures all five outputs. The user guide uses a
+  separate terminal screenshot for its TableDemo walkthrough.
+- On Terry's PC, `make -C demo -B run` rebuilt and ran all six demos.
+  `FmtColorDemo0` and `NestedDemo` use `FMT_ROOT` and `FMT_LIB`, which
+  default to `$HOME/App/fmt` and its `build/color/libfmtd.a`.
 
-Terry requires **imperative instructions before edits**. Questions such as
-"Can you fix it?" are discussion, not authorization. Explain a proposed change
-before editing and keep its scope focused. Read-only investigation is allowed.
-Commits, pushes, and history rewrites need authorization for the operation; do not
-infer them from permission to edit. Terry temporarily allowed amend/force-with-lease
-while resolving this particular MSVC issue. That issue is now fixed; this is not
-standing authorization to rewrite unrelated or future work. No one else was
-collaborating on the branch during this session.
+## Repository and website
 
-Check CI on demand, never by periodic polling. Do not cancel or rerun jobs,
-re-enable excluded lint/CodeQL workflows, or change workflow policies without
-instruction. CI and example results for an old SHA do not validate later edits.
-Only this handoff document is being updated; leave the usual FMT coordination
-files unchanged. On the PC, fetch/read `docs/Coord:cpp20.md`, inspect local history,
-and continue source work on `ref/CPP20` when Terry selects the next task.
+Terry plans to create `tjg/color` from a fresh snapshot of the refactor.
+The current root README already introduces the standalone library. When the
+new repository is available, check its package, CI, guide publication, and
+source links. Keep the original extension's source available in the fork
+archive with links pinned to its contribution.
+
+Keep the existing public OpenAI site. Lead with the standalone C++23 library
+and retain the original {fmt} extension on its contribution page. Move the
+independent library out of Future work and replace the proposed sample there
+with current, tested examples. Put the nested-style comparison and the table
+comparison on the project site. The generated user guide explains library use.
+Keep the OpenAI site source in its separate checkout. See
+[Website.md](Website.md) for the existing publication and update procedure.
+
+## Working rules
+
+Terry requires imperative instructions before edits. Check the current source
+and tests when older coordination notes disagree with the implementation.
+Commits, pushes, history rewrites, repository creation, and site publication
+require authorization for the operation. Check CI on demand and report
+validation against the commit actually tested.
