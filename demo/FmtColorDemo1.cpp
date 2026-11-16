@@ -16,7 +16,9 @@ int main() {
             styled("reset+underline only", text_style{}.absolute().underline()),
             styled("reverse red", fg(red).reverse()));
 
-  tjg::println(emphasis::strike, "{} {} {} | {} | {} | {}",
+  constexpr auto surrounding = fg(white).bg(gray_color{12}).strike();
+
+  tjg::println(surrounding, "{} {} {} | {} | {} | {}",
             styled("red text with", fg(red)),
             styled("nested bold", fg(red).bold()),
             styled("still red", fg(red)),

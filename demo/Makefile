@@ -1,10 +1,10 @@
 CXX = g++
 TJG_ROOT = ..
 FMT_ROOT ?= $(HOME)/App/fmt
-FMT_LIB ?= $(FMT_ROOT)/build/color/libfmtd.a
+FMT_LIB ?= $(FMT_ROOT)/build/libfmtd.a
 CXXFLAGS += -std=gnu++23 -Wall -Wextra -Werror
 
-TJG_DEMOS = FmtColorDemo2 TableDemo OstreamDemo NestedDemo
+TJG_DEMOS = FmtColorDemo1 FmtColorDemo2 TableDemo OstreamDemo NestedDemo
 FMT_DEMOS = FmtColorDemo0 NestedDemo
 DEMOS = $(TJG_DEMOS) Cpp23Demo FmtColorDemo0
 
@@ -22,6 +22,7 @@ $(FMT_DEMOS): LDLIBS += "$(FMT_LIB)"
 $(FMT_DEMOS): $(FMT_LIB)
 
 run: all
+	./FmtColorDemo1
 	./FmtColorDemo2
 	./TableDemo
 	./OstreamDemo

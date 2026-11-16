@@ -4,7 +4,7 @@ set -euo pipefail
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$repo_dir"
 
-build_dir=build/color
+build_dir=build
 if (( $# != 0 )); then
   echo "Usage: $0" >&2
   exit 2
