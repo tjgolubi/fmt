@@ -1,22 +1,23 @@
 # {color} C++23 handoff
 
-Updated November 15, 2026. This document tracks the standalone {color} library.
+Updated November 16, 2026. This document tracks the standalone {color} library.
 The other coordination documents record the original C++11 {fmt} extension and
 the published site. The filename predates the decision to target C++23.
 
 ## Current baseline
 
 - Source is on `ref/Reorg` in the [FmtColor fork](https://github.com/tjgolubi/fmt).
-  The PC checkout and its local `origin/ref/Reorg` tracking ref match
-  `db14a2bee42173c1217213f47c3d3b7df6604bfa`.
+  The PC checkout, local tracking ref, and GitHub tip match
+  `389a02d9b46d255f434132c16318ef7c9ed7fceb`. The PC has an uncommitted
+  `build.bash` edit that invokes the guide target after CTest passes.
 - The project is called **{color}**. It uses namespace `tjg`, headers under
   `include/tjg/`, and the exported CMake target `tjg::tjg`.
 - **C++23 is the supported target.** Consider a C++20 backport if someone asks
   for it. The current library uses standard `<format>`, `<print>`, and
   `std::to_underlying`.
 - All 10 GitHub Actions jobs passed on attempt 1 for this commit.
-  All 22 local CTest suites passed with MSYS2 GCC 16.2.0 at the earlier
-  `601029e69` baseline. See
+  All 22 local CTest suites passed with MSYS2 GCC 16.2.0 during the header
+  migration. See
   [Build, platforms, and verified results](#build-platforms-and-verified-results).
   Tablet results for this commit are unverified.
 - Terry plans to start a fresh repository at `tjg/color` with the current
@@ -38,14 +39,24 @@ branches or synchronizing.
   standalone regressions live in `test/` and use the GoogleTest sources in
   `ext/gtest/`. The library needs only the standard library. Two comparison
   demos use an external {fmt} build.
-- The temporary split headers include `colors.hpp`, `text_style.hpp`,
-  `text_style-format.hpp`, `styled_text.hpp`, `styled_text-format.hpp`, and
-  `color-ostream.hpp`. The guide source is in `doc/`, and the root changelog
-  is `CHANGELOG.md`.
+- `<tjg/color.hpp>` is the umbrella for formatting, printing, stream insertion,
+  SGR generation and parsing, and the string and styled-tree utilities.
+  `<tjg/colors.hpp>`, `<tjg/text_style.hpp>`, and `<tjg/styled_text.hpp>` are
+  the narrower value and composition headers. `<tjg/backslash.hpp>` and
+  `<tjg/strip_ansi.hpp>` also work independently on plain strings.
+  Implementation headers live under `include/tjg/bits/`. The guide source
+  is in `doc/`, and the root changelog is `CHANGELOG.md`.
 - Owning styled text has separate leaf and child members. An empty child
-  vector denotes a leaf. Formatting lives in the separate formatter header,
-  and streams share its renderer. The parser and ANSI stripper have their own
-  headers.
+  vector denotes a leaf. The formatter and ostream insertion each construct
+  a renderer for one call, with resolved specs and a precision budget stored
+  on the renderer. It takes an output iterator directly and resets its budget
+  between measurement and output. Ostream insertion uses the returned
+  iterator's `failed()` state.
+- `backslash_unescape` and `backslash_unescape_to` decode `\u` with four hex
+  digits and `\U` with eight. They emit UTF-8 for narrow strings and UTF-16 or
+  UTF-32 according to the width of `wchar_t`. Malformed escapes and surrogate
+  values throw `std::invalid_argument`. Values above `U+10FFFF` throw
+  `std::out_of_range`. `backslash_escape` preserves literal Unicode code units.
 - Ordinary tree formatting supports narrow and wide output, padding, and
   static or dynamic width and precision. Debug tree output uses `?` and
   rejects width and precision. An absolute group emits its transition before
@@ -72,7 +83,7 @@ branches or synchronizing.
 - `unicode.hpp` consumes the generated `UnicodeData.hpp` and
   `EastAsianWidth.hpp` tables. The C++23 generators and Unicode 18.0.0 inputs
   live in `support/unicode/` and run separately from the normal build.
-  Preserve the generated headers as generator output.
+  They write the generated headers to `include/tjg/bits/`.
 
 ### Style representation
 
@@ -109,11 +120,11 @@ remain deliberately available; removing style operators did not remove color OR.
   internal unpack helper are removed. Its hasher combines the alternative index
   with the active value; palette alternatives use their indices. Styles hash
   their components. No packed variant representation or serialization is offered.
-- `<tjg/hash_support.hpp>` provides `tjg::hash_combine(seed, value)`, adapted from
+- `tjg::hash_combine(seed, value)` lives in `bits/hash_support.hpp`, adapted from
   Boost.ContainerHash 1.85.0 using `std::hash<T>` and Boost's 32/64-bit mixers.
   It propagates exceptions from a throwing hasher and is otherwise conditionally
-  noexcept. The Boost attribution and `tjg/LICENSE-Boost` are included; CMake
-  installs the license. Tests check both mixers, combining vectors, exception
+  noexcept. The installed `THIRD-PARTY-NOTICES` carries the Boost attribution
+  and license. Tests check both mixers, combining vectors, exception
   propagation, and use of colors/styles in unordered containers.
 
 ### Compiler compatibility cleanup
@@ -251,7 +262,7 @@ hashing code. Do not remove required notices in a blanket cleanup.
 
 ## Assertion and exception toolkit
 
-`<tjg/error_support.hpp>` supplies six configurable macros:
+`bits/error_support.hpp` supplies six configurable macros:
 
 | Macro                             | Policy                                                          |
 | --------------------------------- | --------------------------------------------------------------- |
@@ -356,27 +367,33 @@ indentation and brace choices are his preference.
 
 Run `./build.bash` from the repository root. It configures a C++23 Debug
 build with `g++`, enables `TJG_TEST` and `TJG_WERROR`, builds in
-`build`, and runs CTest. For Clang, configure a separate build
+`build`, and runs CTest. The PC's local script edit builds the guide next.
+For Clang, configure a separate build
 directory and select `clang++` with `CMAKE_CXX_COMPILER`. Visual Studio
 multi-configuration builds also need a configuration for build and CTest.
 
-All 10 GitHub Actions jobs passed on attempt 1 for the November 15 push of
-`db14a2bee42173c1217213f47c3d3b7df6604bfa`. All four run head SHAs match.
+On November 16, all 10 jobs across the four push workflows passed on attempt 1
+for `389a02d9b46d255f434132c16318ef7c9ed7fceb`. All four run head SHAs match.
 
 | Workflow                                                                           | Result   | Coverage                                          |
 | ---------------------------------------------------------------------------------- | -------- | ------------------------------------------------- |
-| [TJG Linux](https://github.com/tjgolubi/fmt/actions/runs/43794522270/attempts/1)   | 5 passed | GCC 14 and Clang 20 Debug/Release, GCC ASan/UBSan |
-| [TJG macOS](https://github.com/tjgolubi/fmt/actions/runs/43794522246/attempts/1)   | 2 passed | LLVM 20 libc++ Debug/Release                      |
-| [TJG Windows](https://github.com/tjgolubi/fmt/actions/runs/43794522262/attempts/1) | 2 passed | MSVC v143 x64 Debug/Release                       |
-| [Color guide](https://github.com/tjgolubi/fmt/actions/runs/43794522268/attempts/1) | 1 passed | MkDocs build with pinned dependencies             |
+| [TJG Linux](https://github.com/tjgolubi/fmt/actions/runs/43831873735/attempts/1)   | 5 passed | GCC 14 and Clang 20 Debug/Release, GCC ASan/UBSan |
+| [TJG macOS](https://github.com/tjgolubi/fmt/actions/runs/43831873624/attempts/1)   | 2 passed | LLVM 20 libc++ Debug/Release                      |
+| [TJG Windows](https://github.com/tjgolubi/fmt/actions/runs/43831873635/attempts/1) | 2 passed | MSVC v143 x64 Debug/Release                       |
+| [Color guide](https://github.com/tjgolubi/fmt/actions/runs/43831873772/attempts/1) | 1 passed | MkDocs build with pinned dependencies             |
 
-The guide's C++ handler creates `build/doxyxml` before invoking Doxygen.
-The Pages deployment workflow still targets `color-dev` in `tjgolubi/fmt`.
-Review its routing as part of the move to the new repository.
+After configuring with CMake, run `cmake --build build --target doc` from
+MSYS2 Bash to build the guide. The target uses Python 3 and Doxygen. It installs
+the hash-pinned Python dependencies into `build/doc-venv` on the first run and
+reuses that environment on later builds. Open `build/doc-html/index.html`.
+The Doxygen handler recursively scans `include/tjg/`, including `bits/`, and
+the target writes its XML to `build/doxyxml`. Both first and repeat guide
+builds passed locally.
 
-All 22 local suites, including the re-enabled styled-text checks,
-no-exceptions coverage, and package relocation, passed on November 15
-with MSYS2 GCC 16.2.0 at `601029e69`.
+All 22 local suites passed with MSYS2 GCC 16.2.0 after the header and test
+migration, including no-exceptions coverage and the relocated package test.
+The package test passed again after the CMake `doc` target was added. These
+checks were run on the working tree before the final commit.
 
 The older GCC 14.2 and Clang 21.1.8 runs at `f93e4159` passed 22 suites
 in both former SGR modes. The historical cross-platform results below
@@ -398,7 +415,7 @@ new environment rather than assuming those installations persist.
 
 Two Android test-infrastructure fixes are retained:
 
-- GoogleTest's shared `CapturedStream` in `test/gtest/gmock-gtest-all.cc` honors a
+- GoogleTest's shared `CapturedStream` in `ext/gtest/gmock-gtest-all.cc` honors a
   nonempty `TMPDIR` on non-Windows platforms. Unset/empty values retain platform
   fallbacks. Termux already sets a writable `TMPDIR`; `/data/local/tmp` is not
   writable by its app user. Tests verified custom paths, trailing slashes,
@@ -413,6 +430,8 @@ Two Android test-infrastructure fixes are retained:
 
 Vendored GoogleTest emits a Clang 21 `-Wcharacter-conversion` warning converting
 `char8_t` to `char32_t`. It is nonfatal and Terry explicitly said to leave it alone.
+Moving GoogleTest to a pinned submodule is a possible follow-up. Verify both
+Android fixes on the proposed revision before replacing the vendored sources.
 
 Historical baseline CI for `7253096c`, verified November 8, 2026, all on attempt 1:
 
@@ -449,6 +468,10 @@ CI results for the three later integration/refactoring commits.
   at `601029e69` covered the six demos configured at that commit.
   `FmtColorDemo0` and `NestedDemo` use `FMT_ROOT` and `FMT_LIB`, which
   default to `$HOME/App/fmt` and its `build/libfmtd.a`.
+- The five demos that use {color} include `<tjg/color.hpp>`. Their Makefile
+  prerequisites include headers recursively under `include/tjg/`. The
+  quick-start demo built and ran on MSYS2, and GNU Make scheduled a rebuild
+  when either a public header or a `bits/` header was treated as modified.
 
 ## Repository and website
 
@@ -457,6 +480,11 @@ The current root README already introduces the standalone library. When the
 new repository is available, check its package, CI, guide publication, and
 source links. Keep the original extension's source available in the fork
 archive with links pinned to its contribution.
+
+The Pages workflow still targets `color-dev` in `tjgolubi/fmt`. Update the
+repository, branch, and MkDocs links for the new home. The inherited release
+workflow expects the CPack `package_source` target and a `fmt-*.zip`. Decide
+what to ship and adapt the workflow before using it for the standalone release.
 
 Keep the existing public OpenAI site. Lead with the standalone C++23 library
 and retain the original {fmt} extension on its contribution page. Move the
