@@ -12,7 +12,7 @@
 #include "UnicodeData.hpp"
 
 #include "error_support.hpp"
-#include "utility.hpp"
+#include <tjg/utility.hpp>
 
 #include <string_view>
 

@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include <tjg/bits/error_support.hpp>
-#include <tjg/bits/utility.hpp>
+#include <tjg/color/bits/error_support.hpp>
+#include <tjg/utility.hpp>
 
 #include <stdexcept>
 #include <string>

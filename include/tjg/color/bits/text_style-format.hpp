@@ -3,14 +3,14 @@
 /// @copyright 2026 Terry Golubiewski, all rights reserved.
 #pragma once
 
-#include <tjg/text_style.hpp>
+#include <tjg/color/text_style.hpp>
 #include "colors-format.hpp"
 #include "emphasis-format.hpp"
 #include "format_support.hpp"
 #include "sgr_support.hpp"
-#include "inline_buffer.hpp"
+#include <tjg/inline_buffer.hpp>
 #include "error_support.hpp"
-#include "utility.hpp"
+#include <tjg/utility.hpp>
 
 #include <print>
 #include <format>

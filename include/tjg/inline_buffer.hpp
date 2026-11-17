@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "error_support.hpp"
+#include <tjg/color/bits/error_support.hpp>
 #include "utility.hpp"
 
 #include <string_view>

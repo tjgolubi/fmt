@@ -3,7 +3,7 @@
 ## Structured styled text
 
 Use `styled_text` to compose text with independently styled parts. Include
-`<tjg/styled_text.hpp>` for the owning type and its composition operations.
+`<tjg/color/styled_text.hpp>` for the owning type and its composition operations.
 Include `<tjg/color.hpp>` to use it with `std::format`,
 `std::format_to`, or `std::println`. Use `{:?}` to inspect the tree.
 

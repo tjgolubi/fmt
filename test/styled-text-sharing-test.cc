@@ -1,5 +1,5 @@
 // Isolated allocation regression: replacing global new must not affect other tests.
-#include "tjg/styled_text.hpp"
+#include "tjg/color/styled_text.hpp"
 
 #include <new>
 #include <string>

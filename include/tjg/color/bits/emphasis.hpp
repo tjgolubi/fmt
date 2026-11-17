@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "utility.hpp"
+#include <tjg/utility.hpp>
 
 #include <utility>
 #include <cstdint>

@@ -3,7 +3,7 @@
 /// @copyright 2026 Terry Golubiewski, all rights reserved.
 #pragma once
 
-#include <tjg/bits/utility.hpp>
+#include <tjg/utility.hpp>
 
 #include <string>
 #include <string_view>

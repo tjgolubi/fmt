@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include <tjg/bits/utility.hpp>
-#include <tjg/bits/error_support.hpp>
-#include <tjg/bits/hash_support.hpp>
+#include <tjg/utility.hpp>
+#include <tjg/color/bits/error_support.hpp>
+#include <tjg/hash_support.hpp>
 
 #include <algorithm>
 

@@ -1,4 +1,4 @@
-#include "tjg/styled_text.hpp"
+#include "tjg/color/styled_text.hpp"
 #include "test-support.h"
 
 #include <string>

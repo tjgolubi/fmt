@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <tjg/styled_text.hpp>
+#include <tjg/color/styled_text.hpp>
 #include <tjg/strip_ansi.hpp>
 
 #include <string>

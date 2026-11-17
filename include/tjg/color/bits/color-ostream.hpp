@@ -8,8 +8,8 @@
 #include "colors-format.hpp"
 #include "emphasis-format.hpp"
 #include "sgr_support.hpp"
-#include "inline_buffer.hpp"
-#include "utility.hpp"
+#include <tjg/inline_buffer.hpp>
+#include <tjg/utility.hpp>
 
 #include <ostream>
 #include <string_view>

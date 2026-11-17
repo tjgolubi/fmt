@@ -4,11 +4,11 @@
 
 #pragma once
 
-#include <tjg/colors.hpp>
+#include <tjg/color/colors.hpp>
 
 #include "format_support.hpp"
-#include "inline_buffer.hpp"
-#include "utility.hpp"
+#include <tjg/inline_buffer.hpp>
+#include <tjg/utility.hpp>
 
 #include <format>
 #include <string_view>

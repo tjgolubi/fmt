@@ -555,7 +555,9 @@ variant's alternative index, including `std::variant_npos` when valueless.
 
 ### Combining hashes
 
-Include `<tjg/color.hpp>` to use `tjg::hash_combine(seed, value)`.
+Include `<tjg/hash_support.hpp>` for the general-purpose hash helpers.
+`<tjg/color.hpp>` also includes them and supplies the color and style hashers.
+Use `tjg::hash_combine(seed, value)` to combine hashes.
 It updates a `std::size_t` seed using `std::hash<T>` for the value and
 Boost.ContainerHash 1.85's mixing algorithm. Start with a zero seed and combine
 members in a consistent order:

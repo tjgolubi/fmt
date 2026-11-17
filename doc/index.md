@@ -41,17 +41,20 @@ The first call styles the entire message. The second styles only `42`.
 
 ## Headers
 
-| Header                  | Provides                                           |
-| ----------------------- | -------------------------------------------------- |
-| `<tjg/color.hpp>`       | The full library, including formatting and streams |
-| `<tjg/colors.hpp>`      | Color values, named colors, and `color_t`          |
-| `<tjg/text_style.hpp>`  | Color values, emphasis, and `text_style`           |
-| `<tjg/styled_text.hpp>` | Owning styled-text trees and their composition     |
-| `<tjg/backslash.hpp>`   | Backslash escaping and unescaping for strings      |
-| `<tjg/strip_ansi.hpp>`  | ANSI escape removal from strings                   |
+| Header                        | Provides                                           |
+| ----------------------------- | -------------------------------------------------- |
+| `<tjg/color.hpp>`             | The full library, including formatting and streams |
+| `<tjg/color/colors.hpp>`      | Color values, named colors, and `color_t`          |
+| `<tjg/color/text_style.hpp>`  | Color values, emphasis, and `text_style`           |
+| `<tjg/color/styled_text.hpp>` | Owning styled-text trees and their composition     |
+| `<tjg/backslash.hpp>`         | Backslash escaping and unescaping for strings      |
+| `<tjg/strip_ansi.hpp>`        | ANSI escape removal from strings                   |
+| `<tjg/inline_buffer.hpp>`     | Fixed-capacity character buffers                   |
+| `<tjg/hash_support.hpp>`      | Hash values and hash combination                   |
+| `<tjg/utility.hpp>`           | Character-type concept and cast helpers            |
 
-The five narrower headers can be used without formatting, printing, or
-stream support. Headers under `tjg/bits/` are implementation headers.
+The narrower headers can be used without formatting, printing, or
+stream support. Headers under `tjg/color/bits/` are implementation headers.
 
 ## Reference
 
@@ -228,7 +231,7 @@ specifications through `std::format_error`.
 
 ## Inline buffer
 
-`<tjg/color.hpp>` provides `tjg::basic_inline_buffer<Char, Size>` and
+`<tjg/inline_buffer.hpp>` provides `tjg::basic_inline_buffer<Char, Size>` and
 its `char` alias, `tjg::inline_buffer`. The buffer stores up to `Size`
 characters inline, with a default capacity of 256. SGR construction uses a
 60-character buffer.

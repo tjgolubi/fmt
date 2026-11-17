@@ -4,12 +4,12 @@
 
 #pragma once
 
-#include <tjg/text_style.hpp>
-#include <tjg/colors.hpp>
+#include <tjg/color/text_style.hpp>
+#include <tjg/color/colors.hpp>
 #include "emphasis.hpp"
-#include "inline_buffer.hpp"
+#include <tjg/inline_buffer.hpp>
 #include "error_support.hpp"
-#include "utility.hpp"
+#include <tjg/utility.hpp>
 
 #include <string>
 #include <string_view>

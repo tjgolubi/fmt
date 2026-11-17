@@ -3,8 +3,8 @@
 /// @copyright 2026 Terry Golubiewski, all rights reserved.
 #pragma once
 
-#include <tjg/text_style.hpp>
-#include <tjg/bits/utility.hpp>
+#include <tjg/color/text_style.hpp>
+#include <tjg/utility.hpp>
 
 #include <string>
 #include <string_view>
