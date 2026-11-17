@@ -10,7 +10,21 @@
 
 With `<tjg/color.hpp>`, `{}` emits the style's SGR escape sequence.
 An empty style emits an empty string. Use `{:?}` for compact readable notation.
-To write that notation to a stream, insert the string returned by
+Direct stream insertion writes the style's SGR sequence without a trailing
+reset. For this operation, an empty `text_style{}` writes a reset instead of
+an empty sequence. It uses a fixed-capacity inline buffer and preserves pending
+`std::setw`, fill, alignment, and precision settings.
+
+```cpp
+using namespace tjg::color;
+std::cout << fg(term_color::red).bold() << "Warning" << text_style{};
+```
+
+This raw SGR output does not update the formatting machinery's tracked style.
+Restore terminal defaults before starting an independent color-aware formatting
+or printing operation.
+
+To write readable notation to a stream, insert the string returned by
 `std::format("{:?}", style)` or `std::format(L"{:?}", style)`.
 
 Output starts with `=` if the style is absolute, immediately followed by the

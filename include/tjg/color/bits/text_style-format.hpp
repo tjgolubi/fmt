@@ -158,7 +158,7 @@ class sgr_scope {
   void operator=(const sgr_scope&) = delete;
 }; // sgr_scope
 
-#define SGR_SCOPE(writer, style) \
+#define TJG_SGR_SCOPE(writer, style) \
   TJG_ASSERT(detail::get_style_state().empty(), " non-default style state"); \
   auto scope = detail::sgr_scope{writer, style}
 
@@ -185,7 +185,7 @@ auto vformat_to(OutputIt out, text_style style,
     can_write = true;
   }; // writer
 
-  SGR_SCOPE(writer, style);
+  TJG_SGR_SCOPE(writer, style);
 
   can_write = false;
   if (locale)
@@ -260,7 +260,7 @@ inline void vprint_nonunicode(FILE* f, text_style ts, std::string_view fmt,
   auto writer = [&](const char* data, std::size_t size)
                 { detail::write_file(f, data, size); };
 
-  SGR_SCOPE(writer, ts);
+  TJG_SGR_SCOPE(writer, ts);
   std::vprint_nonunicode(f, fmt, args);
 }  // vprint_nonunicode
 
@@ -276,7 +276,7 @@ inline void vprint_unicode(FILE* f, text_style ts, std::string_view fmt,
   auto writer = [&](const char* data, std::size_t size)
                 { detail::write_file(f, data, size); };
 
-  SGR_SCOPE(writer, ts);
+  TJG_SGR_SCOPE(writer, ts);
   std::vprint_unicode(f, fmt, args);
 }
 
@@ -304,7 +304,7 @@ void print(FILE* f, text_style ts, std::format_string<T...> fmt, T&&... args)
   auto writer = [&](const char* data, std::size_t size)
                 { detail::write_file(f, data, size); };
 
-  SGR_SCOPE(writer, ts);
+  TJG_SGR_SCOPE(writer, ts);
   std::print(f, fmt, std::forward<T>(args)...);
 }
 
@@ -380,7 +380,7 @@ inline auto vformat(text_style ts, std::string_view fmt, std::format_args args)
   auto writer = [&](const char* data, std::size_t size)
                 { result.append(data, size); };
 
-  SGR_SCOPE(writer, ts);
+  TJG_SGR_SCOPE(writer, ts);
   std::vformat_to(std::back_inserter(result), fmt, args);
   scope.finish();
   return result;
@@ -439,7 +439,7 @@ inline auto vformat(text_style ts, std::wstring_view pattern,
   auto writer = [&](const char* data, std::size_t size)
                 { result.append(data, data + size); };
 
-  SGR_SCOPE(writer, ts);
+  TJG_SGR_SCOPE(writer, ts);
   std::vformat_to(std::back_inserter(result), pattern, args);
   scope.finish();
   return result;

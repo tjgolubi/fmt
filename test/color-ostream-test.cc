@@ -15,6 +15,42 @@
 #include <locale>
 #include <iomanip>
 
+namespace {
+template<typename Char>
+void check_style_insertion() {
+  using namespace tjg::color;
+  const auto widen = [](const char* value) {
+    std::basic_string<Char> result;
+    while (*value) result.push_back(static_cast<Char>(*value++));
+    return result;
+  };
+  std::basic_ostringstream<Char> os;
+  os << std::left << std::setfill(Char{'*'}) << std::setprecision(3)
+     << std::setw(5);
+  const auto flags = os.flags();
+  const auto style = fg(term_color::red).bold();
+  EXPECT_EQ(&(os << style), &os);
+  EXPECT_EQ(os.str(), widen("\x1b[1;31m"));
+  EXPECT_EQ(os.width(), 5);
+  EXPECT_EQ(os.flags(), flags);
+  EXPECT_EQ(os.fill(), Char{'*'});
+  EXPECT_EQ(os.precision(), 3);
+  EXPECT_EQ(detail::get_style_state(), text_style{});
+  os << widen("x");
+  EXPECT_EQ(os.str(), widen("\x1b[1;31mx****"));
+  os << std::setw(7) << text_style{};
+  EXPECT_EQ(os.str(), widen("\x1b[1;31mx****\x1b[0m"));
+  EXPECT_EQ(os.width(), 7);
+  os << absolute(text_style{});
+  EXPECT_EQ(os.str(), widen("\x1b[1;31mx****\x1b[0m\x1b[0m"));
+}
+} // namespace
+
+TEST(color_ostream_test, text_style_insertion) {
+  check_style_insertion<char>();
+  check_style_insertion<wchar_t>();
+}
+
 TEST(color_ostream_test, emphasis_insertion) {
   using tjg::color::emphasis;
   const struct {
@@ -270,6 +306,18 @@ TEST(color_ostream_test, stream_failure) {
   os.exceptions(std::ios_base::badbit);
   EXPECT_THROW(tjg::color::println(os, tjg::color::emphasis::bold, "{}", 42),
                std::ios_base::failure);
+}
+
+TEST(color_ostream_test, text_style_insertion_failure) {
+  failing_streambuf buf;
+  std::ostream os(&buf);
+  os << std::setw(5) << tjg::color::text_style{};
+  EXPECT_TRUE(os.bad());
+  EXPECT_EQ(os.width(), 5);
+  os.clear();
+  os.exceptions(std::ios_base::badbit);
+  EXPECT_THROW(os << tjg::color::bold(), std::ios_base::failure);
+  EXPECT_EQ(os.width(), 5);
 }
 
 #if defined(__cpp_exceptions) || defined(_CPPUNWIND)

@@ -16,24 +16,44 @@
 #include <iterator>
 #include <concepts>
 #include <limits>
+#include <type_traits>
 #include <utility>
 
 namespace tjg::color {
 
 /**
- * Inserts types that define tjg::color::write_value(output_iterator
- * enclosed in braces. Empty emphasis displays `{}`. Width, fill, and alignment
- * apply as for ordinary string insertion.
+ * Inserts color values and emphasis using their value notation.
+ * Emphasis names are enclosed in braces; empty emphasis displays `{}`.
+ * Width, fill, and alignment apply as for ordinary string insertion.
  */
 template<CharType Char, typename T>
-  requires requires(char* out, const T& value)
-    { (void) tjg::color::write_value(out, value); }
+  requires (Color<T>
+            || std::same_as<std::remove_cvref_t<T>, color_t>
+            || std::same_as<std::remove_cvref_t<T>, no_color_t>
+            || std::same_as<std::remove_cvref_t<T>, text_style>
+            || std::same_as<std::remove_cvref_t<T>, emphasis>)
+        && requires(char* out, const T& value)
+           { (void) tjg::color::write_value(out, value); }
 auto operator<<(std::basic_ostream<Char>& os, const T& value)
   -> std::basic_ostream<Char>&
 {
   auto buf = basic_inline_buffer<Char>{};
   (void) write_value(std::back_inserter(buf), value);
   return os << buf.view();
+}
+
+/**
+ * Writes a style's SGR sequence without a trailing reset. An empty style
+ * writes a reset. Pending stream width and other formatting settings are
+ * preserved. This raw output does not update the tracked formatting style.
+ */
+template<CharType Char>
+auto operator<<(std::basic_ostream<Char>& os, const text_style& style)
+  -> std::basic_ostream<Char>&
+{
+  auto buffer = basic_sgr_buffer<Char>{};
+  detail::append_sgr(buffer, style.empty() ? absolute(style) : style);
+  return os.write(buffer.data(), static_cast<std::streamsize>(buffer.size()));
 }
 
 namespace detail {
@@ -70,10 +90,10 @@ auto operator<<(std::basic_ostream<Char>& os, const styled_arg<T>& arg)
 
 } // detail
 
-#define SGR_OSTREAM_SCOPE(stream, style) \
+#define TJG_SGR_OSTREAM_SCOPE(stream, style) \
   auto writer = [&](const char* data, std::size_t size) \
     { stream.write(data, static_cast<std::streamsize>(size)); }; \
-  SGR_SCOPE(writer, style)
+  TJG_SGR_SCOPE(writer, style)
 
 /**
  * Prints styled text using the standard non-Unicode stream output path.
@@ -83,7 +103,7 @@ auto operator<<(std::basic_ostream<Char>& os, const styled_arg<T>& arg)
 inline void vprint_nonunicode(std::ostream& os, text_style ts,
                               std::string_view fmt, std::format_args args)
 {
-  SGR_OSTREAM_SCOPE(os, ts);
+  TJG_SGR_OSTREAM_SCOPE(os, ts);
   std::vprint_nonunicode(os, fmt, args);
 }
 
@@ -91,7 +111,7 @@ inline void vprint_nonunicode(std::ostream& os, text_style ts,
 inline void vprint_unicode(std::ostream& os, text_style ts,
                            std::string_view fmt, std::format_args args)
 {
-  SGR_OSTREAM_SCOPE(os, ts);
+  TJG_SGR_OSTREAM_SCOPE(os, ts);
   std::vprint_unicode(os, fmt, args);
 }
 
@@ -107,7 +127,7 @@ template<typename... T>
 void print(std::ostream& os, text_style ts, std::format_string<T...> fmt,
            T&&... args)
 {
-  SGR_OSTREAM_SCOPE(os, ts);
+  TJG_SGR_OSTREAM_SCOPE(os, ts);
   std::print(os, fmt, std::forward<T>(args)...);
 }
 
@@ -176,3 +196,5 @@ auto operator<<(std::basic_ostream<Char>& os,
 } // << styled_text
 
 } // tjg::color
+
+#undef TJG_SGR_OSTREAM_SCOPE
