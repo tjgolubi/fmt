@@ -21,7 +21,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace tjg {
+namespace tjg::color {
 
 /// Upper bound on style SGR output length.
 constexpr auto sgr_max_length = std::size_t{60};
@@ -361,4 +361,4 @@ auto wrap_sgr(const text_style& ts, std::basic_string_view<Char> sv)
 auto wrap_sgr(const text_style& ts, std::string_view sv) -> std::string
 { return wrap_sgr<char>(ts, sv); }
 
-} // tjg
+} // tjg::color

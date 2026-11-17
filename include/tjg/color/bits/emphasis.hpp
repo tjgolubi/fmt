@@ -8,7 +8,7 @@
 #include <utility>
 #include <cstdint>
 
-namespace tjg {
+namespace tjg::color {
 
 /**
  * Independent text attributes that can be combined with `operator|`.
@@ -40,4 +40,4 @@ constexpr inline auto operator|=(emphasis& lhs, emphasis rhs) noexcept
   -> emphasis&
 { return lhs = lhs | rhs; }
 
-} // tjg
+} // tjg::color

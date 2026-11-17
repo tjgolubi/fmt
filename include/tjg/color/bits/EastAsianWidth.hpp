@@ -10,7 +10,7 @@
 #include <cstdint>
 #pragma once
 
-namespace tjg::unicode::detail {
+namespace tjg::color::detail::unicode::detail {
 
 struct wide_cp_range {
   std::uint32_t first;
@@ -127,4 +127,4 @@ inline constexpr wide_cp_range wide_ranges[] = {
   {0x30000, 0x3fffd},
 };
 
-} // tjg::unicode
+} // tjg::color::detail::unicode

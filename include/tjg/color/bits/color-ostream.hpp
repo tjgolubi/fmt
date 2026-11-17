@@ -18,16 +18,16 @@
 #include <limits>
 #include <utility>
 
-namespace tjg {
+namespace tjg::color {
 
 /**
- * Inserts types that define tjg::write_value(output_iterator
+ * Inserts types that define tjg::color::write_value(output_iterator
  * enclosed in braces. Empty emphasis displays `{}`. Width, fill, and alignment
  * apply as for ordinary string insertion.
  */
 template<CharType Char, typename T>
   requires requires(char* out, const T& value)
-    { (void) tjg::write_value(out, value); }
+    { (void) tjg::color::write_value(out, value); }
 auto operator<<(std::basic_ostream<Char>& os, const T& value)
   -> std::basic_ostream<Char>&
 {
@@ -101,7 +101,7 @@ inline void vprint_unicode(std::ostream& os, text_style ts,
  *
  * **Example**:
  *
- *     tjg::print(os, tjg::text_style{tjg::emphasis::bold}, "Result: {}", 42);
+ *     tjg::color::print(os, tjg::color::text_style{tjg::color::emphasis::bold}, "Result: {}", 42);
  */
 template<typename... T>
 void print(std::ostream& os, text_style ts, std::format_string<T...> fmt,
@@ -119,7 +119,7 @@ template<typename... T>
 void println(std::ostream& os, text_style ts, std::format_string<T...> fmt,
              T&&... args)
 {
-  tjg::print(os, ts, fmt, std::forward<T>(args)...);
+  tjg::color::print(os, ts, fmt, std::forward<T>(args)...);
   os.put('\n');
 }
 
@@ -175,4 +175,4 @@ auto operator<<(std::basic_ostream<Char>& os,
   return os;
 } // << styled_text
 
-} // tjg
+} // tjg::color

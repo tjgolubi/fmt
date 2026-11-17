@@ -37,7 +37,7 @@ paths. Overloads without a destination write to stdout.
 ```cpp
 int result = 42;
 auto args = std::make_format_args(result);
-tjg::vprint_unicode(stdout, tjg::fg(tjg::color::green), "Result: {}", args);
+tjg::color::vprint_unicode(stdout, tjg::color::fg(tjg::color::rgb::green), "Result: {}", args);
 ```
 
 ::: vprint_unicode(FILE*, text_style, std::string_view, std::format_args)
@@ -65,8 +65,8 @@ Include `<tjg/color.hpp>` to use the styled `std::ostream` overloads.
 #include <sstream>
 
 std::ostringstream os;
-tjg::print(os, tjg::text_style{tjg::emphasis::bold}, "Result: {}", 42);
-tjg::println(os, tjg::fg(tjg::term_color::red), "Status: {}", "failed");
+tjg::color::print(os, tjg::color::text_style{tjg::color::emphasis::bold}, "Result: {}", 42);
+tjg::color::println(os, tjg::color::fg(tjg::color::term_color::red), "Status: {}", "failed");
 ```
 
 The style applies to the entire formatted message. A nonempty style ends with
@@ -74,7 +74,7 @@ a reset to terminal defaults. `println` places its newline after the reset.
 The formatted-output functions use the stream's locale for localized format
 specifications and preserve settings such as field width and numeric base.
 
-Restore terminal defaults with `tjg::sgr_reset()` after writing your own SGR
+Restore terminal defaults with `tjg::color::sgr_reset()` after writing your own SGR
 and before calling the library's styled printing or formatting functions.
 Those functions assume terminal defaults at the start of an outermost call.
 
@@ -94,12 +94,12 @@ Those functions assume terminal defaults at the start of an outermost call.
     options:
       color_reference: true
 
-For wide streams, use `tjg::format` with a wide format string and insert the
+For wide streams, use `tjg::color::format` with a wide format string and insert the
 result, or use the styled stream insertion described below.
 
 ## Styled stream insertion
 
-With `<tjg/color.hpp>`, insert the result of `tjg::styled(value, style)`
+With `<tjg/color.hpp>`, insert the result of `tjg::color::styled(value, style)`
 directly into a stream. The operator returns the same stream by reference for
 chaining and supports both `std::ostream` and `std::wostream` in C++23 and later.
 The value must support insertion into that stream; a standard formatter is not
@@ -110,14 +110,14 @@ required.
 #include <iomanip>
 #include <sstream>
 
-const auto style = tjg::text_style{tjg::emphasis::bold};
+const auto style = tjg::color::text_style{tjg::color::emphasis::bold};
 std::ostringstream os;
 os << "Result: " << std::hex << std::setfill('0') << std::setw(4)
-   << tjg::styled(42, style) << '\n';
+   << tjg::color::styled(42, style) << '\n';
 // "Result: \x1b[1m002a\x1b[0m\n"
 
 std::wostringstream wide;
-wide << tjg::styled(L"message", style) << L'\n';
+wide << tjg::color::styled(L"message", style) << L'\n';
 ```
 
 The underlying value uses normal stream formatting, including numeric base,

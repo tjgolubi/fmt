@@ -36,11 +36,11 @@ template<typename> auto has_holds(...) -> std::false_type;
 
 template<typename Char>
 void check_public_surface() {
-  using node = tjg::basic_styled_text<Char>;
+  using node = tjg::color::basic_styled_text<Char>;
   using sequence = std::vector<node>;
   static_assert(!std::is_constructible<node, sequence>::value,
                 "vector construction must not be public");
-  static_assert(!std::is_constructible<node, sequence, tjg::text_style>::value,
+  static_assert(!std::is_constructible<node, sequence, tjg::color::text_style>::value,
                 "styled vector construction must not be public");
   static_assert(!decltype(has_is_branch<node>(0))::value, "no branch query");
   static_assert(!decltype(has_as_branch<node>(0))::value, "no child access");
@@ -56,12 +56,12 @@ void check_public_surface() {
 
 template<typename Char>
 void check_construction_and_composition() {
-  using node = tjg::basic_styled_text<Char>;
+  using node = tjg::color::basic_styled_text<Char>;
   const auto empty = node{};
   EXPECT_TRUE(empty.empty());
   EXPECT_TRUE(empty.style().empty());
-  const auto a = node(text<Char>("a"), tjg::bold());
-  const auto b = node(text<Char>("b"), tjg::underline());
+  const auto a = node(text<Char>("a"), tjg::color::bold());
+  const auto b = node(text<Char>("b"), tjg::color::underline());
   const auto c = node(text<Char>("c"));
   auto joined = a + b;
   EXPECT_FALSE(joined.empty());
@@ -75,14 +75,14 @@ void check_construction_and_composition() {
   EXPECT_EQ(appended, a + b + c);
   EXPECT_NE(appended, a + (b + c));
   auto styled = joined;
-  EXPECT_EQ(&styled.style(tjg::italic()), &styled);
-  EXPECT_EQ(styled.style(), tjg::italic());
+  EXPECT_EQ(&styled.style(tjg::color::italic()), &styled);
+  EXPECT_EQ(styled.style(), tjg::color::italic());
   EXPECT_NE(styled, joined);
   EXPECT_TRUE(joined.style().empty());
   EXPECT_EQ(empty + a, a);
   EXPECT_EQ(a + empty, a);
   EXPECT_EQ(empty + empty, empty);
-  auto styled_empty = node(text<Char>(""), tjg::bold());
+  auto styled_empty = node(text<Char>(""), tjg::color::bold());
   styled_empty += a;
   EXPECT_EQ(styled_empty, a);
   auto repeated = joined;
@@ -98,12 +98,12 @@ void check_construction_and_composition() {
 
 template<typename Char>
 void check_copy_move_and_reuse() {
-  using node = tjg::basic_styled_text<Char>;
+  using node = tjg::color::basic_styled_text<Char>;
   auto input = std::basic_string<Char>(200, static_cast<Char>('x'));
-  const auto leaf = node(input, tjg::bold());
+  const auto leaf = node(input, tjg::color::bold());
   input[0] = static_cast<Char>('y');
   EXPECT_EQ(leaf, node(std::basic_string<Char>(200, static_cast<Char>('x')),
-                       tjg::bold()));
+                       tjg::color::bold()));
   const auto branch = leaf + text<Char>("tail");
   for (int alternative = 0; alternative != 2; ++alternative) {
     const auto expected = alternative == 0 ? leaf : branch;
@@ -135,7 +135,7 @@ void check_copy_move_and_reuse() {
     }
   }
   auto copy = branch;
-  copy.style(tjg::italic());
+  copy.style(tjg::color::italic());
   copy += text<Char>("extra");
   EXPECT_EQ(branch, leaf + text<Char>("tail"));
   auto many = node{};
@@ -159,27 +159,27 @@ TEST(styled_text_test, wide_copy_move_reuse) { check_copy_move_and_reuse<wchar_t
 namespace {
 template<typename Char>
 void check_shared_text_lifetime_and_equality() {
-  using node = tjg::basic_styled_text<Char>;
+  using node = tjg::color::basic_styled_text<Char>;
   const auto large = std::basic_string<Char>(100000, static_cast<Char>('x'));
   auto surviving_leaf = node{};
   auto surviving_branch = node{};
   {
-    auto source = node(large, tjg::bold());
+    auto source = node(large, tjg::color::bold());
     surviving_leaf = source;
     surviving_branch = source + text<Char>("tail");
-    source.style(tjg::underline());
+    source.style(tjg::color::underline());
     source += text<Char>("different");
-    EXPECT_EQ(surviving_leaf.style(), tjg::bold());
+    EXPECT_EQ(surviving_leaf.style(), tjg::color::bold());
   }
   // Independently allocated strings compare by content, not pointer identity.
-  const auto separate = node(large, tjg::bold());
+  const auto separate = node(large, tjg::color::bold());
   EXPECT_EQ(surviving_leaf, separate);
   EXPECT_EQ(surviving_branch, separate + text<Char>("tail"));
   auto different = large;
   different.back() = static_cast<Char>('y');
-  EXPECT_NE(surviving_leaf, node(different, tjg::bold()));
+  EXPECT_NE(surviving_leaf, node(different, tjg::color::bold()));
   auto copy = surviving_branch;
-  copy.style(tjg::italic());
+  copy.style(tjg::color::italic());
   copy += text<Char>("more");
   EXPECT_EQ(surviving_branch, separate + text<Char>("tail"));
   const auto empty_string = node(std::basic_string<Char>{});
@@ -202,22 +202,22 @@ TEST(styled_text_test, wide_shared_text_lifetime) {
 namespace {
 template<typename Char>
 void check_plain_text() {
-  using node = tjg::basic_styled_text<Char>;
+  using node = tjg::color::basic_styled_text<Char>;
   using string_type = typename node::string_type;
   static_assert(std::is_same<decltype(std::declval<const node&>().plain_text()),
                              string_type>::value, "returns an owning string");
   EXPECT_EQ(node{}.plain_text(), string_type{});
-  EXPECT_EQ((node{string_type{}, tjg::bold()}.plain_text()), string_type{});
-  const auto a = node{text<Char>(" a "), tjg::bold()};
-  auto nested = a + (node{text<Char>("b"), tjg::underline()} + text<Char>("\tc\n"));
-  nested.style(tjg::italic());
+  EXPECT_EQ((node{string_type{}, tjg::color::bold()}.plain_text()), string_type{});
+  const auto a = node{text<Char>(" a "), tjg::color::bold()};
+  auto nested = a + (node{text<Char>("b"), tjg::color::underline()} + text<Char>("\tc\n"));
+  nested.style(tjg::color::italic());
   const auto snapshot = nested;
   const auto shared_copy = nested;
   const auto& read_only = nested;
   auto result = read_only.plain_text();
   EXPECT_EQ(result, text<Char>(" a b\tc\n"));
   EXPECT_EQ(nested, snapshot);
-  EXPECT_EQ(nested.style(), tjg::italic());
+  EXPECT_EQ(nested.style(), tjg::color::italic());
   result[0] = static_cast<Char>('z');
   EXPECT_EQ(nested.plain_text(), text<Char>(" a b\tc\n"));
   EXPECT_EQ(shared_copy.plain_text(), text<Char>(" a b\tc\n"));
@@ -225,7 +225,7 @@ void check_plain_text() {
   EXPECT_EQ((a + node{nulls} + text<Char>("tail")).plain_text(),
             text<Char>(" a ") + nulls + text<Char>("tail"));
   const auto escapes = text<Char>("\x1b[31mred\x1b[0m");
-  EXPECT_EQ((node{escapes, tjg::bold()}.plain_text()), escapes);
+  EXPECT_EQ((node{escapes, tjg::color::bold()}.plain_text()), escapes);
   const auto large = string_type(100000, static_cast<Char>('x'));
   EXPECT_EQ(node{large}.plain_text(), large);
   auto many = node{};
@@ -254,7 +254,7 @@ TEST(styled_text_test, wide_plain_text) { check_plain_text<wchar_t>(); }
 namespace {
 template<typename Char>
 void check_string_concatenation() {
-  using node = tjg::basic_styled_text<Char>;
+  using node = tjg::color::basic_styled_text<Char>;
   using string = typename node::string_type;
   static_assert(std::is_convertible<const string&, node>::value,
                 "strings convert directly to owning nodes");
@@ -307,35 +307,35 @@ TEST(styled_text_test, wide_string_concatenation) {
 namespace {
 template<typename Char>
 void check_overlay() {
-  using node = tjg::basic_styled_text<Char>;
+  using node = tjg::color::basic_styled_text<Char>;
   using string = typename node::string_type;
-  static_assert(noexcept(std::declval<node&>().overlay(tjg::text_style{})),
+  static_assert(noexcept(std::declval<node&>().overlay(tjg::color::text_style{})),
                 "member overlay does not throw");
   static_assert(std::is_same<decltype(std::declval<node&>().overlay(
-                                tjg::text_style{})), node&>::value,
+                                tjg::color::text_style{})), node&>::value,
                 "member overlay returns the same node");
-  const auto left = node{text<Char>("left"), tjg::italic()};
-  const auto right = node{text<Char>("right"), tjg::faint()};
+  const auto left = node{text<Char>("left"), tjg::color::italic()};
+  const auto right = node{text<Char>("right"), tjg::color::faint()};
   auto source = left + right;
-  source.style(tjg::fg(tjg::color::blue).bg(tjg::gray_color{5}).underline());
+  source.style(tjg::color::fg(tjg::color::rgb::blue).bg(tjg::color::gray_color{5}).underline());
   const auto snapshot = source;
-  const auto overrides = tjg::fg(tjg::term_color::red).bold();
+  const auto overrides = tjg::color::fg(tjg::color::term_color::red).bold();
   auto expected = node{text<Char>("left"),
-                       tjg::fg(tjg::term_color::red).italic().bold()}
-      + node{text<Char>("right"), tjg::fg(tjg::term_color::red).faint().bold()};
-  expected.style(tjg::fg(tjg::term_color::red).bg(tjg::gray_color{5})
+                       tjg::color::fg(tjg::color::term_color::red).italic().bold()}
+      + node{text<Char>("right"), tjg::color::fg(tjg::color::term_color::red).faint().bold()};
+  expected.style(tjg::color::fg(tjg::color::term_color::red).bg(tjg::color::gray_color{5})
                      .underline().bold());
   auto member = source;
   EXPECT_EQ(&member.overlay(overrides), &member);
   EXPECT_EQ(member, expected);
-  EXPECT_TRUE(std::holds_alternative<tjg::term_color>(member.style().fg()));
+  EXPECT_TRUE(std::holds_alternative<tjg::color::term_color>(member.style().fg()));
   EXPECT_EQ(member.plain_text(), text<Char>("leftright"));
-  member.overlay(tjg::text_style{}).overlay(overrides);
+  member.overlay(tjg::color::text_style{}).overlay(overrides);
   EXPECT_EQ(member, expected);
-  EXPECT_EQ(tjg::overlay(overrides, source), expected);
+  EXPECT_EQ(tjg::color::overlay(overrides, source), expected);
   EXPECT_EQ(source, snapshot);
   auto argument = source;
-  EXPECT_EQ(tjg::overlay(overrides, std::move(argument)), expected);
+  EXPECT_EQ(tjg::color::overlay(overrides, std::move(argument)), expected);
   EXPECT_EQ(argument, node{});
 
   auto empty = node{};
@@ -343,55 +343,55 @@ void check_overlay() {
   EXPECT_TRUE(empty.empty());
   EXPECT_EQ(empty.style(), overrides);
   EXPECT_EQ(empty, (node{string{}, overrides}));
-  EXPECT_EQ(tjg::overlay(overrides, string{}), empty);
+  EXPECT_EQ(tjg::color::overlay(overrides, string{}), empty);
   auto input = string(200, static_cast<Char>('x'));
   input[1] = Char{};
   const auto original = input;
-  const auto owned = tjg::overlay(overrides, input);
+  const auto owned = tjg::color::overlay(overrides, input);
   input.assign(400, static_cast<Char>('y'));
   EXPECT_EQ(owned.plain_text(), original);
   EXPECT_EQ(owned.style(), overrides);
-  const auto temporary = tjg::overlay(overrides, string(200, Char{}));
+  const auto temporary = tjg::color::overlay(overrides, string(200, Char{}));
   EXPECT_EQ(temporary.plain_text(), string(200, Char{}));
 }
 
 template<typename Char>
 void check_emphasis_modifiers() {
-  using node = tjg::basic_styled_text<Char>;
+  using node = tjg::color::basic_styled_text<Char>;
   using string = typename node::string_type;
   struct modifier {
-    tjg::emphasis bit;
+    tjg::color::emphasis bit;
     node (*on_node)(node&&);
     node (*on_string)(const string&);
-    tjg::text_style (*factory)(bool);
+    tjg::color::text_style (*factory)(bool);
   };
   const modifier modifiers[] = {
-      {tjg::emphasis::bold, tjg::bold<node>,
-       tjg::bold<const string&>, tjg::bold},
-      {tjg::emphasis::faint, tjg::faint<node>,
-       tjg::faint<const string&>, tjg::faint},
-      {tjg::emphasis::italic, tjg::italic<node>,
-       tjg::italic<const string&>, tjg::italic},
-      {tjg::emphasis::underline, tjg::underline<node>,
-       tjg::underline<const string&>, tjg::underline},
-      {tjg::emphasis::blink, tjg::blink<node>,
-       tjg::blink<const string&>, tjg::blink},
-      {tjg::emphasis::reverse, tjg::reverse<node>,
-       tjg::reverse<const string&>, tjg::reverse},
-      {tjg::emphasis::conceal, tjg::conceal<node>,
-       tjg::conceal<const string&>, tjg::conceal},
-      {tjg::emphasis::strike, tjg::strike<node>,
-       tjg::strike<const string&>, tjg::strike}};
-  const auto leaf = node{text<Char>("left"), tjg::underline()};
-  const auto sibling = node{text<Char>("right"), tjg::faint()};
+      {tjg::color::emphasis::bold, tjg::color::bold<node>,
+       tjg::color::bold<const string&>, tjg::color::bold},
+      {tjg::color::emphasis::faint, tjg::color::faint<node>,
+       tjg::color::faint<const string&>, tjg::color::faint},
+      {tjg::color::emphasis::italic, tjg::color::italic<node>,
+       tjg::color::italic<const string&>, tjg::color::italic},
+      {tjg::color::emphasis::underline, tjg::color::underline<node>,
+       tjg::color::underline<const string&>, tjg::color::underline},
+      {tjg::color::emphasis::blink, tjg::color::blink<node>,
+       tjg::color::blink<const string&>, tjg::color::blink},
+      {tjg::color::emphasis::reverse, tjg::color::reverse<node>,
+       tjg::color::reverse<const string&>, tjg::color::reverse},
+      {tjg::color::emphasis::conceal, tjg::color::conceal<node>,
+       tjg::color::conceal<const string&>, tjg::color::conceal},
+      {tjg::color::emphasis::strike, tjg::color::strike<node>,
+       tjg::color::strike<const string&>, tjg::color::strike}};
+  const auto leaf = node{text<Char>("left"), tjg::color::underline()};
+  const auto sibling = node{text<Char>("right"), tjg::color::faint()};
   auto source = leaf + sibling;
-  const auto base_style = tjg::fg(tjg::color::blue)
-                              .bg(tjg::term_color::black).italic();
+  const auto base_style = tjg::color::fg(tjg::color::rgb::blue)
+                              .bg(tjg::color::term_color::black).italic();
   source.style(base_style);
   const auto snapshot = source;
   for (const auto& item : modifiers) {
     auto expected = source;
-    expected.style(tjg::text_style{base_style.fg(), base_style.bg(),
+    expected.style(tjg::color::text_style{base_style.fg(), base_style.bg(),
                                   base_style.emph() | item.bit});
     auto argument = source;
     EXPECT_EQ(item.on_node(std::move(argument)), expected);
@@ -403,8 +403,8 @@ void check_emphasis_modifiers() {
     const auto result = item.on_string(input);
     input.assign(400, static_cast<Char>('y'));
     EXPECT_EQ(result.plain_text(), original);
-    EXPECT_EQ(result.style(), tjg::text_style{item.bit});
-    EXPECT_EQ(item.factory(true), tjg::text_style{item.bit});
+    EXPECT_EQ(result.style(), tjg::color::text_style{item.bit});
+    EXPECT_EQ(item.factory(true), tjg::color::text_style{item.bit});
     EXPECT_TRUE(item.factory(false).empty());
   }
 }
@@ -419,46 +419,46 @@ TEST(styled_text_test, wide_emphasis_modifiers) {
   check_emphasis_modifiers<wchar_t>();
 }
 TEST(styled_text_test, modifier_literals_and_composition) {
-  static_assert(std::is_same<decltype(tjg::bold()), tjg::text_style>::value,
+  static_assert(std::is_same<decltype(tjg::color::bold()), tjg::color::text_style>::value,
                 "the no-argument style factory is unchanged");
-  static_assert(std::is_same<decltype(tjg::bold(tjg::text_style{})),
-                             tjg::text_style>::value,
+  static_assert(std::is_same<decltype(tjg::color::bold(tjg::color::text_style{})),
+                             tjg::color::text_style>::value,
                 "the style modifier overload is unchanged");
-  static_assert(std::is_same<decltype(tjg::bold("text")),
-                             tjg::styled_text>::value,
+  static_assert(std::is_same<decltype(tjg::color::bold("text")),
+                             tjg::color::styled_text>::value,
                 "literals select the text modifier");
-  static_assert(std::is_same<decltype(tjg::bold(L"text")),
-                             tjg::wstyled_text>::value,
+  static_assert(std::is_same<decltype(tjg::color::bold(L"text")),
+                             tjg::color::wstyled_text>::value,
                 "wide literals produce wide styled text");
-  const auto inner = tjg::styled_text{"nested bold", tjg::bold()};
-  auto expected = tjg::styled_text{"red text with "} + inner + " still red";
-  expected.style(tjg::fg(tjg::color::red));
-  const auto line = tjg::underlay(tjg::fg(tjg::color::red),
-      "red text with " + tjg::bold("nested bold") + " still red");
+  const auto inner = tjg::color::styled_text{"nested bold", tjg::color::bold()};
+  auto expected = tjg::color::styled_text{"red text with "} + inner + " still red";
+  expected.style(tjg::color::fg(tjg::color::rgb::red));
+  const auto line = tjg::color::underlay(tjg::color::fg(tjg::color::rgb::red),
+      "red text with " + tjg::color::bold("nested bold") + " still red");
   EXPECT_EQ(line, expected);
   EXPECT_EQ(line.plain_text(), "red text with nested bold still red");
-  EXPECT_EQ(tjg::underline(tjg::bold("text")),
-            (tjg::styled_text{"text", tjg::bold().underline()}));
-  EXPECT_EQ(tjg::overlay(tjg::italic(), L"wide"),
-            (tjg::wstyled_text{L"wide", tjg::italic()}));
-  const auto wide = tjg::overlay(tjg::bg(tjg::gray_color{12}),
-      L"prefix " + tjg::bold(L"bold") + L" suffix");
+  EXPECT_EQ(tjg::color::underline(tjg::color::bold("text")),
+            (tjg::color::styled_text{"text", tjg::color::bold().underline()}));
+  EXPECT_EQ(tjg::color::overlay(tjg::color::italic(), L"wide"),
+            (tjg::color::wstyled_text{L"wide", tjg::color::italic()}));
+  const auto wide = tjg::color::overlay(tjg::color::bg(tjg::color::gray_color{12}),
+      L"prefix " + tjg::color::bold(L"bold") + L" suffix");
   EXPECT_EQ(wide.plain_text(), L"prefix bold suffix");
-  EXPECT_EQ(wide.style(), tjg::bg(tjg::gray_color{12}));
-  EXPECT_TRUE(tjg::bold("").empty());
-  EXPECT_EQ(tjg::bold("").style(), tjg::bold());
+  EXPECT_EQ(wide.style(), tjg::color::bg(tjg::color::gray_color{12}));
+  EXPECT_TRUE(tjg::color::bold("").empty());
+  EXPECT_EQ(tjg::color::bold("").style(), tjg::color::bold());
 }
 
 TEST(styled_text_test, aliases_and_literals) {
-  static_assert(std::is_same<tjg::styled_text, tjg::basic_styled_text<char>>::value,
+  static_assert(std::is_same<tjg::color::styled_text, tjg::color::basic_styled_text<char>>::value,
                 "narrow alias");
-  static_assert(std::is_same<tjg::wstyled_text, tjg::basic_styled_text<wchar_t>>::value,
+  static_assert(std::is_same<tjg::color::wstyled_text, tjg::color::basic_styled_text<wchar_t>>::value,
                 "wide alias");
-  static_assert(!std::is_constructible<tjg::styled_text, tjg::wstyled_text>::value,
+  static_assert(!std::is_constructible<tjg::color::styled_text, tjg::color::wstyled_text>::value,
                 "no implicit character conversion");
-  tjg::styled_text narrow = "hello";
-  tjg::wstyled_text wide = L"\u03b1";
-  EXPECT_EQ("a" + narrow, tjg::styled_text("a") + narrow);
+  tjg::color::styled_text narrow = "hello";
+  tjg::color::wstyled_text wide = L"\u03b1";
+  EXPECT_EQ("a" + narrow, tjg::color::styled_text("a") + narrow);
   EXPECT_EQ(wide + L"\u03b2", wide + std::wstring(L"\u03b2"));
   EXPECT_EQ((wide + L"\u03b2").plain_text(), std::wstring{L"\u03b1\u03b2"});
 }
@@ -466,24 +466,24 @@ TEST(styled_text_test, aliases_and_literals) {
 namespace {
 template<typename Char>
 void check_absolute_helper() {
-  using node = tjg::basic_styled_text<Char>;
+  using node = tjg::color::basic_styled_text<Char>;
   using string = typename node::string_type;
-  auto source = tjg::bold(text<Char>("left")) +
-                tjg::underline(text<Char>("right"));
-  source.style(tjg::fg(tjg::term_color::red));
+  auto source = tjg::color::bold(text<Char>("left")) +
+                tjg::color::underline(text<Char>("right"));
+  source.style(tjg::color::fg(tjg::color::term_color::red));
   const auto saved = source;
   auto expected = source;
-  expected.style(tjg::absolute(expected.style()));
-  EXPECT_EQ(tjg::absolute(source), expected);
+  expected.style(tjg::color::absolute(expected.style()));
+  EXPECT_EQ(tjg::color::absolute(source), expected);
   EXPECT_EQ(source, saved);
-  EXPECT_EQ(tjg::absolute(expected), expected);
+  EXPECT_EQ(tjg::color::absolute(expected), expected);
   auto movable = source;
-  EXPECT_EQ(tjg::absolute(std::move(movable)), expected);
+  EXPECT_EQ(tjg::color::absolute(std::move(movable)), expected);
   EXPECT_EQ(movable, node{});
-  EXPECT_EQ(tjg::absolute(text<Char>("owned")),
-            (node{text<Char>("owned"), tjg::absolute(tjg::text_style{})}));
-  EXPECT_EQ(tjg::absolute(string{}),
-            (node{string{}, tjg::absolute(tjg::text_style{})}));
+  EXPECT_EQ(tjg::color::absolute(text<Char>("owned")),
+            (node{text<Char>("owned"), tjg::color::absolute(tjg::color::text_style{})}));
+  EXPECT_EQ(tjg::color::absolute(string{}),
+            (node{string{}, tjg::color::absolute(tjg::color::text_style{})}));
 }
 } // namespace
 
@@ -491,51 +491,51 @@ TEST(styled_text_test, narrow_absolute) { check_absolute_helper<char>(); }
 TEST(styled_text_test, wide_absolute) { check_absolute_helper<wchar_t>(); }
 
 TEST(styled_text_test, absolute_literal_overloads) {
-  EXPECT_EQ(tjg::absolute("text"),
-            (tjg::styled_text{"text", tjg::absolute(tjg::text_style{})}));
-  EXPECT_EQ(tjg::absolute(L"text"),
-            (tjg::wstyled_text{L"text", tjg::absolute(tjg::text_style{})}));
+  EXPECT_EQ(tjg::color::absolute("text"),
+            (tjg::color::styled_text{"text", tjg::color::absolute(tjg::color::text_style{})}));
+  EXPECT_EQ(tjg::color::absolute(L"text"),
+            (tjg::color::wstyled_text{L"text", tjg::color::absolute(tjg::color::text_style{})}));
 }
 
 namespace {
 template <typename Char> void check_overlay_boundaries_and_underlay() {
-  using node = tjg::basic_styled_text<Char>;
-  using tc = tjg::term_color;
-  const auto defaults = tjg::fg(tc::white).bg(tc::blue).bold();
-  const auto red = node{text<Char>("red"), tjg::fg(tc::red)};
+  using node = tjg::color::basic_styled_text<Char>;
+  using tc = tjg::color::term_color;
+  const auto defaults = tjg::color::fg(tc::white).bg(tc::blue).bold();
+  const auto red = node{text<Char>("red"), tjg::color::fg(tc::red)};
   const auto plain = node{text<Char>("plain")};
-  auto protected_group = node{text<Char>("protected"), tjg::fg(tc::green)}
+  auto protected_group = node{text<Char>("protected"), tjg::color::fg(tc::green)}
       + node{text<Char>("default")};
-  protected_group.style(tjg::underline().absolute());
+  protected_group.style(tjg::color::underline().absolute());
   auto nested = red + plain;
-  nested.style(tjg::italic());
+  nested.style(tjg::color::italic());
   auto source = nested + protected_group;
   const auto saved = source;
 
   auto expected_nested = node{text<Char>("red"), defaults}
       + node{text<Char>("plain"), defaults};
-  expected_nested.style(tjg::text_style{defaults}.italic());
+  expected_nested.style(tjg::color::text_style{defaults}.italic());
   auto expected = expected_nested + protected_group;
   expected.style(defaults);
   auto member = source;
   EXPECT_EQ(&member.overlay(defaults), &member);
   EXPECT_EQ(member, expected);
-  EXPECT_EQ(tjg::overlay(defaults, source), expected);
+  EXPECT_EQ(tjg::color::overlay(defaults, source), expected);
   EXPECT_EQ(source, saved);
-  EXPECT_EQ(tjg::overlay(defaults, protected_group), protected_group);
-  const auto absolute_leaf = node{text<Char>("absolute"), tjg::fg(tc::red).absolute()};
-  EXPECT_EQ(tjg::overlay(defaults, absolute_leaf), absolute_leaf);
+  EXPECT_EQ(tjg::color::overlay(defaults, protected_group), protected_group);
+  const auto absolute_leaf = node{text<Char>("absolute"), tjg::color::fg(tc::red).absolute()};
+  EXPECT_EQ(tjg::color::overlay(defaults, absolute_leaf), absolute_leaf);
 
   auto underlaid = source;
   EXPECT_EQ(&underlaid.underlay(defaults), &underlaid);
   auto root_only = source;
   root_only.style(defaults);
   EXPECT_EQ(underlaid, root_only);
-  EXPECT_EQ(tjg::underlay(defaults, source), root_only);
-  const auto colored = node{text<Char>("status"), tjg::fg(tc::yellow)};
-  EXPECT_EQ(tjg::underlay(defaults, colored),
-            (node{text<Char>("status"), tjg::fg(tc::yellow).bg(tc::blue).bold()}));
-  EXPECT_EQ(tjg::overlay(defaults, colored), (node{text<Char>("status"), defaults}));
+  EXPECT_EQ(tjg::color::underlay(defaults, source), root_only);
+  const auto colored = node{text<Char>("status"), tjg::color::fg(tc::yellow)};
+  EXPECT_EQ(tjg::color::underlay(defaults, colored),
+            (node{text<Char>("status"), tjg::color::fg(tc::yellow).bg(tc::blue).bold()}));
+  EXPECT_EQ(tjg::color::overlay(defaults, colored), (node{text<Char>("status"), defaults}));
 }
 }  // namespace
 
@@ -549,7 +549,7 @@ TEST(styled_text_test, wide_overlay_boundaries_and_underlay) {
 TEST(styled_text_test, standard_character_deduction) {
   const char* narrow = "text";
   const wchar_t* wide = L"wide";
-  EXPECT_EQ(tjg::bold(narrow).plain_text(), "text");
-  EXPECT_EQ(tjg::underline(wide).plain_text(), L"wide");
-  EXPECT_EQ(tjg::bold(std::string{"owned"}).plain_text(), "owned");
+  EXPECT_EQ(tjg::color::bold(narrow).plain_text(), "text");
+  EXPECT_EQ(tjg::color::underline(wide).plain_text(), L"wide");
+  EXPECT_EQ(tjg::color::bold(std::string{"owned"}).plain_text(), "owned");
 }

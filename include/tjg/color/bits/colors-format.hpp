@@ -21,7 +21,7 @@
 
 #include <cstdint>
 
-namespace tjg {
+namespace tjg::color {
 
 template<std::output_iterator<char> OutIter>
 [[nodiscard]] constexpr
@@ -41,7 +41,7 @@ auto write_value(OutIter out, const rgb& value) -> OutIter {
 template<std::output_iterator<char> OutIter>
 [[nodiscard]] constexpr
 auto write_value(OutIter out, term_color value) -> OutIter
-{ return detail::write_ascii(std::move(out), tjg::name_of(value)); }
+{ return detail::write_ascii(std::move(out), tjg::color::name_of(value)); }
 
 template<std::output_iterator<char> OutIter>
 [[nodiscard]] constexpr
@@ -74,32 +74,32 @@ auto write_value(OutIter out, const color_t& value) -> OutIter {
   return std::visit(format_color, value);
 }
 
-} // tjg
+} // tjg::color
 
 namespace std {
 
 template<tjg::CharType Char>
-struct formatter<tjg::no_color_t, Char>
-  : tjg::detail::standard_value_formatter<tjg::no_color_t, Char> { };
+struct formatter<tjg::color::no_color_t, Char>
+  : tjg::color::detail::standard_value_formatter<tjg::color::no_color_t, Char> { };
 
 template<tjg::CharType Char>
-struct formatter<tjg::rgb, Char>
-  : tjg::detail::standard_value_formatter<tjg::rgb, Char> { };
+struct formatter<tjg::color::rgb, Char>
+  : tjg::color::detail::standard_value_formatter<tjg::color::rgb, Char> { };
 
 template<tjg::CharType Char>
-struct formatter<tjg::term_color, Char>
-  : tjg::detail::standard_value_formatter<tjg::term_color, Char> { };
+struct formatter<tjg::color::term_color, Char>
+  : tjg::color::detail::standard_value_formatter<tjg::color::term_color, Char> { };
 
 template<tjg::CharType Char>
-struct formatter<tjg::cube_color, Char>
-  : tjg::detail::standard_value_formatter<tjg::cube_color, Char> { };
+struct formatter<tjg::color::cube_color, Char>
+  : tjg::color::detail::standard_value_formatter<tjg::color::cube_color, Char> { };
 
 template<tjg::CharType Char>
-struct formatter<tjg::gray_color, Char>
-  : tjg::detail::standard_value_formatter<tjg::gray_color, Char> { };
+struct formatter<tjg::color::gray_color, Char>
+  : tjg::color::detail::standard_value_formatter<tjg::color::gray_color, Char> { };
 
 template<tjg::CharType Char>
-struct formatter<tjg::color_t, Char>
-  : tjg::detail::standard_value_formatter<tjg::color_t, Char> { };
+struct formatter<tjg::color::color_t, Char>
+  : tjg::color::detail::standard_value_formatter<tjg::color::color_t, Char> { };
 
 } // std

@@ -4,20 +4,20 @@
 #include <iostream>
 #include <utility>
 
-using tjg::styled_text;
-using tjg::text_style;
-using tjg::fg;
-using tjg::bg;
-using tc = tjg::term_color;
-namespace color = tjg::color;
+using tjg::color::styled_text;
+using tjg::color::text_style;
+using tjg::color::fg;
+using tjg::color::bg;
+using tc = tjg::color::term_color;
+using tjg::color::rgb;
 
 namespace {
 
 // Each column has a distinct background color.
-constexpr auto service_color = fg(tc::white).bg(color::dark_blue);
-constexpr auto status_color  = fg(tc::white).bg(color::dark_green);
-constexpr auto latency_color = fg(tc::white).bg(color::dark_golden_rod);
-constexpr auto notes_color   = fg(tc::white).bg(color::indigo);
+constexpr auto service_color = fg(tc::white).bg(rgb::dark_blue);
+constexpr auto status_color  = fg(tc::white).bg(rgb::dark_green);
+constexpr auto latency_color = fg(tc::white).bg(rgb::dark_golden_rod);
+constexpr auto notes_color   = fg(tc::white).bg(rgb::indigo);
 
 // Apply column defaults without overriding existing styles.
 auto cell(styled_text text, text_style column, text_style row) -> styled_text {
@@ -49,7 +49,7 @@ int main() {
   out << "SYSTEM HEALTH DASHBOARD\n\n";
 
   // Column headings inherit bold and underline from the row.
-  print_row(out, "Service", "Status", "Latency", "Notes", tjg::bold().underline());
+  print_row(out, "Service", "Status", "Latency", "Notes", tjg::color::bold().underline());
 
   // Normal row.
   const auto ok = styled_text{"OK", fg(tc::bright_green)};
@@ -63,28 +63,28 @@ int main() {
 
   // Two fragments with different foreground colors.
   const auto vpn_note = styled_text{"Encrypted "}
-                      + styled_text{"connection", fg(color::aquamarine)};
+                      + styled_text{"connection", fg(rgb::aquamarine)};
   print_row(out, "VPN", ok, "38 ms", vpn_note);
 
   // Bold row with an independently colored warning.
   const auto warn = styled_text{"WARN", fg(tc::yellow)};
-  const auto backup_note = styled_text{"Slow", fg(color::yellow)}
+  const auto backup_note = styled_text{"Slow", fg(rgb::yellow)}
                          + " - retry scheduled";
-  print_row(out, "Backup", warn, "215 ms", backup_note, tjg::bold());
+  print_row(out, "Backup", warn, "215 ms", backup_note, tjg::color::bold());
 
   // An absolute red-on-white fragment within the Notes column.
   const auto fail = styled_text{"FAIL", fg(tc::bright_red)};
   const auto critical_style =
-                      fg(color::red).bg(color::white).bold().blink().absolute();
+                      fg(rgb::red).bg(rgb::white).bold().blink().absolute();
   const auto db_note = styled_text{"Connection refused: "}
                      + styled_text{"CRITICAL!", critical_style};
-  print_row(out, "Database", fail, "--", db_note, tjg::bold());
+  print_row(out, "Database", fail, "--", db_note, tjg::color::bold());
 
   // Faint row emphasis, retaining the column backgrounds.
-  print_row(out, "Old server", "OFFLINE", "--", "Maintenance mode", tjg::faint());
+  print_row(out, "Old server", "OFFLINE", "--", "Maintenance mode", tjg::color::faint());
 
   // The underlying integer inserter handles the base, fill, and field width.
   out << "\nRequest ID: " << std::hex << std::right << std::setfill('0')
-      << std::setw(4) << tjg::styled(42, fg(tc::bright_cyan))
+      << std::setw(4) << tjg::color::styled(42, fg(tc::bright_cyan))
       << std::dec << std::setfill(' ') << '\n';
 }

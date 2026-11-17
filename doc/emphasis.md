@@ -5,8 +5,8 @@ Use emphasis values as styles or combine them with colors through
 
 ## Attributes
 
-`tjg::emphasis::none` is the zero mask. It specifies no attributes.
-`tjg::emphasis::strike` selects crossed-out text (SGR 9).
+`tjg::color::emphasis::none` is the zero mask. It specifies no attributes.
+`tjg::color::emphasis::strike` selects crossed-out text (SGR 9).
 
 ::: emphasis
     options:
@@ -23,9 +23,9 @@ The result is an `emphasis` value containing both sets of attribute bits.
 An `emphasis` value converts implicitly to `text_style`.
 
 ```cpp
-auto style = tjg::emphasis::bold
-           | tjg::emphasis::underline;
-tjg::println(style, "Important: {}", 42);
+auto style = tjg::color::emphasis::bold
+           | tjg::color::emphasis::underline;
+tjg::color::println(style, "Important: {}", 42);
 ```
 
 !!! note "Changed behavior"
@@ -34,9 +34,9 @@ tjg::println(style, "Important: {}", 42);
     Previously, it returned `text_style`.
 
 ```cpp
-tjg::text_style style = tjg::emphasis::bold | tjg::emphasis::underline;
+tjg::color::text_style style = tjg::color::emphasis::bold | tjg::color::emphasis::underline;
 if (style.has_emph())
-  tjg::println(style, "Important");
+  tjg::color::println(style, "Important");
 ```
 
 Bold and faint remain independent bits: combining them preserves both and
@@ -44,14 +44,14 @@ emits both SGR attributes. Their combined appearance depends on the terminal.
 
 ## Integer representation
 
-The underlying representation of `tjg::emphasis` is `uint8_t`.
+The underlying representation of `tjg::color::emphasis` is `uint8_t`.
 
 ```cpp
-using emphasis_t = std::underlying_type_t<tjg::emphasis>;
+using emphasis_t = std::underlying_type_t<tjg::color::emphasis>;
 constexpr auto bold_bit
-                   = std::to_underlying(tjg::emphasis::bold); // 1
-constexpr auto attributes = tjg::emphasis::bold
-                          | tjg::emphasis::faint;
+                   = std::to_underlying(tjg::color::emphasis::bold); // 1
+constexpr auto attributes = tjg::color::emphasis::bold
+                          | tjg::color::emphasis::faint;
 constexpr auto bits = std::to_underlying(attributes);         // 3
 static_assert(std::is_same_v<const emphasis_t, decltype(bits)>);
 static_assert(bold_bit == 1);

@@ -13,7 +13,7 @@
 #include <concepts>
 #include <utility>
 
-namespace tjg::detail {
+namespace tjg::color::detail {
 
 [[noreturn]] inline void standard_format_error(const char* message)
 { TJG_THROW(std::format_error(message)); }
@@ -70,7 +70,7 @@ struct string_format_specs {
     if constexpr (std::same_as<Char, char>) {
       const auto bytes = std::string_view{it, end};
       next = it + static_cast<std::ptrdiff_t>(
-                                        tjg::unicode::decode_utf8(bytes).size);
+                                        tjg::color::detail::unicode::decode_utf8(bytes).size);
     } else if constexpr (sizeof(Char) == 2) {
       if (next != end) {
         const auto lead  = static_cast<char16_t>(*it);
@@ -252,4 +252,4 @@ struct standard_value_formatter : standard_value_specs<Char> {
   }
 }; // standard_value_formatter
 
-} // tjg::detail
+} // tjg::color::detail

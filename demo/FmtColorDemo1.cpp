@@ -3,9 +3,9 @@
 #include <print>
 
 int main() {
-  using namespace tjg;
-  using enum tjg::term_color;
-  using tjg::styled;
+  using namespace tjg::color;
+  using enum tjg::color::term_color;
+  using tjg::color::styled;
 
   std::println("{} {} {} | {} | {} | {}",
             styled("red text with", fg(red)),
@@ -17,7 +17,7 @@ int main() {
 
   constexpr auto surrounding = fg(white).bg(gray_color{12}).strike();
 
-  tjg::println(surrounding, "{} {} {} | {} | {} | {}",
+  tjg::color::println(surrounding, "{} {} {} | {} | {} | {}",
             styled("red text with", fg(red)),
             styled("nested bold", fg(red).bold()),
             styled("still red", fg(red)),

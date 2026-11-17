@@ -107,7 +107,7 @@ void measure_bookkeeping() {
   // iterator-debug bookkeeping without depending on private STL proxy types.
   start_counting();
   const auto text = std::basic_string<Char>{};
-  const auto children = std::vector<tjg::basic_styled_text<Char>>{};
+  const auto children = std::vector<tjg::color::basic_styled_text<Char>>{};
   count_allocations = false;
   bookkeeping_size = largest_allocation;
   (void)text;
@@ -117,7 +117,7 @@ void measure_bookkeeping() {
 
 template<typename Char>
 bool check_sharing() {
-  using node = tjg::basic_styled_text<Char>;
+  using node = tjg::color::basic_styled_text<Char>;
   measure_bookkeeping<Char>();
   const auto large = std::basic_string<Char>(100000, static_cast<Char>('x'));
   const auto source = node(large);
@@ -154,7 +154,7 @@ bool check_sharing() {
                    branch_copy == branch))
     return false;
 
-  const auto root_style = tjg::fg(tjg::color::red);
+  const auto root_style = tjg::color::fg(tjg::color::rgb::red);
   auto expected = node{large, root_style} + node{large, root_style};
   expected.style(root_style);
   start_counting();
@@ -165,7 +165,7 @@ bool check_sharing() {
     return false;
 
   start_counting();
-  auto styled_copy = tjg::overlay(root_style, branch);
+  auto styled_copy = tjg::color::overlay(root_style, branch);
   count_allocations = false;
   if (!check<Char>("copying overlay",
                    allocations_match(branch_copy_allocations) &&
@@ -174,10 +174,10 @@ bool check_sharing() {
     return false;
 
   start_counting();
-  auto styled_move = tjg::strike(tjg::bold(
-      tjg::overlay(root_style, std::move(branch_copy))));
+  auto styled_move = tjg::color::strike(tjg::color::bold(
+      tjg::color::overlay(root_style, std::move(branch_copy))));
   count_allocations = false;
-  expected.style(tjg::text_style{root_style}.bold().strike());
+  expected.style(tjg::color::text_style{root_style}.bold().strike());
   if (!check<Char>("moving overlay/emphasis chain",
                    allocations_match({0, 0, 0}) && branch_copy.empty() &&
                    styled_move == expected))

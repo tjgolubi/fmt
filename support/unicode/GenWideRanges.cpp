@@ -103,7 +103,7 @@ int main(int argc, char** argv) try {
 #include <cstdint>
 #pragma once
 
-namespace tjg::unicode::detail {
+namespace tjg::color::detail::unicode::detail {
 
 struct wide_cp_range {
   std::uint32_t first;
@@ -114,7 +114,7 @@ inline constexpr wide_cp_range wide_ranges[] = {
 )");
   for (const auto& [first, last] : merged)
     std::println("  {{0x{:x}, 0x{:x}}},", first, last);
-  std::println("}};\n\n}} // tjg::unicode");
+  std::println("}};\n\n}} // tjg::color::detail::unicode");
 } catch (const std::exception& error) {
   std::println(stderr, "{}", error.what());
   return 1;

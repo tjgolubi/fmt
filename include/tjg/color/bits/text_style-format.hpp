@@ -29,7 +29,7 @@
 #include <cstdio>
 #include <cstddef>
 
-namespace tjg::detail {
+namespace tjg::color::detail {
 
 [[nodiscard]] inline auto get_style_state() -> text_style& {
   static text_style _state{};
@@ -51,7 +51,7 @@ class style_scope {
 
 template<std::output_iterator<char> OutputIt> inline
 auto write_reset(OutputIt out) -> OutputIt
-{ return detail::write_ascii(std::move(out), tjg::sgr_reset()); }
+{ return detail::write_ascii(std::move(out), tjg::color::sgr_reset()); }
 
 template<std::output_iterator<char> OutputIt> inline
 auto write_debug_value(OutputIt out, text_style value) -> OutputIt {
@@ -62,47 +62,47 @@ auto write_debug_value(OutputIt out, text_style value) -> OutputIt {
   }
   if (value.is_absolute()) *out++ = '=';
   if (value.emph() != emphasis::none)
-    out = tjg::write_debug_value(std::move(out), value.emph());
+    out = tjg::color::write_debug_value(std::move(out), value.emph());
   if (!value.has_fg() && !value.has_bg()) return out;
   if (value.is_absolute() || value.emph() != emphasis::none) *out++ = ' ';
-  if (value.has_fg()) out = tjg::write_value(std::move(out), value.fg());
+  if (value.has_fg()) out = tjg::color::write_value(std::move(out), value.fg());
   if (value.has_bg()) {
     *out++ = '/';
-    out = tjg::write_value(std::move(out), value.bg());
+    out = tjg::color::write_value(std::move(out), value.bg());
   }
   return out;
 } // write_debug_value text_style
 
-} // tjg::detail
+} // tjg::color::detail
 
 namespace std {
 
 template<tjg::CharType Char>
-struct formatter<tjg::text_style, Char>
-  : tjg::detail::standard_value_specs<Char>
+struct formatter<tjg::color::text_style, Char>
+  : tjg::color::detail::standard_value_specs<Char>
 {
   template<typename FormatContext>
-  auto format(const tjg::text_style& value, FormatContext& ctx) const
+  auto format(const tjg::color::text_style& value, FormatContext& ctx) const
     -> decltype(ctx.out())
   {
     if (this->debug_format()) {
       auto buffer = tjg::basic_inline_buffer<Char>{};
-      (void) tjg::detail::write_debug_value(std::back_inserter(buffer), value);
+      (void) tjg::color::detail::write_debug_value(std::back_inserter(buffer), value);
       return this->write(buffer.view(), ctx);
     }
 
     if (value.empty())
       return ctx.out();
 
-    auto sgr = tjg::sgr_buffer{};
-    tjg::detail::append_sgr(sgr, value);
+    auto sgr = tjg::color::sgr_buffer{};
+    tjg::color::detail::append_sgr(sgr, value);
     return std::copy(sgr.begin(), sgr.end(), ctx.out());
   }
 }; // text_style formatter
 
 } // std
 
-namespace tjg {
+namespace tjg::color {
 
 namespace detail {
 
@@ -295,7 +295,7 @@ inline void vprint_unicode(text_style ts, std::string_view fmt,
  *
  * **Example**:
  *
- *     tjg::print(stderr, tjg::bold().fg(tjg::color::red),
+ *     tjg::color::print(stderr, tjg::color::bold().fg(tjg::color::rgb::red),
  *                "Elapsed time: {0:.2f} seconds", 1.23);
  */
 template<typename... T>
@@ -318,7 +318,7 @@ void print(FILE* f, text_style ts, std::format_string<T...> fmt, T&&... args)
  *
  * **Example**:
  *
- *     tjg::print(tjg::bold().fg(tjg::color::red),
+ *     tjg::color::print(tjg::color::bold().fg(tjg::color::rgb::red),
  *                "Elapsed time: {0:.2f} seconds", 1.23);
  */
 template<typename... T>
@@ -335,7 +335,7 @@ void print(text_style ts, std::format_string<T...> fmt, T&&... args)
  *
  * **Example**:
  *
- *     tjg::println(stderr, tjg::bold().fg(tjg::color::red),
+ *     tjg::color::println(stderr, tjg::color::bold().fg(tjg::color::rgb::red),
  *                  "Elapsed time: {0:.2f} seconds", 1.23);
  */
 template<typename... T>
@@ -358,7 +358,7 @@ void println(FILE* f, text_style ts, std::format_string<T...> fmt, T&&... args)
  *
  * **Example**:
  *
- *     tjg::println(tjg::bold().fg(tjg::color::red),
+ *     tjg::color::println(tjg::color::bold().fg(tjg::color::rgb::red),
  *                  "Elapsed time: {0:.2f} seconds", 1.23);
  */
 template<typename... T>
@@ -399,7 +399,7 @@ inline auto vformat(text_style ts, std::string_view fmt, std::format_args args)
  *
  * ```
  * #include <tjg/color.h>
- * std::string message = tjg::format(tjg::bold().fg(tjg::color::red),
+ * std::string message = tjg::color::format(tjg::color::bold().fg(tjg::color::rgb::red),
  *                                   "The answer is {}", 42);
  * ```
  */
@@ -419,8 +419,8 @@ inline auto format(text_style ts, std::format_string<T...> fmt, T&&... args)
  * **Example**:
  *
  *     std::vector<char> out;
- *     tjg::format_to(std::back_inserter(out),
- *                    tjg::bold().fg(tjg::color::red), "{}", 42);
+ *     tjg::color::format_to(std::back_inserter(out),
+ *                    tjg::color::bold().fg(tjg::color::rgb::red), "{}", 42);
  */
 template<std::output_iterator<const char&> OutputIt, typename... T>
 inline auto format_to(OutputIt out, text_style ts, std::format_string<T...> fmt,
@@ -520,22 +520,22 @@ struct basic_styled_arg_formatter : Formatter {
  * **Example**:
  *
  *     std::print("Elapsed time: {0:.2f} seconds",
- *                tjg::styled(1.23, tjg::fg(tjg::color::green)
- *                                      .bg(tjg::color::midnight_blue)));
+ *                tjg::color::styled(1.23, tjg::color::fg(tjg::color::rgb::green)
+ *                                      .bg(tjg::color::rgb::midnight_blue)));
  */
 template<typename T>
 constexpr auto styled(const T& value, text_style ts)
   -> detail::styled_arg<std::remove_cvref_t<T>>
 { return detail::styled_arg<std::remove_cvref_t<T>>{value, ts}; }
 
-} // tjg
+} // tjg::color
 
 namespace std {
 
 template<typename T, tjg::CharType Char>
   requires formattable<decay_t<const T>, Char>
-struct formatter<tjg::detail::styled_arg<T>, Char>
-  : tjg::detail::basic_styled_arg_formatter<
+struct formatter<tjg::color::detail::styled_arg<T>, Char>
+  : tjg::color::detail::basic_styled_arg_formatter<
                                     T, Char, formatter<decay_t<const T>, Char>>
 {};
 

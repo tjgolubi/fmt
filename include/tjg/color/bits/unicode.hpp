@@ -27,7 +27,7 @@
 #include <cstdint>
 #include <cstddef>
 
-namespace tjg::unicode {
+namespace tjg::color::detail::unicode {
 
 using std::size_t;
 using std::uint16_t;
@@ -254,4 +254,4 @@ auto quote_text(std::basic_string_view<Char> text, OutputIt out) -> OutputIt {
   return out;
 } // quote_text
 
-} // tjg::unicode
+} // tjg::color::detail::unicode

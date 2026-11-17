@@ -15,7 +15,7 @@
 #include <iterator>
 #include <utility>
 
-namespace tjg {
+namespace tjg::color {
 
 /**
  * Writes the names of the set attributes in enum order, separated by spaces
@@ -62,7 +62,7 @@ auto write_debug_value(OutputIt out, emphasis value) -> OutputIt {
   return out;
 } // write_debug_value
 
-} // tjg
+} // tjg::color
 
 /**
  * Formats emphasis values in narrow and wide format strings.
@@ -73,5 +73,5 @@ auto write_debug_value(OutputIt out, emphasis value) -> OutputIt {
  * `emphasis::none` before applying width and precision.
  */
 template<tjg::CharType Char>
-struct std::formatter<tjg::emphasis, Char>
-  : tjg::detail::standard_value_formatter<tjg::emphasis, Char> { };
+struct std::formatter<tjg::color::emphasis, Char>
+  : tjg::color::detail::standard_value_formatter<tjg::color::emphasis, Char> { };

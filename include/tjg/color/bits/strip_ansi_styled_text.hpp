@@ -11,7 +11,7 @@
 #include <string>
 #include <string_view>
 
-namespace tjg {
+namespace tjg::color {
 
 namespace detail {
 
@@ -54,4 +54,4 @@ auto strip_ansi(basic_styled_text<Char> input) TJG_NOEXCEPT_UNLESS_BAD_ALLOC
   return input;
 }
 
-} // tjg
+} // tjg::color

@@ -1,7 +1,7 @@
 # Using TJG styling from Make and CMake
 
 FmtColor is a standalone C++23 header library. It uses `std::format` and
-`std::print`, with public APIs in namespace `tjg`. Headers live under
+`std::print`, with public APIs in namespace `tjg::color`. Headers live under
 `include/tjg/` and are included as `<tjg/...>`. Use a C++23 compiler and
 standard library with working `<format>` and `<print>`.
 
@@ -9,10 +9,10 @@ standard library with working `<format>` and `<print>`.
 
 | Header | Use |
 | --- | --- |
-| `<tjg/colors.hpp>` | RGB, terminal, cube, and grayscale colors, plus conversions and blending. |
+| `<tjg/color/colors.hpp>` | RGB, terminal, cube, and grayscale colors, plus conversions and blending. |
 | `<tjg/emphasis.hpp>` | Text attributes such as bold and underline. |
-| `<tjg/text_style.hpp>` | Combine colors and emphasis into a style. |
-| `<tjg/text_style-format.hpp>` | Styled arguments, narrow and wide formatting, and printing to standard output or a `FILE*`. |
+| `<tjg/color/text_style.hpp>` | Combine colors and emphasis into a style. |
+| `<tjg/color.hpp>` | Styled arguments, narrow and wide formatting, and printing to standard output or a `FILE*`. |
 | `<tjg/color-ostream.hpp>` | Styled printing to `std::ostream` and styled insertion into narrow and wide streams. |
 | `<tjg/sgr_support.hpp>` | Convert styles to SGR sequences, obtain a reset sequence, or wrap text with a style. |
 | `<tjg/strip_ansi.hpp>` | Strip ANSI escape sequences from strings. |
@@ -26,26 +26,26 @@ refactored.
 
 ```cpp
 #include <tjg/strip_ansi.hpp>
-#include <tjg/text_style-format.hpp>
+#include <tjg/color.hpp>
 
 #include <print>
 
 int main() {
-  const auto green = tjg::fg(tjg::term_color::green);
-  tjg::println(tjg::bold(), "Hello, {:>8}!", tjg::styled("world", green));
+  const auto green = tjg::color::fg(tjg::color::term_color::green);
+  tjg::color::println(tjg::color::bold(), "Hello, {:>8}!", tjg::color::styled("world", green));
 
-  const auto message = tjg::format(green, "Result: {}", 42);
+  const auto message = tjg::color::format(green, "Result: {}", 42);
   std::println("{}", tjg::strip_ansi(message));
 }
 ```
 
 The first line is bold, with the aligned field in green. The second line is
-plain text. `tjg::styled(value, style)` uses the wrapped value's formatter,
+plain text. `tjg::color::styled(value, style)` uses the wrapped value's formatter,
 so width, alignment, and precision work as they do for the value on its own.
 It borrows the value, which must remain alive whenever the argument is
 formatted.
 
-Style-taking `tjg::format`, `format_to`, `print`, and `println` accept
+Style-taking `tjg::color::format`, `format_to`, `print`, and `println` accept
 standard format strings. The runtime variants take argument packs from
 `std::make_format_args` or, for wide formatting, `std::make_wformat_args`.
 Keep the referenced arguments alive while using the pack. Use positional

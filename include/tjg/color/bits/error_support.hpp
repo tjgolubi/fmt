@@ -7,7 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-namespace tjg::detail {
+namespace tjg::color::detail {
 
 // Avoid formatting or allocating while reporting a failure.
 [[noreturn]] inline void assert_fail(
@@ -19,13 +19,13 @@ namespace tjg::detail {
   std::abort();
 }
 
-} // tjg::detail
+} // tjg::color::detail
 
 // Define any policy macro before including a {color} header to override it.
 // Use the same definitions throughout the program.
 #ifndef TJG_ENFORCE
 #  define TJG_ENFORCE(condition, message) \
-    ((condition) ? (void)0 : ::tjg::detail::assert_fail(message))
+    ((condition) ? (void)0 : ::tjg::color::detail::assert_fail(message))
 #endif
 
 #ifndef TJG_ASSERT
@@ -49,7 +49,7 @@ namespace tjg::detail {
 #  if defined(__cpp_exceptions) || defined(_CPPUNWIND)
 #    define TJG_THROW(exception) throw exception
 #  else
-#    define TJG_THROW(exception) ::tjg::detail::assert_fail((exception).what())
+#    define TJG_THROW(exception) ::tjg::color::detail::assert_fail((exception).what())
 #  endif
 #endif
 

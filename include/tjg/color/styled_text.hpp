@@ -17,7 +17,7 @@
 #include <utility>
 #include <limits>
 
-namespace tjg {
+namespace tjg::color {
 
 namespace detail {
 
@@ -230,54 +230,54 @@ template<typename T>
 template<typename T>
 [[nodiscard]] auto absolute(T&& text)
   -> decltype(detail::to_styled_text(std::forward<T>(text)))
-{ return tjg::underlay(tjg::absolute(text_style{}), std::forward<T>(text)); }
+{ return tjg::color::underlay(tjg::color::absolute(text_style{}), std::forward<T>(text)); }
 
 /// Returns styled text with bold enabled on its root, preserving other style.
 template<typename T>
 [[nodiscard]] auto bold(T&& text)
   -> decltype(detail::to_styled_text(std::forward<T>(text)))
-{ return tjg::underlay(tjg::bold(), std::forward<T>(text)); }
+{ return tjg::color::underlay(tjg::color::bold(), std::forward<T>(text)); }
 
 /// Returns styled text with faint enabled on its root, preserving other style.
 template<typename T>
 [[nodiscard]] auto faint(T&& text)
   -> decltype(detail::to_styled_text(std::forward<T>(text)))
-{ return tjg::underlay(tjg::faint(), std::forward<T>(text)); }
+{ return tjg::color::underlay(tjg::color::faint(), std::forward<T>(text)); }
 
 /// Returns styled text with italic enabled on its root, preserving other style.
 template<typename T>
 [[nodiscard]] auto italic(T&& text)
   -> decltype(detail::to_styled_text(std::forward<T>(text)))
-{ return tjg::underlay(tjg::italic(), std::forward<T>(text)); }
+{ return tjg::color::underlay(tjg::color::italic(), std::forward<T>(text)); }
 
 /// Enables underline on the returned root, preserving its other style.
 template<typename T>
 [[nodiscard]] auto underline(T&& text)
   -> decltype(detail::to_styled_text(std::forward<T>(text)))
-{ return tjg::underlay(tjg::underline(), std::forward<T>(text)); }
+{ return tjg::color::underlay(tjg::color::underline(), std::forward<T>(text)); }
 
 /// Returns styled text with blink enabled on its root, preserving other style.
 template<typename T>
 [[nodiscard]] auto blink(T&& text)
   -> decltype(detail::to_styled_text(std::forward<T>(text)))
-{ return tjg::underlay(tjg::blink(), std::forward<T>(text)); }
+{ return tjg::color::underlay(tjg::color::blink(), std::forward<T>(text)); }
 
 /// Enables reverse on the returned root, preserving its other style.
 template<typename T>
 [[nodiscard]] auto reverse(T&& text)
   -> decltype(detail::to_styled_text(std::forward<T>(text)))
-{ return tjg::underlay(tjg::reverse(), std::forward<T>(text)); }
+{ return tjg::color::underlay(tjg::color::reverse(), std::forward<T>(text)); }
 
 /// Enables conceal on the returned root, preserving its other style.
 template<typename T>
 [[nodiscard]] auto conceal(T&& text)
   -> decltype(detail::to_styled_text(std::forward<T>(text)))
-{ return tjg::underlay(tjg::conceal(), std::forward<T>(text)); }
+{ return tjg::color::underlay(tjg::color::conceal(), std::forward<T>(text)); }
 
 /// Returns styled text with strike enabled on its root, preserving other style.
 template<typename T>
 [[nodiscard]] auto strike(T&& text)
   -> decltype(detail::to_styled_text(std::forward<T>(text)))
-{ return tjg::underlay(tjg::strike(), std::forward<T>(text)); }
+{ return tjg::color::underlay(tjg::color::strike(), std::forward<T>(text)); }
 
-} // tjg
+} // tjg::color

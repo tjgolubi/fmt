@@ -3,8 +3,8 @@
 #include <print>
 
 int main() {
-  using namespace tjg;
-  using enum tjg::term_color;
+  using namespace tjg::color;
+  using enum tjg::color::term_color;
 
   // Starting with two styled children creates an unstyled parent. Appending
   // later spans then preserves their own colors and the plain separators.

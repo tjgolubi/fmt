@@ -19,7 +19,7 @@
 
 #include <cstddef>
 
-namespace tjg {
+namespace tjg::color {
 
 /**
  * A text style consisting of optional foreground and background colors and a
@@ -33,15 +33,15 @@ namespace tjg {
  * **Example:
  *
  *     {
- *       using namespace tjg;
+ *       using namespace tjg::color;
  *       using enum emphasis;
  *       using enum term_color;
  *
- *       constexpr auto style1 = text_style{color::red, black, bold | underline};
+ *       constexpr auto style1 = text_style{rgb::red, black, bold | underline};
  *
- *       constexpr auto style2 = fg(color::red).bg(black).bold().underline();
+ *       constexpr auto style2 = fg(rgb::red).bg(black).bold().underline();
  *
- *       constexpr auto style3 = text_style{bold | underline, color::red, black};
+ *       constexpr auto style3 = text_style{bold | underline, rgb::red, black};
  *
  *       static_assert(style1 == style2 && style1 == style3);
  *
@@ -490,12 +490,12 @@ auto blend(First first, Second second, Styles... rest) noexcept -> text_style {
   return state.result();
 }
 
-} // tjg
+} // tjg::color
 
 namespace std {
 
-template<> struct hash<tjg::text_style> {
-  auto operator()(tjg::text_style value) const noexcept -> std::size_t {
+template<> struct hash<tjg::color::text_style> {
+  auto operator()(tjg::color::text_style value) const noexcept -> std::size_t {
     return tjg::hash_values(
                     value.is_absolute(), value.emph(), value.fg(), value.bg());
   }

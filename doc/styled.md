@@ -18,9 +18,9 @@ span's style over the text added after it, even if that span contains several
 styled parts.
 
 ```cpp
-auto red_text = tjg::underlay(tjg::fg(tjg::color::red),
-    "red text with " + tjg::bold("nested bold") + " still red");
-auto line = tjg::styled_text{"plain | "} + red_text + " | plain again";
+auto red_text = tjg::color::underlay(tjg::color::fg(tjg::color::rgb::red),
+    "red text with " + tjg::color::bold("nested bold") + " still red");
+auto line = tjg::color::styled_text{"plain | "} + red_text + " | plain again";
 std::println("{}", line);
 ```
 
@@ -50,11 +50,11 @@ formatting, each relative child inherits colors it does not specify; explicit
 child colors take precedence. Emphasis combines by OR.
 
 ```cpp
-auto words = tjg::styled_text{"red", tjg::fg(tjg::color::red)}
-    + " " + tjg::styled_text{"green", tjg::fg(tjg::color::green)}
-    + " " + tjg::styled_text{"blue", tjg::fg(tjg::color::blue)};
-auto defaults = tjg::fg(tjg::color::black).bg(tjg::color::light_gray);
-auto group = tjg::underlay(defaults, words);
+auto words = tjg::color::styled_text{"red", tjg::color::fg(tjg::color::rgb::red)}
+    + " " + tjg::color::styled_text{"green", tjg::color::fg(tjg::color::rgb::green)}
+    + " " + tjg::color::styled_text{"blue", tjg::color::fg(tjg::color::rgb::blue)};
+auto defaults = tjg::color::fg(tjg::color::rgb::black).bg(tjg::color::rgb::light_gray);
+auto group = tjg::color::underlay(defaults, words);
 std::println("{}", group);
 ```
 
@@ -83,7 +83,7 @@ tree, adding emphasis by OR. It skips existing absolute nodes and their entire
 subtrees. Use it when the supplied colors should replace explicit choices:
 
 ```cpp
-auto all_red = tjg::overlay(tjg::fg(tjg::color::red), words);
+auto all_red = tjg::color::overlay(tjg::color::fg(tjg::color::rgb::red), words);
 std::println("{}", all_red);
 ```
 
@@ -100,7 +100,7 @@ Neither operation changes how formatting combines enclosing and inner styles.
 To overlay only the root style, use the style getter and setter:
 
 ```cpp
-words.style(words.style().overlay(tjg::fg(tjg::color::red)));
+words.style(words.style().overlay(tjg::color::fg(tjg::color::rgb::red)));
 ```
 
 That changes the root foreground; the words' explicit foregrounds still take
@@ -131,10 +131,10 @@ already has the same attributes. Relative descendants inherit the group's
 style, and an absolute descendant establishes its own reset boundary.
 
 ```cpp
-auto underline_only = tjg::absolute(tjg::underline("underline only"));
-auto sentence = tjg::styled_text{"before "} + underline_only + " after";
-auto decorated = tjg::strike(
-    tjg::underlay(tjg::bg(tjg::gray_color{12}), sentence));
+auto underline_only = tjg::color::absolute(tjg::color::underline("underline only"));
+auto sentence = tjg::color::styled_text{"before "} + underline_only + " after";
+auto decorated = tjg::color::strike(
+    tjg::color::underlay(tjg::color::bg(tjg::color::gray_color{12}), sentence));
 std::println("{}", decorated);
 ```
 
@@ -163,8 +163,8 @@ styles. At field completion, it restores the enclosing shared
 style from the last emitted state.
 
 ```cpp
-tjg::print(tjg::underline(), "The result is {} after rounding.",
-           tjg::styled_text{"42", tjg::fg(tjg::term_color::bright_red)});
+tjg::color::print(tjg::color::underline(), "The result is {} after rounding.",
+           tjg::color::styled_text{"42", tjg::color::fg(tjg::color::term_color::bright_red)});
 ```
 
 Expected output (without a trailing newline):
@@ -180,7 +180,7 @@ dynamic arguments. For tree inspection, use the separate `?` presentation
 described below.
 
 ```cpp
-std::println("{:*>12.9}", tjg::bold("hello " + tjg::styled_text{"world", tjg::fg(tjg::color::blue)}));
+std::println("{:*>12.9}", tjg::color::bold("hello " + tjg::color::styled_text{"world", tjg::color::fg(tjg::color::rgb::blue)}));
 // Three '*' characters followed by "hello wor", all bold; "wor" is blue.
 ```
 
@@ -234,8 +234,8 @@ strings use the extension's debug escaping, including quotes, backslashes,
 embedded nulls, and control characters.
 
 ```cpp
-auto text = tjg::bold(tjg::styled_text{"hello\n", tjg::fg(tjg::term_color::red)}
-                      + (tjg::underline("world") + "!"));
+auto text = tjg::color::bold(tjg::color::styled_text{"hello\n", tjg::color::fg(tjg::color::term_color::red)}
+                      + (tjg::color::underline("world") + "!"));
 std::print("{:?}", text);
 ```
 
@@ -272,7 +272,7 @@ rendering as the styled-text formatter.
 
 std::ostringstream os;
 os << std::left << std::setfill('*') << std::setw(14)
-   << tjg::bold("hello world");
+   << tjg::color::bold("hello world");
 // Bold "hello world***", followed by a reset to terminal defaults.
 ```
 
@@ -314,16 +314,16 @@ Each column supplies a foreground and background. The cell helper uses
 
 ```cpp
 constexpr auto notes_color =
-    tjg::fg(tjg::term_color::white).bg(tjg::color::indigo);
+    tjg::color::fg(tjg::color::term_color::white).bg(tjg::color::rgb::indigo);
 
-auto cell(tjg::styled_text text, tjg::text_style column) -> tjg::styled_text {
-  return tjg::underlay(column, text);
+auto cell(tjg::color::styled_text text, tjg::color::text_style column) -> tjg::color::styled_text {
+  return tjg::color::underlay(column, text);
 }
 
-auto nas_note = tjg::styled_text{"All",
-                   tjg::fg(tjg::term_color::red).bg(tjg::term_color::cyan)}
+auto nas_note = tjg::color::styled_text{"All",
+                   tjg::color::fg(tjg::color::term_color::red).bg(tjg::color::term_color::cyan)}
     + " volumes "
-    + tjg::styled_text{"healthy", tjg::fg(tjg::term_color::green)};
+    + tjg::color::styled_text{"healthy", tjg::color::fg(tjg::color::term_color::green)};
 ```
 
 With `cell(nas_note, notes_color)`, `All` keeps its red foreground and cyan
@@ -338,7 +338,7 @@ The demo's `print_row` function passes the row style to `println` and formats
 four cells:
 
 ```cpp
-tjg::println(row, "{:<16.16} {:^12.12} {:>12.12} {:<30.30}",
+tjg::color::println(row, "{:<16.16} {:^12.12} {:>12.12} {:<30.30}",
              cell(std::move(service), service_color),
              cell(std::move(status), status_color),
              cell(std::move(latency), latency_color),
@@ -350,8 +350,8 @@ right-aligned. Each field uses equal width and precision: short text is padded
 and long text is truncated to the column width. The literal spaces between
 fields use the row style rather than a column background.
 
-The heading row supplies `tjg::bold().underline()`, the Backup row supplies
-`tjg::bold()`, and the Old server row supplies `tjg::faint()`. Relative cell
+The heading row supplies `tjg::color::bold().underline()`, the Backup row supplies
+`tjg::color::bold()`, and the Old server row supplies `tjg::color::faint()`. Relative cell
 contents inherit that emphasis while retaining their explicit colors and
 column backgrounds.
 
@@ -360,10 +360,10 @@ column backgrounds.
 The Database row contains an absolute red-on-white warning:
 
 ```cpp
-constexpr auto critical_style = tjg::fg(tjg::color::red)
-    .bg(tjg::color::white).bold().blink().absolute();
-auto db_note = tjg::styled_text{"Connection refused: "}
-    + tjg::styled_text{"CRITICAL!", critical_style}
+constexpr auto critical_style = tjg::color::fg(tjg::color::rgb::red)
+    .bg(tjg::color::rgb::white).bold().blink().absolute();
+auto db_note = tjg::color::styled_text{"Connection refused: "}
+    + tjg::color::styled_text{"CRITICAL!", critical_style}
     + " Database service is unavailable";
 ```
 
@@ -383,7 +383,7 @@ Include `<tjg/color.hpp>` and call `parse_styled_text` to turn text containing
 ordinary ANSI SGR into an owned `styled_text` (or `wstyled_text` for wide input).
 
 ```cpp
-auto message = tjg::parse_styled_text("plain \x1b[31mred\x1b[0m plain");
+auto message = tjg::color::parse_styled_text("plain \x1b[31mred\x1b[0m plain");
 std::println("{}", message);
 ```
 
@@ -402,8 +402,8 @@ For example, a reset prevents an enclosing underline from returning on later
 text, even when that text enables another attribute:
 
 ```cpp
-auto parsed = tjg::parse_styled_text("\x1b[1mA\x1b[mB\x1b[1mC");
-tjg::println(tjg::underline(), "{}", parsed);
+auto parsed = tjg::color::parse_styled_text("\x1b[1mA\x1b[mB\x1b[1mC");
+tjg::color::println(tjg::color::underline(), "{}", parsed);
 ```
 
 Expected output (followed by a newline):
@@ -480,8 +480,8 @@ unchanged leaf strings. The input is unchanged. Sequences split across leaves
 are preserved.
 
 ```cpp
-auto text = tjg::bold("\x1b[31mred\x1b[0m");
-auto clean = tjg::strip_ansi(text); // Bold "red", with raw escapes removed.
+auto text = tjg::color::bold("\x1b[31mred\x1b[0m");
+auto clean = tjg::color::strip_ansi(text); // Bold "red", with raw escapes removed.
 auto plain = clean.plain_text();   // "red", without the tree's styling.
 ```
 
@@ -600,7 +600,7 @@ Expected output for the example above (without a trailing newline):
 
 ```cpp
 std::println("Amount: {:>8.2f}",
-             tjg::styled(1.23, tjg::fg(tjg::color::green)));
+             tjg::color::styled(1.23, tjg::color::fg(tjg::color::rgb::green)));
 ```
 
 Expected output (followed by a newline):
@@ -615,7 +615,7 @@ enclosing style afterward. For examples, see
 [Text style rendering](index.md#TextStyleRendering).
 
 To insert a styled value directly into an ostream, include
-`<tjg/color.hpp>` and use `os << tjg::styled(value, style)`.
+`<tjg/color.hpp>` and use `os << tjg::color::styled(value, style)`.
 [Styled stream insertion](print.md#styled-stream-insertion) describes stream
 formatting, wide streams, and the wrapper's reference lifetime.
 
@@ -625,9 +625,9 @@ formatting, wide streams, and the wrapper's reference lifetime.
 #include <iostream>
 #include <numbers>
 
-auto style = tjg::fg(tjg::color::green).bold();
+auto style = tjg::color::fg(tjg::color::rgb::green).bold();
 std::cout << "Pi: " << std::fixed << std::setprecision(2)
-          << tjg::styled(std::numbers::pi, style) << '\n';
+          << tjg::color::styled(std::numbers::pi, style) << '\n';
 ```
 
 Expected output (followed by a newline):

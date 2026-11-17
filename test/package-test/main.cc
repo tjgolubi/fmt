@@ -15,7 +15,7 @@ static_assert(__cplusplus >= 202100L);
 #endif
 
 int main() {
-  const auto hello = tjg::styled("hello", tjg::bold());
+  const auto hello = tjg::color::styled("hello", tjg::color::bold());
   const auto rendered = std::format("{} world", hello);
   if (rendered != "\x1b[1mhello\x1b[0m world") return 1;
   if (tjg::strip_ansi(rendered) != "hello world") return 2;
@@ -24,7 +24,7 @@ int main() {
   std::ostringstream output;
   output << hello << " world";
   if (output.str() != rendered) return 4;
-  if (tjg::format(tjg::underline(), L"{}", L"wide") !=
+  if (tjg::color::format(tjg::color::underline(), L"{}", L"wide") !=
       L"\x1b[4mwide\x1b[0m")
     return 5;
   std::println("{}", hello);

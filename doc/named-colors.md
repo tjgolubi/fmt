@@ -1,7 +1,7 @@
 # Named Colors
 
-These constexpr `tjg::rgb` constants belong to the `tjg::color` namespace.
-Use them directly, for example `tjg::fg(tjg::color::coral)`.
+These constexpr `tjg::color::rgb` constants are static members of `tjg::color::rgb`.
+Use them directly, for example `tjg::color::fg(tjg::color::rgb::coral)`.
 The `term_*` names are fixed Xterm-default RGB counterparts of `term_color`
 values, including `term_bright_*` for bright colors. They emit truecolor;
 they do not follow changes to the terminal's palette.
@@ -16,84 +16,84 @@ contrast.  Hover over a swatch to see its RGB hex value.
 
 ## Red
 
-::: color
+::: rgb
     options:
       color_reference: true
       color_swatch_group: red
 
 ## Green
 
-::: color
+::: rgb
     options:
       color_reference: true
       color_swatch_group: green
 
 ## Blue
 
-::: color
+::: rgb
     options:
       color_reference: true
       color_swatch_group: blue
 
 ## Yellow
 
-::: color
+::: rgb
     options:
       color_reference: true
       color_swatch_group: yellow
 
 ## Cyan
 
-::: color
+::: rgb
     options:
       color_reference: true
       color_swatch_group: cyan
 
 ## Magenta
 
-::: color
+::: rgb
     options:
       color_reference: true
       color_swatch_group: magenta
 
 ## Neutral
 
-::: color
+::: rgb
     options:
       color_reference: true
       color_swatch_group: neutral
 
 ## Terminal colors
 
-These `tjg::color::term_*` constants use fixed Xterm-default RGB values.
+These `tjg::color::rgb::term_*` constants use fixed Xterm-default RGB values.
 They are shown in two responsive grids: the eight normal colors, followed
-by the eight bright colors beneath them. For example, `tjg::color::term_red`
-is RGB `{205, 0, 0}`. Using `tjg::term_color::red` instead selects the
+by the eight bright colors beneath them. For example, `tjg::color::rgb::term_red`
+is RGB `{205, 0, 0}`. Using `tjg::color::term_color::red` instead selects the
 terminal's palette entry, whose appearance depends on its theme.
 
 ### Normal terminal colors
 
-::: color
+::: rgb
     options:
       color_reference: true
       color_swatch_group: terminal-normal
 
 ### Bright terminal colors
 
-::: color
+::: rgb
     options:
       color_reference: true
       color_swatch_group: terminal-bright
 
 ## Gray palette colors
 
-Use `tjg::gray_color{index}` to select one of these 24 gray levels, shown
+Use `tjg::color::gray_color{index}` to select one of these 24 gray levels, shown
 from darkest to lightest. The labels use zero-based indices 0–23;
 terminal palette entries are 232–255. Each swatch shows the fixed RGB
 equivalent, with every channel equal to `8 + 10 * index`.
 
 ```cpp
-auto style = tjg::fg(tjg::gray_color{12}); // RGB equivalent {128, 128, 128}.
+auto style = tjg::color::fg(tjg::color::gray_color{12}); // RGB equivalent {128, 128, 128}.
 ```
 
 ::: gray_color

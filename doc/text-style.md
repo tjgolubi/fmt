@@ -35,10 +35,10 @@ the slash; with background alone, begin with `/`. With neither, omit the color
 component. An empty style displays `{}`; an absolute-only style displays `=`.
 
 ```cpp
-std::format("{:?}", tjg::text_style{});                // "{}"
-std::format("{:?}", tjg::bg(tjg::gray_color{12}));      // "/gray12"
-std::format("{:?}", tjg::absolute(tjg::bold().underline()
-    .fg(tjg::term_color::bright_red).bg(tjg::rgb{26, 43, 60})));
+std::format("{:?}", tjg::color::text_style{});                // "{}"
+std::format("{:?}", tjg::color::bg(tjg::color::gray_color{12}));      // "/gray12"
+std::format("{:?}", tjg::color::absolute(tjg::color::bold().underline()
+    .fg(tjg::color::term_color::bright_red).bg(tjg::color::rgb{26, 43, 60})));
 // "=b_ bright_red/#1a2b3c"
 ```
 
@@ -71,15 +71,15 @@ accepts optional foreground and background colors, both defaulting to
 an empty style. An emphasis value alone creates an emphasis-only style.
 
 ```cpp
-auto foreground = tjg::text_style{tjg::color::red};
-auto style = tjg::text_style{tjg::color::red, tjg::term_color::black,
-                             tjg::emphasis::bold};
-auto background = tjg::text_style{tjg::no_color, tjg::color::blue};
-auto attributes_first = tjg::text_style{tjg::emphasis::bold, tjg::color::red,
-                                        tjg::term_color::black};
-auto underlined_background = tjg::text_style{
-    tjg::emphasis::underline, tjg::no_color, tjg::color::blue};
-auto palette = tjg::text_style{tjg::cube_color{1, 2, 3}, tjg::gray_color{12}};
+auto foreground = tjg::color::text_style{tjg::color::rgb::red};
+auto style = tjg::color::text_style{tjg::color::rgb::red, tjg::color::term_color::black,
+                             tjg::color::emphasis::bold};
+auto background = tjg::color::text_style{tjg::color::no_color, tjg::color::rgb::blue};
+auto attributes_first = tjg::color::text_style{tjg::color::emphasis::bold, tjg::color::rgb::red,
+                                        tjg::color::term_color::black};
+auto underlined_background = tjg::color::text_style{
+    tjg::color::emphasis::underline, tjg::color::no_color, tjg::color::rgb::blue};
+auto palette = tjg::color::text_style{tjg::color::cube_color{1, 2, 3}, tjg::color::gray_color{12}};
 ```
 
 ### Absolute styles
@@ -90,16 +90,16 @@ to reset the terminal before applying a style. Unspecified colors then select
 terminal defaults, and unset emphasis means normal text.
 
 ```cpp
-auto reset = tjg::text_style{}.absolute();
-auto underlined = tjg::underline().absolute();
-auto red = tjg::fg(tjg::color::red).absolute();
+auto reset = tjg::color::text_style{}.absolute();
+auto underlined = tjg::color::underline().absolute();
+auto red = tjg::color::fg(tjg::color::rgb::red).absolute();
 red.absolute(false); // Return to relative styling, retaining the foreground.
 ```
 
 The free function `absolute(style)` returns an absolute copy, preserving both
 colors and emphasis and leaving the input unchanged. It is `noexcept` and
 supports constant evaluation under the same conditions as the member setter.
-For example, `auto red = tjg::absolute(tjg::fg(tjg::color::red));`.
+For example, `auto red = tjg::color::absolute(tjg::color::fg(tjg::color::rgb::red));`.
 
 The member `absolute(bool enable = true)` returns `text_style&`; `is_absolute()`
 queries the separately stored Boolean flag. Both are `noexcept` and support
@@ -123,10 +123,10 @@ The result is absolute if either input is absolute. This preserves the reset
 requirement while allowing explicit changes to an absolute style's attributes.
 
 ```cpp
-auto style = tjg::text_style{tjg::term_color::red, tjg::gray_color{12},
-                             tjg::emphasis::bold};
-const auto other = tjg::text_style{tjg::cube_color{0}, tjg::no_color,
-                                   tjg::emphasis::underline};
+auto style = tjg::color::text_style{tjg::color::term_color::red, tjg::color::gray_color{12},
+                             tjg::color::emphasis::bold};
+const auto other = tjg::color::text_style{tjg::color::cube_color{0}, tjg::color::no_color,
+                                   tjg::color::emphasis::underline};
 style.overlay(other);
 // Foreground: cube_color{0}; background: gray_color{12}.
 // Emphasis: bold and underline. The value of other is unchanged.
@@ -136,18 +136,18 @@ The operation is `noexcept` and supports constant evaluation in C++23 and later
 on supported compilers. It changes the style value without emitting ANSI output.
 Use component setters to clear a color or remove attributes.
 
-The free function `tjg::overlay(base, overrides)` returns a new `text_style`
+The free function `tjg::color::overlay(base, overrides)` returns a new `text_style`
 with the same precedence rules, leaving both inputs unchanged. The second
 argument supplies the overriding colors; reversing the arguments can change
 the result. Like the member, it is `noexcept` and supports constant evaluation
 in C++23 and later on supported compilers.
 
 ```cpp
-const auto base = tjg::text_style{tjg::term_color::red, tjg::gray_color{12},
-                                  tjg::emphasis::bold};
-const auto overrides = tjg::text_style{tjg::cube_color{0}, tjg::no_color,
-                                       tjg::emphasis::underline};
-auto combined = tjg::overlay(base, overrides);
+const auto base = tjg::color::text_style{tjg::color::term_color::red, tjg::color::gray_color{12},
+                                  tjg::color::emphasis::bold};
+const auto overrides = tjg::color::text_style{tjg::color::cube_color{0}, tjg::color::no_color,
+                                       tjg::color::emphasis::underline};
+auto combined = tjg::color::overlay(base, overrides);
 // combined has cube foreground, gray background, bold, and underline.
 // base and overrides retain their original values.
 ```
@@ -164,14 +164,14 @@ combine by OR, and the result is absolute if either input is absolute. This
 explicitly modifies a style value; it performs no inheritance or ANSI output.
 The member is `noexcept` and returns `text_style&` for chaining.
 
-The free `tjg::underlay(base, defaults)` returns the combined style without
+The free `tjg::color::underlay(base, defaults)` returns the combined style without
 modifying either input. Both forms support constant evaluation in C++23 and
 later on supported compilers.
 
 ```cpp
-constexpr auto base = tjg::fg(tjg::color::yellow);
-constexpr auto defaults = tjg::fg(tjg::color::white).bg(tjg::color::blue);
-auto combined = tjg::underlay(base, defaults);
+constexpr auto base = tjg::color::fg(tjg::color::rgb::yellow);
+constexpr auto defaults = tjg::color::fg(tjg::color::rgb::white).bg(tjg::color::rgb::blue);
+auto combined = tjg::color::underlay(base, defaults);
 // Yellow foreground is preserved; the missing background becomes blue.
 ```
 
@@ -192,9 +192,9 @@ Bitwise OR is available for [RGB values](colors.md#combining-rgb-values) and
 [emphasis masks](#combining-emphasis-attributes).
 
 ```cpp
-auto style = tjg::fg(tjg::cube_color{1, 2, 3}).bg(tjg::gray_color{12});
+auto style = tjg::color::fg(tjg::color::cube_color{1, 2, 3}).bg(tjg::color::gray_color{12});
 // Foreground remains cube_color; background remains gray_color.
-style.overlay(tjg::fg(tjg::gray_color{12}));
+style.overlay(tjg::color::fg(tjg::color::gray_color{12}));
 // Foreground becomes gray_color{12}; background is unchanged.
 ```
 
@@ -204,7 +204,7 @@ style.overlay(tjg::fg(tjg::gray_color{12}));
     options:
       color_reference: true
 
-Pass two or more `text_style` values to `tjg::blend` to return a new style.
+Pass two or more `text_style` values to `tjg::color::blend` to return a new style.
 Foreground colors are averaged independently of background colors, using
 [color blending](colors.md#blending-color-variants). Unspecified colors are
 ignored separately in each channel. Emphasis bits from every input are ORed.
@@ -216,13 +216,13 @@ All specified colors in a channel have equal weight; division occurs after
 summation, with fractional results rounded down.
 
 ```cpp
-constexpr auto first = tjg::text_style{tjg::term_color::red, tjg::no_color,
-                                       tjg::emphasis::bold};
-constexpr auto second = tjg::text_style{tjg::gray_color{12},
-                                        tjg::cube_color{1, 2, 3},
-                                        tjg::emphasis::underline};
-constexpr auto third = tjg::text_style{tjg::rgb{}};
-constexpr auto mixed = tjg::blend(first, second, third);
+constexpr auto first = tjg::color::text_style{tjg::color::term_color::red, tjg::color::no_color,
+                                       tjg::color::emphasis::bold};
+constexpr auto second = tjg::color::text_style{tjg::color::gray_color{12},
+                                        tjg::color::cube_color{1, 2, 3},
+                                        tjg::color::emphasis::underline};
+constexpr auto third = tjg::color::text_style{tjg::color::rgb{}};
+constexpr auto mixed = tjg::color::blend(first, second, third);
 // Foreground: rgb{111, 42, 42}; background: cube_color{1, 2, 3}.
 // Emphasis: bold and underline.
 ```
@@ -250,12 +250,12 @@ chaining. It supports constant evaluation in C++23 and later on supported
 compilers. Clearing a style changes the value; it does not emit an ANSI reset.
 
 ```cpp
-auto style = tjg::text_style{tjg::color::red, tjg::term_color::black,
-                             tjg::emphasis::bold};
+auto style = tjg::color::text_style{tjg::color::rgb::red, tjg::color::term_color::black,
+                             tjg::color::emphasis::bold};
 assert(!style.empty());
 style.clear();
 assert(style.empty());
-style.clear().fg(tjg::gray_color{12}).underline();
+style.clear().fg(tjg::color::gray_color{12}).underline();
 ```
 
 ### Component accessors
@@ -269,10 +269,10 @@ Each component has a getter, a replacement setter, and a presence query:
 | Emphasis     | `emph()`   | `emph(attributes)`   | `has_emph()`     |
 
 All these members are `noexcept`. Getters are `const` and return values.  The
-color getters return the public type [`tjg::color_t`](colors.md#color-variants),
+color getters return the public type [`tjg::color::color_t`](colors.md#color-variants),
 preserving the RGB, terminal, cube, gray, or unspecified alternative. The result
 can be passed to either color setter, either style constructor, or the free
-`tjg::fg` and `tjg::bg` functions. Use `std::holds_alternative`, `std::get`,
+`tjg::color::fg` and `tjg::color::bg` functions. Use `std::holds_alternative`, `std::get`,
 `std::get_if`, or `std::visit` to inspect its alternative. The emphasis getter
 returns `emphasis`.
 
@@ -293,17 +293,17 @@ terminal-reset instruction.
 Passing `emphasis::none` clears all attributes.
 
 ```cpp
-auto style = tjg::text_style{tjg::color::coral};
-style.bg(tjg::term_color::black).emph(tjg::emphasis::bold);
-style.fg(tjg::no_color);  // Background and bold remain.
+auto style = tjg::color::text_style{tjg::color::rgb::coral};
+style.bg(tjg::color::term_color::black).emph(tjg::color::emphasis::bold);
+style.fg(tjg::color::no_color);  // Background and bold remain.
 // has_fg() is false; has_bg() and has_emph() are true.
 
 const auto source = style;
-auto copy = tjg::text_style{source.fg(), source.bg(), source.emph()};
+auto copy = tjg::color::text_style{source.fg(), source.bg(), source.emph()};
 
 auto foreground = source.fg();
 auto has_fg = source.has_fg(); // false
-auto unspecified = std::holds_alternative<tjg::no_color_t>(foreground); // true
+auto unspecified = std::holds_alternative<tjg::color::no_color_t>(foreground); // true
 ```
 
 !!! note "Changed behavior"
@@ -314,7 +314,7 @@ auto unspecified = std::holds_alternative<tjg::no_color_t>(foreground); // true
 
 !!! note "Changed behavior"
 
-    Foreground and background values now have the public type `tjg::color_t`.
+    Foreground and background values now have the public type `tjg::color::color_t`.
     Their type was previously unspecified and named `detail::color_type`
     internally. The getters return `color_t` by value.
 
@@ -362,15 +362,15 @@ setters to change selected bits. In C++20 and later, `using enum` makes the
 attribute names available without repeating their type:
 
 ```cpp
-using enum tjg::emphasis;
+using enum tjg::color::emphasis;
 
-auto style = tjg::text_style{tjg::color::coral};
+auto style = tjg::color::text_style{tjg::color::rgb::coral};
 style.emph(bold | blink | strike);  // Exactly these three attributes.
 style.blink(false).underline();     // Bold, underline, strike.
 ```
 
-In older language modes, qualify names with `tjg::emphasis::` or use a type
-alias such as `using em = tjg::emphasis;` and write `em::bold`.
+In older language modes, qualify names with `tjg::color::emphasis::` or use a type
+alias such as `using em = tjg::color::emphasis;` and write `em::bold`.
 
 ### Attribute functions returning a new style
 
@@ -388,11 +388,11 @@ parameter defaults to `true`; these factories support constant evaluation in
 C++23 and later.
 
 ```cpp
-constexpr auto heading = tjg::bold();
-constexpr auto plain   = tjg::bold(false); // Empty style.
+constexpr auto heading = tjg::color::bold();
+constexpr auto plain   = tjg::color::bold(false); // Empty style.
 bool use_bold = true;                      // For example, a user preference.
-std::println("{}", tjg::styled(42, tjg::bold(use_bold)));
-std::println("{}", tjg::styled("Heading", tjg::bold()));
+std::println("{}", tjg::color::styled(42, tjg::color::bold(use_bold)));
+std::println("{}", tjg::color::styled("Heading", tjg::color::bold()));
 ```
 
 ::: bold(bool)
@@ -435,15 +435,15 @@ style is unchanged. Each function enables its attribute by default; pass
 color channels retain their values and kinds.
 
 ```cpp
-const auto theme = tjg::text_style{tjg::color::coral, tjg::term_color::black};
-auto underlined = tjg::underline(theme);
-auto bold_underlined = tjg::bold(underlined);
-auto bold_only = tjg::underline(bold_underlined, false);
+const auto theme = tjg::color::text_style{tjg::color::rgb::coral, tjg::color::term_color::black};
+auto underlined = tjg::color::underline(theme);
+auto bold_underlined = tjg::color::bold(underlined);
+auto bold_only = tjg::color::underline(bold_underlined, false);
 // theme still has no emphasis attributes.
 ```
 
 Use these overloads when deriving a style from a reusable base. The member
-call `style.underline()` modifies `style`; `tjg::underline(style)` returns a
+call `style.underline()` modifies `style`; `tjg::color::underline(style)` returns a
 new value. The style-copy overloads support constant evaluation in C++23 and
 later on supported compilers.
 
@@ -487,7 +487,7 @@ absolute flag first, then emphasis, foreground, and background. Different color 
 distinct even when their RGB equivalents are equal. Styles can be used as keys
 in `std::map` and `std::set`; `operator<=>` returns `std::strong_ordering`.
 
-`std::hash<tjg::text_style>` combines the four components, allowing styles to be
+`std::hash<tjg::color::text_style>` combines the four components, allowing styles to be
 keys in `std::unordered_map` and `std::unordered_set`. Equal styles have equal
 hashes. Hash values are not a stable serialization format.
 
@@ -498,17 +498,17 @@ hashes. Hash values are not a stable serialization format.
 
 ## Combining emphasis attributes
 
-`tjg::emphasis` values are independent bit masks. `operator|` returns their
+`tjg::color::emphasis` values are independent bit masks. `operator|` returns their
 union without modifying either operand. `operator|=` adds the right operand's
 attributes to the left operand and returns `emphasis&` referring to that left
 operand, allowing chaining. Existing attributes remain set; combining with
 `emphasis::none` leaves the value unchanged.
 
 ```cpp
-auto attributes = tjg::emphasis::bold;
-attributes |= tjg::emphasis::underline;
-(attributes |= tjg::emphasis::italic) |= tjg::emphasis::strike;
-auto style = tjg::text_style{attributes};
+auto attributes = tjg::color::emphasis::bold;
+attributes |= tjg::color::emphasis::underline;
+(attributes |= tjg::color::emphasis::italic) |= tjg::color::emphasis::strike;
+auto style = tjg::color::text_style{attributes};
 ```
 
 Both operators are `noexcept` and support constant evaluation.
@@ -516,10 +516,10 @@ Both operators are `noexcept` and support constant evaluation.
 ## Foreground and background
 
 `fg` and `bg` provide a convenient way to create a `text_style` without
-calling a constructor directly. When passed a color value from namespace `tjg`,
+calling a constructor directly. When passed a color value from namespace `tjg::color`,
 argument-dependent lookup (ADL) finds these functions, so you can omit the
-`std::` prefix: for example, `fg(tjg::color::red)` instead of
-`tjg::text_style{tjg::color::red}`.
+`std::` prefix: for example, `fg(tjg::color::rgb::red)` instead of
+`tjg::color::text_style{tjg::color::rgb::red}`.
 
 ::: fg(color_t)
     options:
@@ -529,7 +529,7 @@ argument-dependent lookup (ADL) finds these functions, so you can omit the
     options:
       color_reference: true
 
-Pass `tjg::no_color` to either function to produce an empty style. This
+Pass `tjg::color::no_color` to either function to produce an empty style. This
 specifies no color; combining it with an existing style does not clear that
 style's color or emit a terminal reset.
 

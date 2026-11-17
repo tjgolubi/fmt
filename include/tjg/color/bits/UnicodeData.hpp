@@ -10,7 +10,7 @@
 #include <cstdint>
 #pragma once
 
-namespace tjg::unicode::detail {
+namespace tjg::color::detail::unicode::detail {
 
 struct singleton {
   unsigned char upper;
@@ -556,4 +556,4 @@ inline constexpr code_point_range nonprintable_ranges[] = {
   {0xe01f0, 0x110000},
 };
 
-} // tjg::unicode
+} // tjg::color::detail::unicode

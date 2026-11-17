@@ -55,7 +55,7 @@ a customized terminal theme:
 | `bright_white`   |    15 |     97 |    107 | `{255, 255, 255}` |
 
 ```cpp
-auto style     = tjg::fg(tjg::term_color::black);
+auto style     = tjg::color::fg(tjg::color::term_color::black);
 bool specified = style.has_fg(); // true
 ```
 
@@ -63,7 +63,7 @@ Use symbolic terminal-color names in styling code. Their numeric values are
 not stable serialization formats.
 
 `term_color` has the signed underlying type `int8_t`.
-`std::underlying_type_t<tjg::term_color>` and
+`std::underlying_type_t<tjg::color::term_color>` and
 `std::to_underlying(term_color)` also use `int8_t`. The named values are
 indices `0..15`; the signed type does not introduce additional palette colors.
 Conversion to RGB asserts that the index is within that range before accessing
@@ -78,11 +78,11 @@ For example, terminal red converts to `{205, 0, 0}`, while bright red converts
 to `{255, 0, 0}`.
 
 ```cpp
-tjg::rgb red   = tjg::term_color::red; // {205, 0, 0}
-auto fixed_red = tjg::color::term_red; // The same RGB value.
+tjg::color::rgb red   = tjg::color::term_color::red; // {205, 0, 0}
+auto fixed_red = tjg::color::rgb::term_red; // The same RGB value.
 ```
 
-The `tjg::color::term_*` constants provide fixed RGB counterparts for all
+The `tjg::color::rgb::term_*` constants provide fixed RGB counterparts for all
 16 terminal colors, including `term_bright_*` for bright colors. They render
 as truecolor. A `term_color` renders using the terminal's palette, so its
 appearance can differ from its fixed RGB counterpart.
@@ -106,8 +106,8 @@ pattern and uses its low 24 bits; it is `noexcept`.
 ```cpp
 int red = 30;
 uint8_t green = 144;
-auto accent = tjg::rgb{red, green, 255};
-// With assertions disabled, tjg::rgb{-1, 144, 300} becomes {0, 144, 255}.
+auto accent = tjg::color::rgb{red, green, 255};
+// With assertions disabled, tjg::color::rgb{-1, 144, 300} becomes {0, 144, 255}.
 ```
 
 ### Converting colors to RGB
@@ -124,7 +124,7 @@ auto accent = tjg::rgb{red, green, 255};
     options:
       color_reference: true
 
-Use `tjg::to_rgb(value)` to request a fixed RGB equivalent explicitly. The
+Use `tjg::color::to_rgb(value)` to request a fixed RGB equivalent explicitly. The
 overload is selected by the input type:
 
 | Input                                           | Result       | Behavior                                                                                 |
@@ -134,9 +134,9 @@ overload is selected by the input type:
 | `color_t`                                       | `color_t`    | A specified color becomes the RGB alternative; an unspecified color remains unspecified. |
 
 ```cpp
-constexpr auto red   = tjg::to_rgb(tjg::term_color::red); // rgb{205, 0, 0}
-constexpr auto empty = tjg::to_rgb(tjg::no_color);        // no_color_t
-constexpr auto shade = tjg::to_rgb(tjg::color_t{tjg::gray_color{12}});
+constexpr auto red   = tjg::color::to_rgb(tjg::color::term_color::red); // rgb{205, 0, 0}
+constexpr auto empty = tjg::color::to_rgb(tjg::color::no_color);        // no_color_t
+constexpr auto shade = tjg::color::to_rgb(tjg::color::color_t{tjg::color::gray_color{12}});
 // shade holds rgb{128, 128, 128}.
 ```
 
@@ -156,9 +156,9 @@ evaluation in C++23; the mutating `operator|=` supports it in C++23 and later
 on supported compilers.
 
 ```cpp
-auto magenta = tjg::rgb{255, 0, 0} | tjg::rgb{0, 0, 255};  // {255, 0, 255}
-auto mixed   = tjg::rgb{0xC0F000};
-mixed |= tjg::rgb{0x000FEE};  // {192, 255, 238}, packed 0x00C0FFEE
+auto magenta = tjg::color::rgb{255, 0, 0} | tjg::color::rgb{0, 0, 255};  // {255, 0, 255}
+auto mixed   = tjg::color::rgb{0xC0F000};
+mixed |= tjg::color::rgb{0x000FEE};  // {192, 255, 238}, packed 0x00C0FFEE
 ```
 
 ### Averaging RGB values
@@ -168,7 +168,7 @@ mixed |= tjg::rgb{0x000FEE};  // {192, 255, 238}, packed 0x00C0FFEE
       color_reference: true
 
 When every argument is a plain color (`rgb`, `term_color`, `cube_color`, or
-`gray_color`), `tjg::blend` returns a new `rgb` containing their equally
+`gray_color`), `tjg::color::blend` returns a new `rgb` containing their equally
 weighted channel averages. Palette arguments convert to their fixed RGB
 equivalents first. Fractional channel values are rounded down after all
 arguments are summed. At least two arguments are required.
@@ -176,21 +176,21 @@ This averages the stored RGB components without gamma correction or alpha
 compositing.
 
 ```cpp
-auto gray = tjg::blend(tjg::rgb{255,   0,   0},
-                       tjg::rgb{  0, 255,   0},
-                       tjg::rgb{  0,   0, 255});  // {85, 85, 85}
+auto gray = tjg::color::blend(tjg::color::rgb{255,   0,   0},
+                       tjg::color::rgb{  0, 255,   0},
+                       tjg::color::rgb{  0,   0, 255});  // {85, 85, 85}
 
-auto light_gray = tjg::blend(tjg::rgb{},
-                             tjg::rgb{255, 255, 255},
-                             tjg::rgb{255, 255, 255});  // {170, 170, 170}
+auto light_gray = tjg::color::blend(tjg::color::rgb{},
+                             tjg::color::rgb{255, 255, 255},
+                             tjg::color::rgb{255, 255, 255});  // {170, 170, 170}
 
-auto mixed = tjg::blend(tjg::term_color::red, tjg::cube_color{1, 2, 3},
-                        tjg::gray_color{12}); // rgb{142, 87, 101}
+auto mixed = tjg::color::blend(tjg::color::term_color::red, tjg::color::cube_color{1, 2, 3},
+                        tjg::color::gray_color{12}); // rgb{142, 87, 101}
 ```
 
 Blending requires at least two arguments and rejects non-color arguments during
 overload resolution. It is `noexcept` and supports constant evaluation in
-C++23 and later. The `tjg::Color` concept
+C++23 and later. The `tjg::color::Color` concept
 identifies the four plain color types, including const and reference forms;
 it excludes `color_t` and `no_color_t`.
 
@@ -200,25 +200,23 @@ The free function leaves its arguments unchanged. Passing a `color_t` or
 To update an existing RGB color, assign the result of the free function:
 
 ```cpp
-auto color = tjg::rgb{};
-color = tjg::blend(color, tjg::rgb{255, 255, 255}); // rgb{127, 127, 127}
+auto color = tjg::color::rgb{};
+color = tjg::color::blend(color, tjg::color::rgb{255, 255, 255}); // rgb{127, 127, 127}
 ```
 
 ### Named RGB colors
 
-::: color
-    options:
-      color_reference: true
+The named constants are static members of `rgb`, such as `rgb::red`.
 
 See [Named Colors](named-colors.md) for the available names and their colors.
 
-Each name denotes a constexpr `tjg::rgb` value. Use `tjg::rgb` to store named
+Each name denotes a constexpr `tjg::color::rgb` value. Use `tjg::color::rgb` to store named
 and custom colors in the same variable:
 
 ```cpp
-auto accent = tjg::color::coral;
-accent = tjg::rgb{30, 144, 255};
-auto style = tjg::fg(accent);
+auto accent = tjg::color::rgb::coral;
+accent = tjg::color::rgb{30, 144, 255};
+auto style = tjg::color::fg(accent);
 ```
 
 ### Comparisons
@@ -228,7 +226,7 @@ red first, then green, then blue. This is numeric ordering, rather than an
 ordering by brightness. They can be used as keys in `std::map` and `std::set`.
 In C++20 and later, `operator<=>` returns `std::strong_ordering`.
 
-`std::hash<tjg::rgb>` hashes the packed `uint32_t` representation, allowing RGB
+`std::hash<tjg::color::rgb>` hashes the packed `uint32_t` representation, allowing RGB
 values to be keys in `std::unordered_map` and `std::unordered_set`. Equal RGB
 values have equal hashes. Hash values are not a stable serialization format.
 
@@ -244,18 +242,18 @@ Convert explicitly to `uint32_t` to obtain the numeric `0x00RRGGBB`
 representation:
 
 ```cpp
-constexpr auto coral = tjg::color::coral;
+constexpr auto coral = tjg::color::rgb::coral;
 constexpr auto packed = static_cast<uint32_t>(coral); // 0x00FF7F50
-static_assert(tjg::rgb{packed} == coral, "packed RGB round trip");
+static_assert(tjg::color::rgb{packed} == coral, "packed RGB round trip");
 ```
 Packed integer conversions are explicit in both directions. Direct construction
 accepts `0xRRGGBB` and ignores the high byte; conversion back produces
 `0x00RRGGBB`:
 
 ```cpp
-auto sample = tjg::rgb{0xab123456};
+auto sample = tjg::color::rgb{0xab123456};
 auto packed = static_cast<uint32_t>(sample); // 0x00123456
-auto named  = static_cast<uint32_t>(tjg::color::coral); // 0x00FF7F50
+auto named  = static_cast<uint32_t>(tjg::color::rgb::coral); // 0x00FF7F50
 ```
 
 !!! note "Changed behavior"
@@ -280,9 +278,9 @@ clamp to 23. The index constructor is `noexcept`; valid inputs support
 constant evaluation in C++23 and later.
 
 ```cpp
-auto shade = tjg::gray_color{12};
-auto style = tjg::bg(shade);
-tjg::rgb converted = shade; // {128, 128, 128}
+auto shade = tjg::color::gray_color{12};
+auto style = tjg::color::bg(shade);
+tjg::color::rgb converted = shade; // {128, 128, 128}
 ```
 
 Implicit conversion to `rgb` sets every channel to `8 + 10 * index`, from
@@ -309,9 +307,9 @@ The single index is `36 * r + 6 * g + b`. Default construction selects index
 zero.
 
 ```cpp
-auto accent = tjg::cube_color{1, 2, 3};
-auto same   = tjg::cube_color{51}; // 36 * 1 + 6 * 2 + 3
-auto style  = tjg::fg(accent);
+auto accent = tjg::color::cube_color{1, 2, 3};
+auto same   = tjg::color::cube_color{51}; // 36 * 1 + 6 * 2 + 3
+auto style  = tjg::color::fg(accent);
 accent.r(5).g(0).b(4); // Channel setters return cube_color&.
 ```
 
@@ -332,7 +330,7 @@ Implicit conversion to `rgb` maps channel indices 0–5 to the fixed levels
 `{0, 95, 135, 175, 215, 255}`:
 
 ```cpp
-tjg::rgb converted = tjg::cube_color{1, 2, 3}; // {95, 135, 175}
+tjg::color::rgb converted = tjg::color::cube_color{1, 2, 3}; // {95, 135, 175}
 ```
 
 `color.index()` returns the zero-based cube index as `int`.
@@ -364,18 +362,18 @@ An unspecified color adds no foreground or background styling. It is distinct
 from the color black.
 
 ```cpp
-auto unspecified    = tjg::fg(tjg::no_color);          // No foreground.
-auto rgb_black      = tjg::fg(tjg::rgb{});             // Black foreground.
-auto terminal_black = tjg::fg(tjg::term_color::black); // Black foreground.
+auto unspecified    = tjg::color::fg(tjg::color::no_color);          // No foreground.
+auto rgb_black      = tjg::color::fg(tjg::color::rgb{});             // Black foreground.
+auto terminal_black = tjg::color::fg(tjg::color::term_color::black); // Black foreground.
 ```
 
-Both `tjg::fg(tjg::no_color)` and `tjg::bg(tjg::no_color)` produce empty styles.
+Both `tjg::color::fg(tjg::color::no_color)` and `tjg::color::bg(tjg::color::no_color)` produce empty styles.
 They supply no color when used with `overlay` or `underlay`.
 
 ## Color variants
 
-`tjg::color_t` is an alias for
-`std::variant<tjg::no_color_t, tjg::rgb, tjg::term_color, tjg::cube_color, tjg::gray_color>`.
+`tjg::color::color_t` is an alias for
+`std::variant<tjg::color::no_color_t, tjg::color::rgb, tjg::color::term_color, tjg::color::cube_color, tjg::color::gray_color>`.
 
 ::: color_t
     options:
@@ -390,14 +388,14 @@ alternative and is also `noexcept`.
 Copying or moving a `color_t` preserves its kind and value.
 
 ```cpp
-tjg::color_t accent;                    // Unspecified.
-accent = tjg::color::coral;             // Holds rgb.
-accent = tjg::term_color::red;          // Holds term_color.
-accent = tjg::cube_color{1, 2, 3};      // Holds cube_color.
-accent = tjg::gray_color{12};           // Holds gray_color.
-auto style = tjg::text_style{accent};
-style.bg(tjg::color_t{tjg::color::blue});
-accent = tjg::no_color;                 // Unspecified again; style is unchanged.
+tjg::color::color_t accent;                    // Unspecified.
+accent = tjg::color::rgb::coral;             // Holds rgb.
+accent = tjg::color::term_color::red;          // Holds term_color.
+accent = tjg::color::cube_color{1, 2, 3};      // Holds cube_color.
+accent = tjg::color::gray_color{12};           // Holds gray_color.
+auto style = tjg::color::text_style{accent};
+style.bg(tjg::color::color_t{tjg::color::rgb::blue});
+accent = tjg::color::no_color;                 // Unspecified again; style is unchanged.
 ```
 
 `text_style` constructors, color setters, and free `fg`/`bg` accept
@@ -446,12 +444,12 @@ color pointer. Mutable references and pointers allow changes to the active
 color value.
 
 ```cpp
-tjg::color_t accent = tjg::color::coral;
-if (auto* channels = std::get_if<tjg::rgb>(&accent))
+tjg::color::color_t accent = tjg::color::rgb::coral;
+if (auto* channels = std::get_if<tjg::color::rgb>(&accent))
   channels->g = 128;
 
-bool is_rgb = std::holds_alternative<tjg::rgb>(accent); // true
-auto red = std::get<tjg::rgb>(accent).r;
+bool is_rgb = std::holds_alternative<tjg::color::rgb>(accent); // true
+auto red = std::get<tjg::color::rgb>(accent).r;
 ```
 
 References and pointers refer to storage inside the `color_t`; they must not
@@ -459,8 +457,8 @@ outlive it or an alternative change. Style color getters return temporary
 values, so copy an alternative when extracting it directly:
 
 ```cpp
-auto style = tjg::text_style{tjg::color::coral};
-auto channels = std::get<tjg::rgb>(style.fg()); // Copies RGB before the temporary dies.
+auto style = tjg::color::text_style{tjg::color::rgb::coral};
+auto channels = std::get<tjg::color::rgb>(style.fg()); // Copies RGB before the temporary dies.
 ```
 
 Const and mutable access, classification, and `index` support constant
@@ -480,14 +478,14 @@ A function object with overloads works in C++23:
 
 ```cpp
 struct describe_color {
-  const char* operator()(tjg::no_color_t) const { return "unspecified";      }
-  const char* operator()(tjg::rgb)        const { return "RGB";              }
-  const char* operator()(tjg::term_color) const { return "terminal palette"; }
-  const char* operator()(tjg::cube_color) const { return "cube palette";     }
-  const char* operator()(tjg::gray_color) const { return "gray palette";     }
+  const char* operator()(tjg::color::no_color_t) const { return "unspecified";      }
+  const char* operator()(tjg::color::rgb)        const { return "RGB";              }
+  const char* operator()(tjg::color::term_color) const { return "terminal palette"; }
+  const char* operator()(tjg::color::cube_color) const { return "cube palette";     }
+  const char* operator()(tjg::color::gray_color) const { return "gray palette";     }
 };
 
-tjg::color_t accent = tjg::color::coral;
+tjg::color::color_t accent = tjg::color::rgb::coral;
 const char* description = std::visit(describe_color{}, accent); // "RGB"
 ```
 
@@ -510,7 +508,7 @@ do; formatting in this example runs at runtime.
     options:
       color_reference: true
 
-If any argument is a `color_t` or `no_color`, `tjg::blend` returns a
+If any argument is a `color_t` or `no_color`, `tjg::color::blend` returns a
 `color_t`. At least two arguments are required. Plain colors and variants can
 appear in any argument position.
 Unspecified colors are ignored: they contribute neither RGB components nor
@@ -522,12 +520,12 @@ weight to the average.
   RGB average, even when the original colors have the same palette kind.
 
 ```cpp
-constexpr auto empty = tjg::blend(tjg::no_color, tjg::color_t{});
+constexpr auto empty = tjg::color::blend(tjg::color::no_color, tjg::color::color_t{});
 // Unspecified.
-constexpr auto shade = tjg::blend(tjg::no_color, tjg::gray_color{12});
+constexpr auto shade = tjg::color::blend(tjg::color::no_color, tjg::color::gray_color{12});
 // Holds gray_color{12}.
-constexpr auto mixed = tjg::blend(tjg::cube_color{1, 2, 3},
-                                  tjg::color_t{tjg::gray_color{12}});
+constexpr auto mixed = tjg::color::blend(tjg::color::cube_color{1, 2, 3},
+                                  tjg::color::color_t{tjg::color::gray_color{12}});
 // Holds rgb{111, 131, 151}.
 ```
 
@@ -543,7 +541,7 @@ Standard variant comparisons use the alternative index first, then compare
 the stored values within each alternative. Colors with different alternatives
 remain distinct even when their RGB equivalents are equal. To compare a
 variant with a concrete color, use `std::get` or construct a second `color_t`.
-`std::hash<tjg::color_t>` permits use as an unordered-container key.
+`std::hash<tjg::color::color_t>` permits use as an unordered-container key.
 
 The hasher combines the alternative index with the active color's hash;
 it does not pack the variant into an integer. `color_t` has no packed integer
@@ -564,8 +562,8 @@ members in a consistent order:
 
 ```cpp
 std::size_t seed = 0;
-tjg::hash_combine(seed, tjg::color::coral);
-tjg::hash_combine(seed, tjg::emphasis::bold);
+tjg::hash_combine(seed, tjg::color::rgb::coral);
+tjg::hash_combine(seed, tjg::color::emphasis::bold);
 ```
 
 The function is `noexcept` when the value's standard hasher is `noexcept`;
@@ -594,7 +592,7 @@ and precision. Ostream insertion applies width, fill, and alignment as for an
 ordinary string; numeric flags do not change the notation.
 
 ```cpp
-std::format("{}", tjg::color::red);          // "#ff0000"
-std::format("{:>12?}", tjg::gray_color{12}); // "      gray12"
-std::format("{}", tjg::cube_color{5, 0, 3}); // "cube503"
+std::format("{}", tjg::color::rgb::red);          // "#ff0000"
+std::format("{:>12?}", tjg::color::gray_color{12}); // "      gray12"
+std::format("{}", tjg::color::cube_color{5, 0, 3}); // "cube503"
 ```

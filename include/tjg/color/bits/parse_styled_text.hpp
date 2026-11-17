@@ -6,7 +6,7 @@
 
 #include <string_view>
 
-namespace tjg {
+namespace tjg::color {
 
 namespace detail {
 
@@ -295,7 +295,7 @@ template<CharType Char>
   }
   flush();
   if (!group.empty()) {
-    group.style(tjg::absolute(group.style()));
+    group.style(tjg::color::absolute(group.style()));
     if (result.empty())
       return group;
     result += std::move(group);
@@ -311,4 +311,4 @@ auto parse_styled_text(std::string_view input) -> styled_text
 auto parse_styled_text(std::basic_string_view<wchar_t> input) -> wstyled_text
 { return parse_styled_text<wchar_t>(input); }
 
-} // tjg
+} // tjg::color

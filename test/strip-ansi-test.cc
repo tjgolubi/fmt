@@ -62,48 +62,48 @@ void check_preservation() {
 
 template<typename Char>
 void check_styled_text() {
-  using text = tjg::basic_styled_text<Char>;
-  const auto red = tjg::fg(tjg::term_color::red);
-  const auto absolute = tjg::absolute(tjg::underline());
-  const auto input = tjg::bold(
+  using text = tjg::color::basic_styled_text<Char>;
+  const auto red = tjg::color::fg(tjg::color::term_color::red);
+  const auto absolute = tjg::color::absolute(tjg::color::underline());
+  const auto input = tjg::color::bold(
       text{chars<Char>("\x1b[32mred\x1b[0m"), red} +
-      tjg::overlay(absolute,
+      tjg::color::overlay(absolute,
           text{chars<Char>("\x1b]8;;url\a label\x1b]8;;\a")} +
-          text{chars<Char>("\x1b[2Jtail"), tjg::italic()}));
-  const auto expected = tjg::bold(
+          text{chars<Char>("\x1b[2Jtail"), tjg::color::italic()}));
+  const auto expected = tjg::color::bold(
       text{chars<Char>("red"), red} +
-      tjg::overlay(absolute,
+      tjg::color::overlay(absolute,
           text{chars<Char>(" label")} +
-          text{chars<Char>("tail"), tjg::italic()}));
+          text{chars<Char>("tail"), tjg::color::italic()}));
   const auto original = input;
-  auto result = tjg::strip_ansi(input);
+  auto result = tjg::color::strip_ansi(input);
   EXPECT_EQ(result, expected); // Equality checks exact structure and styles.
   EXPECT_EQ(input, original);
-  EXPECT_EQ(tjg::strip_ansi(result), result);
+  EXPECT_EQ(tjg::color::strip_ansi(result), result);
   result += text{chars<Char>("changed")};
   EXPECT_EQ(input, original);
-  EXPECT_EQ(tjg::strip_ansi(text{chars<Char>("\x1b[0m"), absolute}),
+  EXPECT_EQ(tjg::color::strip_ansi(text{chars<Char>("\x1b[0m"), absolute}),
             (text{std::basic_string<Char>{}, absolute}));
-  EXPECT_EQ(tjg::strip_ansi(text{}), text{});
+  EXPECT_EQ(tjg::color::strip_ansi(text{}), text{});
 
   const auto only_controls = text{chars<Char>("\x1b[0m"), red} +
                              text{chars<Char>("\x1b[2J"), absolute};
-  const auto empty_branch = tjg::strip_ansi(only_controls);
+  const auto empty_branch = tjg::color::strip_ansi(only_controls);
   EXPECT_EQ(empty_branch.plain_text(), std::basic_string<Char>{});
   EXPECT_NE(empty_branch, text{}); // Empty children are not collapsed.
-  EXPECT_EQ(tjg::strip_ansi(empty_branch), empty_branch);
+  EXPECT_EQ(tjg::color::strip_ansi(empty_branch), empty_branch);
 
   // Incomplete CSI and control strings cannot consume text in another leaf.
   const auto split = text{chars<Char>("\x1b[3"), red} +
                      text{chars<Char>("1mtext"), absolute} +
-                     text{chars<Char>("\x1b]title"), tjg::italic()} +
+                     text{chars<Char>("\x1b]title"), tjg::color::italic()} +
                      text{chars<Char>("\aend")};
-  EXPECT_EQ(tjg::strip_ansi(split), split);
+  EXPECT_EQ(tjg::color::strip_ansi(split), split);
   const auto nul_text = std::basic_string<Char>{Char('a'), Char{}, Char('b')};
-  EXPECT_EQ(tjg::strip_ansi(text{nul_text + chars<Char>("\x1b[m"), red}),
+  EXPECT_EQ(tjg::color::strip_ansi(text{nul_text + chars<Char>("\x1b[m"), red}),
             (text{nul_text, red}));
   const auto malformed = text{chars<Char>("\x1b[1 2m\x1b]unfinished"), red};
-  EXPECT_EQ(tjg::strip_ansi(malformed), malformed);
+  EXPECT_EQ(tjg::color::strip_ansi(malformed), malformed);
 }
 } // namespace
 

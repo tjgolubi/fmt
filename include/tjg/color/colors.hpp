@@ -21,7 +21,7 @@
 
 #include <cstdint>
 
-namespace tjg {
+namespace tjg::color {
 
 /**
  * Indicates an unspecified color, distinct from RGB or terminal black.
@@ -67,7 +67,7 @@ auto name_of(term_color value) noexcept -> std::string_view {
   };
   const auto index = std::to_underlying(value);
   TJG_EXPECTS(index >= 0 && index < std::ssize(names),
-              "tjg::name_of: invalid terminal color");
+              "tjg::color::name_of: invalid terminal color");
   return names[index];
 } // name_of term_color
 
@@ -135,42 +135,199 @@ struct rgb {
                narrow_cast<chan_type>(lhs.b | rhs.b)};
   }
 
+  /// Fixed Xterm-default RGB equivalents of terminal colors.
+  static const rgb term_black;
+  static const rgb term_red;
+  static const rgb term_green;
+  static const rgb term_yellow;
+  static const rgb term_blue;
+  static const rgb term_magenta;
+  static const rgb term_cyan;
+  static const rgb term_white;
+  static const rgb term_bright_black;
+  static const rgb term_bright_red;
+  static const rgb term_bright_green;
+  static const rgb term_bright_yellow;
+  static const rgb term_bright_blue;
+  static const rgb term_bright_magenta;
+  static const rgb term_bright_cyan;
+  static const rgb term_bright_white;
+
+  /// Named RGB constants, independent of the terminal palette.
+  static const rgb alice_blue;
+  static const rgb antique_white;
+  static const rgb aqua;
+  static const rgb aquamarine;
+  static const rgb azure;
+  static const rgb beige;
+  static const rgb bisque;
+  static const rgb black;
+  static const rgb blanched_almond;
+  static const rgb blue;
+  static const rgb blue_violet;
+  static const rgb brown;
+  static const rgb burly_wood;
+  static const rgb cadet_blue;
+  static const rgb chartreuse;
+  static const rgb chocolate;
+  static const rgb coral;
+  static const rgb cornflower_blue;
+  static const rgb cornsilk;
+  static const rgb crimson;
+  static const rgb cyan;
+  static const rgb dark_blue;
+  static const rgb dark_cyan;
+  static const rgb dark_golden_rod;
+  static const rgb dark_gray;
+  static const rgb dark_green;
+  static const rgb dark_khaki;
+  static const rgb dark_magenta;
+  static const rgb dark_olive_green;
+  static const rgb dark_orange;
+  static const rgb dark_orchid;
+  static const rgb dark_red;
+  static const rgb dark_salmon;
+  static const rgb dark_sea_green;
+  static const rgb dark_slate_blue;
+  static const rgb dark_slate_gray;
+  static const rgb dark_turquoise;
+  static const rgb dark_violet;
+  static const rgb deep_pink;
+  static const rgb deep_sky_blue;
+  static const rgb dim_gray;
+  static const rgb dodger_blue;
+  static const rgb fire_brick;
+  static const rgb floral_white;
+  static const rgb forest_green;
+  static const rgb fuchsia;
+  static const rgb gainsboro;
+  static const rgb ghost_white;
+  static const rgb gold;
+  static const rgb golden_rod;
+  static const rgb gray;
+  static const rgb green;
+  static const rgb green_yellow;
+  static const rgb honey_dew;
+  static const rgb hot_pink;
+  static const rgb indian_red;
+  static const rgb indigo;
+  static const rgb ivory;
+  static const rgb khaki;
+  static const rgb lavender;
+  static const rgb lavender_blush;
+  static const rgb lawn_green;
+  static const rgb lemon_chiffon;
+  static const rgb light_blue;
+  static const rgb light_coral;
+  static const rgb light_cyan;
+  static const rgb light_golden_rod_yellow;
+  static const rgb light_gray;
+  static const rgb light_green;
+  static const rgb light_pink;
+  static const rgb light_salmon;
+  static const rgb light_sea_green;
+  static const rgb light_sky_blue;
+  static const rgb light_slate_gray;
+  static const rgb light_steel_blue;
+  static const rgb light_yellow;
+  static const rgb lime;
+  static const rgb lime_green;
+  static const rgb linen;
+  static const rgb magenta;
+  static const rgb maroon;
+  static const rgb medium_aquamarine;
+  static const rgb medium_blue;
+  static const rgb medium_orchid;
+  static const rgb medium_purple;
+  static const rgb medium_sea_green;
+  static const rgb medium_slate_blue;
+  static const rgb medium_spring_green;
+  static const rgb medium_turquoise;
+  static const rgb medium_violet_red;
+  static const rgb midnight_blue;
+  static const rgb mint_cream;
+  static const rgb misty_rose;
+  static const rgb moccasin;
+  static const rgb navajo_white;
+  static const rgb navy;
+  static const rgb old_lace;
+  static const rgb olive;
+  static const rgb olive_drab;
+  static const rgb orange;
+  static const rgb orange_red;
+  static const rgb orchid;
+  static const rgb pale_golden_rod;
+  static const rgb pale_green;
+  static const rgb pale_turquoise;
+  static const rgb pale_violet_red;
+  static const rgb papaya_whip;
+  static const rgb peach_puff;
+  static const rgb peru;
+  static const rgb pink;
+  static const rgb plum;
+  static const rgb powder_blue;
+  static const rgb purple;
+  static const rgb rebecca_purple;
+  static const rgb red;
+  static const rgb rosy_brown;
+  static const rgb royal_blue;
+  static const rgb saddle_brown;
+  static const rgb salmon;
+  static const rgb sandy_brown;
+  static const rgb sea_green;
+  static const rgb sea_shell;
+  static const rgb sienna;
+  static const rgb silver;
+  static const rgb sky_blue;
+  static const rgb slate_blue;
+  static const rgb slate_gray;
+  static const rgb snow;
+  static const rgb spring_green;
+  static const rgb steel_blue;
+  static const rgb tan;
+  static const rgb teal;
+  static const rgb thistle;
+  static const rgb tomato;
+  static const rgb turquoise;
+  static const rgb violet;
+  static const rgb wheat;
+  static const rgb white;
+  static const rgb white_smoke;
+  static const rgb yellow;
+  static const rgb yellow_green;
+
 }; // rgb
 
-namespace color {
-
 // Xterm RGB mapping for terminal palette indices 0-15.
-constexpr inline rgb term_black         {  0,   0,   0};
-constexpr inline rgb term_red           {205,   0,   0};
-constexpr inline rgb term_green         {  0, 205,   0};
-constexpr inline rgb term_yellow        {205, 205,   0};
-constexpr inline rgb term_blue          {  0,   0, 238};
-constexpr inline rgb term_magenta       {205  , 0, 205};
-constexpr inline rgb term_cyan          {  0, 205, 205};
-constexpr inline rgb term_white         {229, 229, 229};
-constexpr inline rgb term_bright_black  {127, 127, 127};
-constexpr inline rgb term_bright_red    {255,   0,   0};
-constexpr inline rgb term_bright_green  {  0, 255,   0};
-constexpr inline rgb term_bright_yellow {255, 255,   0};
-constexpr inline rgb term_bright_blue   { 92,  92, 255};
-constexpr inline rgb term_bright_magenta{255,   0, 255};
-constexpr inline rgb term_bright_cyan   {  0, 255, 255};
-constexpr inline rgb term_bright_white  {255, 255, 255};
-
-} // color
+inline constexpr rgb rgb::term_black         {  0,   0,   0};
+inline constexpr rgb rgb::term_red           {205,   0,   0};
+inline constexpr rgb rgb::term_green         {  0, 205,   0};
+inline constexpr rgb rgb::term_yellow        {205, 205,   0};
+inline constexpr rgb rgb::term_blue          {  0,   0, 238};
+inline constexpr rgb rgb::term_magenta       {205  , 0, 205};
+inline constexpr rgb rgb::term_cyan          {  0, 205, 205};
+inline constexpr rgb rgb::term_white         {229, 229, 229};
+inline constexpr rgb rgb::term_bright_black  {127, 127, 127};
+inline constexpr rgb rgb::term_bright_red    {255,   0,   0};
+inline constexpr rgb rgb::term_bright_green  {  0, 255,   0};
+inline constexpr rgb rgb::term_bright_yellow {255, 255,   0};
+inline constexpr rgb rgb::term_bright_blue   { 92,  92, 255};
+inline constexpr rgb rgb::term_bright_magenta{255,   0, 255};
+inline constexpr rgb rgb::term_bright_cyan   {  0, 255, 255};
+inline constexpr rgb rgb::term_bright_white  {255, 255, 255};
 
 namespace detail {
 
 inline constexpr auto term_color_palette = std::array{
   // 0–7 normal
-  color::term_black, color::term_red,     color::term_green, color::term_yellow,
-  color::term_blue,  color::term_magenta, color::term_cyan , color::term_white,
+  rgb::term_black, rgb::term_red,     rgb::term_green, rgb::term_yellow,
+  rgb::term_blue,  rgb::term_magenta, rgb::term_cyan , rgb::term_white,
 
   // 8–15 bright
-  color::term_bright_black, color::term_bright_red ,
-  color::term_bright_green, color::term_bright_yellow,
-  color::term_bright_blue , color::term_bright_magenta,
-  color::term_bright_cyan , color::term_bright_white
+  rgb::term_bright_black, rgb::term_bright_red ,
+  rgb::term_bright_green, rgb::term_bright_yellow,
+  rgb::term_bright_blue , rgb::term_bright_magenta,
+  rgb::term_bright_cyan , rgb::term_bright_white
 }; // term_color_palette
 
 constexpr auto checked_term_index(term_color clr) noexcept
@@ -453,190 +610,186 @@ auto blend(color_t first, Second second, Colors... rest) noexcept -> color_t {
 /**
  * Named RGB colors.
  *
- * This namespace contains constexpr `rgb` constants with fixed RGB values,
+ * These static members are constexpr `rgb` constants with fixed RGB values,
  * independently of the terminal palette. Pass a value to `fg()` or `bg()`.
  */
-namespace color {
+inline constexpr rgb rgb::alice_blue              {240, 248, 255};
+inline constexpr rgb rgb::antique_white           {250, 235, 215};
+inline constexpr rgb rgb::aqua                    {  0, 255, 255};
+inline constexpr rgb rgb::aquamarine              {127, 255, 212};
+inline constexpr rgb rgb::azure                   {240, 255, 255};
+inline constexpr rgb rgb::beige                   {245, 245, 220};
+inline constexpr rgb rgb::bisque                  {255, 228, 196};
+inline constexpr rgb rgb::black                   {  0,   0,   0};
+inline constexpr rgb rgb::blanched_almond         {255, 235, 205};
+inline constexpr rgb rgb::blue                    {  0,   0, 255};
+inline constexpr rgb rgb::blue_violet             {138,  43, 226};
+inline constexpr rgb rgb::brown                   {165,  42,  42};
+inline constexpr rgb rgb::burly_wood              {222, 184, 135};
+inline constexpr rgb rgb::cadet_blue              { 95, 158, 160};
+inline constexpr rgb rgb::chartreuse              {127, 255,   0};
+inline constexpr rgb rgb::chocolate               {210, 105,  30};
+inline constexpr rgb rgb::coral                   {255, 127,  80};
+inline constexpr rgb rgb::cornflower_blue         {100, 149, 237};
+inline constexpr rgb rgb::cornsilk                {255, 248, 220};
+inline constexpr rgb rgb::crimson                 {220,  20,  60};
+inline constexpr rgb rgb::cyan                    {  0, 255, 255};
+inline constexpr rgb rgb::dark_blue               {  0,   0, 139};
+inline constexpr rgb rgb::dark_cyan               {  0, 139, 139};
+inline constexpr rgb rgb::dark_golden_rod         {184, 134,  11};
+inline constexpr rgb rgb::dark_gray               {169, 169, 169};
+inline constexpr rgb rgb::dark_green              {  0, 100,   0};
+inline constexpr rgb rgb::dark_khaki              {189, 183, 107};
+inline constexpr rgb rgb::dark_magenta            {139,   0, 139};
+inline constexpr rgb rgb::dark_olive_green        { 85, 107,  47};
+inline constexpr rgb rgb::dark_orange             {255, 140,   0};
+inline constexpr rgb rgb::dark_orchid             {153,  50, 204};
+inline constexpr rgb rgb::dark_red                {139,   0,   0};
+inline constexpr rgb rgb::dark_salmon             {233, 150, 122};
+inline constexpr rgb rgb::dark_sea_green          {143, 188, 143};
+inline constexpr rgb rgb::dark_slate_blue         { 72,  61, 139};
+inline constexpr rgb rgb::dark_slate_gray         { 47,  79,  79};
+inline constexpr rgb rgb::dark_turquoise          {  0, 206, 209};
+inline constexpr rgb rgb::dark_violet             {148,   0, 211};
+inline constexpr rgb rgb::deep_pink               {255,  20, 147};
+inline constexpr rgb rgb::deep_sky_blue           {  0, 191, 255};
+inline constexpr rgb rgb::dim_gray                {105, 105, 105};
+inline constexpr rgb rgb::dodger_blue             { 30, 144, 255};
+inline constexpr rgb rgb::fire_brick              {178,  34,  34};
+inline constexpr rgb rgb::floral_white            {255, 250, 240};
+inline constexpr rgb rgb::forest_green            { 34, 139,  34};
+inline constexpr rgb rgb::fuchsia                 {255,   0, 255};
+inline constexpr rgb rgb::gainsboro               {220, 220, 220};
+inline constexpr rgb rgb::ghost_white             {248, 248, 255};
+inline constexpr rgb rgb::gold                    {255, 215,   0};
+inline constexpr rgb rgb::golden_rod              {218, 165,  32};
+inline constexpr rgb rgb::gray                    {128, 128, 128};
+inline constexpr rgb rgb::green                   {  0, 128,   0};
+inline constexpr rgb rgb::green_yellow            {173, 255,  47};
+inline constexpr rgb rgb::honey_dew               {240, 255, 240};
+inline constexpr rgb rgb::hot_pink                {255, 105, 180};
+inline constexpr rgb rgb::indian_red              {205,  92,  92};
+inline constexpr rgb rgb::indigo                  { 75,   0, 130};
+inline constexpr rgb rgb::ivory                   {255, 255, 240};
+inline constexpr rgb rgb::khaki                   {240, 230, 140};
+inline constexpr rgb rgb::lavender                {230, 230, 250};
+inline constexpr rgb rgb::lavender_blush          {255, 240, 245};
+inline constexpr rgb rgb::lawn_green              {124, 252,   0};
+inline constexpr rgb rgb::lemon_chiffon           {255, 250, 205};
+inline constexpr rgb rgb::light_blue              {173, 216, 230};
+inline constexpr rgb rgb::light_coral             {240, 128, 128};
+inline constexpr rgb rgb::light_cyan              {224, 255, 255};
+inline constexpr rgb rgb::light_golden_rod_yellow {250, 250, 210};
+inline constexpr rgb rgb::light_gray              {211, 211, 211};
+inline constexpr rgb rgb::light_green             {144, 238, 144};
+inline constexpr rgb rgb::light_pink              {255, 182, 193};
+inline constexpr rgb rgb::light_salmon            {255, 160, 122};
+inline constexpr rgb rgb::light_sea_green         { 32, 178, 170};
+inline constexpr rgb rgb::light_sky_blue          {135, 206, 250};
+inline constexpr rgb rgb::light_slate_gray        {119, 136, 153};
+inline constexpr rgb rgb::light_steel_blue        {176, 196, 222};
+inline constexpr rgb rgb::light_yellow            {255, 255, 224};
+inline constexpr rgb rgb::lime                    {  0, 255,   0};
+inline constexpr rgb rgb::lime_green              { 50, 205,  50};
+inline constexpr rgb rgb::linen                   {250, 240, 230};
+inline constexpr rgb rgb::magenta                 {255,   0, 255};
+inline constexpr rgb rgb::maroon                  {128,   0,   0};
+inline constexpr rgb rgb::medium_aquamarine       {102, 205, 170};
+inline constexpr rgb rgb::medium_blue             {  0,   0, 205};
+inline constexpr rgb rgb::medium_orchid           {186,  85, 211};
+inline constexpr rgb rgb::medium_purple           {147, 112, 219};
+inline constexpr rgb rgb::medium_sea_green        { 60, 179, 113};
+inline constexpr rgb rgb::medium_slate_blue       {123, 104, 238};
+inline constexpr rgb rgb::medium_spring_green     {  0, 250, 154};
+inline constexpr rgb rgb::medium_turquoise        { 72, 209, 204};
+inline constexpr rgb rgb::medium_violet_red       {199,  21, 133};
+inline constexpr rgb rgb::midnight_blue           { 25,  25, 112};
+inline constexpr rgb rgb::mint_cream              {245, 255, 250};
+inline constexpr rgb rgb::misty_rose              {255, 228, 225};
+inline constexpr rgb rgb::moccasin                {255, 228, 181};
+inline constexpr rgb rgb::navajo_white            {255, 222, 173};
+inline constexpr rgb rgb::navy                    {  0,   0, 128};
+inline constexpr rgb rgb::old_lace                {253, 245, 230};
+inline constexpr rgb rgb::olive                   {128, 128,   0};
+inline constexpr rgb rgb::olive_drab              {107, 142,  35};
+inline constexpr rgb rgb::orange                  {255, 165,   0};
+inline constexpr rgb rgb::orange_red              {255,  69,   0};
+inline constexpr rgb rgb::orchid                  {218, 112, 214};
+inline constexpr rgb rgb::pale_golden_rod         {238, 232, 170};
+inline constexpr rgb rgb::pale_green              {152, 251, 152};
+inline constexpr rgb rgb::pale_turquoise          {175, 238, 238};
+inline constexpr rgb rgb::pale_violet_red         {219, 112, 147};
+inline constexpr rgb rgb::papaya_whip             {255, 239, 213};
+inline constexpr rgb rgb::peach_puff              {255, 218, 185};
+inline constexpr rgb rgb::peru                    {205, 133,  63};
+inline constexpr rgb rgb::pink                    {255, 192, 203};
+inline constexpr rgb rgb::plum                    {221, 160, 221};
+inline constexpr rgb rgb::powder_blue             {176, 224, 230};
+inline constexpr rgb rgb::purple                  {128,   0, 128};
+inline constexpr rgb rgb::rebecca_purple          {102,  51, 153};
+inline constexpr rgb rgb::red                     {255,   0,   0};
+inline constexpr rgb rgb::rosy_brown              {188, 143, 143};
+inline constexpr rgb rgb::royal_blue              { 65, 105, 225};
+inline constexpr rgb rgb::saddle_brown            {139,  69,  19};
+inline constexpr rgb rgb::salmon                  {250, 128, 114};
+inline constexpr rgb rgb::sandy_brown             {244, 164,  96};
+inline constexpr rgb rgb::sea_green               { 46, 139,  87};
+inline constexpr rgb rgb::sea_shell               {255, 245, 238};
+inline constexpr rgb rgb::sienna                  {160,  82,  45};
+inline constexpr rgb rgb::silver                  {192, 192, 192};
+inline constexpr rgb rgb::sky_blue                {135, 206, 235};
+inline constexpr rgb rgb::slate_blue              {106,  90, 205};
+inline constexpr rgb rgb::slate_gray              {112, 128, 144};
+inline constexpr rgb rgb::snow                    {255, 250, 250};
+inline constexpr rgb rgb::spring_green            {  0, 255, 127};
+inline constexpr rgb rgb::steel_blue              { 70, 130, 180};
+inline constexpr rgb rgb::tan                     {210, 180, 140};
+inline constexpr rgb rgb::teal                    {  0, 128, 128};
+inline constexpr rgb rgb::thistle                 {216, 191, 216};
+inline constexpr rgb rgb::tomato                  {255,  99,  71};
+inline constexpr rgb rgb::turquoise               { 64, 224, 208};
+inline constexpr rgb rgb::violet                  {238, 130, 238};
+inline constexpr rgb rgb::wheat                   {245, 222, 179};
+inline constexpr rgb rgb::white                   {255, 255, 255};
+inline constexpr rgb rgb::white_smoke             {245, 245, 245};
+inline constexpr rgb rgb::yellow                  {255, 255,   0};
+inline constexpr rgb rgb::yellow_green            {154, 205,  50};
 
-constexpr inline rgb alice_blue              {240, 248, 255};
-constexpr inline rgb antique_white           {250, 235, 215};
-constexpr inline rgb aqua                    {  0, 255, 255};
-constexpr inline rgb aquamarine              {127, 255, 212};
-constexpr inline rgb azure                   {240, 255, 255};
-constexpr inline rgb beige                   {245, 245, 220};
-constexpr inline rgb bisque                  {255, 228, 196};
-constexpr inline rgb black                   {  0,   0,   0};
-constexpr inline rgb blanched_almond         {255, 235, 205};
-constexpr inline rgb blue                    {  0,   0, 255};
-constexpr inline rgb blue_violet             {138,  43, 226};
-constexpr inline rgb brown                   {165,  42,  42};
-constexpr inline rgb burly_wood              {222, 184, 135};
-constexpr inline rgb cadet_blue              { 95, 158, 160};
-constexpr inline rgb chartreuse              {127, 255,   0};
-constexpr inline rgb chocolate               {210, 105,  30};
-constexpr inline rgb coral                   {255, 127,  80};
-constexpr inline rgb cornflower_blue         {100, 149, 237};
-constexpr inline rgb cornsilk                {255, 248, 220};
-constexpr inline rgb crimson                 {220,  20,  60};
-constexpr inline rgb cyan                    {  0, 255, 255};
-constexpr inline rgb dark_blue               {  0,   0, 139};
-constexpr inline rgb dark_cyan               {  0, 139, 139};
-constexpr inline rgb dark_golden_rod         {184, 134,  11};
-constexpr inline rgb dark_gray               {169, 169, 169};
-constexpr inline rgb dark_green              {  0, 100,   0};
-constexpr inline rgb dark_khaki              {189, 183, 107};
-constexpr inline rgb dark_magenta            {139,   0, 139};
-constexpr inline rgb dark_olive_green        { 85, 107,  47};
-constexpr inline rgb dark_orange             {255, 140,   0};
-constexpr inline rgb dark_orchid             {153,  50, 204};
-constexpr inline rgb dark_red                {139,   0,   0};
-constexpr inline rgb dark_salmon             {233, 150, 122};
-constexpr inline rgb dark_sea_green          {143, 188, 143};
-constexpr inline rgb dark_slate_blue         { 72,  61, 139};
-constexpr inline rgb dark_slate_gray         { 47,  79,  79};
-constexpr inline rgb dark_turquoise          {  0, 206, 209};
-constexpr inline rgb dark_violet             {148,   0, 211};
-constexpr inline rgb deep_pink               {255,  20, 147};
-constexpr inline rgb deep_sky_blue           {  0, 191, 255};
-constexpr inline rgb dim_gray                {105, 105, 105};
-constexpr inline rgb dodger_blue             { 30, 144, 255};
-constexpr inline rgb fire_brick              {178,  34,  34};
-constexpr inline rgb floral_white            {255, 250, 240};
-constexpr inline rgb forest_green            { 34, 139,  34};
-constexpr inline rgb fuchsia                 {255,   0, 255};
-constexpr inline rgb gainsboro               {220, 220, 220};
-constexpr inline rgb ghost_white             {248, 248, 255};
-constexpr inline rgb gold                    {255, 215,   0};
-constexpr inline rgb golden_rod              {218, 165,  32};
-constexpr inline rgb gray                    {128, 128, 128};
-constexpr inline rgb green                   {  0, 128,   0};
-constexpr inline rgb green_yellow            {173, 255,  47};
-constexpr inline rgb honey_dew               {240, 255, 240};
-constexpr inline rgb hot_pink                {255, 105, 180};
-constexpr inline rgb indian_red              {205,  92,  92};
-constexpr inline rgb indigo                  { 75,   0, 130};
-constexpr inline rgb ivory                   {255, 255, 240};
-constexpr inline rgb khaki                   {240, 230, 140};
-constexpr inline rgb lavender                {230, 230, 250};
-constexpr inline rgb lavender_blush          {255, 240, 245};
-constexpr inline rgb lawn_green              {124, 252,   0};
-constexpr inline rgb lemon_chiffon           {255, 250, 205};
-constexpr inline rgb light_blue              {173, 216, 230};
-constexpr inline rgb light_coral             {240, 128, 128};
-constexpr inline rgb light_cyan              {224, 255, 255};
-constexpr inline rgb light_golden_rod_yellow {250, 250, 210};
-constexpr inline rgb light_gray              {211, 211, 211};
-constexpr inline rgb light_green             {144, 238, 144};
-constexpr inline rgb light_pink              {255, 182, 193};
-constexpr inline rgb light_salmon            {255, 160, 122};
-constexpr inline rgb light_sea_green         { 32, 178, 170};
-constexpr inline rgb light_sky_blue          {135, 206, 250};
-constexpr inline rgb light_slate_gray        {119, 136, 153};
-constexpr inline rgb light_steel_blue        {176, 196, 222};
-constexpr inline rgb light_yellow            {255, 255, 224};
-constexpr inline rgb lime                    {  0, 255,   0};
-constexpr inline rgb lime_green              { 50, 205,  50};
-constexpr inline rgb linen                   {250, 240, 230};
-constexpr inline rgb magenta                 {255,   0, 255};
-constexpr inline rgb maroon                  {128,   0,   0};
-constexpr inline rgb medium_aquamarine       {102, 205, 170};
-constexpr inline rgb medium_blue             {  0,   0, 205};
-constexpr inline rgb medium_orchid           {186,  85, 211};
-constexpr inline rgb medium_purple           {147, 112, 219};
-constexpr inline rgb medium_sea_green        { 60, 179, 113};
-constexpr inline rgb medium_slate_blue       {123, 104, 238};
-constexpr inline rgb medium_spring_green     {  0, 250, 154};
-constexpr inline rgb medium_turquoise        { 72, 209, 204};
-constexpr inline rgb medium_violet_red       {199,  21, 133};
-constexpr inline rgb midnight_blue           { 25,  25, 112};
-constexpr inline rgb mint_cream              {245, 255, 250};
-constexpr inline rgb misty_rose              {255, 228, 225};
-constexpr inline rgb moccasin                {255, 228, 181};
-constexpr inline rgb navajo_white            {255, 222, 173};
-constexpr inline rgb navy                    {  0,   0, 128};
-constexpr inline rgb old_lace                {253, 245, 230};
-constexpr inline rgb olive                   {128, 128,   0};
-constexpr inline rgb olive_drab              {107, 142,  35};
-constexpr inline rgb orange                  {255, 165,   0};
-constexpr inline rgb orange_red              {255,  69,   0};
-constexpr inline rgb orchid                  {218, 112, 214};
-constexpr inline rgb pale_golden_rod         {238, 232, 170};
-constexpr inline rgb pale_green              {152, 251, 152};
-constexpr inline rgb pale_turquoise          {175, 238, 238};
-constexpr inline rgb pale_violet_red         {219, 112, 147};
-constexpr inline rgb papaya_whip             {255, 239, 213};
-constexpr inline rgb peach_puff              {255, 218, 185};
-constexpr inline rgb peru                    {205, 133,  63};
-constexpr inline rgb pink                    {255, 192, 203};
-constexpr inline rgb plum                    {221, 160, 221};
-constexpr inline rgb powder_blue             {176, 224, 230};
-constexpr inline rgb purple                  {128,   0, 128};
-constexpr inline rgb rebecca_purple          {102,  51, 153};
-constexpr inline rgb red                     {255,   0,   0};
-constexpr inline rgb rosy_brown              {188, 143, 143};
-constexpr inline rgb royal_blue              { 65, 105, 225};
-constexpr inline rgb saddle_brown            {139,  69,  19};
-constexpr inline rgb salmon                  {250, 128, 114};
-constexpr inline rgb sandy_brown             {244, 164,  96};
-constexpr inline rgb sea_green               { 46, 139,  87};
-constexpr inline rgb sea_shell               {255, 245, 238};
-constexpr inline rgb sienna                  {160,  82,  45};
-constexpr inline rgb silver                  {192, 192, 192};
-constexpr inline rgb sky_blue                {135, 206, 235};
-constexpr inline rgb slate_blue              {106,  90, 205};
-constexpr inline rgb slate_gray              {112, 128, 144};
-constexpr inline rgb snow                    {255, 250, 250};
-constexpr inline rgb spring_green            {  0, 255, 127};
-constexpr inline rgb steel_blue              { 70, 130, 180};
-constexpr inline rgb tan                     {210, 180, 140};
-constexpr inline rgb teal                    {  0, 128, 128};
-constexpr inline rgb thistle                 {216, 191, 216};
-constexpr inline rgb tomato                  {255,  99,  71};
-constexpr inline rgb turquoise               { 64, 224, 208};
-constexpr inline rgb violet                  {238, 130, 238};
-constexpr inline rgb wheat                   {245, 222, 179};
-constexpr inline rgb white                   {255, 255, 255};
-constexpr inline rgb white_smoke             {245, 245, 245};
-constexpr inline rgb yellow                  {255, 255,   0};
-constexpr inline rgb yellow_green            {154, 205,  50};
-
-} // color
-
-} // tjg
+} // tjg::color
 
 namespace std {
 
-template<> struct hash<tjg::term_color> {
-  auto operator()(tjg::term_color value) const noexcept -> std::size_t
+template<> struct hash<tjg::color::term_color> {
+  auto operator()(tjg::color::term_color value) const noexcept -> std::size_t
   { return tjg::hash_value(std::to_underlying(value)); }
 };
 
-template<> struct hash<tjg::rgb> {
-  auto operator()(tjg::rgb value) const noexcept -> std::size_t
+template<> struct hash<tjg::color::rgb> {
+  auto operator()(tjg::color::rgb value) const noexcept -> std::size_t
   { return tjg::hash_value(static_cast<std::uint32_t>(value)); }
 };
 
-template<> struct hash<tjg::cube_color> {
-  auto operator()(tjg::cube_color value) const noexcept -> std::size_t
+template<> struct hash<tjg::color::cube_color> {
+  auto operator()(tjg::color::cube_color value) const noexcept -> std::size_t
   { return tjg::hash_value(value.index()); }
 };
 
-template<> struct hash<tjg::gray_color> {
-  auto operator()(tjg::gray_color value) const noexcept -> std::size_t
+template<> struct hash<tjg::color::gray_color> {
+  auto operator()(tjg::color::gray_color value) const noexcept -> std::size_t
   { return tjg::hash_value(value.index()); }
 };
 
-template<> struct hash<tjg::color_t> {
-  auto operator()(tjg::color_t value) const noexcept -> std::size_t {
+template<> struct hash<tjg::color::color_t> {
+  auto operator()(tjg::color::color_t value) const noexcept -> std::size_t {
     auto result = tjg::hash_value(value.index());
     if (value.valueless_by_exception()) return result;
     std::visit([&](const auto& color) noexcept {
       if constexpr (!std::same_as<std::remove_cvref_t<decltype(color)>,
-                                  tjg::no_color_t>)
+                                  tjg::color::no_color_t>)
         tjg::hash_combine(result, color);
     }, value);
     return result;
   }
-}; // hash tjg::color_t
+}; // hash tjg::color::color_t
 
 } // std

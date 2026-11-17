@@ -195,7 +195,7 @@ void write_tables(const std::vector<unsigned char>& nonprintable) {
 #include <cstdint>
 #pragma once
 
-namespace tjg::unicode::detail {
+namespace tjg::color::detail::unicode::detail {
 
 struct singleton {
   unsigned char upper;
@@ -216,7 +216,7 @@ struct code_point_range {
   std::println("inline constexpr code_point_range nonprintable_ranges[] = {{");
   for (const auto& [first, end] : supplementary)
     std::println("  {{0x{:x}, 0x{:x}}},", first, end);
-  std::println("}};\n\n}} // tjg::unicode");
+  std::println("}};\n\n}} // tjg::color::detail::unicode");
 }
 
 } // namespace

@@ -1,7 +1,7 @@
 # FmtColor
 
 FmtColor is a standalone C++23 header library for terminal colors and text
-styles. It uses `std::format` and `std::print`, with APIs in namespace `tjg`.
+styles. It uses `std::format` and `std::print`, with APIs in namespace `tjg::color`.
 The project began as an extension to [{fmt}](https://github.com/fmtlib/fmt).
 It now depends only on the C++ standard library.
 
@@ -14,8 +14,8 @@ Use a C++23 compiler and standard library with `<format>` and `<print>`.
 #include <tjg/color.hpp>
 
 int main() {
-  const auto green = tjg::fg(tjg::term_color::green);
-  tjg::println(tjg::bold(), "Build {}", tjg::styled("passed", green));
+  const auto green = tjg::color::fg(tjg::color::term_color::green);
+  tjg::color::println(tjg::color::bold(), "Build {}", tjg::color::styled("passed", green));
 }
 ```
 
@@ -31,15 +31,15 @@ the full set of examples and the {fmt} comparison builds.
 | Header                  | Provides                                                             |
 | ----------------------- | -------------------------------------------------------------------- |
 | `<tjg/color.hpp>`       | Full library, including formatting, printing, streams, and SGR tools |
-| `<tjg/colors.hpp>`      | Named RGB colors, terminal and palette colors, and `color_t`         |
-| `<tjg/text_style.hpp>`  | Color values, emphasis, `text_style`, and style composition          |
-| `<tjg/styled_text.hpp>` | Owning styled-text trees and their composition                       |
+| `<tjg/color/colors.hpp>`      | Named RGB colors, terminal and palette colors, and `color_t`         |
+| `<tjg/color/text_style.hpp>`  | Color values, emphasis, `text_style`, and style composition          |
+| `<tjg/color/styled_text.hpp>` | Owning styled-text trees and their composition                       |
 | `<tjg/backslash.hpp>`   | Backslash escaping and unescaping                                    |
 | `<tjg/strip_ansi.hpp>`  | ANSI escape sequence removal from strings                            |
 
 Use `<tjg/color.hpp>` for formatted output, SGR generation and parsing, or
 ANSI stripping on a styled-text tree. The narrower headers support code
-that only needs the value types or string utilities. Headers in `tjg/bits/`
+that only needs the value types or string utilities. Headers in `tjg/color/bits/`
 are implementation headers.
 
 ## CMake

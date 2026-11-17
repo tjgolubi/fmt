@@ -19,13 +19,13 @@
 
 #include <cstddef>
 
-namespace tjg::detail {
+namespace tjg::color::detail {
 
 template<CharType Char>
 auto styled_text_width(std::basic_string_view<Char> text) noexcept
   -> std::size_t
 {
-  return tjg::unicode::text_prefix(
+  return tjg::color::detail::unicode::text_prefix(
                           text, std::numeric_limits<std::size_t>::max()).second;
 }
 
@@ -76,7 +76,7 @@ class styled_text_renderer {
       const auto text = node._text
                             ? std::basic_string_view<Char>{*node._text}
                             : std::basic_string_view<Char>{};
-      out = tjg::unicode::quote_text(text, out);
+      out = tjg::color::detail::unicode::quote_text(text, out);
       if (indent != 0) *out++ = Char{'\n'};
       return out;
     }
@@ -97,7 +97,7 @@ class styled_text_renderer {
   };
 
   auto take(std::basic_string_view<Char> text) -> styled_text_prefix {
-    const auto prefix = tjg::unicode::text_prefix(text, _remaining);
+    const auto prefix = tjg::color::detail::unicode::text_prefix(text, _remaining);
     _remaining -= prefix.second;
     _stopped = (prefix.first < text.size() || _remaining == 0);
     return {prefix.first, prefix.second};
@@ -220,12 +220,12 @@ struct standard_styled_text_formatter {
 
 }; // standard_styled_text_formatter
 
-} // tjg::detail
+} // tjg::color::detail
 
 namespace std {
 
 template<tjg::CharType Char>
-struct formatter<tjg::basic_styled_text<Char>, Char>
-  : tjg::detail::standard_styled_text_formatter<Char> {};
+struct formatter<tjg::color::basic_styled_text<Char>, Char>
+  : tjg::color::detail::standard_styled_text_formatter<Char> {};
 
 } // std

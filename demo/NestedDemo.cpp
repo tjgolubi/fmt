@@ -36,7 +36,7 @@ int main() {
 
   // {color}: the enclosing underline resumes after the red argument.
   {
-    tjg::println(tjg::underline(), "The result is {} bytes.",
-                 tjg::styled(42, tjg::fg(tjg::term_color::red)));
+    tjg::color::println(tjg::color::underline(), "The result is {} bytes.",
+                 tjg::color::styled(42, tjg::color::fg(tjg::color::term_color::red)));
   }
 } // main

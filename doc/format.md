@@ -10,7 +10,7 @@ See [Text style rendering](index.md#TextStyleRendering) for the shared rules.
     options:
       color_reference: true
 
-`tjg::to_sgr(style)` returns a `std::string` containing the ASCII bytes of
+`tjg::color::to_sgr(style)` returns a `std::string` containing the ASCII bytes of
 the ANSI SGR escape sequence. The result contains only the opening sequence.
 An empty relative style produces an empty string. Unspecified
 color channels emit no parameters. A relative style leaves those colors
@@ -18,10 +18,10 @@ unchanged; an absolute style begins with a reset, selecting terminal defaults
 for them. An absolute-only style emits `"\x1b[0m"`.
 
 ```cpp
-const auto style = tjg::text_style{tjg::emphasis::bold,
-                                   tjg::rgb{1, 2, 3},
-                                   tjg::term_color::black};
-auto sgr = tjg::to_sgr(style);
+const auto style = tjg::color::text_style{tjg::color::emphasis::bold,
+                                   tjg::color::rgb{1, 2, 3},
+                                   tjg::color::term_color::black};
+auto sgr = tjg::color::to_sgr(style);
 ```
 
 The example emits one SGR sequence with unpadded parameters,
@@ -33,7 +33,7 @@ or printing functions to wrap text in styling followed by a terminal reset.
 
 ### Transitions from a known style
 
-`tjg::to_sgr(final_style, initial_style)` returns the SGR needed to change from
+`tjg::color::to_sgr(final_style, initial_style)` returns the SGR needed to change from
 the known initial style to the final style, without a trailing reset. The
 second argument is required. Both arguments describe complete terminal states:
 an empty foreground or background means the corresponding terminal-default
@@ -43,12 +43,12 @@ style is ignored. Neither input is modified.
 
 An absolute final style always emits a full reset followed by its own
 attributes, even when the initial state has the same attributes. This case
-delegates to `tjg::to_sgr(final_style)`.
+delegates to `tjg::color::to_sgr(final_style)`.
 
 ```cpp
-const auto initial = tjg::bold(tjg::fg(tjg::term_color::red));
-const auto final_style = tjg::underline(tjg::fg(tjg::term_color::red));
-auto transition = tjg::to_sgr(final_style, initial);
+const auto initial = tjg::color::bold(tjg::color::fg(tjg::color::term_color::red));
+const auto final_style = tjg::color::underline(tjg::color::fg(tjg::color::term_color::red));
+auto transition = tjg::color::to_sgr(final_style, initial);
 // "\x1b[22;4m" leaves red text underlined and clears bold.
 ```
 
@@ -70,7 +70,7 @@ Both overloads return `std::string`. Constructing the result can allocate.
     options:
       color_reference: true
 
-`tjg::sgr_reset<Char>` returns a `std::basic_string_view<Char>` containing
+`tjg::color::sgr_reset<Char>` returns a `std::basic_string_view<Char>` containing
 the four-character sequence `\x1b[0m`. `Char` defaults to `char`; specify
 `wchar_t` for a wide-character view. The view refers to static storage and
 remains valid for the lifetime of the program. The function allocates no
@@ -80,23 +80,23 @@ Use the reset after manually styled text to restore terminal-default colors
 and emphasis. It does not restore a previously active enclosing style.
 
 ```cpp
-auto message     = tjg::to_sgr(style) + "message";
-const auto reset = tjg::sgr_reset();
+auto message     = tjg::color::to_sgr(style) + "message";
+const auto reset = tjg::color::sgr_reset();
 message.append(reset.data(), reset.size());
 
-auto wide_message = tjg::wrap_sgr<wchar_t>(style, L"message");
+auto wide_message = tjg::color::wrap_sgr<wchar_t>(style, L"message");
 ```
 
 ## `wrap_sgr`
 
-`tjg::wrap_sgr(style, text)` returns a string containing the style's opening
+`tjg::color::wrap_sgr(style, text)` returns a string containing the style's opening
 SGR sequence, the text, and a terminal reset. The style comes first. Unlike
 `format`, it copies the text literally: braces, embedded nulls, and escape
 sequences are preserved without interpretation.
 
 ```cpp
-const auto style = tjg::bold();
-auto message     = tjg::wrap_sgr(style, "Result: {42}");
+const auto style = tjg::color::bold();
+auto message     = tjg::color::wrap_sgr(style, "Result: {42}");
 // "\x1b[1mResult: {42}\x1b[0m".
 ```
 
@@ -111,9 +111,9 @@ convertible to `std::string_view`, including string literals and `std::string`.
 For wide text, supply a view or specify the character type explicitly:
 
 ```cpp
-auto wide_message = tjg::wrap_sgr<wchar_t>(style, L"Result: {42}");
+auto wide_message = tjg::color::wrap_sgr<wchar_t>(style, L"Result: {42}");
 auto wide_view    = std::basic_string_view<wchar_t>{L"message"};
-auto another      = tjg::wrap_sgr(style, wide_view);
+auto another      = tjg::color::wrap_sgr(style, wide_view);
 ```
 
 ## SGR length constants
@@ -122,8 +122,8 @@ Both constants are `constexpr std::size_t` values available in C++23 and later:
 
 | Constant                | Value | Meaning                                                                     |
 | ----------------------- | ----- | --------------------------------------------------------------------------- |
-| `tjg::sgr_max_length`   | `60`  | Capacity bound for generating SGR output.                                   |
-| `tjg::sgr_reset_length` | `4`   | Length of the reset sequence returned by `sgr_reset`.                       |
+| `tjg::color::sgr_max_length`   | `60`  | Capacity bound for generating SGR output.                                   |
+| `tjg::color::sgr_reset_length` | `4`   | Length of the reset sequence returned by `sgr_reset`.                       |
 
 Lengths count sequence characters, including ESC, brackets, parameters, and the
 final `m`. They exclude any terminating null. `sgr_max_length` excludes the
@@ -160,6 +160,6 @@ The referenced arguments must remain alive while the pack is used.
 ```cpp
 int result   = 42;
 auto args    = std::make_format_args(result);
-auto message = tjg::vformat(tjg::fg(tjg::color::green),
+auto message = tjg::color::vformat(tjg::color::fg(tjg::color::rgb::green),
                             "Result: {}", args);
 ```

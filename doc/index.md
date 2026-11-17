@@ -4,13 +4,15 @@ Include `<tjg/color.hpp>` to combine foreground and background
 colors with emphasis, style individual arguments, and produce formatted strings
 or output.
 
-The library API lives in namespace `tjg` and targets C++23.
+The library API lives in namespace `tjg::color` and targets C++23.
 Text utilities and SGR helpers use `std::basic_string_view`, including
 `std::string_view` and `std::wstring_view`. Formatting and printing use `std::format` and `std::print`; the extension
 uses `<tjg/...>` headers and requires no {fmt} headers or library.
+Color and styling APIs live in `tjg::color`; general utilities remain in `tjg`.
+Use `using namespace tjg::color;` locally for concise styled-text expressions.
 The repository's root CMake project provides the installable `tjg::tjg` target.
 The library implements styled-text format specs, UTF-8 decoding, width
-estimates, and debug escaping. `tjg::color_t` stores an unspecified color,
+estimates, and debug escaping. `tjg::color::color_t` stores an unspecified color,
 an RGB value, or a terminal, cube, or gray palette color in one public type.
 
 Convenience is a major design goal. The API deliberately provides several ways
@@ -25,10 +27,10 @@ configuration.
 #include <print>
 
 int main() {
-  auto style = tjg::fg(tjg::color::forest_green).bold();
-  tjg::println(style, "The result is {}.", 42);
+  auto style = tjg::color::fg(tjg::color::rgb::forest_green).bold();
+  tjg::color::println(style, "The result is {}.", 42);
   std::println("The result is {}.",
-               tjg::styled(42, tjg::fg(tjg::term_color::red)));
+               tjg::color::styled(42, tjg::color::fg(tjg::color::term_color::red)));
 }
 ```
 
@@ -79,10 +81,10 @@ levels.  Pass a color to [`fg`](text-style.md#foreground-and-background) or
 background style.
 
 ```cpp
-auto style = tjg::text_style{tjg::rgb{30, 144, 255},
-                             tjg::term_color::black,
-                             tjg::emphasis::bold |
-                             tjg::emphasis::underline};
+auto style = tjg::color::text_style{tjg::color::rgb{30, 144, 255},
+                             tjg::color::term_color::black,
+                             tjg::color::emphasis::bold |
+                             tjg::color::emphasis::underline};
 ```
 
 A default-constructed [`text_style`](text-style.md#text_style) has no colors or
@@ -101,9 +103,9 @@ These examples convert terminal colors to RGB using the fixed Xterm-default
 palette, which may differ from the user's terminal theme.
 
 ```cpp
-auto red = tjg::to_rgb(tjg::term_color::bright_red);
-auto blue = tjg::to_rgb(tjg::term_color::blue);
-auto averaged = tjg::blend(red, blue); // RGB {127, 0, 119}.
+auto red = tjg::color::to_rgb(tjg::color::term_color::bright_red);
+auto blue = tjg::color::to_rgb(tjg::color::term_color::blue);
+auto averaged = tjg::color::blend(red, blue); // RGB {127, 0, 119}.
 auto combined = red | blue;           // RGB {255, 0, 238}.
 ```
 
@@ -148,9 +150,9 @@ Relative styled arguments and structured text inherit missing colors and combine
 emphasis with that style. Each field restores the enclosing style afterward:
 
 ```cpp
-tjg::print(tjg::emphasis::underline,
+tjg::color::print(tjg::color::emphasis::underline,
            "The result is {} after rounding.",
-           tjg::styled(42, tjg::fg(tjg::term_color::bright_red)));
+           tjg::color::styled(42, tjg::color::fg(tjg::color::term_color::bright_red)));
 ```
 
 <pre class="color-output"><span style="text-decoration: underline">The result is <span style="color: #FF0000">42</span> after rounding.</span></pre>
@@ -207,10 +209,10 @@ Both narrow and wide formatting are supported.
 #include <format>
 #include <tjg/color.hpp>
 
-auto color = std::format("{}", tjg::color::red); // "#ff0000"
-auto style = std::format("{:?}", tjg::bold());  // "b"
-auto names = std::format("{}", tjg::emphasis::bold); // "{bold}"
-auto text = std::format("{:04}", tjg::styled(42, tjg::bold()));
+auto color = std::format("{}", tjg::color::rgb::red); // "#ff0000"
+auto style = std::format("{:?}", tjg::color::bold());  // "b"
+auto names = std::format("{}", tjg::color::emphasis::bold); // "{bold}"
+auto text = std::format("{:04}", tjg::color::styled(42, tjg::color::bold()));
 // Bold "0042", followed by restoration of the enclosing style.
 ```
 
@@ -247,6 +249,6 @@ characters with `fill`, which defaults to zero. Use
 directly into the buffer. The callable receives a pointer and the limit, and
 returns the number of initialized characters to keep.
 
-::: basic_inline_buffer
+::: tjg::basic_inline_buffer
     options:
       color_reference: true

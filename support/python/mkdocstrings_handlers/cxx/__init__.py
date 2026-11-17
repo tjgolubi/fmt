@@ -425,9 +425,9 @@ class CxxHandler(BaseHandler):
         d.template_params = convert_template_params(node)
         d.desc = get_description(node)
         d.members = []
-        if d.kind == "namespace" and color_reference:
+        if color_reference and d.name == "rgb":
             d.color_values = []
-            for m in node.findall('sectiondef[@kind="var"]/memberdef'):
+            for m in node.findall('sectiondef[@kind="public-static-attrib"]/memberdef'):
                 initializer = m.findtext("initializer", "")
                 components = re.fullmatch(r"\{\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\}",
                                           initializer.strip())
@@ -437,7 +437,6 @@ class CxxHandler(BaseHandler):
                 packed = (red << 16) | (green << 8) | blue
                 d.color_values.append((m.findtext("name", ""), f"= 0x{packed:06X}",
                                        get_description(m)))
-            return d
         members = node.findall(
             'sectiondef[@kind="public-attrib"]/memberdef'
         ) + node.findall('sectiondef[@kind="public-func"]/memberdef')
@@ -491,7 +490,7 @@ class CxxHandler(BaseHandler):
         if identifier.startswith("tjg::"):
             qual_name = identifier
         else:
-            namespace = "tjg::" if options.get("color_reference") else "fmt::"
+            namespace = "tjg::color::" if options.get("color_reference") else "fmt::"
             qual_name = namespace + identifier
 
         param_str = None
